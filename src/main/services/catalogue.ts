@@ -1,6 +1,6 @@
 import { ulid } from 'ulid'
 import { getSqlite } from '../db/connection'
-import { initFts, rebuildFtsIndex } from '../db/fts'
+import { rebuildFtsIndex } from '../db/fts'
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
@@ -36,8 +36,6 @@ export function loadCatalogueSeedData(): void {
     .get() as { cnt: number }
 
   if (existing.cnt > 0) return
-
-  initFts(sqlite)
 
   const seedDir = getSeedDataPath()
   if (!fs.existsSync(seedDir)) return
@@ -130,7 +128,11 @@ export function loadCatalogueSeedData(): void {
   })
 
   transaction()
-  rebuildFtsIndex(sqlite)
+  try {
+    rebuildFtsIndex(sqlite)
+  } catch {
+    console.warn('FTS index rebuild skipped')
+  }
 }
 
 export function listCatalogues(): Catalogue[] {
