@@ -34,8 +34,12 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   initDatabase()
-  loadCatalogueSeedData()
-  autoGenerateCatalogueCollections()
+  try {
+    loadCatalogueSeedData()
+    autoGenerateCatalogueCollections()
+  } catch (err) {
+    console.error('Seed data loading failed (non-fatal):', err)
+  }
   registerIpcHandlers()
   createWindow()
 

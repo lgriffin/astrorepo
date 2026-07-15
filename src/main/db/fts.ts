@@ -7,8 +7,7 @@ export function initFts(sqlite: Database.Database): void {
       aliases,
       description,
       constellation,
-      content='',
-      tokenize='unicode61 remove_diacritics 2'
+      tokenize='unicode61'
     );
   `)
 
@@ -30,27 +29,11 @@ export function initFts(sqlite: Database.Database): void {
       END;
 
       CREATE TRIGGER targets_fts_delete AFTER DELETE ON targets BEGIN
-        INSERT INTO targets_fts(targets_fts, rowid, canonical_name, aliases, description, constellation)
-        VALUES (
-          'delete',
-          old.rowid,
-          old.canonical_name,
-          COALESCE((SELECT group_concat(alias, ' | ') FROM target_aliases WHERE target_id = old.id), ''),
-          COALESCE(old.description, ''),
-          COALESCE(old.constellation, '')
-        );
+        DELETE FROM targets_fts WHERE rowid = old.rowid;
       END;
 
       CREATE TRIGGER targets_fts_update AFTER UPDATE ON targets BEGIN
-        INSERT INTO targets_fts(targets_fts, rowid, canonical_name, aliases, description, constellation)
-        VALUES (
-          'delete',
-          old.rowid,
-          old.canonical_name,
-          COALESCE((SELECT group_concat(alias, ' | ') FROM target_aliases WHERE target_id = old.id), ''),
-          COALESCE(old.description, ''),
-          COALESCE(old.constellation, '')
-        );
+        DELETE FROM targets_fts WHERE rowid = old.rowid;
         INSERT INTO targets_fts(rowid, canonical_name, aliases, description, constellation)
         VALUES (
           new.rowid,

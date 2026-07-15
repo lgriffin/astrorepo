@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { app } from 'electron'
 import path from 'path'
 import * as schema from './schema'
+import { initFts } from './fts'
 
 let db: ReturnType<typeof drizzle> | null = null
 let sqlite: Database.Database | null = null
@@ -19,6 +20,11 @@ export function initDatabase(): void {
   sqlite.pragma('foreign_keys = ON')
   db = drizzle(sqlite, { schema })
   runMigrations(sqlite)
+  try {
+    initFts(sqlite)
+  } catch {
+    console.warn('FTS5 initialization skipped — search will use LIKE fallback')
+  }
 }
 
 export function getDb(): ReturnType<typeof drizzle> {

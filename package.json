@@ -2,7 +2,7 @@
   "name": "astrorepo",
   "version": "0.1.0",
   "description": "Universal Astrophotography Observatory Management System",
-  "main": "dist/main/index.js",
+  "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -40,7 +40,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.30.0",
-    "electron": "^33.2.0",
+    "electron": "^33.4.11",
     "electron-vite": "^2.3.0",
     "eslint": "^9.17.0",
     "postcss": "^8.4.49",
