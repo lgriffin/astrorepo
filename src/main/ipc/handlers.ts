@@ -12,6 +12,7 @@ import { getVisibility, getTonightTargets } from '../services/ephemeris'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
 import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries } from '../services/fits-analyzer'
+import { getOrCreateThumbnail } from '../services/thumbnail'
 import { getSetting, setSetting, listSettings } from '../services/settings'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
@@ -261,6 +262,10 @@ export function registerIpcHandlers(): void {
 
   handle('fits:get-headers', validated('fits:get-headers', (args) => {
     return { headers: getFileHeaders(args.file_id) }
+  }))
+
+  handle('fits:get-thumbnail', validated('fits:get-thumbnail', (args) => {
+    return getOrCreateThumbnail(args.file_id)
   }))
 
   handle('fits:scan-aggregates', validated('fits:scan-aggregates', (args) => {

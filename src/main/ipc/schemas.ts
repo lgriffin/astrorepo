@@ -203,6 +203,8 @@ export const schemas = {
 
   'fits:get-headers': z.object({ file_id: id }),
 
+  'fits:get-thumbnail': z.object({ file_id: z.string().min(1) }),
+
   'fits:scan-aggregates': z.object({ scan_id: id }),
 
   'fits:target-summaries': z.object({ scan_id: id }),

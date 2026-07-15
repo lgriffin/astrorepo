@@ -249,6 +249,14 @@ export const fitsFiles = sqliteTable('fits_files', {
   index('idx_fits_file_session_folder').on(table.sessionFolder)
 ])
 
+export const fitsThumbnails = sqliteTable('fits_thumbnails', {
+  fileId: text('file_id').primaryKey().references(() => fitsFiles.id, { onDelete: 'cascade' }),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  dataBase64: text('data_base64').notNull(),
+  createdAt: text('created_at').notNull()
+})
+
 export const fitsHeaders = sqliteTable('fits_headers', {
   id: text('id').primaryKey(),
   fileId: text('file_id').notNull().references(() => fitsFiles.id, { onDelete: 'cascade' }),

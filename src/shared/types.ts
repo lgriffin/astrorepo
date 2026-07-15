@@ -358,6 +358,13 @@ export interface FitsFileDetail {
   createdAt: string
 }
 
+export interface FitsThumbnail {
+  fileId: string
+  width: number
+  height: number
+  dataBase64: string
+}
+
 export interface FitsHeaderRow {
   id: string
   fileId: string

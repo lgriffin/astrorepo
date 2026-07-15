@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
-import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow } from '@shared/types'
+import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, FitsThumbnail } from '@shared/types'
 
 interface FileDetailProps {
   fileId: string
@@ -27,10 +27,18 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
   const [headers, setHeaders] = useState<FitsHeaderRow[]>([])
   const [showHeaders, setShowHeaders] = useState(false)
   const [headerSearch, setHeaderSearch] = useState('')
+  const [thumbnail, setThumbnail] = useState<{ width: number; height: number; dataBase64: string } | null>(null)
+  const [thumbnailLoading, setThumbnailLoading] = useState(false)
 
   useEffect(() => {
     invoke<FitsFileDetailType>('fits:get-file', { id: fileId }).then(setFile)
     invoke<{ headers: FitsHeaderRow[] }>('fits:get-headers', { file_id: fileId }).then(r => setHeaders(r.headers))
+    setThumbnailLoading(true)
+    setThumbnail(null)
+    invoke<{ width: number; height: number; dataBase64: string } | null>('fits:get-thumbnail', { file_id: fileId })
+      .then(result => setThumbnail(result))
+      .catch(() => setThumbnail(null))
+      .finally(() => setThumbnailLoading(false))
   }, [fileId])
 
   if (!file) return <div className="text-astro-muted p-4">Loading...</div>
@@ -50,6 +58,26 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
       </div>
 
       <div className="p-4 space-y-5">
+        {thumbnailLoading && (
+          <div className="flex items-center gap-2 text-sm text-astro-muted">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Generating preview...
+          </div>
+        )}
+        {thumbnail && (
+          <div>
+            <img
+              src={`data:image/png;base64,${thumbnail.dataBase64}`}
+              alt="FITS preview"
+              className="max-w-[256px] rounded border border-astro-border"
+            />
+            <p className="text-xs text-astro-muted mt-1">{thumbnail.width} x {thumbnail.height} preview</p>
+          </div>
+        )}
+
         <div className="flex gap-3 text-sm text-astro-muted">
           <span>{formatSize(file.fileSizeBytes)}</span>
           {file.fileModifiedAt && <span>Modified: {new Date(file.fileModifiedAt).toLocaleDateString()}</span>}

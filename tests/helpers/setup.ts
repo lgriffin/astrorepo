@@ -244,6 +244,14 @@ function runMigrations(sqlite: Database.Database): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS fits_thumbnails (
+      file_id TEXT PRIMARY KEY REFERENCES fits_files(id) ON DELETE CASCADE,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      data_base64 TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS fits_headers (
       id TEXT PRIMARY KEY,
       file_id TEXT NOT NULL REFERENCES fits_files(id) ON DELETE CASCADE,
