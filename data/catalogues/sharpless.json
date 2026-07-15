@@ -1,0 +1,40 @@
+{
+  "catalogue": {
+    "name": "Sharpless",
+    "abbreviation": "Sh2",
+    "description": "Stewart Sharpless catalogue of 313 HII regions in the Milky Way",
+    "totalObjects": 313
+  },
+  "objects": [
+    {"designation":"Sh2-1","name":"Sh2-1","type":"emission_nebula","ra":16.1833,"dec":-19.9500,"mag":null,"size":10.0,"constellation":"Scorpius","aliases":[]},
+    {"designation":"Sh2-9","name":"Sh2-9","type":"emission_nebula","ra":16.3667,"dec":-24.3333,"mag":null,"size":40.0,"constellation":"Scorpius","aliases":["Rho Ophiuchi Nebula"]},
+    {"designation":"Sh2-25","name":"Lagoon Nebula","type":"emission_nebula","ra":18.0633,"dec":-24.3833,"mag":6.0,"size":90.0,"constellation":"Sagittarius","aliases":["M8","NGC 6523"]},
+    {"designation":"Sh2-30","name":"Trifid Nebula","type":"emission_nebula","ra":18.0389,"dec":-23.0333,"mag":6.3,"size":28.0,"constellation":"Sagittarius","aliases":["M20","NGC 6514"]},
+    {"designation":"Sh2-45","name":"Omega Nebula","type":"emission_nebula","ra":18.3456,"dec":-16.1833,"mag":6.0,"size":46.0,"constellation":"Sagittarius","aliases":["M17","NGC 6618"]},
+    {"designation":"Sh2-49","name":"Eagle Nebula","type":"emission_nebula","ra":18.3133,"dec":-13.7833,"mag":6.0,"size":35.0,"constellation":"Serpens","aliases":["M16","NGC 6611"]},
+    {"designation":"Sh2-86","name":"Sh2-86","type":"emission_nebula","ra":19.7833,"dec":18.5000,"mag":null,"size":30.0,"constellation":"Vulpecula","aliases":[]},
+    {"designation":"Sh2-101","name":"Tulip Nebula","type":"emission_nebula","ra":20.0000,"dec":35.3500,"mag":null,"size":16.0,"constellation":"Cygnus","aliases":[]},
+    {"designation":"Sh2-106","name":"Sh2-106","type":"emission_nebula","ra":20.4500,"dec":37.3833,"mag":null,"size":3.0,"constellation":"Cygnus","aliases":["Celestial Snow Angel"]},
+    {"designation":"Sh2-112","name":"Sh2-112","type":"emission_nebula","ra":20.5667,"dec":45.6167,"mag":null,"size":9.0,"constellation":"Cygnus","aliases":[]},
+    {"designation":"Sh2-115","name":"Sh2-115","type":"emission_nebula","ra":20.3000,"dec":46.0000,"mag":null,"size":30.0,"constellation":"Cygnus","aliases":[]},
+    {"designation":"Sh2-119","name":"Sh2-119","type":"emission_nebula","ra":21.3167,"dec":43.9333,"mag":null,"size":15.0,"constellation":"Cygnus","aliases":[]},
+    {"designation":"Sh2-129","name":"Flying Bat Nebula","type":"emission_nebula","ra":21.4167,"dec":60.1667,"mag":null,"size":210.0,"constellation":"Cepheus","aliases":[]},
+    {"designation":"Sh2-132","name":"Lion Nebula","type":"emission_nebula","ra":22.3167,"dec":56.1000,"mag":null,"size":40.0,"constellation":"Cepheus","aliases":[]},
+    {"designation":"Sh2-142","name":"Wizard Nebula","type":"emission_nebula","ra":22.7833,"dec":58.1667,"mag":null,"size":25.0,"constellation":"Cepheus","aliases":["NGC 7380"]},
+    {"designation":"Sh2-155","name":"Cave Nebula","type":"emission_nebula","ra":22.9500,"dec":62.6167,"mag":7.7,"size":50.0,"constellation":"Cepheus","aliases":["C9"]},
+    {"designation":"Sh2-157","name":"Lobster Claw Nebula","type":"emission_nebula","ra":23.2667,"dec":60.2833,"mag":null,"size":40.0,"constellation":"Cassiopeia","aliases":[]},
+    {"designation":"Sh2-171","name":"Sh2-171","type":"emission_nebula","ra":0.0500,"dec":67.2000,"mag":null,"size":30.0,"constellation":"Cepheus","aliases":[]},
+    {"designation":"Sh2-188","name":"Sh2-188","type":"planetary_nebula","ra":1.5167,"dec":58.4500,"mag":null,"size":9.0,"constellation":"Cassiopeia","aliases":[]},
+    {"designation":"Sh2-199","name":"Soul Nebula","type":"emission_nebula","ra":2.8833,"dec":60.4333,"mag":null,"size":150.0,"constellation":"Cassiopeia","aliases":["Westerhout 5","IC 1848"]},
+    {"designation":"Sh2-190","name":"Heart Nebula","type":"emission_nebula","ra":2.5500,"dec":61.4500,"mag":null,"size":150.0,"constellation":"Cassiopeia","aliases":["IC 1805","Westerhout 4"]},
+    {"designation":"Sh2-216","name":"Sh2-216","type":"planetary_nebula","ra":4.1667,"dec":46.0000,"mag":null,"size":90.0,"constellation":"Perseus","aliases":[]},
+    {"designation":"Sh2-235","name":"Sh2-235","type":"emission_nebula","ra":5.6833,"dec":35.8500,"mag":null,"size":15.0,"constellation":"Auriga","aliases":[]},
+    {"designation":"Sh2-240","name":"Simeis 147","type":"supernova_remnant","ra":5.6667,"dec":28.0000,"mag":null,"size":180.0,"constellation":"Taurus","aliases":["Spaghetti Nebula"]},
+    {"designation":"Sh2-244","name":"Crab Nebula","type":"supernova_remnant","ra":5.5753,"dec":22.0145,"mag":8.4,"size":6.0,"constellation":"Taurus","aliases":["M1","NGC 1952"]},
+    {"designation":"Sh2-261","name":"Lower's Nebula","type":"emission_nebula","ra":6.3500,"dec":15.6833,"mag":null,"size":60.0,"constellation":"Orion","aliases":[]},
+    {"designation":"Sh2-273","name":"Sh2-273","type":"emission_nebula","ra":6.6667,"dec":9.6667,"mag":null,"size":12.0,"constellation":"Monoceros","aliases":["Cone Nebula"]},
+    {"designation":"Sh2-275","name":"Rosette Nebula","type":"emission_nebula","ra":6.5333,"dec":4.9500,"mag":9.0,"size":80.0,"constellation":"Monoceros","aliases":["NGC 2237","NGC 2244","C49"]},
+    {"designation":"Sh2-276","name":"Barnard's Loop","type":"emission_nebula","ra":5.9167,"dec":-1.0000,"mag":null,"size":600.0,"constellation":"Orion","aliases":[]},
+    {"designation":"Sh2-281","name":"Orion Nebula","type":"emission_nebula","ra":5.5908,"dec":-5.3911,"mag":4.0,"size":85.0,"constellation":"Orion","aliases":["M42","NGC 1976"]}
+  ]
+}
