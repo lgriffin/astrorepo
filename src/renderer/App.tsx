@@ -13,6 +13,8 @@ import { Planning } from './pages/Planning'
 import { Poster } from './pages/Poster'
 import { Settings } from './pages/Settings'
 import { FitsAnalyzer } from './pages/FitsAnalyzer'
+import { StorageAnalytics } from './pages/StorageAnalytics'
+import { Calibration } from './pages/Calibration'
 
 export function App(): React.ReactElement {
   return (
@@ -31,6 +33,8 @@ export function App(): React.ReactElement {
           <Route path="/observatory" element={<Observatory />} />
           <Route path="/planning" element={<Planning />} />
           <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
+          <Route path="/analytics" element={<StorageAnalytics />} />
+          <Route path="/calibration" element={<Calibration />} />
           <Route path="/poster" element={<Poster />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

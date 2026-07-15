@@ -6,6 +6,7 @@ interface FileTableProps {
   scanId: string
   onSelectFile: (fileId: string) => void
   selectedFileId: string | null
+  showQuality?: boolean
 }
 
 type SortCol = 'file_name' | 'date_obs' | 'exposure_sec' | 'object_name' | 'filter' | 'file_size_bytes' | 'folder_name'
@@ -15,9 +16,10 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function FileTable({ scanId, onSelectFile, selectedFileId }: FileTableProps): React.ReactElement {
+export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = false }: FileTableProps): React.ReactElement {
   const [files, setFiles] = useState<FitsFileSummary[]>([])
   const [total, setTotal] = useState(0)
+  const [analyzingAll, setAnalyzingAll] = useState(false)
   const [page, setPage] = useState(0)
   const [sortBy, setSortBy] = useState<SortCol>('file_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -79,12 +81,31 @@ export function FileTable({ scanId, onSelectFile, selectedFileId }: FileTablePro
     return sortDir === 'asc' ? ' ↑' : ' ↓'
   }
 
+  async function handleAnalyzeAll(): Promise<void> {
+    setAnalyzingAll(true)
+    try {
+      await invoke<{ analyzed: number; failed: number }>('quality:analyze-scan', { scan_id: scanId })
+      loadFiles()
+    } finally {
+      setAnalyzingAll(false)
+    }
+  }
+
   const totalPages = Math.ceil(total / limit)
 
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-astro-border flex flex-wrap gap-2 items-center">
         <span className="text-sm text-astro-muted">{total} files</span>
+        {showQuality && (
+          <button
+            onClick={handleAnalyzeAll}
+            disabled={analyzingAll}
+            className="text-sm px-3 py-1 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+          >
+            {analyzingAll ? 'Analyzing...' : 'Analyze Quality'}
+          </button>
+        )}
         <select value={filterFolder} onChange={e => { setFilterFolder(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
           <option value="">All folders</option>
           {folders.map(f => <option key={f} value={f}>{f}</option>)}
@@ -110,6 +131,7 @@ export function FileTable({ scanId, onSelectFile, selectedFileId }: FileTablePro
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('file_name')}>File{sortIndicator('file_name')}</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('folder_name')}>Folder{sortIndicator('folder_name')}</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('object_name')}>Object{sortIndicator('object_name')}</th>
+              <th className="px-4 py-2">Target</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('filter')}>Filter{sortIndicator('filter')}</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('exposure_sec')}>Exp{sortIndicator('exposure_sec')}</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('date_obs')}>Date{sortIndicator('date_obs')}</th>
@@ -129,6 +151,12 @@ export function FileTable({ scanId, onSelectFile, selectedFileId }: FileTablePro
                 <td className="px-4 py-2 text-astro-text truncate max-w-[200px]">{f.fileName}</td>
                 <td className="px-4 py-2 text-astro-muted truncate max-w-[120px]">{f.folderName ?? '-'}</td>
                 <td className="px-4 py-2 text-astro-text">{f.objectName ?? '-'}</td>
+                <td className="px-4 py-2">
+                  {f.targetName
+                    ? <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/30 text-green-400">{f.targetName}</span>
+                    : <span className="text-xs px-1.5 py-0.5 rounded bg-astro-bg text-astro-muted">Unlinked</span>
+                  }
+                </td>
                 <td className="px-4 py-2 text-astro-muted">{f.filter ?? '-'}</td>
                 <td className="px-4 py-2 text-astro-muted">{f.exposureSec != null ? `${f.exposureSec}s` : '-'}</td>
                 <td className="px-4 py-2 text-astro-muted truncate max-w-[140px]">{f.dateObs ?? '-'}</td>

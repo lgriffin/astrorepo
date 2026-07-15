@@ -1,8 +1,9 @@
 import React from 'react'
-import type { FitsScanAggregates } from '@shared/types'
+import type { FitsScanAggregates, FitsLinkingStatus } from '@shared/types'
 
 interface AggregateViewProps {
   aggregates: FitsScanAggregates
+  linkingStatus?: FitsLinkingStatus | null
 }
 
 function formatSize(bytes: number): string {
@@ -46,7 +47,7 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
   )
 }
 
-export function AggregateView({ aggregates }: AggregateViewProps): React.ReactElement {
+export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps): React.ReactElement {
   const a = aggregates
 
   return (
@@ -61,6 +62,18 @@ export function AggregateView({ aggregates }: AggregateViewProps): React.ReactEl
         <StatCard label="Stacked" value={a.stackedCount} />
         <StatCard label="Individual" value={a.individualCount} />
       </div>
+
+      {linkingStatus && (
+        <div className="flex gap-4 text-sm">
+          <span className="text-green-400">Linked: {linkingStatus.linked}</span>
+          <span className="text-astro-muted">Unlinked: {linkingStatus.unlinked}</span>
+          {Object.keys(linkingStatus.byTarget).length > 0 && (
+            <span className="text-astro-muted">
+              ({Object.entries(linkingStatus.byTarget).map(([name, count]) => `${name}: ${count}`).join(', ')})
+            </span>
+          )}
+        </div>
+      )}
 
       {a.dateRange.earliest && (
         <div className="text-sm text-astro-muted">

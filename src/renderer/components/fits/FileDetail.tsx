@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
-import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, FitsThumbnail } from '@shared/types'
+import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, FitsThumbnail, QualityMetrics } from '@shared/types'
 
 interface FileDetailProps {
   fileId: string
@@ -29,6 +29,8 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
   const [headerSearch, setHeaderSearch] = useState('')
   const [thumbnail, setThumbnail] = useState<{ width: number; height: number; dataBase64: string } | null>(null)
   const [thumbnailLoading, setThumbnailLoading] = useState(false)
+  const [quality, setQuality] = useState<QualityMetrics | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
 
   useEffect(() => {
     invoke<FitsFileDetailType>('fits:get-file', { id: fileId }).then(setFile)
@@ -39,7 +41,18 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
       .then(result => setThumbnail(result))
       .catch(() => setThumbnail(null))
       .finally(() => setThumbnailLoading(false))
+    invoke<{ metrics: QualityMetrics | null }>('quality:get-metrics', { file_id: fileId }).then(r => setQuality(r.metrics))
   }, [fileId])
+
+  async function handleAnalyze(): Promise<void> {
+    setAnalyzing(true)
+    try {
+      const result = await invoke<{ metrics: QualityMetrics | null }>('quality:analyze-file', { file_id: fileId })
+      setQuality(result.metrics)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   if (!file) return <div className="text-astro-muted p-4">Loading...</div>
 
@@ -90,6 +103,15 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
           <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Identity</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="Object" value={file.objectName} />
+            <div>
+              <dt className="text-xs text-astro-muted uppercase">Linked Target</dt>
+              <dd className="text-sm mt-0.5">
+                {file.targetId
+                  ? <span className="text-green-400">{file.targetId}</span>
+                  : <span className="text-astro-muted">Not linked</span>
+                }
+              </dd>
+            </div>
             <Field label="Telescope" value={file.telescope} />
             <Field label="Instrument" value={file.instrument} />
             <Field label="Observer" value={file.observer} />
@@ -172,6 +194,51 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
             </div>
           </div>
         )}
+
+        <div>
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Quality Metrics</h4>
+          {quality ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="bg-astro-bg border border-astro-border rounded p-2">
+                <p className="text-xs text-astro-muted">FWHM</p>
+                <p className="text-sm text-astro-text font-mono">{quality.fwhmEstimate != null ? quality.fwhmEstimate.toFixed(2) : 'N/A'}</p>
+              </div>
+              <div className="bg-astro-bg border border-astro-border rounded p-2">
+                <p className="text-xs text-astro-muted">Background</p>
+                <p className="text-sm text-astro-text font-mono">{quality.backgroundLevel != null ? quality.backgroundLevel.toFixed(1) : 'N/A'}</p>
+              </div>
+              <div className="bg-astro-bg border border-astro-border rounded p-2">
+                <p className="text-xs text-astro-muted">Star Count</p>
+                <p className="text-sm text-astro-text font-mono">{quality.starCountEstimate ?? 'N/A'}</p>
+              </div>
+              <div className="bg-astro-bg border border-astro-border rounded p-2">
+                <p className="text-xs text-astro-muted">Noise</p>
+                <p className="text-sm text-astro-text font-mono">{quality.noiseLevel != null ? quality.noiseLevel.toFixed(2) : 'N/A'}</p>
+              </div>
+              <div className="bg-astro-bg border border-astro-border rounded p-2">
+                <p className="text-xs text-astro-muted">Score</p>
+                <p className="text-sm text-astro-text font-mono">{quality.qualityScore != null ? quality.qualityScore.toFixed(0) : 'N/A'}</p>
+              </div>
+              <div className="bg-astro-bg border border-astro-border rounded p-2">
+                <p className="text-xs text-astro-muted">Flag</p>
+                <p className={`text-sm font-mono font-semibold ${
+                  quality.qualityFlag === 'good' ? 'text-green-400' :
+                  quality.qualityFlag === 'warning' ? 'text-amber-400' :
+                  quality.qualityFlag === 'reject' ? 'text-red-400' :
+                  'text-astro-muted'
+                }`}>{quality.qualityFlag ?? 'N/A'}</p>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+            >
+              {analyzing ? 'Analyzing...' : 'Analyze Quality'}
+            </button>
+          )}
+        </div>
 
         <div>
           <button

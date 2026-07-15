@@ -107,6 +107,8 @@ function runMigrations(sqlite: Database.Database): void {
       rejected_frames INTEGER,
       total_exposure_sec REAL,
       notes TEXT,
+      source TEXT DEFAULT 'manual',
+      session_folder TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -241,6 +243,13 @@ function runMigrations(sqlite: Database.Database): void {
       pixel_max REAL,
       pixel_mean REAL,
       pixel_stddev REAL,
+      target_id TEXT REFERENCES targets(id) ON DELETE SET NULL,
+      fwhm_estimate REAL,
+      background_level REAL,
+      star_count_estimate INTEGER,
+      noise_level REAL,
+      quality_score REAL,
+      quality_flag TEXT,
       created_at TEXT NOT NULL
     );
 
@@ -261,6 +270,20 @@ function runMigrations(sqlite: Database.Database): void {
       ordinal INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS storage_snapshots (
+      id TEXT PRIMARY KEY,
+      snapshot_date TEXT NOT NULL,
+      total_files INTEGER NOT NULL,
+      total_size_bytes INTEGER NOT NULL,
+      lights_size_bytes INTEGER NOT NULL DEFAULT 0,
+      darks_size_bytes INTEGER NOT NULL DEFAULT 0,
+      flats_size_bytes INTEGER NOT NULL DEFAULT 0,
+      bias_size_bytes INTEGER NOT NULL DEFAULT 0,
+      other_size_bytes INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_storage_snapshot_date ON storage_snapshots(snapshot_date);
+
     CREATE INDEX IF NOT EXISTS idx_target_alias_alias ON target_aliases(alias);
     CREATE INDEX IF NOT EXISTS idx_fits_scan_status ON fits_scans(status);
     CREATE INDEX IF NOT EXISTS idx_fits_scan_started ON fits_scans(started_at);
@@ -272,6 +295,7 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_fits_file_is_stacked ON fits_files(is_stacked);
     CREATE INDEX IF NOT EXISTS idx_fits_file_folder ON fits_files(folder_name);
     CREATE INDEX IF NOT EXISTS idx_fits_file_session_folder ON fits_files(session_folder);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_target ON fits_files(target_id);
     CREATE INDEX IF NOT EXISTS idx_fits_header_file ON fits_headers(file_id);
     CREATE INDEX IF NOT EXISTS idx_fits_header_keyword ON fits_headers(keyword);
     CREATE INDEX IF NOT EXISTS idx_target_canonical ON targets(canonical_name);

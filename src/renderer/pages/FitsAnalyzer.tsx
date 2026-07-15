@@ -6,14 +6,18 @@ import { AggregateView } from '../components/fits/AggregateView'
 import { FileTable } from '../components/fits/FileTable'
 import { FileDetail } from '../components/fits/FileDetail'
 import { TargetSummaries } from '../components/fits/TargetSummaries'
+import { SessionGenerator } from '../components/fits/SessionGenerator'
 import { invoke } from '../hooks/useIPC'
-import type { FitsScanSummary, FitsScanAggregates } from '@shared/types'
+import type { FitsScanSummary, FitsScanAggregates, FitsLinkingStatus } from '@shared/types'
 
 export function FitsAnalyzer(): React.ReactElement {
   const [scans, setScans] = useState<FitsScanSummary[]>([])
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null)
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
   const [aggregates, setAggregates] = useState<FitsScanAggregates | null>(null)
+  const [linkingStatus, setLinkingStatus] = useState<FitsLinkingStatus | null>(null)
+  const [linking, setLinking] = useState(false)
+  const [showSessionGenerator, setShowSessionGenerator] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,11 +27,22 @@ export function FitsAnalyzer(): React.ReactElement {
   useEffect(() => {
     if (selectedScanId) {
       invoke<FitsScanAggregates>('fits:scan-aggregates', { scan_id: selectedScanId }).then(setAggregates)
+      invoke<FitsLinkingStatus>('fits:linking-status', { scan_id: selectedScanId }).then(setLinkingStatus)
     } else {
       setAggregates(null)
+      setLinkingStatus(null)
     }
     setSelectedFileId(null)
   }, [selectedScanId])
+
+  async function handleLinkToTargets(): Promise<void> {
+    if (!selectedScanId) return
+    setLinking(true)
+    await invoke('fits:link-files', { scan_id: selectedScanId })
+    const status = await invoke<FitsLinkingStatus>('fits:linking-status', { scan_id: selectedScanId })
+    setLinkingStatus(status)
+    setLinking(false)
+  }
 
   async function loadScans(): Promise<void> {
     setLoading(true)
@@ -69,7 +84,38 @@ export function FitsAnalyzer(): React.ReactElement {
 
         {selectedScanId && aggregates && (
           <div className="space-y-4">
-            <AggregateView aggregates={aggregates} />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleLinkToTargets}
+                disabled={linking}
+                className="px-4 py-2 bg-astro-accent text-white rounded hover:bg-astro-accent/80 disabled:opacity-50 text-sm transition-colors"
+              >
+                {linking ? 'Linking...' : 'Link to Targets'}
+              </button>
+              <button
+                onClick={() => setShowSessionGenerator(!showSessionGenerator)}
+                className="px-4 py-2 border border-astro-border text-astro-text text-sm rounded hover:bg-astro-bg transition-colors"
+              >
+                {showSessionGenerator ? 'Hide Session Generator' : 'Generate Sessions'}
+              </button>
+              {linkingStatus && (
+                <span className="text-sm text-astro-muted">
+                  {linkingStatus.linked} linked, {linkingStatus.unlinked} unlinked
+                </span>
+              )}
+            </div>
+
+            {showSessionGenerator && (
+              <SessionGenerator
+                scanId={selectedScanId}
+                onComplete={() => {
+                  setShowSessionGenerator(false)
+                  loadScans()
+                }}
+              />
+            )}
+
+            <AggregateView aggregates={aggregates} linkingStatus={linkingStatus} />
 
             <TargetSummaries scanId={selectedScanId} />
 
