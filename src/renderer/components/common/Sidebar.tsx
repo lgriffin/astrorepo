@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { to: '/equipment', label: 'Equipment', icon: '⚙' },
   { to: '/observatory', label: 'Observatory', icon: '◎' },
   { to: '/planning', label: 'Planning', icon: '☽' },
+  { to: '/fits-analyzer', label: 'FITS Analyzer', icon: '◈' },
   { to: '/poster', label: 'Posters', icon: '▣' },
   { to: '/settings', label: 'Settings', icon: '⚒' }
 ]

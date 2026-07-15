@@ -169,7 +169,54 @@ export const schemas = {
     relationship_type: z.enum(relationshipTypes)
   }),
 
-  'relationships:list': z.object({ target_id: id })
+  'relationships:list': z.object({ target_id: id }),
+
+  'fits:pick-folder': z.object({}).optional(),
+
+  'fits:start-scan': z.object({
+    folder_path: z.string().min(1)
+  }),
+
+  'fits:list-scans': z.object({
+    limit: z.number().int().positive().optional(),
+    offset: z.number().int().nonnegative().optional()
+  }).optional(),
+
+  'fits:get-scan': z.object({ id }),
+
+  'fits:delete-scan': z.object({ id }),
+
+  'fits:list-files': z.object({
+    scan_id: id,
+    limit: z.number().int().positive().optional(),
+    offset: z.number().int().nonnegative().optional(),
+    sort_by: z.string().optional(),
+    sort_dir: z.enum(['asc', 'desc']).optional(),
+    filter_object: z.string().optional(),
+    filter_image_type: z.string().optional(),
+    filter_filter: z.string().optional(),
+    filter_stacked: z.boolean().optional(),
+    filter_folder: z.string().optional()
+  }),
+
+  'fits:get-file': z.object({ id }),
+
+  'fits:get-headers': z.object({ file_id: id }),
+
+  'fits:scan-aggregates': z.object({ scan_id: id }),
+
+  'fits:target-summaries': z.object({ scan_id: id }),
+
+  'settings:get': z.object({ key: z.string().min(1) }),
+
+  'settings:set': z.object({
+    key: z.string().min(1),
+    value: z.string()
+  }),
+
+  'settings:list': z.object({}).optional(),
+
+  'settings:pick-folder': z.object({}).optional()
 } as const
 
 export type SchemaMap = typeof schemas

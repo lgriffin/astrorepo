@@ -278,3 +278,128 @@ export interface CatalogueProgress {
   completed: number
   total: number
 }
+
+export interface FitsScan {
+  id: string
+  folderPath: string
+  fileCount: number
+  totalSizeBytes: number
+  status: 'running' | 'completed' | 'failed'
+  errorMessage: string | null
+  startedAt: string
+  completedAt: string | null
+  createdAt: string
+}
+
+export interface FitsScanSummary {
+  id: string
+  folderPath: string
+  fileCount: number
+  totalSizeBytes: number
+  status: string
+  startedAt: string
+}
+
+export interface FitsFileSummary {
+  id: string
+  fileName: string
+  folderName: string | null
+  sessionFolder: string | null
+  objectName: string | null
+  exposureSec: number | null
+  dateObs: string | null
+  filter: string | null
+  imageType: string | null
+  isStacked: boolean
+  fileSizeBytes: number
+}
+
+export interface FitsFileDetail {
+  id: string
+  scanId: string
+  filePath: string
+  fileName: string
+  fileSizeBytes: number
+  fileModifiedAt: string | null
+  folderName: string | null
+  sessionFolder: string | null
+  objectName: string | null
+  telescope: string | null
+  instrument: string | null
+  observer: string | null
+  exposureSec: number | null
+  dateObs: string | null
+  filter: string | null
+  gain: number | null
+  offsetVal: number | null
+  ccdTemp: number | null
+  xpixsz: number | null
+  ypixsz: number | null
+  xbinning: number | null
+  ybinning: number | null
+  ra: string | null
+  dec: string | null
+  airmass: number | null
+  bitpix: number | null
+  naxis1: number | null
+  naxis2: number | null
+  bscale: number | null
+  bzero: number | null
+  imageType: string | null
+  software: string | null
+  isStacked: boolean
+  ncombine: number | null
+  totalExposure: number | null
+  calstat: string | null
+  pixelMin: number | null
+  pixelMax: number | null
+  pixelMean: number | null
+  pixelStddev: number | null
+  createdAt: string
+}
+
+export interface FitsHeaderRow {
+  id: string
+  fileId: string
+  keyword: string
+  value: string | null
+  comment: string | null
+  ordinal: number
+}
+
+export interface FitsScanAggregates {
+  totalFiles: number
+  totalSizeBytes: number
+  totalExposureSec: number
+  uniqueObjects: string[]
+  uniqueFilters: string[]
+  uniqueTelescopes: string[]
+  uniqueInstruments: string[]
+  uniqueFolders: string[]
+  dateRange: { earliest: string | null; latest: string | null }
+  filesByImageType: Record<string, number>
+  filesByFilter: Record<string, number>
+  filesByObject: Record<string, number>
+  filesByFolder: Record<string, number>
+  filesBySessionFolder: Record<string, number>
+  nightsPerObject: Record<string, string[]>
+  stackedCount: number
+  individualCount: number
+  avgExposureSec: number
+  avgCcdTemp: number | null
+  exposureByFilter: Record<string, number>
+}
+
+export interface FitsTargetSummary {
+  folderName: string
+  totalFiles: number
+  totalSizeBytes: number
+  totalExposureSec: number
+  sessions: string[]
+  filters: string[]
+  imageTypes: string[]
+  stackedCount: number
+  individualCount: number
+  exposureByFilter: Record<string, number>
+  filesBySession: Record<string, number>
+}

@@ -12,6 +12,7 @@ import { Observatory } from './pages/Observatory'
 import { Planning } from './pages/Planning'
 import { Poster } from './pages/Poster'
 import { Settings } from './pages/Settings'
+import { FitsAnalyzer } from './pages/FitsAnalyzer'
 
 export function App(): React.ReactElement {
   return (
@@ -29,6 +30,7 @@ export function App(): React.ReactElement {
           <Route path="/equipment" element={<Equipment />} />
           <Route path="/observatory" element={<Observatory />} />
           <Route path="/planning" element={<Planning />} />
+          <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
           <Route path="/poster" element={<Poster />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

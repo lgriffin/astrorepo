@@ -1,4 +1,4 @@
-import { ipcMain, IpcMainInvokeEvent } from 'electron'
+import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron'
 import { ZodError, type ZodType } from 'zod'
 import { schemas, type Channel } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets } from '../services/target'
@@ -11,6 +11,8 @@ import { createObservatory, listObservatories, setPrimaryObservatory } from '../
 import { getVisibility, getTonightTargets } from '../services/ephemeris'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
+import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries } from '../services/fits-analyzer'
+import { getSetting, setSetting, listSettings } from '../services/settings'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -212,6 +214,84 @@ export function registerIpcHandlers(): void {
   handle('relationships:list', validated('relationships:list', (args) => {
     return { relationships: listRelationships(args.target_id) }
   }))
+
+  handle('fits:pick-folder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select FITS Folder'
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
+
+  handle('fits:start-scan', validated('fits:start-scan', (args) => {
+    return startFolderScan(args.folder_path)
+  }))
+
+  handle('fits:list-scans', async (_e, args?: { limit?: number; offset?: number }) => {
+    if (args) validate(schemas['fits:list-scans']!, args)
+    return listScans(args?.limit, args?.offset)
+  })
+
+  handle('fits:get-scan', validated('fits:get-scan', (args) => {
+    return getScanById(args.id)
+  }))
+
+  handle('fits:delete-scan', validated('fits:delete-scan', (args) => {
+    return { success: deleteScan(args.id) }
+  }))
+
+  handle('fits:list-files', validated('fits:list-files', (args) => {
+    return listScanFiles(args.scan_id, {
+      limit: args.limit,
+      offset: args.offset,
+      sortBy: args.sort_by,
+      sortDir: args.sort_dir,
+      filterObject: args.filter_object,
+      filterImageType: args.filter_image_type,
+      filterFilter: args.filter_filter,
+      filterStacked: args.filter_stacked,
+      filterFolder: args.filter_folder
+    })
+  }))
+
+  handle('fits:get-file', validated('fits:get-file', (args) => {
+    return getFileDetail(args.id)
+  }))
+
+  handle('fits:get-headers', validated('fits:get-headers', (args) => {
+    return { headers: getFileHeaders(args.file_id) }
+  }))
+
+  handle('fits:scan-aggregates', validated('fits:scan-aggregates', (args) => {
+    return getScanAggregates(args.scan_id)
+  }))
+
+  handle('fits:target-summaries', validated('fits:target-summaries', (args) => {
+    return { targets: getTargetSummaries(args.scan_id) }
+  }))
+
+  handle('settings:get', validated('settings:get', (args) => {
+    return { value: getSetting(args.key) }
+  }))
+
+  handle('settings:set', validated('settings:set', (args) => {
+    setSetting(args.key, args.value)
+    return { success: true }
+  }))
+
+  handle('settings:list', async () => {
+    return { settings: listSettings() }
+  })
+
+  handle('settings:pick-folder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select Folder'
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
 }
 
 export function getRegisteredChannels(): string[] {

@@ -201,8 +201,85 @@ function runMigrations(sqlite: Database.Database): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS fits_scans (
+      id TEXT PRIMARY KEY,
+      folder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'running',
+      error_message TEXT,
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_files (
+      id TEXT PRIMARY KEY,
+      scan_id TEXT NOT NULL REFERENCES fits_scans(id) ON DELETE CASCADE,
+      file_path TEXT NOT NULL UNIQUE,
+      file_name TEXT NOT NULL,
+      file_size_bytes INTEGER NOT NULL,
+      file_modified_at TEXT,
+      folder_name TEXT,
+      session_folder TEXT,
+      object_name TEXT,
+      telescope TEXT,
+      instrument TEXT,
+      observer TEXT,
+      exposure_sec REAL,
+      date_obs TEXT,
+      filter TEXT,
+      gain REAL,
+      offset_val REAL,
+      ccd_temp REAL,
+      xpixsz REAL,
+      ypixsz REAL,
+      xbinning INTEGER,
+      ybinning INTEGER,
+      ra TEXT,
+      dec TEXT,
+      airmass REAL,
+      bitpix INTEGER,
+      naxis1 INTEGER,
+      naxis2 INTEGER,
+      bscale REAL,
+      bzero REAL,
+      image_type TEXT,
+      software TEXT,
+      is_stacked INTEGER NOT NULL DEFAULT 0,
+      ncombine INTEGER,
+      total_exposure REAL,
+      calstat TEXT,
+      pixel_min REAL,
+      pixel_max REAL,
+      pixel_mean REAL,
+      pixel_stddev REAL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_headers (
+      id TEXT PRIMARY KEY,
+      file_id TEXT NOT NULL REFERENCES fits_files(id) ON DELETE CASCADE,
+      keyword TEXT NOT NULL,
+      value TEXT,
+      comment TEXT,
+      ordinal INTEGER NOT NULL
+    );
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_target_alias_alias ON target_aliases(alias);
+    CREATE INDEX IF NOT EXISTS idx_fits_scan_status ON fits_scans(status);
+    CREATE INDEX IF NOT EXISTS idx_fits_scan_started ON fits_scans(started_at);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_scan ON fits_files(scan_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_object ON fits_files(object_name);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_filter ON fits_files(filter);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_date_obs ON fits_files(date_obs);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_image_type ON fits_files(image_type);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_is_stacked ON fits_files(is_stacked);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_folder ON fits_files(folder_name);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_session_folder ON fits_files(session_folder);
+    CREATE INDEX IF NOT EXISTS idx_fits_header_file ON fits_headers(file_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_header_keyword ON fits_headers(keyword);
     CREATE INDEX IF NOT EXISTS idx_target_canonical ON targets(canonical_name);
     CREATE INDEX IF NOT EXISTS idx_target_type ON targets(object_type);
     CREATE INDEX IF NOT EXISTS idx_target_stage ON targets(workflow_stage);
