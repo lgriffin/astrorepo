@@ -115,17 +115,15 @@ export function startFolderScan(folderPath: string): FitsScan {
         for (const { filePath, folderName, sessionFolder } of batch) {
           const fileId = ulid()
           const fileName = path.basename(filePath)
-          let fileSizeBytes = 0
-          let fileModifiedAt: string | null = null
-
+          let stat: fs.Stats
           try {
-            const stat = fs.statSync(filePath)
-            fileSizeBytes = stat.size
-            fileModifiedAt = stat.mtime.toISOString()
-            totalSize += fileSizeBytes
+            stat = fs.statSync(filePath)
           } catch {
             continue
           }
+          const fileSizeBytes = stat.size
+          const fileModifiedAt = stat.mtime.toISOString()
+          totalSize += fileSizeBytes
 
           const result = parseFitsFile(filePath)
           if (!result.isValid) continue

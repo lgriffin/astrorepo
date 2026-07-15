@@ -350,6 +350,84 @@ export function seedObservatory(sqlite: Database.Database, overrides: Partial<{
   return id
 }
 
+export function seedFitsScan(sqlite: Database.Database, overrides: Partial<{
+  id: string
+  folderPath: string
+  fileCount: number
+  totalSizeBytes: number
+  status: string
+}> = {}): string {
+  const id = overrides.id ?? `scan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const now = new Date().toISOString()
+  sqlite.prepare(
+    `INSERT INTO fits_scans (id, folder_path, file_count, total_size_bytes, status, started_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    overrides.folderPath ?? '/test/fits',
+    overrides.fileCount ?? 0,
+    overrides.totalSizeBytes ?? 0,
+    overrides.status ?? 'completed',
+    now,
+    now
+  )
+  return id
+}
+
+export function seedFitsFile(sqlite: Database.Database, scanId: string, overrides: Partial<{
+  id: string
+  fileName: string
+  filePath: string
+  fileSizeBytes: number
+  folderName: string | null
+  sessionFolder: string | null
+  objectName: string | null
+  imageType: string | null
+  filter: string | null
+  exposureSec: number | null
+  dateObs: string | null
+  isStacked: boolean
+  gain: number | null
+  ccdTemp: number | null
+  xbinning: number | null
+  ybinning: number | null
+  telescope: string | null
+  instrument: string | null
+}> = {}): string {
+  const id = overrides.id ?? `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const now = new Date().toISOString()
+  const fileName = overrides.fileName ?? `test_${id}.fits`
+  sqlite.prepare(
+    `INSERT INTO fits_files (
+      id, scan_id, file_path, file_name, file_size_bytes, folder_name, session_folder,
+      object_name, image_type, filter, exposure_sec, date_obs, is_stacked,
+      gain, ccd_temp, xbinning, ybinning, telescope, instrument, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    scanId,
+    overrides.filePath ?? `/test/fits/${fileName}`,
+    fileName,
+    overrides.fileSizeBytes ?? 1024000,
+    overrides.folderName ?? null,
+    overrides.sessionFolder ?? null,
+    overrides.objectName ?? null,
+    overrides.imageType ?? 'Light Frame',
+    overrides.filter ?? null,
+    overrides.exposureSec ?? null,
+    overrides.dateObs ?? null,
+    overrides.isStacked ? 1 : 0,
+    overrides.gain ?? null,
+    overrides.ccdTemp ?? null,
+    overrides.xbinning ?? null,
+    overrides.ybinning ?? null,
+    overrides.telescope ?? null,
+    overrides.instrument ?? null,
+    now
+  )
+  return id
+}
+
 export function seedEquipment(sqlite: Database.Database, overrides: Partial<{
   id: string
   name: string

@@ -42,10 +42,6 @@ export function FileTable({ scanId, onSelectFile, selectedFileId }: FileTablePro
     })
   }, [scanId])
 
-  useEffect(() => {
-    loadFiles()
-  }, [scanId, page, sortBy, sortDir, filterFolder, filterObj, filterType, filterFilter])
-
   async function loadFiles(): Promise<void> {
     const params: Record<string, unknown> = {
       scan_id: scanId,
@@ -63,6 +59,10 @@ export function FileTable({ scanId, onSelectFile, selectedFileId }: FileTablePro
     setFiles(result.files)
     setTotal(result.total)
   }
+
+  useEffect(() => {
+    loadFiles()
+  }, [scanId, page, sortBy, sortDir, filterFolder, filterObj, filterType, filterFilter])
 
   function handleSort(col: SortCol): void {
     if (sortBy === col) {
