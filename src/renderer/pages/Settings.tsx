@@ -1,10 +1,98 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { PageContainer } from '../components/common/PageContainer'
+import { invoke } from '../hooks/useIPC'
+
+interface FolderSetting {
+  key: string
+  label: string
+  description: string
+  value: string
+}
+
+const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }> = [
+  {
+    key: 'fits_master_folder',
+    label: 'Master FITS Folder',
+    description: 'Root folder containing your astrophotography FITS files. Used as the default path in the FITS Analyzer.'
+  },
+  {
+    key: 'base_folder_path',
+    label: 'Base Folder Path',
+    description: 'Root folder for generated target directory structures (lights, darks, flats, biases).'
+  }
+]
 
 export function Settings(): React.ReactElement {
+  const [folders, setFolders] = useState<FolderSetting[]>([])
+  const [saving, setSaving] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  async function loadSettings(): Promise<void> {
+    const results = await Promise.all(
+      FOLDER_SETTINGS.map(async (s) => {
+        const result = await invoke<{ value: string | null }>('settings:get', { key: s.key })
+        return { ...s, value: result.value ?? '' }
+      })
+    )
+    setFolders(results)
+  }
+
+  async function handleBrowse(key: string): Promise<void> {
+    const result = await invoke<{ path: string | null }>('settings:pick-folder')
+    if (!result.path) return
+
+    setSaving(key)
+    await invoke('settings:set', { key, value: result.path })
+    setFolders(prev => prev.map(f => f.key === key ? { ...f, value: result.path! } : f))
+    setSaving(null)
+  }
+
+  async function handleClear(key: string): Promise<void> {
+    setSaving(key)
+    await invoke('settings:set', { key, value: '' })
+    setFolders(prev => prev.map(f => f.key === key ? { ...f, value: '' } : f))
+    setSaving(null)
+  }
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
-      <p className="text-astro-muted">Application settings</p>
-    </div>
+    <PageContainer title="Settings" subtitle="Configure your observatory application">
+      <div className="space-y-6 max-w-2xl">
+        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Folder Paths</h2>
+          <div className="space-y-5">
+            {folders.map((folder) => (
+              <div key={folder.key}>
+                <label className="block text-sm font-medium text-astro-text mb-1">{folder.label}</label>
+                <p className="text-xs text-astro-muted mb-2">{folder.description}</p>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-astro-bg border border-astro-border rounded px-3 py-2 text-sm text-astro-text truncate min-h-[38px] flex items-center">
+                    {folder.value || <span className="text-astro-muted italic">Not set</span>}
+                  </div>
+                  <button
+                    onClick={() => handleBrowse(folder.key)}
+                    disabled={saving === folder.key}
+                    className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
+                  >
+                    Browse
+                  </button>
+                  {folder.value && (
+                    <button
+                      onClick={() => handleClear(folder.key)}
+                      disabled={saving === folder.key}
+                      className="px-3 py-2 border border-astro-border text-astro-muted text-sm rounded hover:text-astro-danger hover:border-astro-danger transition-colors disabled:opacity-50"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </PageContainer>
   )
 }

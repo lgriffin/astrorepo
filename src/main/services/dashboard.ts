@@ -1,4 +1,5 @@
 import { getSqlite } from '../db/connection'
+import { getTotalFitsFileCount } from './fits-analyzer'
 import type { DashboardStats, CatalogueProgress } from '@shared/types'
 
 export function getDashboardStats(): DashboardStats {
@@ -56,7 +57,7 @@ export function getDashboardStats(): DashboardStats {
     objectsByType,
     objectsByCatalogue,
     observationNights: sessionStats.nights,
-    totalFitsFiles: 0,
+    totalFitsFiles: getTotalFitsFileCount(),
     totalExposureSec: sessionStats.total_exposure,
     storageBytes: 0,
     averageIntegrationSec: 0,
