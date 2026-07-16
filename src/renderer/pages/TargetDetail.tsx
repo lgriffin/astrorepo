@@ -105,6 +105,8 @@ export function TargetDetail(): React.ReactElement {
         </div>
 
         <div className="space-y-6">
+          <ThumbnailSection targetId={target.id} targetName={target.canonicalName} />
+
           {aliases.length > 0 && (
             <Section title="Also Known As">
               <ul className="space-y-1">
@@ -142,6 +144,30 @@ export function TargetDetail(): React.ReactElement {
         </div>
       </div>
     </PageContainer>
+  )
+}
+
+function ThumbnailSection({ targetId, targetName }: { targetId: string; targetName: string }): React.ReactElement | null {
+  const [thumbnail, setThumbnail] = useState<{ data: string; mime: string } | null>(null)
+
+  useEffect(() => {
+    invoke<{ data: string | null; mime?: string }>('targets:get-thumbnail', { id: targetId })
+      .then(r => {
+        if (r.data) setThumbnail({ data: r.data, mime: r.mime ?? 'image/jpeg' })
+      })
+      .catch(() => {})
+  }, [targetId])
+
+  if (!thumbnail) return null
+
+  return (
+    <Section title="Image">
+      <img
+        src={`data:${thumbnail.mime};base64,${thumbnail.data}`}
+        alt={targetName}
+        className="w-full rounded-lg"
+      />
+    </Section>
   )
 }
 

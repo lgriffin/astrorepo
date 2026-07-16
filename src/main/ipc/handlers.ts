@@ -1,7 +1,7 @@
-import { ipcMain, IpcMainInvokeEvent } from 'electron'
+import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron'
 import { ZodError, type ZodType } from 'zod'
 import { schemas, type Channel } from './schemas'
-import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets } from '../services/target'
+import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
 import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
@@ -11,6 +11,15 @@ import { createObservatory, listObservatories, setPrimaryObservatory } from '../
 import { getVisibility, getTonightTargets } from '../services/ephemeris'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
+import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats } from '../services/fits-analyzer'
+import { linkFitsFilesToTargets, manualLinkFile, unlinkFile, getLinkingStatus, getUnlinkedFiles } from '../services/fits-linker'
+import { getOrCreateThumbnail } from '../services/thumbnail'
+import { previewAutoSessions, generateSessions, getAutoSessionStatus } from '../services/session-generator'
+import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQualityReport } from '../services/quality'
+import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
+import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
+import { getSetting, setSetting, listSettings } from '../services/settings'
+import { scanHomeFolder, getHomeStatus, prepForSiril } from '../services/home-scanner'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -211,6 +220,201 @@ export function registerIpcHandlers(): void {
 
   handle('relationships:list', validated('relationships:list', (args) => {
     return { relationships: listRelationships(args.target_id) }
+  }))
+
+  handle('fits:pick-folder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select FITS Folder'
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
+
+  handle('fits:start-scan', validated('fits:start-scan', (args) => {
+    return startFolderScan(args.folder_path)
+  }))
+
+  handle('fits:list-scans', async (_e, args?: { limit?: number; offset?: number }) => {
+    if (args) validate(schemas['fits:list-scans']!, args)
+    return listScans(args?.limit, args?.offset)
+  })
+
+  handle('fits:get-scan', validated('fits:get-scan', (args) => {
+    return getScanById(args.id)
+  }))
+
+  handle('fits:delete-scan', validated('fits:delete-scan', (args) => {
+    return { success: deleteScan(args.id) }
+  }))
+
+  handle('fits:list-files', validated('fits:list-files', (args) => {
+    return listScanFiles(args.scan_id, {
+      limit: args.limit,
+      offset: args.offset,
+      sortBy: args.sort_by,
+      sortDir: args.sort_dir,
+      filterObject: args.filter_object,
+      filterImageType: args.filter_image_type,
+      filterFilter: args.filter_filter,
+      filterStacked: args.filter_stacked,
+      filterFolder: args.filter_folder
+    })
+  }))
+
+  handle('fits:get-file', validated('fits:get-file', (args) => {
+    return getFileDetail(args.id)
+  }))
+
+  handle('fits:get-headers', validated('fits:get-headers', (args) => {
+    return { headers: getFileHeaders(args.file_id) }
+  }))
+
+  handle('fits:get-thumbnail', validated('fits:get-thumbnail', (args) => {
+    return getOrCreateThumbnail(args.file_id)
+  }))
+
+  handle('fits:scan-aggregates', validated('fits:scan-aggregates', (args) => {
+    return getScanAggregates(args.scan_id)
+  }))
+
+  handle('fits:target-summaries', validated('fits:target-summaries', (args) => {
+    return { targets: getTargetSummaries(args.scan_id) }
+  }))
+
+  handle('settings:get', validated('settings:get', (args) => {
+    return { value: getSetting(args.key) }
+  }))
+
+  handle('settings:set', validated('settings:set', (args) => {
+    setSetting(args.key, args.value)
+    return { success: true }
+  }))
+
+  handle('settings:list', async () => {
+    return { settings: listSettings() }
+  })
+
+  handle('settings:pick-folder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select Folder'
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
+
+  handle('fits:link-files', validated('fits:link-files', (args) => {
+    return linkFitsFilesToTargets(args.scan_id)
+  }))
+
+  handle('fits:manual-link', validated('fits:manual-link', (args) => {
+    return { success: manualLinkFile(args.file_id, args.target_id) }
+  }))
+
+  handle('fits:unlink-file', validated('fits:unlink-file', (args) => {
+    return { success: unlinkFile(args.file_id) }
+  }))
+
+  handle('fits:linking-status', validated('fits:linking-status', (args) => {
+    return getLinkingStatus(args.scan_id)
+  }))
+
+  handle('fits:unlinked-files', validated('fits:unlinked-files', (args) => {
+    return { files: getUnlinkedFiles(args.scan_id, args.limit, args.offset) }
+  }))
+
+  handle('sessions:preview-auto', validated('sessions:preview-auto', (args) => {
+    return { previews: previewAutoSessions(args.scan_id) }
+  }))
+
+  handle('sessions:generate-auto', validated('sessions:generate-auto', (args) => {
+    return generateSessions(args.scan_id, { overwrite: args.overwrite })
+  }))
+
+  handle('sessions:auto-status', validated('sessions:auto-status', (args) => {
+    return getAutoSessionStatus(args.scan_id)
+  }))
+
+  handle('quality:analyze-file', validated('quality:analyze-file', (args) => {
+    return { metrics: analyzeFileQuality(args.file_id) }
+  }))
+
+  handle('quality:analyze-scan', validated('quality:analyze-scan', (args) => {
+    return analyzeScanQuality(args.scan_id)
+  }))
+
+  handle('quality:get-metrics', validated('quality:get-metrics', (args) => {
+    return { metrics: getQualityMetrics(args.file_id) }
+  }))
+
+  handle('quality:session-report', validated('quality:session-report', (args) => {
+    return getSessionQualityReport(args.scan_id, args.folder_name)
+  }))
+
+  handle('storage:current', async () => {
+    return getCurrentStorageStats()
+  })
+
+  handle('storage:history', async (_e, args?: { limit?: number }) => {
+    if (args) validate(schemas['storage:history']!, args)
+    return { snapshots: getStorageHistory(args?.limit) }
+  })
+
+  handle('storage:snapshot', async () => {
+    return captureStorageSnapshot()
+  })
+
+  handle('storage:projection', async () => {
+    return getGrowthProjection()
+  })
+
+  handle('storage:by-target', async () => {
+    return { targets: getStorageByTarget() }
+  })
+
+  handle('storage:by-filter', async () => {
+    return { filters: getStorageByFilter() }
+  })
+
+  handle('calibration:library', async (_e, args?: { type?: string; gain?: number; temp?: number; binning?: string }) => {
+    if (args) validate(schemas['calibration:library']!, args)
+    return { groups: getCalibrationLibrary(args ?? undefined) }
+  })
+
+  handle('calibration:match-lights', async (_e, args?: { scan_id?: string }) => {
+    if (args) validate(schemas['calibration:match-lights']!, args)
+    return matchCalibrationToLights(args?.scan_id)
+  })
+
+  handle('calibration:file-status', validated('calibration:file-status', (args) => {
+    return getLightCalibrationStatus(args.file_id)
+  }))
+
+  handle('calibration:summary', async () => {
+    return getCalibrationSummary()
+  })
+
+  handle('fits:compute-stats', validated('fits:compute-stats', (args) => {
+    return { stats: computeFileStats(args.file_id) }
+  }))
+
+  handle('home:scan', async () => {
+    const homePath = getSetting('home_folder_path')
+    if (!homePath) return { error: 'Home folder not configured' }
+    return scanHomeFolder(homePath)
+  })
+
+  handle('home:status', async () => {
+    return getHomeStatus()
+  })
+
+  handle('home:prep-siril', validated('home:prep-siril', (args) => {
+    return prepForSiril(args.raw_path)
+  }))
+
+  handle('targets:get-thumbnail', validated('targets:get-thumbnail', (args) => {
+    return getTargetThumbnail(args.id)
   }))
 }
 

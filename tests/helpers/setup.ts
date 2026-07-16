@@ -107,6 +107,8 @@ function runMigrations(sqlite: Database.Database): void {
       rejected_frames INTEGER,
       total_exposure_sec REAL,
       notes TEXT,
+      source TEXT DEFAULT 'manual',
+      session_folder TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -188,7 +190,114 @@ function runMigrations(sqlite: Database.Database): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS fits_scans (
+      id TEXT PRIMARY KEY,
+      folder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'running',
+      error_message TEXT,
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_files (
+      id TEXT PRIMARY KEY,
+      scan_id TEXT NOT NULL REFERENCES fits_scans(id) ON DELETE CASCADE,
+      file_path TEXT NOT NULL UNIQUE,
+      file_name TEXT NOT NULL,
+      file_size_bytes INTEGER NOT NULL,
+      file_modified_at TEXT,
+      folder_name TEXT,
+      session_folder TEXT,
+      object_name TEXT,
+      telescope TEXT,
+      instrument TEXT,
+      observer TEXT,
+      exposure_sec REAL,
+      date_obs TEXT,
+      filter TEXT,
+      gain REAL,
+      offset_val REAL,
+      ccd_temp REAL,
+      xpixsz REAL,
+      ypixsz REAL,
+      xbinning INTEGER,
+      ybinning INTEGER,
+      ra TEXT,
+      dec TEXT,
+      airmass REAL,
+      bitpix INTEGER,
+      naxis1 INTEGER,
+      naxis2 INTEGER,
+      bscale REAL,
+      bzero REAL,
+      image_type TEXT,
+      software TEXT,
+      is_stacked INTEGER NOT NULL DEFAULT 0,
+      ncombine INTEGER,
+      total_exposure REAL,
+      calstat TEXT,
+      pixel_min REAL,
+      pixel_max REAL,
+      pixel_mean REAL,
+      pixel_stddev REAL,
+      target_id TEXT REFERENCES targets(id) ON DELETE SET NULL,
+      fwhm_estimate REAL,
+      background_level REAL,
+      star_count_estimate INTEGER,
+      noise_level REAL,
+      quality_score REAL,
+      quality_flag TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_thumbnails (
+      file_id TEXT PRIMARY KEY REFERENCES fits_files(id) ON DELETE CASCADE,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      data_base64 TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_headers (
+      id TEXT PRIMARY KEY,
+      file_id TEXT NOT NULL REFERENCES fits_files(id) ON DELETE CASCADE,
+      keyword TEXT NOT NULL,
+      value TEXT,
+      comment TEXT,
+      ordinal INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS storage_snapshots (
+      id TEXT PRIMARY KEY,
+      snapshot_date TEXT NOT NULL,
+      total_files INTEGER NOT NULL,
+      total_size_bytes INTEGER NOT NULL,
+      lights_size_bytes INTEGER NOT NULL DEFAULT 0,
+      darks_size_bytes INTEGER NOT NULL DEFAULT 0,
+      flats_size_bytes INTEGER NOT NULL DEFAULT 0,
+      bias_size_bytes INTEGER NOT NULL DEFAULT 0,
+      other_size_bytes INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_storage_snapshot_date ON storage_snapshots(snapshot_date);
+
     CREATE INDEX IF NOT EXISTS idx_target_alias_alias ON target_aliases(alias);
+    CREATE INDEX IF NOT EXISTS idx_fits_scan_status ON fits_scans(status);
+    CREATE INDEX IF NOT EXISTS idx_fits_scan_started ON fits_scans(started_at);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_scan ON fits_files(scan_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_object ON fits_files(object_name);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_filter ON fits_files(filter);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_date_obs ON fits_files(date_obs);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_image_type ON fits_files(image_type);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_is_stacked ON fits_files(is_stacked);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_folder ON fits_files(folder_name);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_session_folder ON fits_files(session_folder);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_target ON fits_files(target_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_header_file ON fits_headers(file_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_header_keyword ON fits_headers(keyword);
     CREATE INDEX IF NOT EXISTS idx_target_canonical ON targets(canonical_name);
     CREATE INDEX IF NOT EXISTS idx_target_type ON targets(object_type);
     CREATE INDEX IF NOT EXISTS idx_target_stage ON targets(workflow_stage);
@@ -269,6 +378,84 @@ export function seedObservatory(sqlite: Database.Database, overrides: Partial<{
     overrides.longitude ?? -0.0005,
     overrides.altitudeM ?? 0,
     new Date().toISOString()
+  )
+  return id
+}
+
+export function seedFitsScan(sqlite: Database.Database, overrides: Partial<{
+  id: string
+  folderPath: string
+  fileCount: number
+  totalSizeBytes: number
+  status: string
+}> = {}): string {
+  const id = overrides.id ?? `scan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const now = new Date().toISOString()
+  sqlite.prepare(
+    `INSERT INTO fits_scans (id, folder_path, file_count, total_size_bytes, status, started_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    overrides.folderPath ?? '/test/fits',
+    overrides.fileCount ?? 0,
+    overrides.totalSizeBytes ?? 0,
+    overrides.status ?? 'completed',
+    now,
+    now
+  )
+  return id
+}
+
+export function seedFitsFile(sqlite: Database.Database, scanId: string, overrides: Partial<{
+  id: string
+  fileName: string
+  filePath: string
+  fileSizeBytes: number
+  folderName: string | null
+  sessionFolder: string | null
+  objectName: string | null
+  imageType: string | null
+  filter: string | null
+  exposureSec: number | null
+  dateObs: string | null
+  isStacked: boolean
+  gain: number | null
+  ccdTemp: number | null
+  xbinning: number | null
+  ybinning: number | null
+  telescope: string | null
+  instrument: string | null
+}> = {}): string {
+  const id = overrides.id ?? `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const now = new Date().toISOString()
+  const fileName = overrides.fileName ?? `test_${id}.fits`
+  sqlite.prepare(
+    `INSERT INTO fits_files (
+      id, scan_id, file_path, file_name, file_size_bytes, folder_name, session_folder,
+      object_name, image_type, filter, exposure_sec, date_obs, is_stacked,
+      gain, ccd_temp, xbinning, ybinning, telescope, instrument, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    scanId,
+    overrides.filePath ?? `/test/fits/${fileName}`,
+    fileName,
+    overrides.fileSizeBytes ?? 1024000,
+    overrides.folderName ?? null,
+    overrides.sessionFolder ?? null,
+    overrides.objectName ?? null,
+    overrides.imageType ?? 'Light Frame',
+    overrides.filter ?? null,
+    overrides.exposureSec ?? null,
+    overrides.dateObs ?? null,
+    overrides.isStacked ? 1 : 0,
+    overrides.gain ?? null,
+    overrides.ccdTemp ?? null,
+    overrides.xbinning ?? null,
+    overrides.ybinning ?? null,
+    overrides.telescope ?? null,
+    overrides.instrument ?? null,
+    now
   )
   return id
 }

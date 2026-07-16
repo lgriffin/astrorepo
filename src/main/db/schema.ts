@@ -91,6 +91,8 @@ export const observationSessions = sqliteTable('observation_sessions', {
   rejectedFrames: integer('rejected_frames'),
   totalExposureSec: real('total_exposure_sec'),
   notes: text('notes'),
+  source: text('source').default('manual'),
+  sessionFolder: text('session_folder'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
 }, (table) => [
@@ -180,3 +182,114 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull()
 })
+
+export const fitsScans = sqliteTable('fits_scans', {
+  id: text('id').primaryKey(),
+  folderPath: text('folder_path').notNull(),
+  fileCount: integer('file_count').notNull().default(0),
+  totalSizeBytes: integer('total_size_bytes').notNull().default(0),
+  status: text('status').notNull().default('running'),
+  errorMessage: text('error_message'),
+  startedAt: text('started_at').notNull(),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull()
+}, (table) => [
+  index('idx_fits_scan_status').on(table.status),
+  index('idx_fits_scan_started').on(table.startedAt)
+])
+
+export const fitsFiles = sqliteTable('fits_files', {
+  id: text('id').primaryKey(),
+  scanId: text('scan_id').notNull().references(() => fitsScans.id, { onDelete: 'cascade' }),
+  filePath: text('file_path').notNull().unique(),
+  fileName: text('file_name').notNull(),
+  fileSizeBytes: integer('file_size_bytes').notNull(),
+  fileModifiedAt: text('file_modified_at'),
+  folderName: text('folder_name'),
+  sessionFolder: text('session_folder'),
+  objectName: text('object_name'),
+  telescope: text('telescope'),
+  instrument: text('instrument'),
+  observer: text('observer'),
+  exposureSec: real('exposure_sec'),
+  dateObs: text('date_obs'),
+  filter: text('filter'),
+  gain: real('gain'),
+  offsetVal: real('offset_val'),
+  ccdTemp: real('ccd_temp'),
+  xpixsz: real('xpixsz'),
+  ypixsz: real('ypixsz'),
+  xbinning: integer('xbinning'),
+  ybinning: integer('ybinning'),
+  ra: text('ra'),
+  dec: text('dec'),
+  airmass: real('airmass'),
+  bitpix: integer('bitpix'),
+  naxis1: integer('naxis1'),
+  naxis2: integer('naxis2'),
+  bscale: real('bscale'),
+  bzero: real('bzero'),
+  imageType: text('image_type'),
+  software: text('software'),
+  isStacked: integer('is_stacked', { mode: 'boolean' }).notNull().default(false),
+  ncombine: integer('ncombine'),
+  totalExposure: real('total_exposure'),
+  calstat: text('calstat'),
+  pixelMin: real('pixel_min'),
+  pixelMax: real('pixel_max'),
+  pixelMean: real('pixel_mean'),
+  pixelStddev: real('pixel_stddev'),
+  targetId: text('target_id').references(() => targets.id, { onDelete: 'set null' }),
+  fwhmEstimate: real('fwhm_estimate'),
+  backgroundLevel: real('background_level'),
+  starCountEstimate: integer('star_count_estimate'),
+  noiseLevel: real('noise_level'),
+  qualityScore: real('quality_score'),
+  qualityFlag: text('quality_flag'),
+  createdAt: text('created_at').notNull()
+}, (table) => [
+  index('idx_fits_file_target').on(table.targetId),
+  index('idx_fits_file_scan').on(table.scanId),
+  index('idx_fits_file_object').on(table.objectName),
+  index('idx_fits_file_filter').on(table.filter),
+  index('idx_fits_file_date_obs').on(table.dateObs),
+  index('idx_fits_file_image_type').on(table.imageType),
+  index('idx_fits_file_is_stacked').on(table.isStacked),
+  index('idx_fits_file_folder').on(table.folderName),
+  index('idx_fits_file_session_folder').on(table.sessionFolder)
+])
+
+export const storageSnapshots = sqliteTable('storage_snapshots', {
+  id: text('id').primaryKey(),
+  snapshotDate: text('snapshot_date').notNull(),
+  totalFiles: integer('total_files').notNull(),
+  totalSizeBytes: integer('total_size_bytes').notNull(),
+  lightsSizeBytes: integer('lights_size_bytes').notNull().default(0),
+  darksSizeBytes: integer('darks_size_bytes').notNull().default(0),
+  flatsSizeBytes: integer('flats_size_bytes').notNull().default(0),
+  biasSizeBytes: integer('bias_size_bytes').notNull().default(0),
+  otherSizeBytes: integer('other_size_bytes').notNull().default(0),
+  createdAt: text('created_at').notNull()
+}, (table) => [
+  index('idx_storage_snapshot_date').on(table.snapshotDate)
+])
+
+export const fitsThumbnails = sqliteTable('fits_thumbnails', {
+  fileId: text('file_id').primaryKey().references(() => fitsFiles.id, { onDelete: 'cascade' }),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  dataBase64: text('data_base64').notNull(),
+  createdAt: text('created_at').notNull()
+})
+
+export const fitsHeaders = sqliteTable('fits_headers', {
+  id: text('id').primaryKey(),
+  fileId: text('file_id').notNull().references(() => fitsFiles.id, { onDelete: 'cascade' }),
+  keyword: text('keyword').notNull(),
+  value: text('value'),
+  comment: text('comment'),
+  ordinal: integer('ordinal').notNull()
+}, (table) => [
+  index('idx_fits_header_file').on(table.fileId),
+  index('idx_fits_header_keyword').on(table.keyword)
+])

@@ -63,6 +63,7 @@ export interface Target {
   workflowStage: string
   isCustom: boolean
   folderPath: string | null
+  thumbnailPath: string | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -142,6 +143,8 @@ export interface ObservationSession {
   rejectedFrames: number | null
   totalExposureSec: number | null
   notes: string | null
+  source?: string
+  sessionFolder?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -277,4 +280,269 @@ export interface CatalogueProgress {
   abbreviation: string
   completed: number
   total: number
+}
+
+export interface FitsScan {
+  id: string
+  folderPath: string
+  fileCount: number
+  totalSizeBytes: number
+  status: 'running' | 'completed' | 'failed'
+  errorMessage: string | null
+  startedAt: string
+  completedAt: string | null
+  createdAt: string
+}
+
+export interface FitsScanSummary {
+  id: string
+  folderPath: string
+  fileCount: number
+  totalSizeBytes: number
+  status: string
+  startedAt: string
+}
+
+export interface FitsFileSummary {
+  id: string
+  fileName: string
+  folderName: string | null
+  sessionFolder: string | null
+  objectName: string | null
+  exposureSec: number | null
+  dateObs: string | null
+  filter: string | null
+  imageType: string | null
+  isStacked: boolean
+  fileSizeBytes: number
+  targetId: string | null
+  targetName: string | null
+}
+
+export interface FitsLinkingStatus {
+  linked: number
+  unlinked: number
+  byTarget: Record<string, number>
+}
+
+export interface FitsFileDetail {
+  id: string
+  scanId: string
+  filePath: string
+  fileName: string
+  fileSizeBytes: number
+  fileModifiedAt: string | null
+  folderName: string | null
+  sessionFolder: string | null
+  objectName: string | null
+  targetId: string | null
+  telescope: string | null
+  instrument: string | null
+  observer: string | null
+  exposureSec: number | null
+  dateObs: string | null
+  filter: string | null
+  gain: number | null
+  offsetVal: number | null
+  ccdTemp: number | null
+  xpixsz: number | null
+  ypixsz: number | null
+  xbinning: number | null
+  ybinning: number | null
+  ra: string | null
+  dec: string | null
+  airmass: number | null
+  bitpix: number | null
+  naxis1: number | null
+  naxis2: number | null
+  bscale: number | null
+  bzero: number | null
+  imageType: string | null
+  software: string | null
+  isStacked: boolean
+  ncombine: number | null
+  totalExposure: number | null
+  calstat: string | null
+  pixelMin: number | null
+  pixelMax: number | null
+  pixelMean: number | null
+  pixelStddev: number | null
+  fwhmEstimate: number | null
+  backgroundLevel: number | null
+  starCountEstimate: number | null
+  noiseLevel: number | null
+  qualityScore: number | null
+  qualityFlag: string | null
+  createdAt: string
+}
+
+export interface FitsThumbnail {
+  fileId: string
+  width: number
+  height: number
+  dataBase64: string
+}
+
+export interface FitsHeaderRow {
+  id: string
+  fileId: string
+  keyword: string
+  value: string | null
+  comment: string | null
+  ordinal: number
+}
+
+export interface FitsScanAggregates {
+  totalFiles: number
+  totalSizeBytes: number
+  totalExposureSec: number
+  uniqueObjects: string[]
+  uniqueFilters: string[]
+  uniqueTelescopes: string[]
+  uniqueInstruments: string[]
+  uniqueFolders: string[]
+  dateRange: { earliest: string | null; latest: string | null }
+  filesByImageType: Record<string, number>
+  filesByFilter: Record<string, number>
+  filesByObject: Record<string, number>
+  filesByFolder: Record<string, number>
+  filesBySessionFolder: Record<string, number>
+  nightsPerObject: Record<string, string[]>
+  stackedCount: number
+  individualCount: number
+  avgExposureSec: number
+  avgCcdTemp: number | null
+  exposureByFilter: Record<string, number>
+}
+
+export interface FitsTargetSummary {
+  folderName: string
+  totalFiles: number
+  totalSizeBytes: number
+  totalExposureSec: number
+  sessions: string[]
+  filters: string[]
+  imageTypes: string[]
+  stackedCount: number
+  individualCount: number
+  exposureByFilter: Record<string, number>
+  filesBySession: Record<string, number>
+}
+
+export interface AutoSessionPreview {
+  folderName: string
+  sessionFolder: string
+  date: string
+  targetName: string | null
+  targetId: string | null
+  lightCount: number
+  totalExposureSec: number
+  filters: string[]
+  existingSessionId: string | null
+}
+
+export interface GeneratedSessionResult {
+  created: number
+  skipped: number
+  sessions: Array<{ id: string; date: string; folderName: string }>
+}
+
+export interface QualityMetrics {
+  fileId: string
+  fwhmEstimate: number | null
+  backgroundLevel: number | null
+  starCountEstimate: number | null
+  noiseLevel: number | null
+  qualityScore: number | null
+  qualityFlag: 'good' | 'warning' | 'reject' | null
+}
+
+export interface SessionQualityReport {
+  folderName: string
+  sessionFolder: string | null
+  totalFiles: number
+  analyzedFiles: number
+  medianFwhm: number | null
+  medianBackground: number | null
+  medianNoise: number | null
+  medianStarCount: number | null
+  outlierCount: number
+  files: QualityMetrics[]
+}
+
+export interface StorageSnapshot {
+  id: string
+  snapshotDate: string
+  totalFiles: number
+  totalSizeBytes: number
+  lightsSizeBytes: number
+  darksSizeBytes: number
+  flatsSizeBytes: number
+  biasSizeBytes: number
+  otherSizeBytes: number
+}
+
+export interface StorageCurrentStats {
+  totalSizeBytes: number
+  totalFiles: number
+  byImageType: Array<{ type: string; sizeBytes: number; count: number }>
+  byTarget: Array<{ name: string; sizeBytes: number; count: number }>
+  byFilter: Array<{ filter: string; sizeBytes: number; count: number }>
+}
+
+export interface StorageGrowthProjection {
+  dailyGrowthBytes: number
+  weeklyGrowthBytes: number
+  monthlyGrowthBytes: number
+  projectedFullDate: string | null
+  dataPoints: number
+}
+
+export interface HomeFolderTarget {
+  targetName: string
+  targetId: string | null
+  rawFiles: number
+  stackedFiles: number
+  tifFiles: number
+  imageFiles: number
+  currentStage: string
+  suggestedStage: string
+  thumbnailPath: string | null
+  rawPath: string | null
+}
+
+export interface HomeScanResult {
+  homePath: string
+  targets: HomeFolderTarget[]
+  rawScanned: boolean
+  created: number
+  advanced: number
+}
+
+export interface CalibrationGroup {
+  type: 'dark' | 'flat' | 'bias'
+  exposureSec: number | null
+  filter: string | null
+  gain: number | null
+  ccdTemp: number | null
+  binning: string | null
+  fileCount: number
+  totalSizeBytes: number
+  dateRange: { earliest: string | null; latest: string | null }
+}
+
+export interface CalibrationMatch {
+  type: 'dark' | 'flat' | 'bias'
+  status: 'matched' | 'close' | 'missing'
+  matchCount: number
+}
+
+export interface CalibrationCoverage {
+  totalLights: number
+  fullyCalibrated: number
+  partiallyCalibrated: number
+  uncalibrated: number
+  darksCoverage: number
+  flatsCoverage: number
+  biasCoverage: number
 }

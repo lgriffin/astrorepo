@@ -51,7 +51,7 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'planned',
+      workflow_stage TEXT NOT NULL DEFAULT 'raw_captured',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
       notes TEXT,
@@ -201,8 +201,93 @@ function runMigrations(sqlite: Database.Database): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS fits_scans (
+      id TEXT PRIMARY KEY,
+      folder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'running',
+      error_message TEXT,
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_files (
+      id TEXT PRIMARY KEY,
+      scan_id TEXT NOT NULL REFERENCES fits_scans(id) ON DELETE CASCADE,
+      file_path TEXT NOT NULL UNIQUE,
+      file_name TEXT NOT NULL,
+      file_size_bytes INTEGER NOT NULL,
+      file_modified_at TEXT,
+      folder_name TEXT,
+      session_folder TEXT,
+      object_name TEXT,
+      telescope TEXT,
+      instrument TEXT,
+      observer TEXT,
+      exposure_sec REAL,
+      date_obs TEXT,
+      filter TEXT,
+      gain REAL,
+      offset_val REAL,
+      ccd_temp REAL,
+      xpixsz REAL,
+      ypixsz REAL,
+      xbinning INTEGER,
+      ybinning INTEGER,
+      ra TEXT,
+      dec TEXT,
+      airmass REAL,
+      bitpix INTEGER,
+      naxis1 INTEGER,
+      naxis2 INTEGER,
+      bscale REAL,
+      bzero REAL,
+      image_type TEXT,
+      software TEXT,
+      is_stacked INTEGER NOT NULL DEFAULT 0,
+      ncombine INTEGER,
+      total_exposure REAL,
+      calstat TEXT,
+      pixel_min REAL,
+      pixel_max REAL,
+      pixel_mean REAL,
+      pixel_stddev REAL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_thumbnails (
+      file_id TEXT PRIMARY KEY REFERENCES fits_files(id) ON DELETE CASCADE,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      data_base64 TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS fits_headers (
+      id TEXT PRIMARY KEY,
+      file_id TEXT NOT NULL REFERENCES fits_files(id) ON DELETE CASCADE,
+      keyword TEXT NOT NULL,
+      value TEXT,
+      comment TEXT,
+      ordinal INTEGER NOT NULL
+    );
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_target_alias_alias ON target_aliases(alias);
+    CREATE INDEX IF NOT EXISTS idx_fits_scan_status ON fits_scans(status);
+    CREATE INDEX IF NOT EXISTS idx_fits_scan_started ON fits_scans(started_at);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_scan ON fits_files(scan_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_object ON fits_files(object_name);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_filter ON fits_files(filter);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_date_obs ON fits_files(date_obs);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_image_type ON fits_files(image_type);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_is_stacked ON fits_files(is_stacked);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_folder ON fits_files(folder_name);
+    CREATE INDEX IF NOT EXISTS idx_fits_file_session_folder ON fits_files(session_folder);
+    CREATE INDEX IF NOT EXISTS idx_fits_header_file ON fits_headers(file_id);
+    CREATE INDEX IF NOT EXISTS idx_fits_header_keyword ON fits_headers(keyword);
     CREATE INDEX IF NOT EXISTS idx_target_canonical ON targets(canonical_name);
     CREATE INDEX IF NOT EXISTS idx_target_type ON targets(object_type);
     CREATE INDEX IF NOT EXISTS idx_target_stage ON targets(workflow_stage);
@@ -217,23 +302,77 @@ function runMigrations(sqlite: Database.Database): void {
 
     -- Default workflow stages
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
-      ('ws-01', 'planned', 1, 1),
-      ('ws-02', 'scheduled', 2, 1),
-      ('ws-03', 'observed', 3, 1),
-      ('ws-04', 'raw_captured', 4, 1),
-      ('ws-05', 'calibrated', 5, 1),
-      ('ws-06', 'registered', 6, 1),
-      ('ws-07', 'integrated', 7, 1),
-      ('ws-08', 'processing', 8, 1),
-      ('ws-09', 'edited', 9, 1),
-      ('ws-10', 'published', 10, 1),
-      ('ws-11', 'printed', 11, 1),
-      ('ws-12', 'archived', 12, 1);
+      ('ws-04', 'raw_captured', 1, 1),
+      ('ws-05', 'calibrated', 2, 1),
+      ('ws-06', 'registered', 3, 1),
+      ('ws-07', 'integrated', 4, 1),
+      ('ws-08', 'processing', 5, 1),
+      ('ws-09', 'edited', 6, 1),
+      ('ws-10', 'published', 7, 1),
+      ('ws-11', 'printed', 8, 1),
+      ('ws-12', 'archived', 9, 1);
 
     -- Default Siril folder template
+    CREATE TABLE IF NOT EXISTS storage_snapshots (
+      id TEXT PRIMARY KEY,
+      snapshot_date TEXT NOT NULL,
+      total_files INTEGER NOT NULL,
+      total_size_bytes INTEGER NOT NULL,
+      lights_size_bytes INTEGER NOT NULL DEFAULT 0,
+      darks_size_bytes INTEGER NOT NULL DEFAULT 0,
+      flats_size_bytes INTEGER NOT NULL DEFAULT 0,
+      bias_size_bytes INTEGER NOT NULL DEFAULT 0,
+      other_size_bytes INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_storage_snapshot_date ON storage_snapshots(snapshot_date);
+
     INSERT OR IGNORE INTO folder_templates (id, name, structure, is_builtin, created_at) VALUES
       ('ft-siril', 'Siril Default', '{"lights":{},"darks":{},"biases":{},"flats":{}}', 1, datetime('now'));
   `)
+
+  // Migration: add target_id to fits_files
+  const hasTargetId = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='target_id'").get() as { cnt: number }
+  if (hasTargetId.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE fits_files ADD COLUMN target_id TEXT REFERENCES targets(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_fits_file_target ON fits_files(target_id);
+    `)
+  }
+
+  // Migration: add source and session_folder to observation_sessions
+  const hasSource = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('observation_sessions') WHERE name='source'").get() as { cnt: number }
+  if (hasSource.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE observation_sessions ADD COLUMN source TEXT DEFAULT 'manual';
+      ALTER TABLE observation_sessions ADD COLUMN session_folder TEXT;
+    `)
+  }
+
+  // Migration: add thumbnail_path to targets
+  const hasThumbnailPath = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('targets') WHERE name='thumbnail_path'").get() as { cnt: number }
+  if (hasThumbnailPath.cnt === 0) {
+    sqlite.exec(`ALTER TABLE targets ADD COLUMN thumbnail_path TEXT`)
+  }
+
+  // Migration: remove old workflow stages and update targets that used them
+  sqlite.exec(`
+    UPDATE targets SET workflow_stage = 'raw_captured' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
+    DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
+  `)
+
+  // Migration: add quality columns to fits_files
+  const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }
+  if (hasFwhm.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE fits_files ADD COLUMN fwhm_estimate REAL;
+      ALTER TABLE fits_files ADD COLUMN background_level REAL;
+      ALTER TABLE fits_files ADD COLUMN star_count_estimate INTEGER;
+      ALTER TABLE fits_files ADD COLUMN noise_level REAL;
+      ALTER TABLE fits_files ADD COLUMN quality_score REAL;
+      ALTER TABLE fits_files ADD COLUMN quality_flag TEXT;
+    `)
+  }
 }
 
 export function createTestDatabase(): { db: ReturnType<typeof drizzle>; sqlite: Database.Database } {

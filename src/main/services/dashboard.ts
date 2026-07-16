@@ -1,4 +1,5 @@
 import { getSqlite } from '../db/connection'
+import { getTotalFitsFileCount } from './fits-analyzer'
 import type { DashboardStats, CatalogueProgress } from '@shared/types'
 
 export function getDashboardStats(): DashboardStats {
@@ -48,6 +49,41 @@ export function getDashboardStats(): DashboardStats {
      LIMIT 5`
   ).all() as Array<{ name: string; session_count: number }>
 
+  // storageBytes: total from fits_files
+  const storageRow = sqlite.prepare('SELECT COALESCE(SUM(file_size_bytes), 0) as total FROM fits_files').get() as { total: number }
+
+  // averageIntegrationSec: average total exposure per target folder
+  const avgIntRow = sqlite.prepare(
+    `SELECT COALESCE(AVG(folder_total), 0) as avg_sec FROM (
+      SELECT COALESCE(SUM(exposure_sec), 0) as folder_total
+      FROM fits_files WHERE folder_name IS NOT NULL
+      GROUP BY folder_name
+    )`
+  ).get() as { avg_sec: number }
+
+  // largestDataset: folder with most files
+  const largestRow = sqlite.prepare(
+    'SELECT folder_name as name, COUNT(*) as cnt FROM fits_files WHERE folder_name IS NOT NULL GROUP BY folder_name ORDER BY cnt DESC LIMIT 1'
+  ).get() as { name: string; cnt: number } | undefined
+
+  // deepestIntegration: folder with most total exposure
+  const deepestRow = sqlite.prepare(
+    'SELECT folder_name as name, COALESCE(SUM(exposure_sec), 0) as total FROM fits_files WHERE folder_name IS NOT NULL GROUP BY folder_name ORDER BY total DESC LIMIT 1'
+  ).get() as { name: string; total: number } | undefined
+
+  // longestProject: target with greatest date range span
+  const longestRow = sqlite.prepare(
+    `SELECT folder_name as name,
+      CAST(julianday(MAX(date_obs)) - julianday(MIN(date_obs)) AS INTEGER) as days
+     FROM fits_files WHERE folder_name IS NOT NULL AND date_obs IS NOT NULL
+     GROUP BY folder_name ORDER BY days DESC LIMIT 1`
+  ).get() as { name: string; days: number } | undefined
+
+  // oldestUnfinished: target not at published/archived stage
+  const oldestRow = sqlite.prepare(
+    "SELECT canonical_name as name, created_at FROM targets WHERE workflow_stage NOT IN ('published','printed','archived') ORDER BY created_at ASC LIMIT 1"
+  ).get() as { name: string; created_at: string } | undefined
+
   return {
     totalTargets: totals.total,
     completedTargets: totals.completed,
@@ -56,15 +92,15 @@ export function getDashboardStats(): DashboardStats {
     objectsByType,
     objectsByCatalogue,
     observationNights: sessionStats.nights,
-    totalFitsFiles: 0,
+    totalFitsFiles: getTotalFitsFileCount(),
     totalExposureSec: sessionStats.total_exposure,
-    storageBytes: 0,
-    averageIntegrationSec: 0,
+    storageBytes: storageRow.total,
+    averageIntegrationSec: Math.round(avgIntRow.avg_sec),
     mostUsedEquipment: equipRows.map((r) => ({ name: r.name, sessionCount: r.session_count })),
-    largestDataset: null,
-    deepestIntegration: null,
-    longestProject: null,
-    oldestUnfinished: null
+    largestDataset: largestRow ? { targetName: largestRow.name, frameCount: largestRow.cnt } : null,
+    deepestIntegration: deepestRow && deepestRow.total > 0 ? { targetName: deepestRow.name, exposureSec: deepestRow.total } : null,
+    longestProject: longestRow && longestRow.days > 0 ? { targetName: longestRow.name, days: longestRow.days } : null,
+    oldestUnfinished: oldestRow ? { targetName: oldestRow.name, createdAt: oldestRow.created_at } : null
   }
 }
 
