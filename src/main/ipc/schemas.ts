@@ -254,7 +254,9 @@ export const schemas = {
   'calibration:file-status': z.object({
     file_id: z.string().min(1)
   }),
-  'calibration:summary': z.object({}).optional()
+  'calibration:summary': z.object({}).optional(),
+
+  'fits:compute-stats': z.object({ file_id: z.string().min(1) })
 } as const
 
 export type SchemaMap = typeof schemas

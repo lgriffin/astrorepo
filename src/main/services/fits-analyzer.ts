@@ -1,7 +1,7 @@
 import { getSqlite } from '../db/connection'
 import { parseFitsFile } from '../fits/parser'
 import { detectStacking } from '../fits/stacking'
-import { linkFitsFilesToTargets } from './fits-linker'
+import { linkFitsFilesToTargets, normalizeCatalogName } from './fits-linker'
 import { ulid } from 'ulid'
 import fs from 'fs'
 import path from 'path'
@@ -188,6 +188,7 @@ export function startFolderScan(folderPath: string): FitsScan {
       `UPDATE fits_scans SET file_count = ?, total_size_bytes = ?, status = 'completed', completed_at = ? WHERE id = ?`
     ).run(fitsFiles.length, totalSize, completedAt, scanId)
 
+    autoCreateTargetsFromScan(sqlite, scanId)
     linkFitsFilesToTargets(scanId)
 
     return getScanById(scanId)!
@@ -580,6 +581,58 @@ function computeAggregates(sqlite: ReturnType<typeof getSqlite>, where: string, 
     avgCcdTemp: basics.avg_ccd_temp as number | null,
     exposureByFilter: exposureByFilterMap
   }
+}
+
+function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId: string): void {
+  const folderRows = sqlite.prepare(
+    'SELECT DISTINCT folder_name FROM fits_files WHERE scan_id = ? AND folder_name IS NOT NULL'
+  ).all(scanId) as Array<{ folder_name: string }>
+
+  const objectRows = sqlite.prepare(
+    'SELECT DISTINCT object_name FROM fits_files WHERE scan_id = ? AND object_name IS NOT NULL'
+  ).all(scanId) as Array<{ object_name: string }>
+
+  const candidateNames = new Set<string>()
+  for (const r of folderRows) candidateNames.add(r.folder_name)
+  for (const r of objectRows) candidateNames.add(r.object_name)
+
+  const existingTargets = sqlite.prepare('SELECT canonical_name FROM targets').all() as Array<{ canonical_name: string }>
+  const existingAliases = sqlite.prepare('SELECT alias FROM target_aliases').all() as Array<{ alias: string }>
+
+  const knownNames = new Set<string>()
+  for (const t of existingTargets) knownNames.add(normalizeCatalogName(t.canonical_name))
+  for (const a of existingAliases) knownNames.add(normalizeCatalogName(a.alias))
+
+  const now = new Date().toISOString()
+  const insertTarget = sqlite.prepare(
+    `INSERT OR IGNORE INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
+     angular_size_arcmin, constellation, description, simbad_id, ned_id, workflow_stage, is_custom,
+     folder_path, notes, created_at, updated_at)
+     VALUES (?, ?, 'unknown', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'planned', 0, NULL, NULL, ?, ?)`
+  )
+
+  for (const name of candidateNames) {
+    const normalized = normalizeCatalogName(name)
+    if (!knownNames.has(normalized)) {
+      insertTarget.run(ulid(), name, now, now)
+      knownNames.add(normalized)
+    }
+  }
+}
+
+export function computeFileStats(fileId: string): { min: number; max: number; mean: number; stddev: number } | null {
+  const sqlite = getSqlite()
+  const row = sqlite.prepare('SELECT file_path FROM fits_files WHERE id = ?').get(fileId) as { file_path: string } | undefined
+  if (!row) return null
+
+  const result = parseFitsFile(row.file_path, { computeStats: true })
+  if (!result.isValid || !result.imageStats) return null
+
+  sqlite.prepare(
+    `UPDATE fits_files SET pixel_min = ?, pixel_max = ?, pixel_mean = ?, pixel_stddev = ? WHERE id = ?`
+  ).run(result.imageStats.min, result.imageStats.max, result.imageStats.mean, result.imageStats.stddev, fileId)
+
+  return result.imageStats
 }
 
 function mapScanRow(row: Record<string, unknown>): FitsScan {

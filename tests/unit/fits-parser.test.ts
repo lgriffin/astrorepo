@@ -150,7 +150,7 @@ describe('FITS Parser', () => {
       `NAXIS2  =                    ${naxis2}`
     ], pixelBuf)
 
-    const result = parseFitsFile(filePath)
+    const result = parseFitsFile(filePath, { computeStats: true })
     expect(result.isValid).toBe(true)
     expect(result.imageStats).not.toBeNull()
     expect(result.imageStats!.min).toBe(100)
@@ -176,7 +176,7 @@ describe('FITS Parser', () => {
       "BZERO   =                 1000"
     ], pixelBuf)
 
-    const result = parseFitsFile(filePath)
+    const result = parseFitsFile(filePath, { computeStats: true })
     expect(result.imageStats).not.toBeNull()
     expect(result.imageStats!.min).toBe(100 * 2 + 1000)
     expect(result.imageStats!.max).toBe(200 * 2 + 1000)
@@ -198,7 +198,7 @@ describe('FITS Parser', () => {
       `NAXIS2  =                    ${naxis2}`
     ], pixelBuf)
 
-    const result = parseFitsFile(filePath)
+    const result = parseFitsFile(filePath, { computeStats: true })
     expect(result.imageStats).not.toBeNull()
     expect(result.imageStats!.min).toBeCloseTo(1.5, 1)
     expect(result.imageStats!.max).toBeCloseTo(3.5, 1)

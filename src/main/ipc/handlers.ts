@@ -11,7 +11,7 @@ import { createObservatory, listObservatories, setPrimaryObservatory } from '../
 import { getVisibility, getTonightTargets } from '../services/ephemeris'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
-import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries } from '../services/fits-analyzer'
+import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats } from '../services/fits-analyzer'
 import { linkFitsFilesToTargets, manualLinkFile, unlinkFile, getLinkingStatus, getUnlinkedFiles } from '../services/fits-linker'
 import { getOrCreateThumbnail } from '../services/thumbnail'
 import { previewAutoSessions, generateSessions, getAutoSessionStatus } from '../services/session-generator'
@@ -393,6 +393,10 @@ export function registerIpcHandlers(): void {
   handle('calibration:summary', async () => {
     return getCalibrationSummary()
   })
+
+  handle('fits:compute-stats', validated('fits:compute-stats', (args) => {
+    return { stats: computeFileStats(args.file_id) }
+  }))
 }
 
 export function getRegisteredChannels(): string[] {

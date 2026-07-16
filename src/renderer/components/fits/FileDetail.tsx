@@ -31,6 +31,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
   const [thumbnailLoading, setThumbnailLoading] = useState(false)
   const [quality, setQuality] = useState<QualityMetrics | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
+  const [computingStats, setComputingStats] = useState(false)
 
   useEffect(() => {
     invoke<FitsFileDetailType>('fits:get-file', { id: fileId }).then(setFile)
@@ -171,9 +172,9 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
           </div>
         )}
 
-        {(file.pixelMin != null || file.pixelMax != null) && (
-          <div>
-            <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Image Statistics</h4>
+        <div>
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Image Statistics</h4>
+          {file.pixelMin != null || file.pixelMax != null ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-astro-bg border border-astro-border rounded p-2">
                 <p className="text-xs text-astro-muted">Min</p>
@@ -192,8 +193,26 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
                 <p className="text-sm text-astro-text font-mono">{file.pixelStddev?.toFixed(2)}</p>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <button
+              onClick={async () => {
+                setComputingStats(true)
+                try {
+                  const result = await invoke<{ stats: { min: number; max: number; mean: number; stddev: number } | null }>('fits:compute-stats', { file_id: fileId })
+                  if (result.stats) {
+                    setFile(prev => prev ? { ...prev, pixelMin: result.stats!.min, pixelMax: result.stats!.max, pixelMean: result.stats!.mean, pixelStddev: result.stats!.stddev } : prev)
+                  }
+                } finally {
+                  setComputingStats(false)
+                }
+              }}
+              disabled={computingStats}
+              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+            >
+              {computingStats ? 'Computing...' : 'Compute Stats'}
+            </button>
+          )}
+        </div>
 
         <div>
           <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Quality Metrics</h4>

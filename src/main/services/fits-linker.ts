@@ -5,7 +5,7 @@ import type { FitsFileSummary, FitsLinkingStatus } from '@shared/types'
  * Normalize catalog designations for matching.
  * Strips spaces around common catalog prefixes so "NGC 7000" matches "NGC7000".
  */
-function normalizeCatalogName(name: string): string {
+export function normalizeCatalogName(name: string): string {
   return name
     .trim()
     .replace(/^(NGC|IC|M|Sh2)\s+/i, (_, prefix) => prefix.toUpperCase())

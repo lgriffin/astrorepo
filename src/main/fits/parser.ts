@@ -227,7 +227,7 @@ export function computeImageStats(
   }
 }
 
-export function parseFitsFile(filePath: string): FitsParseResult {
+export function parseFitsFile(filePath: string, options?: { computeStats?: boolean }): FitsParseResult {
   try {
     const { headers, headerMap } = parseFitsHeaders(filePath)
 
@@ -247,7 +247,7 @@ export function parseFitsFile(filePath: string): FitsParseResult {
     const headerBlockCount = Math.ceil(headerBytes / BLOCK_SIZE)
 
     let imageStats: FitsImageStats | null = null
-    if (naxis >= 2 && naxis1 > 0 && naxis2 > 0) {
+    if (options?.computeStats && naxis >= 2 && naxis1 > 0 && naxis2 > 0) {
       imageStats = computeImageStats(filePath, headerBlockCount, bitpix, naxis, naxis1, naxis2, bscale, bzero)
     }
 
