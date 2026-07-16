@@ -203,6 +203,8 @@ export const schemas = {
 
   'fits:get-headers': z.object({ file_id: id }),
 
+  'fits:get-thumbnail': z.object({ file_id: z.string().min(1) }),
+
   'fits:scan-aggregates': z.object({ scan_id: id }),
 
   'fits:target-summaries': z.object({ scan_id: id }),
@@ -216,7 +218,45 @@ export const schemas = {
 
   'settings:list': z.object({}).optional(),
 
-  'settings:pick-folder': z.object({}).optional()
+  'settings:pick-folder': z.object({}).optional(),
+
+  'fits:link-files': z.object({ scan_id: z.string().optional() }),
+  'fits:manual-link': z.object({ file_id: z.string().min(1), target_id: z.string().min(1) }),
+  'fits:unlink-file': z.object({ file_id: z.string().min(1) }),
+  'fits:linking-status': z.object({ scan_id: z.string().min(1) }),
+  'fits:unlinked-files': z.object({ scan_id: z.string().min(1), limit: z.number().optional(), offset: z.number().optional() }),
+
+  'sessions:preview-auto': z.object({ scan_id: z.string().min(1) }),
+  'sessions:generate-auto': z.object({ scan_id: z.string().min(1), overwrite: z.boolean().optional() }),
+  'sessions:auto-status': z.object({ scan_id: z.string().min(1) }),
+
+  'quality:analyze-file': z.object({ file_id: z.string().min(1) }),
+  'quality:analyze-scan': z.object({ scan_id: z.string().min(1) }),
+  'quality:get-metrics': z.object({ file_id: z.string().min(1) }),
+  'quality:session-report': z.object({ scan_id: z.string().min(1), folder_name: z.string().min(1) }),
+
+  'storage:current': z.object({}).optional(),
+  'storage:history': z.object({ limit: z.number().optional() }).optional(),
+  'storage:snapshot': z.object({}).optional(),
+  'storage:projection': z.object({}).optional(),
+  'storage:by-target': z.object({}).optional(),
+  'storage:by-filter': z.object({}).optional(),
+
+  'calibration:library': z.object({
+    type: z.string().optional(),
+    gain: z.number().optional(),
+    temp: z.number().optional(),
+    binning: z.string().optional()
+  }).optional(),
+  'calibration:match-lights': z.object({
+    scan_id: z.string().optional()
+  }).optional(),
+  'calibration:file-status': z.object({
+    file_id: z.string().min(1)
+  }),
+  'calibration:summary': z.object({}).optional(),
+
+  'fits:compute-stats': z.object({ file_id: z.string().min(1) })
 } as const
 
 export type SchemaMap = typeof schemas

@@ -170,7 +170,7 @@ function computeRiseSet(ra: number, dec: number, observer: Astronomy.Observer, d
   gmst = ((gmst % 360) + 360) % 360
   const lst = (gmst + observer.longitude) / 15
 
-  let transitLST = ra
+  const transitLST = ra
   let diff = transitLST - lst
   if (diff < -12) diff += 24
   if (diff > 12) diff -= 24

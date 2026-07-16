@@ -91,6 +91,8 @@ export const observationSessions = sqliteTable('observation_sessions', {
   rejectedFrames: integer('rejected_frames'),
   totalExposureSec: real('total_exposure_sec'),
   notes: text('notes'),
+  source: text('source').default('manual'),
+  sessionFolder: text('session_folder'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
 }, (table) => [
@@ -237,8 +239,16 @@ export const fitsFiles = sqliteTable('fits_files', {
   pixelMax: real('pixel_max'),
   pixelMean: real('pixel_mean'),
   pixelStddev: real('pixel_stddev'),
+  targetId: text('target_id').references(() => targets.id, { onDelete: 'set null' }),
+  fwhmEstimate: real('fwhm_estimate'),
+  backgroundLevel: real('background_level'),
+  starCountEstimate: integer('star_count_estimate'),
+  noiseLevel: real('noise_level'),
+  qualityScore: real('quality_score'),
+  qualityFlag: text('quality_flag'),
   createdAt: text('created_at').notNull()
 }, (table) => [
+  index('idx_fits_file_target').on(table.targetId),
   index('idx_fits_file_scan').on(table.scanId),
   index('idx_fits_file_object').on(table.objectName),
   index('idx_fits_file_filter').on(table.filter),
@@ -248,6 +258,29 @@ export const fitsFiles = sqliteTable('fits_files', {
   index('idx_fits_file_folder').on(table.folderName),
   index('idx_fits_file_session_folder').on(table.sessionFolder)
 ])
+
+export const storageSnapshots = sqliteTable('storage_snapshots', {
+  id: text('id').primaryKey(),
+  snapshotDate: text('snapshot_date').notNull(),
+  totalFiles: integer('total_files').notNull(),
+  totalSizeBytes: integer('total_size_bytes').notNull(),
+  lightsSizeBytes: integer('lights_size_bytes').notNull().default(0),
+  darksSizeBytes: integer('darks_size_bytes').notNull().default(0),
+  flatsSizeBytes: integer('flats_size_bytes').notNull().default(0),
+  biasSizeBytes: integer('bias_size_bytes').notNull().default(0),
+  otherSizeBytes: integer('other_size_bytes').notNull().default(0),
+  createdAt: text('created_at').notNull()
+}, (table) => [
+  index('idx_storage_snapshot_date').on(table.snapshotDate)
+])
+
+export const fitsThumbnails = sqliteTable('fits_thumbnails', {
+  fileId: text('file_id').primaryKey().references(() => fitsFiles.id, { onDelete: 'cascade' }),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  dataBase64: text('data_base64').notNull(),
+  createdAt: text('created_at').notNull()
+})
 
 export const fitsHeaders = sqliteTable('fits_headers', {
   id: text('id').primaryKey(),
