@@ -12,6 +12,12 @@ import { getVisibility, getTonightTargets } from '../services/ephemeris'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
 import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries } from '../services/fits-analyzer'
+import { linkFitsFilesToTargets, manualLinkFile, unlinkFile, getLinkingStatus, getUnlinkedFiles } from '../services/fits-linker'
+import { getOrCreateThumbnail } from '../services/thumbnail'
+import { previewAutoSessions, generateSessions, getAutoSessionStatus } from '../services/session-generator'
+import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQualityReport } from '../services/quality'
+import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
+import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
@@ -263,6 +269,10 @@ export function registerIpcHandlers(): void {
     return { headers: getFileHeaders(args.file_id) }
   }))
 
+  handle('fits:get-thumbnail', validated('fits:get-thumbnail', (args) => {
+    return getOrCreateThumbnail(args.file_id)
+  }))
+
   handle('fits:scan-aggregates', validated('fits:scan-aggregates', (args) => {
     return getScanAggregates(args.scan_id)
   }))
@@ -291,6 +301,97 @@ export function registerIpcHandlers(): void {
     })
     if (result.canceled || result.filePaths.length === 0) return { path: null }
     return { path: result.filePaths[0] }
+  })
+
+  handle('fits:link-files', validated('fits:link-files', (args) => {
+    return linkFitsFilesToTargets(args.scan_id)
+  }))
+
+  handle('fits:manual-link', validated('fits:manual-link', (args) => {
+    return { success: manualLinkFile(args.file_id, args.target_id) }
+  }))
+
+  handle('fits:unlink-file', validated('fits:unlink-file', (args) => {
+    return { success: unlinkFile(args.file_id) }
+  }))
+
+  handle('fits:linking-status', validated('fits:linking-status', (args) => {
+    return getLinkingStatus(args.scan_id)
+  }))
+
+  handle('fits:unlinked-files', validated('fits:unlinked-files', (args) => {
+    return { files: getUnlinkedFiles(args.scan_id, args.limit, args.offset) }
+  }))
+
+  handle('sessions:preview-auto', validated('sessions:preview-auto', (args) => {
+    return { previews: previewAutoSessions(args.scan_id) }
+  }))
+
+  handle('sessions:generate-auto', validated('sessions:generate-auto', (args) => {
+    return generateSessions(args.scan_id, { overwrite: args.overwrite })
+  }))
+
+  handle('sessions:auto-status', validated('sessions:auto-status', (args) => {
+    return getAutoSessionStatus(args.scan_id)
+  }))
+
+  handle('quality:analyze-file', validated('quality:analyze-file', (args) => {
+    return { metrics: analyzeFileQuality(args.file_id) }
+  }))
+
+  handle('quality:analyze-scan', validated('quality:analyze-scan', (args) => {
+    return analyzeScanQuality(args.scan_id)
+  }))
+
+  handle('quality:get-metrics', validated('quality:get-metrics', (args) => {
+    return { metrics: getQualityMetrics(args.file_id) }
+  }))
+
+  handle('quality:session-report', validated('quality:session-report', (args) => {
+    return getSessionQualityReport(args.scan_id, args.folder_name)
+  }))
+
+  handle('storage:current', async () => {
+    return getCurrentStorageStats()
+  })
+
+  handle('storage:history', async (_e, args?: { limit?: number }) => {
+    if (args) validate(schemas['storage:history']!, args)
+    return { snapshots: getStorageHistory(args?.limit) }
+  })
+
+  handle('storage:snapshot', async () => {
+    return captureStorageSnapshot()
+  })
+
+  handle('storage:projection', async () => {
+    return getGrowthProjection()
+  })
+
+  handle('storage:by-target', async () => {
+    return { targets: getStorageByTarget() }
+  })
+
+  handle('storage:by-filter', async () => {
+    return { filters: getStorageByFilter() }
+  })
+
+  handle('calibration:library', async (_e, args?: { type?: string; gain?: number; temp?: number; binning?: string }) => {
+    if (args) validate(schemas['calibration:library']!, args)
+    return { groups: getCalibrationLibrary(args ?? undefined) }
+  })
+
+  handle('calibration:match-lights', async (_e, args?: { scan_id?: string }) => {
+    if (args) validate(schemas['calibration:match-lights']!, args)
+    return matchCalibrationToLights(args?.scan_id)
+  })
+
+  handle('calibration:file-status', validated('calibration:file-status', (args) => {
+    return getLightCalibrationStatus(args.file_id)
+  }))
+
+  handle('calibration:summary', async () => {
+    return getCalibrationSummary()
   })
 }
 

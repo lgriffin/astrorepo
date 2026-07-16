@@ -1,6 +1,7 @@
 import { getSqlite } from '../db/connection'
 import { parseFitsFile } from '../fits/parser'
 import { detectStacking } from '../fits/stacking'
+import { linkFitsFilesToTargets } from './fits-linker'
 import { ulid } from 'ulid'
 import fs from 'fs'
 import path from 'path'
@@ -115,17 +116,15 @@ export function startFolderScan(folderPath: string): FitsScan {
         for (const { filePath, folderName, sessionFolder } of batch) {
           const fileId = ulid()
           const fileName = path.basename(filePath)
-          let fileSizeBytes = 0
-          let fileModifiedAt: string | null = null
-
+          let stat: fs.Stats
           try {
-            const stat = fs.statSync(filePath)
-            fileSizeBytes = stat.size
-            fileModifiedAt = stat.mtime.toISOString()
-            totalSize += fileSizeBytes
+            stat = fs.statSync(filePath)
           } catch {
             continue
           }
+          const fileSizeBytes = stat.size
+          const fileModifiedAt = stat.mtime.toISOString()
+          totalSize += fileSizeBytes
 
           const result = parseFitsFile(filePath)
           if (!result.isValid) continue
@@ -188,6 +187,8 @@ export function startFolderScan(folderPath: string): FitsScan {
     sqlite.prepare(
       `UPDATE fits_scans SET file_count = ?, total_size_bytes = ?, status = 'completed', completed_at = ? WHERE id = ?`
     ).run(fitsFiles.length, totalSize, completedAt, scanId)
+
+    linkFitsFilesToTargets(scanId)
 
     return getScanById(scanId)!
   } catch (err) {
@@ -254,35 +255,39 @@ export function listScanFiles(scanId: string, opts: FileListOptions = {}): { fil
   const allowedSorts = ['file_name', 'date_obs', 'exposure_sec', 'object_name', 'filter', 'file_size_bytes', 'folder_name', 'session_folder']
   const sortCol = allowedSorts.includes(sortBy) ? sortBy : 'file_name'
 
-  let where = 'WHERE scan_id = ?'
+  let where = 'WHERE f.scan_id = ?'
   const params: unknown[] = [scanId]
 
   if (opts.filterObject) {
-    where += ' AND object_name = ?'
+    where += ' AND f.object_name = ?'
     params.push(opts.filterObject)
   }
   if (opts.filterImageType) {
-    where += ' AND image_type = ?'
+    where += ' AND f.image_type = ?'
     params.push(opts.filterImageType)
   }
   if (opts.filterFilter) {
-    where += ' AND filter = ?'
+    where += ' AND f.filter = ?'
     params.push(opts.filterFilter)
   }
   if (opts.filterStacked !== undefined) {
-    where += ' AND is_stacked = ?'
+    where += ' AND f.is_stacked = ?'
     params.push(opts.filterStacked ? 1 : 0)
   }
   if (opts.filterFolder) {
-    where += ' AND folder_name = ?'
+    where += ' AND f.folder_name = ?'
     params.push(opts.filterFolder)
   }
 
-  const total = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM fits_files ${where}`).get(...params) as { cnt: number }).cnt
+  const total = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM fits_files f ${where}`).get(...params) as { cnt: number }).cnt
 
   const rows = sqlite.prepare(
-    `SELECT id, file_name, folder_name, session_folder, object_name, exposure_sec, date_obs, filter, image_type, is_stacked, file_size_bytes
-     FROM fits_files ${where} ORDER BY ${sortCol} ${sortDir} LIMIT ? OFFSET ?`
+    `SELECT f.id, f.file_name, f.folder_name, f.session_folder, f.object_name, f.exposure_sec,
+            f.date_obs, f.filter, f.image_type, f.is_stacked, f.file_size_bytes,
+            f.target_id, t.canonical_name as target_name
+     FROM fits_files f
+     LEFT JOIN targets t ON f.target_id = t.id
+     ${where} ORDER BY f.${sortCol} ${sortDir} LIMIT ? OFFSET ?`
   ).all(...params, limit, offset) as Array<Record<string, unknown>>
 
   return {
@@ -297,7 +302,9 @@ export function listScanFiles(scanId: string, opts: FileListOptions = {}): { fil
       filter: r.filter as string | null,
       imageType: r.image_type as string | null,
       isStacked: Boolean(r.is_stacked),
-      fileSizeBytes: r.file_size_bytes as number
+      fileSizeBytes: r.file_size_bytes as number,
+      targetId: r.target_id as string | null,
+      targetName: r.target_name as string | null
     })),
     total
   }
@@ -317,6 +324,7 @@ export function getFileDetail(fileId: string): FitsFileDetail | null {
     folderName: row.folder_name as string | null,
     sessionFolder: row.session_folder as string | null,
     objectName: row.object_name as string | null,
+    targetId: row.target_id as string | null,
     telescope: row.telescope as string | null,
     instrument: row.instrument as string | null,
     observer: row.observer as string | null,
@@ -348,6 +356,12 @@ export function getFileDetail(fileId: string): FitsFileDetail | null {
     pixelMax: row.pixel_max as number | null,
     pixelMean: row.pixel_mean as number | null,
     pixelStddev: row.pixel_stddev as number | null,
+    fwhmEstimate: row.fwhm_estimate as number | null,
+    backgroundLevel: row.background_level as number | null,
+    starCountEstimate: row.star_count_estimate as number | null,
+    noiseLevel: row.noise_level as number | null,
+    qualityScore: row.quality_score as number | null,
+    qualityFlag: row.quality_flag as string | null,
     createdAt: row.created_at as string
   }
 }

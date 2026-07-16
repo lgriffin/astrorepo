@@ -142,6 +142,8 @@ export interface ObservationSession {
   rejectedFrames: number | null
   totalExposureSec: number | null
   notes: string | null
+  source?: string
+  sessionFolder?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -312,6 +314,14 @@ export interface FitsFileSummary {
   imageType: string | null
   isStacked: boolean
   fileSizeBytes: number
+  targetId: string | null
+  targetName: string | null
+}
+
+export interface FitsLinkingStatus {
+  linked: number
+  unlinked: number
+  byTarget: Record<string, number>
 }
 
 export interface FitsFileDetail {
@@ -324,6 +334,7 @@ export interface FitsFileDetail {
   folderName: string | null
   sessionFolder: string | null
   objectName: string | null
+  targetId: string | null
   telescope: string | null
   instrument: string | null
   observer: string | null
@@ -355,7 +366,20 @@ export interface FitsFileDetail {
   pixelMax: number | null
   pixelMean: number | null
   pixelStddev: number | null
+  fwhmEstimate: number | null
+  backgroundLevel: number | null
+  starCountEstimate: number | null
+  noiseLevel: number | null
+  qualityScore: number | null
+  qualityFlag: string | null
   createdAt: string
+}
+
+export interface FitsThumbnail {
+  fileId: string
+  width: number
+  height: number
+  dataBase64: string
 }
 
 export interface FitsHeaderRow {
@@ -402,4 +426,101 @@ export interface FitsTargetSummary {
   individualCount: number
   exposureByFilter: Record<string, number>
   filesBySession: Record<string, number>
+}
+
+export interface AutoSessionPreview {
+  folderName: string
+  sessionFolder: string
+  date: string
+  targetName: string | null
+  targetId: string | null
+  lightCount: number
+  totalExposureSec: number
+  filters: string[]
+  existingSessionId: string | null
+}
+
+export interface GeneratedSessionResult {
+  created: number
+  skipped: number
+  sessions: Array<{ id: string; date: string; folderName: string }>
+}
+
+export interface QualityMetrics {
+  fileId: string
+  fwhmEstimate: number | null
+  backgroundLevel: number | null
+  starCountEstimate: number | null
+  noiseLevel: number | null
+  qualityScore: number | null
+  qualityFlag: 'good' | 'warning' | 'reject' | null
+}
+
+export interface SessionQualityReport {
+  folderName: string
+  sessionFolder: string | null
+  totalFiles: number
+  analyzedFiles: number
+  medianFwhm: number | null
+  medianBackground: number | null
+  medianNoise: number | null
+  medianStarCount: number | null
+  outlierCount: number
+  files: QualityMetrics[]
+}
+
+export interface StorageSnapshot {
+  id: string
+  snapshotDate: string
+  totalFiles: number
+  totalSizeBytes: number
+  lightsSizeBytes: number
+  darksSizeBytes: number
+  flatsSizeBytes: number
+  biasSizeBytes: number
+  otherSizeBytes: number
+}
+
+export interface StorageCurrentStats {
+  totalSizeBytes: number
+  totalFiles: number
+  byImageType: Array<{ type: string; sizeBytes: number; count: number }>
+  byTarget: Array<{ name: string; sizeBytes: number; count: number }>
+  byFilter: Array<{ filter: string; sizeBytes: number; count: number }>
+}
+
+export interface StorageGrowthProjection {
+  dailyGrowthBytes: number
+  weeklyGrowthBytes: number
+  monthlyGrowthBytes: number
+  projectedFullDate: string | null
+  dataPoints: number
+}
+
+export interface CalibrationGroup {
+  type: 'dark' | 'flat' | 'bias'
+  exposureSec: number | null
+  filter: string | null
+  gain: number | null
+  ccdTemp: number | null
+  binning: string | null
+  fileCount: number
+  totalSizeBytes: number
+  dateRange: { earliest: string | null; latest: string | null }
+}
+
+export interface CalibrationMatch {
+  type: 'dark' | 'flat' | 'bias'
+  status: 'matched' | 'close' | 'missing'
+  matchCount: number
+}
+
+export interface CalibrationCoverage {
+  totalLights: number
+  fullyCalibrated: number
+  partiallyCalibrated: number
+  uncalibrated: number
+  darksCoverage: number
+  flatsCoverage: number
+  biasCoverage: number
 }

@@ -257,6 +257,14 @@ function runMigrations(sqlite: Database.Database): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS fits_thumbnails (
+      file_id TEXT PRIMARY KEY REFERENCES fits_files(id) ON DELETE CASCADE,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      data_base64 TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS fits_headers (
       id TEXT PRIMARY KEY,
       file_id TEXT NOT NULL REFERENCES fits_files(id) ON DELETE CASCADE,
@@ -308,9 +316,54 @@ function runMigrations(sqlite: Database.Database): void {
       ('ws-12', 'archived', 12, 1);
 
     -- Default Siril folder template
+    CREATE TABLE IF NOT EXISTS storage_snapshots (
+      id TEXT PRIMARY KEY,
+      snapshot_date TEXT NOT NULL,
+      total_files INTEGER NOT NULL,
+      total_size_bytes INTEGER NOT NULL,
+      lights_size_bytes INTEGER NOT NULL DEFAULT 0,
+      darks_size_bytes INTEGER NOT NULL DEFAULT 0,
+      flats_size_bytes INTEGER NOT NULL DEFAULT 0,
+      bias_size_bytes INTEGER NOT NULL DEFAULT 0,
+      other_size_bytes INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_storage_snapshot_date ON storage_snapshots(snapshot_date);
+
     INSERT OR IGNORE INTO folder_templates (id, name, structure, is_builtin, created_at) VALUES
       ('ft-siril', 'Siril Default', '{"lights":{},"darks":{},"biases":{},"flats":{}}', 1, datetime('now'));
   `)
+
+  // Migration: add target_id to fits_files
+  const hasTargetId = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='target_id'").get() as { cnt: number }
+  if (hasTargetId.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE fits_files ADD COLUMN target_id TEXT REFERENCES targets(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_fits_file_target ON fits_files(target_id);
+    `)
+  }
+
+  // Migration: add source and session_folder to observation_sessions
+  const hasSource = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('observation_sessions') WHERE name='source'").get() as { cnt: number }
+  if (hasSource.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE observation_sessions ADD COLUMN source TEXT DEFAULT 'manual';
+      ALTER TABLE observation_sessions ADD COLUMN session_folder TEXT;
+    `)
+  }
+
+  // Migration: add quality columns to fits_files
+  const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }
+  if (hasFwhm.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE fits_files ADD COLUMN fwhm_estimate REAL;
+      ALTER TABLE fits_files ADD COLUMN background_level REAL;
+      ALTER TABLE fits_files ADD COLUMN star_count_estimate INTEGER;
+      ALTER TABLE fits_files ADD COLUMN noise_level REAL;
+      ALTER TABLE fits_files ADD COLUMN quality_score REAL;
+      ALTER TABLE fits_files ADD COLUMN quality_flag TEXT;
+    `)
+  }
 }
 
 export function createTestDatabase(): { db: ReturnType<typeof drizzle>; sqlite: Database.Database } {
