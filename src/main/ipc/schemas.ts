@@ -256,7 +256,12 @@ export const schemas = {
   }),
   'calibration:summary': z.object({}).optional(),
 
-  'fits:compute-stats': z.object({ file_id: z.string().min(1) })
+  'fits:compute-stats': z.object({ file_id: z.string().min(1) }),
+
+  'home:scan': z.object({}).optional(),
+  'home:status': z.object({}).optional(),
+  'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
+  'targets:get-thumbnail': z.object({ id: z.string().min(1) })
 } as const
 
 export type SchemaMap = typeof schemas

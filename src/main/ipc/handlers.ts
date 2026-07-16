@@ -1,7 +1,7 @@
 import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron'
 import { ZodError, type ZodType } from 'zod'
 import { schemas, type Channel } from './schemas'
-import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets } from '../services/target'
+import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
 import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
@@ -19,6 +19,7 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
+import { scanHomeFolder, getHomeStatus, prepForSiril } from '../services/home-scanner'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -396,6 +397,24 @@ export function registerIpcHandlers(): void {
 
   handle('fits:compute-stats', validated('fits:compute-stats', (args) => {
     return { stats: computeFileStats(args.file_id) }
+  }))
+
+  handle('home:scan', async () => {
+    const homePath = getSetting('home_folder_path')
+    if (!homePath) return { error: 'Home folder not configured' }
+    return scanHomeFolder(homePath)
+  })
+
+  handle('home:status', async () => {
+    return getHomeStatus()
+  })
+
+  handle('home:prep-siril', validated('home:prep-siril', (args) => {
+    return prepForSiril(args.raw_path)
+  }))
+
+  handle('targets:get-thumbnail', validated('targets:get-thumbnail', (args) => {
+    return getTargetThumbnail(args.id)
   }))
 }
 

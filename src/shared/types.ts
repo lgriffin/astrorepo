@@ -63,6 +63,7 @@ export interface Target {
   workflowStage: string
   isCustom: boolean
   folderPath: string | null
+  thumbnailPath: string | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -495,6 +496,27 @@ export interface StorageGrowthProjection {
   monthlyGrowthBytes: number
   projectedFullDate: string | null
   dataPoints: number
+}
+
+export interface HomeFolderTarget {
+  targetName: string
+  targetId: string | null
+  rawFiles: number
+  stackedFiles: number
+  tifFiles: number
+  imageFiles: number
+  currentStage: string
+  suggestedStage: string
+  thumbnailPath: string | null
+  rawPath: string | null
+}
+
+export interface HomeScanResult {
+  homePath: string
+  targets: HomeFolderTarget[]
+  rawScanned: boolean
+  created: number
+  advanced: number
 }
 
 export interface CalibrationGroup {

@@ -11,6 +11,11 @@ interface FolderSetting {
 
 const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }> = [
   {
+    key: 'home_folder_path',
+    label: 'Home Folder',
+    description: 'Root folder with raw/, stacked/, images/ subdirectories for organized astrophotography data.'
+  },
+  {
     key: 'fits_master_folder',
     label: 'Master FITS Folder',
     description: 'Root folder containing your astrophotography FITS files. Used as the default path in the FITS Analyzer.'

@@ -608,7 +608,7 @@ function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId:
     `INSERT OR IGNORE INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
      angular_size_arcmin, constellation, description, simbad_id, ned_id, workflow_stage, is_custom,
      folder_path, notes, created_at, updated_at)
-     VALUES (?, ?, 'unknown', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'planned', 0, NULL, NULL, ?, ?)`
+     VALUES (?, ?, 'unknown', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'raw_captured', 0, NULL, NULL, ?, ?)`
   )
 
   for (const name of candidateNames) {

@@ -51,7 +51,7 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'planned',
+      workflow_stage TEXT NOT NULL DEFAULT 'raw_captured',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
       notes TEXT,
@@ -302,18 +302,15 @@ function runMigrations(sqlite: Database.Database): void {
 
     -- Default workflow stages
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
-      ('ws-01', 'planned', 1, 1),
-      ('ws-02', 'scheduled', 2, 1),
-      ('ws-03', 'observed', 3, 1),
-      ('ws-04', 'raw_captured', 4, 1),
-      ('ws-05', 'calibrated', 5, 1),
-      ('ws-06', 'registered', 6, 1),
-      ('ws-07', 'integrated', 7, 1),
-      ('ws-08', 'processing', 8, 1),
-      ('ws-09', 'edited', 9, 1),
-      ('ws-10', 'published', 10, 1),
-      ('ws-11', 'printed', 11, 1),
-      ('ws-12', 'archived', 12, 1);
+      ('ws-04', 'raw_captured', 1, 1),
+      ('ws-05', 'calibrated', 2, 1),
+      ('ws-06', 'registered', 3, 1),
+      ('ws-07', 'integrated', 4, 1),
+      ('ws-08', 'processing', 5, 1),
+      ('ws-09', 'edited', 6, 1),
+      ('ws-10', 'published', 7, 1),
+      ('ws-11', 'printed', 8, 1),
+      ('ws-12', 'archived', 9, 1);
 
     -- Default Siril folder template
     CREATE TABLE IF NOT EXISTS storage_snapshots (
@@ -351,6 +348,18 @@ function runMigrations(sqlite: Database.Database): void {
       ALTER TABLE observation_sessions ADD COLUMN session_folder TEXT;
     `)
   }
+
+  // Migration: add thumbnail_path to targets
+  const hasThumbnailPath = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('targets') WHERE name='thumbnail_path'").get() as { cnt: number }
+  if (hasThumbnailPath.cnt === 0) {
+    sqlite.exec(`ALTER TABLE targets ADD COLUMN thumbnail_path TEXT`)
+  }
+
+  // Migration: remove old workflow stages and update targets that used them
+  sqlite.exec(`
+    UPDATE targets SET workflow_stage = 'raw_captured' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
+    DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
+  `)
 
   // Migration: add quality columns to fits_files
   const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }

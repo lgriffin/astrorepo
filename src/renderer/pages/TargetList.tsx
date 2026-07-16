@@ -3,7 +3,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { SearchBar } from '../components/target/SearchBar'
 import { TargetCard } from '../components/target/TargetCard'
 import { invoke } from '../hooks/useIPC'
-import type { TargetSummary } from '@shared/types'
+import type { TargetSummary, WorkflowStage } from '@shared/types'
 
 const PAGE_SIZE = 48
 
@@ -29,6 +29,11 @@ export function TargetList(): React.ReactElement {
   const [typeFilter, setTypeFilter] = useState('')
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [stages, setStages] = useState<WorkflowStage[]>([])
+
+  useEffect(() => {
+    invoke<WorkflowStage[]>('workflow:stages').then(setStages)
+  }, [])
 
   const fetchTargets = useCallback(async () => {
     setLoading(true)
@@ -92,7 +97,7 @@ export function TargetList(): React.ReactElement {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {targets.map((target) => (
-              <TargetCard key={target.id} target={target} />
+              <TargetCard key={target.id} target={target} stages={stages} />
             ))}
           </div>
         )}

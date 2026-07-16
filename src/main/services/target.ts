@@ -1,3 +1,5 @@
+import fs from 'fs'
+import pathMod from 'path'
 import { ulid } from 'ulid'
 import { getSqlite } from '../db/connection'
 import type { Target, TargetSummary, TargetAlias, CatalogueEntry } from '@shared/types'
@@ -96,7 +98,7 @@ export function getTargetById(id: string): Target | null {
     .prepare(
       `SELECT id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
               angular_size_arcmin, constellation, description, simbad_id, ned_id,
-              workflow_stage, is_custom, folder_path, notes, created_at, updated_at
+              workflow_stage, is_custom, folder_path, thumbnail_path, notes, created_at, updated_at
        FROM targets WHERE id = ?`
     )
     .get(id) as RawTargetFull | undefined
@@ -296,6 +298,7 @@ interface RawTargetFull extends RawTarget {
   simbad_id: string | null
   ned_id: string | null
   folder_path: string | null
+  thumbnail_path: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -334,8 +337,23 @@ function toTarget(row: RawTargetFull): Target {
     workflowStage: row.workflow_stage,
     isCustom: row.is_custom === 1,
     folderPath: row.folder_path,
+    thumbnailPath: row.thumbnail_path,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  }
+}
+
+export function getTargetThumbnail(targetId: string): { data: string | null; mime?: string } {
+  const sqlite = getSqlite()
+  const row = sqlite.prepare('SELECT thumbnail_path FROM targets WHERE id = ?').get(targetId) as { thumbnail_path: string | null } | undefined
+  if (!row?.thumbnail_path) return { data: null }
+  try {
+    const buf = fs.readFileSync(row.thumbnail_path)
+    const ext = pathMod.extname(row.thumbnail_path).toLowerCase()
+    const mime = ext === '.png' ? 'image/png' : ext === '.tif' || ext === '.tiff' ? 'image/tiff' : 'image/jpeg'
+    return { data: buf.toString('base64'), mime }
+  } catch {
+    return { data: null }
   }
 }
