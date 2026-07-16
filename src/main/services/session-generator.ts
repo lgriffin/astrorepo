@@ -52,10 +52,8 @@ export function previewAutoSessions(scanId: string): AutoSessionPreview[] {
   `).all(scanId) as GroupRow[]
 
   return rows.map((row) => {
-    // Determine date: prefer earliest DATE-OBS, fall back to parsing folder name
-    let date = ''
+    let date: string
     if (row.earliest_date_obs) {
-      // DATE-OBS may be a full ISO timestamp; extract date portion
       date = row.earliest_date_obs.substring(0, 10)
     } else {
       date = parseDateFromFolder(row.session_folder) ?? ''

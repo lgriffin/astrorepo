@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
-import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, FitsThumbnail, QualityMetrics } from '@shared/types'
+import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, QualityMetrics } from '@shared/types'
 
 interface FileDetailProps {
   fileId: string
