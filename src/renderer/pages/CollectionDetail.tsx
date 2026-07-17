@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { TargetCard } from '../components/target/TargetCard'
 import { invoke } from '../hooks/useIPC'
-import type { Collection, TargetSummary } from '@shared/types'
+import type { Collection, TargetSummary, WorkflowStage } from '@shared/types'
 
 export function CollectionDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -11,7 +11,12 @@ export function CollectionDetail(): React.ReactElement {
   const [targets, setTargets] = useState<TargetSummary[]>([])
   const [completed, setCompleted] = useState(0)
   const [total, setTotal] = useState(0)
+  const [stages, setStages] = useState<WorkflowStage[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    invoke<WorkflowStage[]>('workflow:stages').then(setStages)
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -79,7 +84,7 @@ export function CollectionDetail(): React.ReactElement {
       {targets.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {targets.map((t) => (
-            <TargetCard key={t.id} target={t} />
+            <TargetCard key={t.id} target={t} stages={stages} />
           ))}
         </div>
       ) : (

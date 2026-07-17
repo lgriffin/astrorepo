@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import type { FitsTargetSummary } from '@shared/types'
 
@@ -46,7 +47,17 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-astro-muted text-xs">{expandedTarget === t.folderName ? '▾' : '▸'}</span>
-                  <span className="text-sm font-medium text-astro-text">{t.folderName}</span>
+                  {t.targetId ? (
+                    <Link
+                      to={`/targets/${t.targetId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-sm font-medium text-astro-accent hover:underline"
+                    >
+                      {t.targetName ?? t.folderName}
+                    </Link>
+                  ) : (
+                    <span className="text-sm font-medium text-astro-text">{t.folderName}</span>
+                  )}
                 </div>
                 <div className="flex gap-4 text-xs text-astro-muted">
                   <span>{t.totalFiles} files</span>

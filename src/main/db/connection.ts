@@ -51,7 +51,7 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'raw_captured',
+      workflow_stage TEXT NOT NULL DEFAULT 'not_observed',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
       notes TEXT,
@@ -302,6 +302,7 @@ function runMigrations(sqlite: Database.Database): void {
 
     -- Default workflow stages
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
+      ('ws-00', 'not_observed', 0, 1),
       ('ws-04', 'raw_captured', 1, 1),
       ('ws-05', 'calibrated', 2, 1),
       ('ws-06', 'registered', 3, 1),
@@ -357,8 +358,32 @@ function runMigrations(sqlite: Database.Database): void {
 
   // Migration: remove old workflow stages and update targets that used them
   sqlite.exec(`
-    UPDATE targets SET workflow_stage = 'raw_captured' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
+    UPDATE targets SET workflow_stage = 'not_observed' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
     DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
+  `)
+
+  // Migration: reset raw_captured targets with no FITS data back to not_observed
+  sqlite.exec(`
+    UPDATE targets SET workflow_stage = 'not_observed'
+    WHERE workflow_stage = 'raw_captured'
+    AND id NOT IN (SELECT DISTINCT target_id FROM fits_files WHERE target_id IS NOT NULL);
+  `)
+
+  // Migration: add target_home_data table
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS target_home_data (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      raw_files INTEGER NOT NULL DEFAULT 0,
+      stacked_files INTEGER NOT NULL DEFAULT 0,
+      tif_files INTEGER NOT NULL DEFAULT 0,
+      image_files INTEGER NOT NULL DEFAULT 0,
+      raw_path TEXT,
+      stacked_path TEXT,
+      tif_path TEXT,
+      images_path TEXT,
+      suggested_stage TEXT,
+      scanned_at TEXT NOT NULL
+    );
   `)
 
   // Migration: add quality columns to fits_files
@@ -373,6 +398,29 @@ function runMigrations(sqlite: Database.Database): void {
       ALTER TABLE fits_files ADD COLUMN quality_flag TEXT;
     `)
   }
+}
+
+export function resetDatabase(): { cleared: boolean } {
+  if (!sqlite) throw new Error('Database not initialized')
+  sqlite.exec(`
+    DELETE FROM fits_headers;
+    DELETE FROM fits_thumbnails;
+    DELETE FROM fits_files;
+    DELETE FROM fits_scans;
+    DELETE FROM target_home_data;
+    DELETE FROM workflow_transitions;
+    DELETE FROM session_targets;
+    DELETE FROM session_equipment;
+    DELETE FROM observation_sessions;
+    DELETE FROM collection_memberships;
+    DELETE FROM catalogue_entries;
+    DELETE FROM target_aliases;
+    DELETE FROM target_relationships;
+    DELETE FROM storage_snapshots;
+    DELETE FROM targets;
+  `)
+  sqlite.exec('VACUUM')
+  return { cleared: true }
 }
 
 export function createTestDatabase(): { db: ReturnType<typeof drizzle>; sqlite: Database.Database } {

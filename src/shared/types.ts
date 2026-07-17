@@ -417,6 +417,8 @@ export interface FitsScanAggregates {
 
 export interface FitsTargetSummary {
   folderName: string
+  targetId: string | null
+  targetName: string | null
   totalFiles: number
   totalSizeBytes: number
   totalExposureSec: number
@@ -517,6 +519,59 @@ export interface HomeScanResult {
   rawScanned: boolean
   created: number
   advanced: number
+}
+
+export interface TargetHomeData {
+  targetId: string
+  rawFiles: number
+  stackedFiles: number
+  tifFiles: number
+  imageFiles: number
+  rawPath: string | null
+  stackedPath: string | null
+  tifPath: string | null
+  imagesPath: string | null
+  suggestedStage: string
+  scannedAt: string
+}
+
+export interface StackedFileDetail {
+  fileName: string
+  filter: string | null
+  totalExposureSec: number | null
+  ncombine: number | null
+  software: string | null
+  dateObs: string | null
+  fileSizeBytes: number
+  sessionFolder: string | null
+}
+
+export interface TargetObservationData {
+  totalFiles: number
+  totalExposureSec: number
+  totalSizeBytes: number
+  filters: string[]
+  sessions: string[]
+  stackedCount: number
+  individualCount: number
+  exposureByFilter: Record<string, number>
+  filesBySession: Record<string, number>
+  filesByImageType: Record<string, number>
+  filesByFolder: Record<string, number>
+  stackedDetails: StackedFileDetail[]
+  firstObserved: string | null
+  lastObserved: string | null
+}
+
+export interface HomeScanProgress {
+  status: 'idle' | 'scanning' | 'done' | 'error'
+  phase: string
+  currentTarget: string | null
+  targetsFound: number
+  targetsProcessed: number
+  totalTargets: number
+  result: HomeScanResult | null
+  error: string | null
 }
 
 export interface CalibrationGroup {

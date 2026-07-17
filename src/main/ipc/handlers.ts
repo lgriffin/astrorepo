@@ -1,4 +1,4 @@
-import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron'
+import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
 import { ZodError, type ZodType } from 'zod'
 import { schemas, type Channel } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
@@ -11,7 +11,7 @@ import { createObservatory, listObservatories, setPrimaryObservatory } from '../
 import { getVisibility, getTonightTargets } from '../services/ephemeris'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
-import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats } from '../services/fits-analyzer'
+import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats, getTargetObservationData } from '../services/fits-analyzer'
 import { linkFitsFilesToTargets, manualLinkFile, unlinkFile, getLinkingStatus, getUnlinkedFiles } from '../services/fits-linker'
 import { getOrCreateThumbnail } from '../services/thumbnail'
 import { previewAutoSessions, generateSessions, getAutoSessionStatus } from '../services/session-generator'
@@ -19,7 +19,8 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
-import { scanHomeFolder, getHomeStatus, prepForSiril } from '../services/home-scanner'
+import { scanHomeFolder, getHomeStatus, prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { resetDatabase } from '../db/connection'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -409,13 +410,44 @@ export function registerIpcHandlers(): void {
     return getHomeStatus()
   })
 
+  handle('home:scan-start', async () => {
+    const homePath = getSetting('home_folder_path')
+    if (!homePath) return { started: false, reason: 'Home folder not configured' }
+    return startHomeScan(homePath)
+  })
+
+  handle('home:scan-progress', async () => {
+    return getHomeScanProgress()
+  })
+
   handle('home:prep-siril', validated('home:prep-siril', (args) => {
     return prepForSiril(args.raw_path)
+  }))
+
+  handle('home:open-folder', validated('home:open-folder', async (args) => {
+    const result = await shell.openPath(args.folder_path)
+    return { success: !result, error: result || undefined }
+  }))
+
+  handle('home:target-data', validated('home:target-data', (args) => {
+    return getTargetHomeData(args.target_id)
+  }))
+
+  handle('targets:observation-data', validated('targets:observation-data', (args) => {
+    return getTargetObservationData(args.target_id)
   }))
 
   handle('targets:get-thumbnail', validated('targets:get-thumbnail', (args) => {
     return getTargetThumbnail(args.id)
   }))
+
+  handle('targets:images', validated('targets:images', (args) => {
+    return { images: getTargetImages(args.id) }
+  }))
+
+  handle('db:reset', async () => {
+    return resetDatabase()
+  })
 }
 
 export function getRegisteredChannels(): string[] {
