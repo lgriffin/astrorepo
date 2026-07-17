@@ -8,7 +8,8 @@ import fs from 'fs'
 import path from 'path'
 import type {
   FitsScan, FitsScanSummary, FitsFileSummary, FitsFileDetail,
-  FitsHeaderRow, FitsScanAggregates, FitsTargetSummary, TargetObservationData
+  FitsHeaderRow, FitsScanAggregates, FitsTargetSummary, TargetObservationData,
+  StackedFileDetail
 } from '@shared/types'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
@@ -598,18 +599,51 @@ function computeAggregates(sqlite: ReturnType<typeof getSqlite>, where: string, 
   }
 }
 
-function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId: string): void {
-  const folderRows = sqlite.prepare(
-    'SELECT DISTINCT folder_name FROM fits_files WHERE scan_id = ? AND folder_name IS NOT NULL'
-  ).all(scanId) as Array<{ folder_name: string }>
+const ASTRO_NAME_PATTERNS = [
+  /^M\s*\d+/i,
+  /^NGC\s*\d+/i,
+  /^IC\s*\d+/i,
+  /^Sh2[\s-]*\d+/i,
+  /^Abell\s*\d+/i,
+  /^PGC\s*\d+/i,
+  /^UGC\s*\d+/i,
+  /^Ced\s*\d+/i,
+  /^vdB\s*\d+/i,
+  /^LDN\s*\d+/i,
+  /^LBN\s*\d+/i,
+  /^B\s*\d+$/i,
+  /^Cr\s*\d+/i,
+  /^Mel\s*\d+/i,
+  /^Pal\s*\d+/i,
+  /^Stock\s*\d+/i,
+  /^Tr\s*\d+/i,
+  /^Mrk\s*\d+/i,
+  /^HCG\s*\d+/i,
+  /^Arp\s*\d+/i,
+  /^C\s*\d+$/i,
+]
 
+function isAstronomicalName(name: string): boolean {
+  const trimmed = name.trim()
+  return ASTRO_NAME_PATTERNS.some(p => p.test(trimmed))
+}
+
+function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId: string): void {
   const objectRows = sqlite.prepare(
     'SELECT DISTINCT object_name FROM fits_files WHERE scan_id = ? AND object_name IS NOT NULL'
   ).all(scanId) as Array<{ object_name: string }>
 
+  const folderRows = sqlite.prepare(
+    'SELECT DISTINCT folder_name FROM fits_files WHERE scan_id = ? AND folder_name IS NOT NULL'
+  ).all(scanId) as Array<{ folder_name: string }>
+
   const candidateNames = new Set<string>()
-  for (const r of folderRows) candidateNames.add(r.folder_name)
-  for (const r of objectRows) candidateNames.add(r.object_name)
+  for (const r of objectRows) {
+    if (isAstronomicalName(r.object_name)) candidateNames.add(r.object_name)
+  }
+  for (const r of folderRows) {
+    if (isAstronomicalName(r.folder_name)) candidateNames.add(r.folder_name)
+  }
 
   const existingTargets = sqlite.prepare('SELECT canonical_name FROM targets').all() as Array<{ canonical_name: string }>
   const existingAliases = sqlite.prepare('SELECT alias FROM target_aliases').all() as Array<{ alias: string }>
@@ -635,8 +669,38 @@ function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId:
   }
 }
 
+function buildObsFilter(targetId: string): { where: string; params: string[] } {
+  const sqlite = getSqlite()
+
+  const linked = sqlite.prepare(
+    'SELECT COUNT(*) as cnt FROM fits_files WHERE target_id = ?'
+  ).get(targetId) as { cnt: number }
+
+  if (linked.cnt > 0) {
+    return { where: 'target_id = ?', params: [targetId] }
+  }
+
+  const target = sqlite.prepare(
+    'SELECT canonical_name FROM targets WHERE id = ?'
+  ).get(targetId) as { canonical_name: string } | undefined
+  if (!target) return { where: 'target_id = ?', params: [targetId] }
+
+  const names = [target.canonical_name]
+  const aliases = sqlite.prepare(
+    'SELECT alias FROM target_aliases WHERE target_id = ?'
+  ).all(targetId) as Array<{ alias: string }>
+  for (const a of aliases) names.push(a.alias)
+
+  const placeholders = names.map(() => '?').join(', ')
+  return {
+    where: `(folder_name IN (${placeholders}) OR object_name IN (${placeholders}))`,
+    params: [...names, ...names]
+  }
+}
+
 export function getTargetObservationData(targetId: string): TargetObservationData | null {
   const sqlite = getSqlite()
+  const { where, params } = buildObsFilter(targetId)
 
   const stats = sqlite.prepare(
     `SELECT
@@ -647,32 +711,67 @@ export function getTargetObservationData(targetId: string): TargetObservationDat
        SUM(CASE WHEN is_stacked = 0 THEN 1 ELSE 0 END) as individual_count,
        MIN(date_obs) as first_observed,
        MAX(date_obs) as last_observed
-     FROM fits_files WHERE target_id = ?`
-  ).get(targetId) as Record<string, number | string | null>
+     FROM fits_files WHERE ${where}`
+  ).get(...params) as Record<string, number | string | null>
 
   if (!stats || stats.total_files === 0) return null
 
   const sessions = sqlite.prepare(
-    `SELECT DISTINCT session_folder FROM fits_files WHERE target_id = ? AND session_folder IS NOT NULL ORDER BY session_folder`
-  ).all(targetId) as Array<{ session_folder: string }>
+    `SELECT DISTINCT session_folder FROM fits_files WHERE ${where} AND session_folder IS NOT NULL ORDER BY session_folder`
+  ).all(...params) as Array<{ session_folder: string }>
 
   const filters = sqlite.prepare(
-    `SELECT DISTINCT filter FROM fits_files WHERE target_id = ? AND filter IS NOT NULL`
-  ).all(targetId) as Array<{ filter: string }>
+    `SELECT DISTINCT filter FROM fits_files WHERE ${where} AND filter IS NOT NULL`
+  ).all(...params) as Array<{ filter: string }>
 
   const expByFilter = sqlite.prepare(
-    `SELECT filter, COALESCE(SUM(exposure_sec), 0) as total FROM fits_files WHERE target_id = ? AND filter IS NOT NULL GROUP BY filter`
-  ).all(targetId) as Array<{ filter: string; total: number }>
+    `SELECT filter, COALESCE(SUM(exposure_sec), 0) as total FROM fits_files WHERE ${where} AND filter IS NOT NULL GROUP BY filter`
+  ).all(...params) as Array<{ filter: string; total: number }>
 
   const filesBySession = sqlite.prepare(
-    `SELECT session_folder, COUNT(*) as cnt FROM fits_files WHERE target_id = ? AND session_folder IS NOT NULL GROUP BY session_folder`
-  ).all(targetId) as Array<{ session_folder: string; cnt: number }>
+    `SELECT session_folder, COUNT(*) as cnt FROM fits_files WHERE ${where} AND session_folder IS NOT NULL GROUP BY session_folder`
+  ).all(...params) as Array<{ session_folder: string; cnt: number }>
+
+  const imageTypeRows = sqlite.prepare(
+    `SELECT COALESCE(image_type, 'unknown') as image_type, COUNT(*) as cnt FROM fits_files WHERE ${where} GROUP BY COALESCE(image_type, 'unknown')`
+  ).all(...params) as Array<{ image_type: string; cnt: number }>
+
+  const folderRows = sqlite.prepare(
+    `SELECT COALESCE(session_folder, '(root)') as folder, COUNT(*) as cnt FROM fits_files WHERE ${where} GROUP BY COALESCE(session_folder, '(root)')`
+  ).all(...params) as Array<{ folder: string; cnt: number }>
+
+  const stackedRows = sqlite.prepare(
+    `SELECT file_name, filter, total_exposure, ncombine, software, date_obs, file_size_bytes, session_folder
+     FROM fits_files WHERE ${where} AND is_stacked = 1
+     ORDER BY date_obs DESC`
+  ).all(...params) as Array<{
+    file_name: string; filter: string | null; total_exposure: number | null;
+    ncombine: number | null; software: string | null; date_obs: string | null;
+    file_size_bytes: number; session_folder: string | null
+  }>
 
   const exposureByFilter: Record<string, number> = {}
   for (const r of expByFilter) exposureByFilter[r.filter] = r.total
 
   const filesBySessionMap: Record<string, number> = {}
   for (const r of filesBySession) filesBySessionMap[r.session_folder] = r.cnt
+
+  const filesByImageType: Record<string, number> = {}
+  for (const r of imageTypeRows) filesByImageType[r.image_type] = r.cnt
+
+  const filesByFolder: Record<string, number> = {}
+  for (const r of folderRows) filesByFolder[r.folder] = r.cnt
+
+  const stackedDetails: StackedFileDetail[] = stackedRows.map(r => ({
+    fileName: r.file_name,
+    filter: r.filter,
+    totalExposureSec: r.total_exposure,
+    ncombine: r.ncombine,
+    software: r.software,
+    dateObs: r.date_obs,
+    fileSizeBytes: r.file_size_bytes,
+    sessionFolder: r.session_folder
+  }))
 
   return {
     totalFiles: stats.total_files as number,
@@ -684,6 +783,9 @@ export function getTargetObservationData(targetId: string): TargetObservationDat
     individualCount: stats.individual_count as number,
     exposureByFilter,
     filesBySession: filesBySessionMap,
+    filesByImageType,
+    filesByFolder,
+    stackedDetails,
     firstObserved: stats.first_observed as string | null,
     lastObserved: stats.last_observed as string | null
   }

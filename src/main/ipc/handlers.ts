@@ -19,7 +19,8 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
-import { scanHomeFolder, getHomeStatus, prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData } from '../services/home-scanner'
+import { scanHomeFolder, getHomeStatus, prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { resetDatabase } from '../db/connection'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -439,6 +440,14 @@ export function registerIpcHandlers(): void {
   handle('targets:get-thumbnail', validated('targets:get-thumbnail', (args) => {
     return getTargetThumbnail(args.id)
   }))
+
+  handle('targets:images', validated('targets:images', (args) => {
+    return { images: getTargetImages(args.id) }
+  }))
+
+  handle('db:reset', async () => {
+    return resetDatabase()
+  })
 }
 
 export function getRegisteredChannels(): string[] {

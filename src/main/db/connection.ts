@@ -400,6 +400,29 @@ function runMigrations(sqlite: Database.Database): void {
   }
 }
 
+export function resetDatabase(): { cleared: boolean } {
+  if (!sqlite) throw new Error('Database not initialized')
+  sqlite.exec(`
+    DELETE FROM fits_headers;
+    DELETE FROM fits_thumbnails;
+    DELETE FROM fits_files;
+    DELETE FROM fits_scans;
+    DELETE FROM target_home_data;
+    DELETE FROM workflow_transitions;
+    DELETE FROM session_targets;
+    DELETE FROM session_equipment;
+    DELETE FROM observation_sessions;
+    DELETE FROM collection_memberships;
+    DELETE FROM catalogue_entries;
+    DELETE FROM target_aliases;
+    DELETE FROM target_relationships;
+    DELETE FROM storage_snapshots;
+    DELETE FROM targets;
+  `)
+  sqlite.exec('VACUUM')
+  return { cleared: true }
+}
+
 export function createTestDatabase(): { db: ReturnType<typeof drizzle>; sqlite: Database.Database } {
   const testSqlite = new Database(':memory:')
   testSqlite.pragma('journal_mode = WAL')

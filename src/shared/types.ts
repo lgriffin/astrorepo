@@ -535,6 +535,17 @@ export interface TargetHomeData {
   scannedAt: string
 }
 
+export interface StackedFileDetail {
+  fileName: string
+  filter: string | null
+  totalExposureSec: number | null
+  ncombine: number | null
+  software: string | null
+  dateObs: string | null
+  fileSizeBytes: number
+  sessionFolder: string | null
+}
+
 export interface TargetObservationData {
   totalFiles: number
   totalExposureSec: number
@@ -545,6 +556,9 @@ export interface TargetObservationData {
   individualCount: number
   exposureByFilter: Record<string, number>
   filesBySession: Record<string, number>
+  filesByImageType: Record<string, number>
+  filesByFolder: Record<string, number>
+  stackedDetails: StackedFileDetail[]
   firstObserved: string | null
   lastObserved: string | null
 }

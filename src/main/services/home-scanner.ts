@@ -205,6 +205,9 @@ function processTarget(
   if (imageInfo) {
     thumbnailPath = findFirstImage(imageInfo.folderPath)
   }
+  if (!thumbnailPath && tifInfo) {
+    thumbnailPath = findFirstImage(tifInfo.folderPath)
+  }
 
   const entry: HomeFolderTarget = {
     targetName: target.canonical_name,
@@ -265,7 +268,6 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
 
   setImmediate(() => {
     try {
-      const targetLookup = buildTargetLookup()
       const result: HomeScanResult = {
         homePath,
         targets: [],
@@ -278,6 +280,27 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
       const stackedDir = path.join(homePath, 'stacked')
       const tifDir = path.join(homePath, 'tif')
       const imagesDir = path.join(homePath, 'images')
+
+      scanState.phase = 'Ingesting FITS metadata (raw)'
+      if (fs.existsSync(rawDir)) {
+        try {
+          startFolderScan(rawDir)
+          result.rawScanned = true
+        } catch (scanErr) {
+          console.error('FITS scan of raw folder failed:', scanErr)
+        }
+      }
+
+      scanState.phase = 'Ingesting FITS metadata (stacked)'
+      if (fs.existsSync(stackedDir)) {
+        try {
+          startFolderScan(stackedDir)
+        } catch (scanErr) {
+          console.error('FITS scan of stacked folder failed:', scanErr)
+        }
+      }
+
+      const targetLookup = buildTargetLookup()
 
       scanState.phase = 'Scanning raw folder'
       const rawTargets = new Map<string, { targetId: string; folderPath: string }>()
@@ -315,16 +338,6 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
         if (batchEnd < ids.length) {
           setImmediate(() => processChunked(ids, batchEnd))
         } else {
-          scanState.phase = 'Ingesting FITS metadata'
-          if (fs.existsSync(rawDir)) {
-            try {
-              startFolderScan(rawDir)
-              result.rawScanned = true
-            } catch {
-              // scan may fail if no FITS files found
-            }
-          }
-
           scanState.status = 'done'
           scanState.phase = 'Complete'
           scanState.result = result
@@ -384,8 +397,53 @@ export function getTargetHomeData(targetId: string): TargetHomeData | null {
   }
 }
 
+function collectImages(dir: string): string[] {
+  if (!fs.existsSync(dir)) return []
+  const images: string[] = []
+  function walk(d: string): void {
+    let entries: fs.Dirent[]
+    try {
+      entries = fs.readdirSync(d, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const full = path.join(d, entry.name)
+      if (entry.isDirectory()) {
+        walk(full)
+      } else if (entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        images.push(full)
+      }
+    }
+  }
+  walk(dir)
+  return images
+}
+
+export function getTargetImages(targetId: string): Array<{ path: string; data: string; mime: string }> {
+  const sqlite = getSqlite()
+  const homeData = sqlite.prepare('SELECT tif_path, images_path FROM target_home_data WHERE target_id = ?').get(targetId) as {
+    tif_path: string | null; images_path: string | null
+  } | undefined
+  if (!homeData) return []
+
+  const allPaths: string[] = []
+  if (homeData.tif_path) allPaths.push(...collectImages(homeData.tif_path))
+  if (homeData.images_path) allPaths.push(...collectImages(homeData.images_path))
+
+  return allPaths.slice(0, 20).map(p => {
+    try {
+      const buf = fs.readFileSync(p)
+      const ext = path.extname(p).toLowerCase()
+      const mime = ext === '.png' ? 'image/png' : ext === '.tif' || ext === '.tiff' ? 'image/tiff' : 'image/jpeg'
+      return { path: p, data: buf.toString('base64'), mime }
+    } catch {
+      return null
+    }
+  }).filter((x): x is { path: string; data: string; mime: string } => x !== null)
+}
+
 export function scanHomeFolder(homePath: string): HomeScanResult {
-  const targetLookup = buildTargetLookup()
   const result: HomeScanResult = {
     homePath,
     targets: [],
@@ -398,6 +456,25 @@ export function scanHomeFolder(homePath: string): HomeScanResult {
   const stackedDir = path.join(homePath, 'stacked')
   const tifDir = path.join(homePath, 'tif')
   const imagesDir = path.join(homePath, 'images')
+
+  if (fs.existsSync(rawDir)) {
+    try {
+      startFolderScan(rawDir)
+      result.rawScanned = true
+    } catch (scanErr) {
+      console.error('FITS scan of raw folder failed:', scanErr)
+    }
+  }
+
+  if (fs.existsSync(stackedDir)) {
+    try {
+      startFolderScan(stackedDir)
+    } catch (scanErr) {
+      console.error('FITS scan of stacked folder failed:', scanErr)
+    }
+  }
+
+  const targetLookup = buildTargetLookup()
 
   const rawTargets = new Map<string, { targetId: string; folderPath: string }>()
   const stackedTargets = new Map<string, { targetId: string; folderPath: string }>()
@@ -418,15 +495,6 @@ export function scanHomeFolder(homePath: string): HomeScanResult {
 
   for (const targetId of allTargetIds) {
     processTarget(targetId, rawTargets, stackedTargets, tifTargets, imageTargets, result)
-  }
-
-  if (fs.existsSync(rawDir)) {
-    try {
-      startFolderScan(rawDir)
-      result.rawScanned = true
-    } catch {
-      // scan may fail if no FITS files found
-    }
   }
 
   return result

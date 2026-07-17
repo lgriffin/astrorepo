@@ -34,6 +34,8 @@ export function Settings(): React.ReactElement {
   const [scanProgress, setScanProgress] = useState<HomeScanProgress | null>(null)
   const [scanResult, setScanResult] = useState<HomeScanResult | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetStatus, setResetStatus] = useState<string | null>(null)
 
   useEffect(() => {
     loadSettings()
@@ -209,6 +211,51 @@ export function Settings(): React.ReactElement {
             )}
           </div>
         )}
+        <div className="bg-astro-surface border border-red-500/30 rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Danger Zone</h2>
+          <p className="text-xs text-astro-muted mb-4">
+            Clear all targets, FITS scans, sessions, and scan data from the local database. Folder settings are preserved. Your actual files on disk are not affected.
+          </p>
+
+          {!showResetConfirm ? (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="px-4 py-2 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-500/10 transition-colors"
+            >
+              Clear Database
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-red-400">Are you sure? This cannot be undone.</span>
+              <button
+                onClick={async () => {
+                  try {
+                    await invoke('db:reset')
+                    setResetStatus('Database cleared successfully. Re-run a scan to repopulate.')
+                    setScanResult(null)
+                    setScanProgress(null)
+                  } catch {
+                    setResetStatus('Failed to clear database.')
+                  }
+                  setShowResetConfirm(false)
+                }}
+                className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+              >
+                Yes, clear everything
+              </button>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 border border-astro-border text-astro-muted text-sm rounded hover:text-astro-text transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {resetStatus && (
+            <p className="text-xs text-astro-muted mt-3">{resetStatus}</p>
+          )}
+        </div>
       </div>
     </PageContainer>
   )

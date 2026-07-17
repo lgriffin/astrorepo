@@ -266,7 +266,9 @@ export const schemas = {
   'home:open-folder': z.object({ folder_path: z.string().min(1) }),
   'home:target-data': z.object({ target_id: z.string().min(1) }),
   'targets:observation-data': z.object({ target_id: z.string().min(1) }),
-  'targets:get-thumbnail': z.object({ id: z.string().min(1) })
+  'targets:get-thumbnail': z.object({ id: z.string().min(1) }),
+  'targets:images': z.object({ id: z.string().min(1) }),
+  'db:reset': z.object({}).optional()
 } as const
 
 export type SchemaMap = typeof schemas

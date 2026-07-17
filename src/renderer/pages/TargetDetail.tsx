@@ -172,6 +172,13 @@ function formatSize(bytes: number): string {
 }
 
 function ObservationDataSection({ data }: { data: TargetObservationData }): React.ReactElement {
+  const imageTypes = data.filesByImageType ?? {}
+  const lights = imageTypes['Light'] ?? imageTypes['light'] ?? imageTypes['LIGHT'] ?? 0
+  const darks = imageTypes['Dark'] ?? imageTypes['dark'] ?? imageTypes['DARK'] ?? 0
+  const flats = imageTypes['Flat'] ?? imageTypes['flat'] ?? imageTypes['FLAT'] ?? 0
+  const biases = imageTypes['Bias'] ?? imageTypes['bias'] ?? imageTypes['BIAS'] ?? 0
+  const folders = data.filesByFolder ?? {}
+
   return (
     <Section title="Observation Data">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -193,6 +200,44 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
         </div>
       </div>
 
+      <div className="mb-4">
+        <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Frame Breakdown</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="flex justify-between text-sm px-2 py-1 bg-astro-bg border border-astro-border rounded">
+            <span className="text-astro-text">Lights</span>
+            <span className="text-astro-muted font-medium">{lights}</span>
+          </div>
+          <div className="flex justify-between text-sm px-2 py-1 bg-astro-bg border border-astro-border rounded">
+            <span className="text-astro-text">Darks</span>
+            <span className="text-astro-muted font-medium">{darks}</span>
+          </div>
+          <div className="flex justify-between text-sm px-2 py-1 bg-astro-bg border border-astro-border rounded">
+            <span className="text-astro-text">Flats</span>
+            <span className="text-astro-muted font-medium">{flats}</span>
+          </div>
+          <div className="flex justify-between text-sm px-2 py-1 bg-astro-bg border border-astro-border rounded">
+            <span className="text-astro-text">Biases</span>
+            <span className="text-astro-muted font-medium">{biases}</span>
+          </div>
+        </div>
+      </div>
+
+      {Object.keys(folders).length > 0 && (
+        <div className="mb-3">
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Folders</h4>
+          <div className="space-y-1">
+            {Object.entries(folders)
+              .sort(([, a], [, b]) => b - a)
+              .map(([folder, count]) => (
+                <div key={folder} className="flex justify-between text-sm">
+                  <span className="text-astro-text font-mono">{folder}</span>
+                  <span className="text-astro-muted">{count} files</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {data.firstObserved && (
         <div className="flex gap-4 text-xs text-astro-muted mb-3">
           <span>First: {data.firstObserved.split('T')[0]}</span>
@@ -212,6 +257,29 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
                   <span className="text-astro-muted">{formatExposure(secs)}</span>
                 </div>
               ))}
+          </div>
+        </div>
+      )}
+
+      {data.stackedDetails && data.stackedDetails.length > 0 && (
+        <div className="mb-3">
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">
+            Stacked / Processed ({data.stackedDetails.length})
+          </h4>
+          <div className="space-y-2">
+            {data.stackedDetails.map((s, i) => (
+              <div key={i} className="bg-astro-bg border border-astro-accent/20 rounded p-2">
+                <p className="text-sm text-astro-text font-medium truncate">{s.fileName}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-xs text-astro-muted">
+                  {s.filter && <span>Filter: {s.filter}</span>}
+                  {s.ncombine && <span>{s.ncombine} frames combined</span>}
+                  {s.totalExposureSec != null && <span>Integration: {formatExposure(s.totalExposureSec)}</span>}
+                  {s.software && <span>Software: {s.software}</span>}
+                  {s.dateObs && <span>Date: {s.dateObs.split('T')[0]}</span>}
+                  <span>{formatSize(s.fileSizeBytes)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -313,25 +381,70 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
 }
 
 function ThumbnailSection({ targetId, targetName }: { targetId: string; targetName: string }): React.ReactElement | null {
-  const [thumbnail, setThumbnail] = useState<{ data: string; mime: string } | null>(null)
+  const [images, setImages] = useState<Array<{ path: string; data: string; mime: string }>>([])
+  const [fallback, setFallback] = useState<{ data: string; mime: string } | null>(null)
+  const [current, setCurrent] = useState(0)
 
   useEffect(() => {
-    invoke<{ data: string | null; mime?: string }>('targets:get-thumbnail', { id: targetId })
+    invoke<{ images: Array<{ path: string; data: string; mime: string }> }>('targets:images', { id: targetId })
       .then(r => {
-        if (r.data) setThumbnail({ data: r.data, mime: r.mime ?? 'image/jpeg' })
+        if (r.images.length > 0) {
+          setImages(r.images)
+        } else {
+          invoke<{ data: string | null; mime?: string }>('targets:get-thumbnail', { id: targetId })
+            .then(tr => { if (tr.data) setFallback({ data: tr.data, mime: tr.mime ?? 'image/jpeg' }) })
+            .catch(() => {})
+        }
       })
       .catch(() => {})
   }, [targetId])
 
-  if (!thumbnail) return null
+  if (images.length === 0 && !fallback) return null
+
+  if (images.length === 0 && fallback) {
+    return (
+      <Section title="Image">
+        <img src={`data:${fallback.mime};base64,${fallback.data}`} alt={targetName} className="w-full rounded-lg" />
+      </Section>
+    )
+  }
+
+  const img = images[current]
+  const fileName = img.path.split(/[\\/]/).pop() ?? ''
 
   return (
-    <Section title="Image">
-      <img
-        src={`data:${thumbnail.mime};base64,${thumbnail.data}`}
-        alt={targetName}
-        className="w-full rounded-lg"
-      />
+    <Section title={`Images (${current + 1}/${images.length})`}>
+      <div className="relative">
+        <img src={`data:${img.mime};base64,${img.data}`} alt={targetName} className="w-full rounded-lg" />
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={() => setCurrent((current - 1 + images.length) % images.length)}
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 text-sm"
+            >
+              &lsaquo;
+            </button>
+            <button
+              onClick={() => setCurrent((current + 1) % images.length)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 text-sm"
+            >
+              &rsaquo;
+            </button>
+          </>
+        )}
+      </div>
+      <p className="text-[10px] text-astro-muted mt-1.5 truncate">{fileName}</p>
+      {images.length > 1 && (
+        <div className="flex justify-center gap-1 mt-1.5">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`w-1.5 h-1.5 rounded-full transition-colors ${i === current ? 'bg-astro-accent' : 'bg-astro-border'}`}
+            />
+          ))}
+        </div>
+      )}
     </Section>
   )
 }
