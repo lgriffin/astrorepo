@@ -361,6 +361,23 @@ function runMigrations(sqlite: Database.Database): void {
     DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
   `)
 
+  // Migration: add target_home_data table
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS target_home_data (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      raw_files INTEGER NOT NULL DEFAULT 0,
+      stacked_files INTEGER NOT NULL DEFAULT 0,
+      tif_files INTEGER NOT NULL DEFAULT 0,
+      image_files INTEGER NOT NULL DEFAULT 0,
+      raw_path TEXT,
+      stacked_path TEXT,
+      tif_path TEXT,
+      images_path TEXT,
+      suggested_stage TEXT,
+      scanned_at TEXT NOT NULL
+    );
+  `)
+
   // Migration: add quality columns to fits_files
   const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }
   if (hasFwhm.cnt === 0) {

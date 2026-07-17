@@ -519,6 +519,31 @@ export interface HomeScanResult {
   advanced: number
 }
 
+export interface TargetHomeData {
+  targetId: string
+  rawFiles: number
+  stackedFiles: number
+  tifFiles: number
+  imageFiles: number
+  rawPath: string | null
+  stackedPath: string | null
+  tifPath: string | null
+  imagesPath: string | null
+  suggestedStage: string
+  scannedAt: string
+}
+
+export interface HomeScanProgress {
+  status: 'idle' | 'scanning' | 'done' | 'error'
+  phase: string
+  currentTarget: string | null
+  targetsFound: number
+  targetsProcessed: number
+  totalTargets: number
+  result: HomeScanResult | null
+  error: string | null
+}
+
 export interface CalibrationGroup {
   type: 'dark' | 'flat' | 'bias'
   exposureSec: number | null

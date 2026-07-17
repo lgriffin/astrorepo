@@ -4,13 +4,14 @@ import { PageContainer } from '../components/common/PageContainer'
 import { SessionList } from '../components/session/SessionList'
 import { WorkflowStepper } from '../components/target/WorkflowStepper'
 import { invoke } from '../hooks/useIPC'
-import type { Target, TargetAlias, CatalogueEntry } from '@shared/types'
+import type { Target, TargetAlias, CatalogueEntry, TargetHomeData } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
   const [target, setTarget] = useState<Target | null>(null)
   const [aliases, setAliases] = useState<TargetAlias[]>([])
   const [catalogueEntries, setCatalogueEntries] = useState<CatalogueEntry[]>([])
+  const [homeData, setHomeData] = useState<TargetHomeData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,12 +22,14 @@ export function TargetDetail(): React.ReactElement {
         setTarget(t)
         return Promise.all([
           invoke<TargetAlias[]>('targets:aliases', { target_id: id }).catch(() => []),
-          invoke<CatalogueEntry[]>('targets:catalogue-entries', { target_id: id }).catch(() => [])
+          invoke<CatalogueEntry[]>('targets:catalogue-entries', { target_id: id }).catch(() => []),
+          invoke<TargetHomeData | null>('home:target-data', { target_id: id }).catch(() => null)
         ])
       })
-      .then(([a, c]) => {
+      .then(([a, c, hd]) => {
         setAliases(a)
         setCatalogueEntries(c)
+        setHomeData(hd)
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -71,6 +74,10 @@ export function TargetDetail(): React.ReactElement {
               invoke<Target>('targets:get', { id: target.id }).then((t) => { if (t) setTarget(t) })
             }} />
           </Section>
+
+          {homeData && <HomeFolderSection homeData={homeData} onRefresh={() => {
+            if (id) invoke<TargetHomeData | null>('home:target-data', { target_id: id }).then(setHomeData).catch(() => {})
+          }} />}
 
           <Section title="Details">
             <div className="grid grid-cols-2 gap-4">
@@ -144,6 +151,85 @@ export function TargetDetail(): React.ReactElement {
         </div>
       </div>
     </PageContainer>
+  )
+}
+
+function OpenFolderButton({ folderPath }: { folderPath: string | null }): React.ReactElement | null {
+  if (!folderPath) return null
+  return (
+    <button
+      onClick={() => invoke('home:open-folder', { folder_path: folderPath })}
+      className="p-1 text-astro-muted hover:text-astro-accent transition-colors"
+      title="Open in file explorer"
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+      </svg>
+    </button>
+  )
+}
+
+function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; onRefresh: () => void }): React.ReactElement {
+  const [sirilStatus, setSirilStatus] = useState<string | null>(null)
+
+  async function handlePrepSiril(): Promise<void> {
+    if (!homeData.rawPath) return
+    setSirilStatus('preparing')
+    try {
+      const result = await invoke<{ moved: number; created: string[]; skipped: boolean }>('home:prep-siril', { raw_path: homeData.rawPath })
+      if (result.skipped) {
+        setSirilStatus('Skipped — lights/ already exists')
+      } else {
+        setSirilStatus(`Moved ${result.moved} files, created ${result.created.join(', ')}`)
+      }
+      onRefresh()
+    } catch {
+      setSirilStatus('Failed')
+    }
+  }
+
+  const rows = [
+    { label: 'Raw FITS', count: homeData.rawFiles, path: homeData.rawPath },
+    { label: 'Stacked', count: homeData.stackedFiles, path: homeData.stackedPath },
+    { label: 'TIF', count: homeData.tifFiles, path: homeData.tifPath },
+    { label: 'Images', count: homeData.imageFiles, path: homeData.imagesPath }
+  ]
+
+  return (
+    <Section title="Home Folder">
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between py-1">
+            <span className="text-sm text-astro-muted">{row.label}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-astro-text tabular-nums">
+                {row.count > 0 ? `${row.count} files` : '—'}
+              </span>
+              <OpenFolderButton folderPath={row.path} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {homeData.rawPath && (
+        <div className="mt-3 pt-3 border-t border-astro-border">
+          <button
+            onClick={handlePrepSiril}
+            disabled={sirilStatus === 'preparing'}
+            className="px-3 py-1.5 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50"
+          >
+            Prep for Siril
+          </button>
+          {sirilStatus && sirilStatus !== 'preparing' && (
+            <p className="text-xs text-astro-muted mt-1.5">{sirilStatus}</p>
+          )}
+        </div>
+      )}
+
+      <p className="text-[10px] text-astro-muted mt-3">
+        Last scanned: {new Date(homeData.scannedAt).toLocaleString()}
+      </p>
+    </Section>
   )
 }
 

@@ -1,4 +1,4 @@
-import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron'
+import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
 import { ZodError, type ZodType } from 'zod'
 import { schemas, type Channel } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
@@ -19,7 +19,7 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
-import { scanHomeFolder, getHomeStatus, prepForSiril } from '../services/home-scanner'
+import { scanHomeFolder, getHomeStatus, prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData } from '../services/home-scanner'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -409,8 +409,27 @@ export function registerIpcHandlers(): void {
     return getHomeStatus()
   })
 
+  handle('home:scan-start', async () => {
+    const homePath = getSetting('home_folder_path')
+    if (!homePath) return { started: false, reason: 'Home folder not configured' }
+    return startHomeScan(homePath)
+  })
+
+  handle('home:scan-progress', async () => {
+    return getHomeScanProgress()
+  })
+
   handle('home:prep-siril', validated('home:prep-siril', (args) => {
     return prepForSiril(args.raw_path)
+  }))
+
+  handle('home:open-folder', validated('home:open-folder', async (args) => {
+    const result = await shell.openPath(args.folder_path)
+    return { success: !result, error: result || undefined }
+  }))
+
+  handle('home:target-data', validated('home:target-data', (args) => {
+    return getTargetHomeData(args.target_id)
   }))
 
   handle('targets:get-thumbnail', validated('targets:get-thumbnail', (args) => {
