@@ -417,6 +417,8 @@ export interface FitsScanAggregates {
 
 export interface FitsTargetSummary {
   folderName: string
+  targetId: string | null
+  targetName: string | null
   totalFiles: number
   totalSizeBytes: number
   totalExposureSec: number
@@ -531,6 +533,20 @@ export interface TargetHomeData {
   imagesPath: string | null
   suggestedStage: string
   scannedAt: string
+}
+
+export interface TargetObservationData {
+  totalFiles: number
+  totalExposureSec: number
+  totalSizeBytes: number
+  filters: string[]
+  sessions: string[]
+  stackedCount: number
+  individualCount: number
+  exposureByFilter: Record<string, number>
+  filesBySession: Record<string, number>
+  firstObserved: string | null
+  lastObserved: string | null
 }
 
 export interface HomeScanProgress {

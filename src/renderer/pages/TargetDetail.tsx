@@ -4,7 +4,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { SessionList } from '../components/session/SessionList'
 import { WorkflowStepper } from '../components/target/WorkflowStepper'
 import { invoke } from '../hooks/useIPC'
-import type { Target, TargetAlias, CatalogueEntry, TargetHomeData } from '@shared/types'
+import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -12,6 +12,7 @@ export function TargetDetail(): React.ReactElement {
   const [aliases, setAliases] = useState<TargetAlias[]>([])
   const [catalogueEntries, setCatalogueEntries] = useState<CatalogueEntry[]>([])
   const [homeData, setHomeData] = useState<TargetHomeData | null>(null)
+  const [obsData, setObsData] = useState<TargetObservationData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,13 +24,15 @@ export function TargetDetail(): React.ReactElement {
         return Promise.all([
           invoke<TargetAlias[]>('targets:aliases', { target_id: id }).catch(() => []),
           invoke<CatalogueEntry[]>('targets:catalogue-entries', { target_id: id }).catch(() => []),
-          invoke<TargetHomeData | null>('home:target-data', { target_id: id }).catch(() => null)
+          invoke<TargetHomeData | null>('home:target-data', { target_id: id }).catch(() => null),
+          invoke<TargetObservationData | null>('targets:observation-data', { target_id: id }).catch(() => null)
         ])
       })
-      .then(([a, c, hd]) => {
+      .then(([a, c, hd, od]) => {
         setAliases(a)
         setCatalogueEntries(c)
         setHomeData(hd)
+        setObsData(od)
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -78,6 +81,8 @@ export function TargetDetail(): React.ReactElement {
           {homeData && <HomeFolderSection homeData={homeData} onRefresh={() => {
             if (id) invoke<TargetHomeData | null>('home:target-data', { target_id: id }).then(setHomeData).catch(() => {})
           }} />}
+
+          {obsData && <ObservationDataSection data={obsData} />}
 
           <Section title="Details">
             <div className="grid grid-cols-2 gap-4">
@@ -151,6 +156,80 @@ export function TargetDetail(): React.ReactElement {
         </div>
       </div>
     </PageContainer>
+  )
+}
+
+function formatExposure(sec: number): string {
+  if (sec < 60) return `${sec.toFixed(0)}s`
+  if (sec < 3600) return `${(sec / 60).toFixed(1)}m`
+  return `${(sec / 3600).toFixed(1)}h`
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+function ObservationDataSection({ data }: { data: TargetObservationData }): React.ReactElement {
+  return (
+    <Section title="Observation Data">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="bg-astro-bg border border-astro-border rounded p-2">
+          <p className="text-xs text-astro-muted">FITS Files</p>
+          <p className="text-sm font-bold text-astro-text">{data.totalFiles}</p>
+        </div>
+        <div className="bg-astro-bg border border-astro-border rounded p-2">
+          <p className="text-xs text-astro-muted">Total Exposure</p>
+          <p className="text-sm font-bold text-astro-text">{formatExposure(data.totalExposureSec)}</p>
+        </div>
+        <div className="bg-astro-bg border border-astro-border rounded p-2">
+          <p className="text-xs text-astro-muted">Data Size</p>
+          <p className="text-sm font-bold text-astro-text">{formatSize(data.totalSizeBytes)}</p>
+        </div>
+        <div className="bg-astro-bg border border-astro-border rounded p-2">
+          <p className="text-xs text-astro-muted">Sessions</p>
+          <p className="text-sm font-bold text-astro-text">{data.sessions.length}</p>
+        </div>
+      </div>
+
+      {data.firstObserved && (
+        <div className="flex gap-4 text-xs text-astro-muted mb-3">
+          <span>First: {data.firstObserved.split('T')[0]}</span>
+          {data.lastObserved && <span>Last: {data.lastObserved.split('T')[0]}</span>}
+        </div>
+      )}
+
+      {Object.keys(data.exposureByFilter).length > 0 && (
+        <div className="mb-3">
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Exposure by Filter</h4>
+          <div className="space-y-1">
+            {Object.entries(data.exposureByFilter)
+              .sort(([, a], [, b]) => b - a)
+              .map(([filter, secs]) => (
+                <div key={filter} className="flex justify-between text-sm">
+                  <span className="text-astro-text">{filter}</span>
+                  <span className="text-astro-muted">{formatExposure(secs)}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {data.sessions.length > 0 && (
+        <div>
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Sessions</h4>
+          <div className="space-y-1">
+            {data.sessions.map((s) => (
+              <div key={s} className="flex justify-between text-sm">
+                <span className="text-astro-text">{s}</span>
+                <span className="text-astro-muted">{data.filesBySession[s] ?? 0} files</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Section>
   )
 }
 

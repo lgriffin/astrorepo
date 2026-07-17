@@ -265,6 +265,7 @@ export const schemas = {
   'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
   'home:open-folder': z.object({ folder_path: z.string().min(1) }),
   'home:target-data': z.object({ target_id: z.string().min(1) }),
+  'targets:observation-data': z.object({ target_id: z.string().min(1) }),
   'targets:get-thumbnail': z.object({ id: z.string().min(1) })
 } as const
 

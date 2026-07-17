@@ -12,6 +12,7 @@ const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.tif', '.tiff'])
 const TIF_EXTENSIONS = new Set(['.tif', '.tiff'])
 
 const STAGE_ORDER: Record<string, number> = {
+  not_observed: 0,
   raw_captured: 1,
   calibrated: 2,
   registered: 3,

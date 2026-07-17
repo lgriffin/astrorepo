@@ -2,12 +2,13 @@ import { getSqlite } from '../db/connection'
 import { parseFitsFile } from '../fits/parser'
 import { detectStacking } from '../fits/stacking'
 import { linkFitsFilesToTargets, normalizeCatalogName } from './fits-linker'
+import { advanceStage } from './workflow'
 import { ulid } from 'ulid'
 import fs from 'fs'
 import path from 'path'
 import type {
   FitsScan, FitsScanSummary, FitsFileSummary, FitsFileDetail,
-  FitsHeaderRow, FitsScanAggregates, FitsTargetSummary
+  FitsHeaderRow, FitsScanAggregates, FitsTargetSummary, TargetObservationData
 } from '@shared/types'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
@@ -190,6 +191,7 @@ export function startFolderScan(folderPath: string): FitsScan {
 
     autoCreateTargetsFromScan(sqlite, scanId)
     linkFitsFilesToTargets(scanId)
+    advanceLinkedTargets(sqlite, scanId)
 
     return getScanById(scanId)!
   } catch (err) {
@@ -396,11 +398,22 @@ export function getGlobalAggregates(): FitsScanAggregates {
 export function getTargetSummaries(scanId: string): FitsTargetSummary[] {
   const sqlite = getSqlite()
 
-  const folders = sqlite.prepare(
-    `SELECT DISTINCT folder_name FROM fits_files WHERE scan_id = ? AND folder_name IS NOT NULL ORDER BY folder_name`
-  ).all(scanId) as Array<{ folder_name: string }>
+  const targets = sqlite.prepare(
+    `SELECT DISTINCT f.target_id, t.canonical_name, f.folder_name
+     FROM fits_files f
+     LEFT JOIN targets t ON f.target_id = t.id
+     WHERE f.scan_id = ? AND f.target_id IS NOT NULL
+     ORDER BY t.canonical_name`
+  ).all(scanId) as Array<{ target_id: string; canonical_name: string; folder_name: string }>
 
-  return folders.map((f) => {
+  const seen = new Set<string>()
+  const deduped = targets.filter(t => {
+    if (seen.has(t.target_id)) return false
+    seen.add(t.target_id)
+    return true
+  })
+
+  return deduped.map((t) => {
     const stats = sqlite.prepare(
       `SELECT
          COUNT(*) as total_files,
@@ -408,28 +421,28 @@ export function getTargetSummaries(scanId: string): FitsTargetSummary[] {
          COALESCE(SUM(exposure_sec), 0) as total_exposure,
          SUM(CASE WHEN is_stacked = 1 THEN 1 ELSE 0 END) as stacked_count,
          SUM(CASE WHEN is_stacked = 0 THEN 1 ELSE 0 END) as individual_count
-       FROM fits_files WHERE scan_id = ? AND folder_name = ?`
-    ).get(scanId, f.folder_name) as Record<string, number>
+       FROM fits_files WHERE scan_id = ? AND target_id = ?`
+    ).get(scanId, t.target_id) as Record<string, number>
 
     const sessions = sqlite.prepare(
-      `SELECT DISTINCT session_folder FROM fits_files WHERE scan_id = ? AND folder_name = ? AND session_folder IS NOT NULL ORDER BY session_folder`
-    ).all(scanId, f.folder_name) as Array<{ session_folder: string }>
+      `SELECT DISTINCT session_folder FROM fits_files WHERE scan_id = ? AND target_id = ? AND session_folder IS NOT NULL ORDER BY session_folder`
+    ).all(scanId, t.target_id) as Array<{ session_folder: string }>
 
     const filters = sqlite.prepare(
-      `SELECT DISTINCT filter FROM fits_files WHERE scan_id = ? AND folder_name = ? AND filter IS NOT NULL`
-    ).all(scanId, f.folder_name) as Array<{ filter: string }>
+      `SELECT DISTINCT filter FROM fits_files WHERE scan_id = ? AND target_id = ? AND filter IS NOT NULL`
+    ).all(scanId, t.target_id) as Array<{ filter: string }>
 
     const imageTypes = sqlite.prepare(
-      `SELECT DISTINCT image_type FROM fits_files WHERE scan_id = ? AND folder_name = ? AND image_type IS NOT NULL`
-    ).all(scanId, f.folder_name) as Array<{ image_type: string }>
+      `SELECT DISTINCT image_type FROM fits_files WHERE scan_id = ? AND target_id = ? AND image_type IS NOT NULL`
+    ).all(scanId, t.target_id) as Array<{ image_type: string }>
 
     const expByFilter = sqlite.prepare(
-      `SELECT filter, COALESCE(SUM(exposure_sec), 0) as total FROM fits_files WHERE scan_id = ? AND folder_name = ? AND filter IS NOT NULL GROUP BY filter`
-    ).all(scanId, f.folder_name) as Array<{ filter: string; total: number }>
+      `SELECT filter, COALESCE(SUM(exposure_sec), 0) as total FROM fits_files WHERE scan_id = ? AND target_id = ? AND filter IS NOT NULL GROUP BY filter`
+    ).all(scanId, t.target_id) as Array<{ filter: string; total: number }>
 
     const filesBySession = sqlite.prepare(
-      `SELECT session_folder, COUNT(*) as cnt FROM fits_files WHERE scan_id = ? AND folder_name = ? AND session_folder IS NOT NULL GROUP BY session_folder`
-    ).all(scanId, f.folder_name) as Array<{ session_folder: string; cnt: number }>
+      `SELECT session_folder, COUNT(*) as cnt FROM fits_files WHERE scan_id = ? AND target_id = ? AND session_folder IS NOT NULL GROUP BY session_folder`
+    ).all(scanId, t.target_id) as Array<{ session_folder: string; cnt: number }>
 
     const exposureByFilter: Record<string, number> = {}
     for (const r of expByFilter) exposureByFilter[r.filter] = r.total
@@ -438,7 +451,9 @@ export function getTargetSummaries(scanId: string): FitsTargetSummary[] {
     for (const r of filesBySession) filesBySessionMap[r.session_folder] = r.cnt
 
     return {
-      folderName: f.folder_name,
+      folderName: t.folder_name,
+      targetId: t.target_id,
+      targetName: t.canonical_name,
       totalFiles: stats.total_files,
       totalSizeBytes: stats.total_size,
       totalExposureSec: stats.total_exposure,
@@ -608,7 +623,7 @@ function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId:
     `INSERT OR IGNORE INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
      angular_size_arcmin, constellation, description, simbad_id, ned_id, workflow_stage, is_custom,
      folder_path, notes, created_at, updated_at)
-     VALUES (?, ?, 'unknown', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'raw_captured', 0, NULL, NULL, ?, ?)`
+     VALUES (?, ?, 'unknown', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'not_observed', 0, NULL, NULL, ?, ?)`
   )
 
   for (const name of candidateNames) {
@@ -616,6 +631,73 @@ function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId:
     if (!knownNames.has(normalized)) {
       insertTarget.run(ulid(), name, now, now)
       knownNames.add(normalized)
+    }
+  }
+}
+
+export function getTargetObservationData(targetId: string): TargetObservationData | null {
+  const sqlite = getSqlite()
+
+  const stats = sqlite.prepare(
+    `SELECT
+       COUNT(*) as total_files,
+       COALESCE(SUM(file_size_bytes), 0) as total_size,
+       COALESCE(SUM(exposure_sec), 0) as total_exposure,
+       SUM(CASE WHEN is_stacked = 1 THEN 1 ELSE 0 END) as stacked_count,
+       SUM(CASE WHEN is_stacked = 0 THEN 1 ELSE 0 END) as individual_count,
+       MIN(date_obs) as first_observed,
+       MAX(date_obs) as last_observed
+     FROM fits_files WHERE target_id = ?`
+  ).get(targetId) as Record<string, number | string | null>
+
+  if (!stats || stats.total_files === 0) return null
+
+  const sessions = sqlite.prepare(
+    `SELECT DISTINCT session_folder FROM fits_files WHERE target_id = ? AND session_folder IS NOT NULL ORDER BY session_folder`
+  ).all(targetId) as Array<{ session_folder: string }>
+
+  const filters = sqlite.prepare(
+    `SELECT DISTINCT filter FROM fits_files WHERE target_id = ? AND filter IS NOT NULL`
+  ).all(targetId) as Array<{ filter: string }>
+
+  const expByFilter = sqlite.prepare(
+    `SELECT filter, COALESCE(SUM(exposure_sec), 0) as total FROM fits_files WHERE target_id = ? AND filter IS NOT NULL GROUP BY filter`
+  ).all(targetId) as Array<{ filter: string; total: number }>
+
+  const filesBySession = sqlite.prepare(
+    `SELECT session_folder, COUNT(*) as cnt FROM fits_files WHERE target_id = ? AND session_folder IS NOT NULL GROUP BY session_folder`
+  ).all(targetId) as Array<{ session_folder: string; cnt: number }>
+
+  const exposureByFilter: Record<string, number> = {}
+  for (const r of expByFilter) exposureByFilter[r.filter] = r.total
+
+  const filesBySessionMap: Record<string, number> = {}
+  for (const r of filesBySession) filesBySessionMap[r.session_folder] = r.cnt
+
+  return {
+    totalFiles: stats.total_files as number,
+    totalExposureSec: stats.total_exposure as number,
+    totalSizeBytes: stats.total_size as number,
+    filters: filters.map(r => r.filter),
+    sessions: sessions.map(s => s.session_folder),
+    stackedCount: stats.stacked_count as number,
+    individualCount: stats.individual_count as number,
+    exposureByFilter,
+    filesBySession: filesBySessionMap,
+    firstObserved: stats.first_observed as string | null,
+    lastObserved: stats.last_observed as string | null
+  }
+}
+
+function advanceLinkedTargets(sqlite: ReturnType<typeof getSqlite>, scanId: string): void {
+  const linked = sqlite.prepare(
+    `SELECT DISTINCT target_id FROM fits_files WHERE scan_id = ? AND target_id IS NOT NULL`
+  ).all(scanId) as Array<{ target_id: string }>
+
+  for (const row of linked) {
+    const target = sqlite.prepare('SELECT workflow_stage FROM targets WHERE id = ?').get(row.target_id) as { workflow_stage: string } | undefined
+    if (target && target.workflow_stage === 'not_observed') {
+      advanceStage(row.target_id, 'raw_captured', 'Auto-advanced: FITS data linked')
     }
   }
 }

@@ -51,7 +51,7 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'raw_captured',
+      workflow_stage TEXT NOT NULL DEFAULT 'not_observed',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
       notes TEXT,
@@ -302,6 +302,7 @@ function runMigrations(sqlite: Database.Database): void {
 
     -- Default workflow stages
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
+      ('ws-00', 'not_observed', 0, 1),
       ('ws-04', 'raw_captured', 1, 1),
       ('ws-05', 'calibrated', 2, 1),
       ('ws-06', 'registered', 3, 1),
@@ -357,8 +358,15 @@ function runMigrations(sqlite: Database.Database): void {
 
   // Migration: remove old workflow stages and update targets that used them
   sqlite.exec(`
-    UPDATE targets SET workflow_stage = 'raw_captured' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
+    UPDATE targets SET workflow_stage = 'not_observed' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
     DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
+  `)
+
+  // Migration: reset raw_captured targets with no FITS data back to not_observed
+  sqlite.exec(`
+    UPDATE targets SET workflow_stage = 'not_observed'
+    WHERE workflow_stage = 'raw_captured'
+    AND id NOT IN (SELECT DISTINCT target_id FROM fits_files WHERE target_id IS NOT NULL);
   `)
 
   // Migration: add target_home_data table
