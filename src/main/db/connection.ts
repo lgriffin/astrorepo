@@ -384,6 +384,18 @@ function runMigrations(sqlite: Database.Database): void {
       suggested_stage TEXT,
       scanned_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS target_home_folders (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      folder_type TEXT NOT NULL,
+      subfolder_name TEXT,
+      subfolder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      scanned_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_home_folders_target ON target_home_folders(target_id);
   `)
 
   // Migration: add quality columns to fits_files
@@ -407,6 +419,7 @@ export function resetDatabase(): { cleared: boolean } {
     DELETE FROM fits_thumbnails;
     DELETE FROM fits_files;
     DELETE FROM fits_scans;
+    DELETE FROM target_home_folders;
     DELETE FROM target_home_data;
     DELETE FROM workflow_transitions;
     DELETE FROM session_targets;

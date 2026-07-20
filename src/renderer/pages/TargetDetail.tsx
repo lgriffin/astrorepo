@@ -335,28 +335,58 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
     }
   }
 
-  const rows = [
+  const breakdowns = homeData.folderBreakdowns ?? []
+  const labelMap: Record<string, string> = { raw: 'RAW FITS', stacked: 'STACKED', tif: 'TIF', images: 'IMAGES' }
+
+  const hasBreakdowns = breakdowns.length > 0
+  const fallbackRows = !hasBreakdowns ? [
     { label: 'Raw FITS', count: homeData.rawFiles, path: homeData.rawPath },
     { label: 'Stacked', count: homeData.stackedFiles, path: homeData.stackedPath },
     { label: 'TIF', count: homeData.tifFiles, path: homeData.tifPath },
     { label: 'Images', count: homeData.imageFiles, path: homeData.imagesPath }
-  ]
+  ] : []
 
   return (
     <Section title="Home Folder">
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center justify-between py-1">
-            <span className="text-sm text-astro-muted">{row.label}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-astro-text tabular-nums">
-                {row.count > 0 ? `${row.count} files` : '—'}
-              </span>
-              <OpenFolderButton folderPath={row.path} />
+      {hasBreakdowns ? (
+        <div className="space-y-3">
+          {breakdowns.map((bd) => (
+            <div key={bd.folderType}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-astro-muted font-semibold uppercase tracking-wider">
+                  {labelMap[bd.folderType] ?? bd.folderType} ({bd.totalFiles} files)
+                </span>
+                <OpenFolderButton folderPath={bd.folderPath} />
+              </div>
+              <div className="space-y-0.5 pl-2">
+                {bd.subfolders.map((sf, i) => (
+                  <div key={i} className="flex items-center justify-between py-0.5">
+                    <span className="text-sm text-astro-text font-mono">{sf.name ?? '(root)'}/ </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-astro-muted tabular-nums">{sf.fileCount} files</span>
+                      <OpenFolderButton folderPath={sf.path} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {fallbackRows.map((row) => (
+            <div key={row.label} className="flex items-center justify-between py-1">
+              <span className="text-sm text-astro-muted">{row.label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-astro-text tabular-nums">
+                  {row.count > 0 ? `${row.count} files` : '—'}
+                </span>
+                <OpenFolderButton folderPath={row.path} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {homeData.rawPath && (
         <div className="mt-3 pt-3 border-t border-astro-border">
