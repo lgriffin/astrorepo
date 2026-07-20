@@ -500,6 +500,21 @@ export interface StorageGrowthProjection {
   dataPoints: number
 }
 
+export interface TargetSubfolderDetail {
+  name: string | null
+  path: string
+  fileCount: number
+  totalSizeBytes: number
+}
+
+export interface TargetFolderBreakdown {
+  folderType: 'raw' | 'stacked' | 'tif' | 'images'
+  folderPath: string
+  totalFiles: number
+  totalSizeBytes: number
+  subfolders: TargetSubfolderDetail[]
+}
+
 export interface HomeFolderTarget {
   targetName: string
   targetId: string | null
@@ -507,10 +522,17 @@ export interface HomeFolderTarget {
   stackedFiles: number
   tifFiles: number
   imageFiles: number
+  rawSubfolders: TargetSubfolderDetail[]
+  stackedSubfolders: TargetSubfolderDetail[]
+  tifSubfolders: TargetSubfolderDetail[]
+  imageSubfolders: TargetSubfolderDetail[]
+  rawPath: string | null
+  stackedPath: string | null
+  tifPath: string | null
+  imagesPath: string | null
   currentStage: string
   suggestedStage: string
   thumbnailPath: string | null
-  rawPath: string | null
 }
 
 export interface HomeScanResult {
@@ -533,6 +555,7 @@ export interface TargetHomeData {
   imagesPath: string | null
   suggestedStage: string
   scannedAt: string
+  folderBreakdowns: TargetFolderBreakdown[]
 }
 
 export interface StackedFileDetail {
@@ -563,13 +586,17 @@ export interface TargetObservationData {
   lastObserved: string | null
 }
 
+export interface HomeScanPhaseProgress {
+  name: 'raw' | 'stacked' | 'tif' | 'images'
+  status: 'pending' | 'discovering' | 'scanning_fits' | 'complete'
+  foldersFound: number
+}
+
 export interface HomeScanProgress {
   status: 'idle' | 'scanning' | 'done' | 'error'
-  phase: string
-  currentTarget: string | null
-  targetsFound: number
-  targetsProcessed: number
-  totalTargets: number
+  phases: HomeScanPhaseProgress[]
+  currentPhaseIndex: number
+  totalTargetsFound: number
   result: HomeScanResult | null
   error: string | null
 }

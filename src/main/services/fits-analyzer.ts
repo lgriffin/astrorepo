@@ -2,6 +2,7 @@ import { getSqlite } from '../db/connection'
 import { parseFitsFile } from '../fits/parser'
 import { detectStacking } from '../fits/stacking'
 import { linkFitsFilesToTargets, normalizeCatalogName } from './fits-linker'
+import { isAstronomicalName } from './astro-names'
 import { advanceStage } from './workflow'
 import { ulid } from 'ulid'
 import fs from 'fs'
@@ -599,34 +600,6 @@ function computeAggregates(sqlite: ReturnType<typeof getSqlite>, where: string, 
   }
 }
 
-const ASTRO_NAME_PATTERNS = [
-  /^M\s*\d+/i,
-  /^NGC\s*\d+/i,
-  /^IC\s*\d+/i,
-  /^Sh2[\s-]*\d+/i,
-  /^Abell\s*\d+/i,
-  /^PGC\s*\d+/i,
-  /^UGC\s*\d+/i,
-  /^Ced\s*\d+/i,
-  /^vdB\s*\d+/i,
-  /^LDN\s*\d+/i,
-  /^LBN\s*\d+/i,
-  /^B\s*\d+$/i,
-  /^Cr\s*\d+/i,
-  /^Mel\s*\d+/i,
-  /^Pal\s*\d+/i,
-  /^Stock\s*\d+/i,
-  /^Tr\s*\d+/i,
-  /^Mrk\s*\d+/i,
-  /^HCG\s*\d+/i,
-  /^Arp\s*\d+/i,
-  /^C\s*\d+$/i,
-]
-
-function isAstronomicalName(name: string): boolean {
-  const trimmed = name.trim()
-  return ASTRO_NAME_PATTERNS.some(p => p.test(trimmed))
-}
 
 function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId: string): void {
   const objectRows = sqlite.prepare(
@@ -663,7 +636,7 @@ function autoCreateTargetsFromScan(sqlite: ReturnType<typeof getSqlite>, scanId:
   for (const name of candidateNames) {
     const normalized = normalizeCatalogName(name)
     if (!knownNames.has(normalized)) {
-      insertTarget.run(ulid(), name, now, now)
+      insertTarget.run(ulid(), normalized, now, now)
       knownNames.add(normalized)
     }
   }

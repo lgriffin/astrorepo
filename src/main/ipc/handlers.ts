@@ -19,7 +19,7 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
-import { scanHomeFolder, getHomeStatus, prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { resetDatabase } from '../db/connection'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
@@ -399,16 +399,6 @@ export function registerIpcHandlers(): void {
   handle('fits:compute-stats', validated('fits:compute-stats', (args) => {
     return { stats: computeFileStats(args.file_id) }
   }))
-
-  handle('home:scan', async () => {
-    const homePath = getSetting('home_folder_path')
-    if (!homePath) return { error: 'Home folder not configured' }
-    return scanHomeFolder(homePath)
-  })
-
-  handle('home:status', async () => {
-    return getHomeStatus()
-  })
 
   handle('home:scan-start', async () => {
     const homePath = getSetting('home_folder_path')
