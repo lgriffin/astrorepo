@@ -22,11 +22,22 @@ const objectTypeFilters = [
   { value: 'custom', label: 'Custom Targets' }
 ]
 
+const sortOptions = [
+  { value: 'name:asc', label: 'Name A-Z' },
+  { value: 'name:desc', label: 'Name Z-A' },
+  { value: 'magnitude:asc', label: 'Magnitude (brightest)' },
+  { value: 'magnitude:desc', label: 'Magnitude (faintest)' },
+  { value: 'constellation:asc', label: 'Constellation' },
+  { value: 'workflow_stage:asc', label: 'Workflow Stage' }
+]
+
 export function TargetList(): React.ReactElement {
   const [targets, setTargets] = useState<TargetSummary[]>([])
   const [total, setTotal] = useState(0)
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
+  const [stageFilter, setStageFilter] = useState('')
+  const [sort, setSort] = useState('name:asc')
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(false)
   const [stages, setStages] = useState<WorkflowStage[]>([])
@@ -38,20 +49,22 @@ export function TargetList(): React.ReactElement {
   const fetchTargets = useCallback(async () => {
     setLoading(true)
     try {
+      const [sortBy, sortDir] = sort.split(':')
       const result = await invoke<{ targets: TargetSummary[]; total: number }>('targets:search', {
         query,
         limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE
+        offset: page * PAGE_SIZE,
+        object_type: typeFilter || undefined,
+        workflow_stage: stageFilter || undefined,
+        sort_by: sortBy as 'name' | 'magnitude' | 'constellation' | 'workflow_stage',
+        sort_dir: sortDir as 'asc' | 'desc'
       })
-      const filtered = typeFilter
-        ? result.targets.filter((t) => t.objectType === typeFilter)
-        : result.targets
-      setTargets(filtered)
-      setTotal(typeFilter ? filtered.length : result.total)
+      setTargets(result.targets)
+      setTotal(result.total)
     } finally {
       setLoading(false)
     }
-  }, [query, page, typeFilter])
+  }, [query, page, typeFilter, stageFilter, sort])
 
   useEffect(() => {
     fetchTargets()
@@ -64,26 +77,43 @@ export function TargetList(): React.ReactElement {
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
+  const selectClass = 'px-3 py-2.5 bg-astro-surface border border-astro-border rounded-lg text-astro-text text-sm focus:outline-none focus:border-astro-accent'
+
   return (
     <PageContainer title="Targets" subtitle={`${total} targets found`}>
       <div className="space-y-4">
-        <div className="flex gap-4 items-start">
-          <div className="flex-1">
+        <div className="flex flex-wrap gap-3 items-start">
+          <div className="flex-1 min-w-[200px]">
             <SearchBar onSearch={handleSearch} />
           </div>
           <select
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value)
-              setPage(0)
-            }}
-            className="px-3 py-2.5 bg-astro-surface border border-astro-border rounded-lg
-                       text-astro-text focus:outline-none focus:border-astro-accent"
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(0) }}
+            className={selectClass}
           >
             {objectTypeFilters.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <select
+            value={stageFilter}
+            onChange={(e) => { setStageFilter(e.target.value); setPage(0) }}
+            className={selectClass}
+          >
+            <option value="">All Stages</option>
+            {stages.map((s) => (
+              <option key={s.id} value={s.name}>
+                {s.name.replace(/_/g, ' ')}
               </option>
+            ))}
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => { setSort(e.target.value); setPage(0) }}
+            className={selectClass}
+          >
+            {sortOptions.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
         </div>
@@ -92,7 +122,7 @@ export function TargetList(): React.ReactElement {
           <div className="text-center py-12 text-astro-muted">Loading targets...</div>
         ) : targets.length === 0 ? (
           <div className="text-center py-12 text-astro-muted">
-            {query ? 'No targets match your search.' : 'No targets loaded yet.'}
+            {query || typeFilter || stageFilter ? 'No targets match your filters.' : 'No targets loaded yet.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">

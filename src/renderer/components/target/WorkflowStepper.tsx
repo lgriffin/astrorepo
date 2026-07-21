@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
+import { useToast } from '../../contexts/ToastContext'
 import type { WorkflowStage } from '@shared/types'
 
 interface WorkflowStepperProps {
@@ -11,6 +12,7 @@ interface WorkflowStepperProps {
 export function WorkflowStepper({ targetId, currentStage, onStageChanged }: WorkflowStepperProps): React.ReactElement {
   const [stages, setStages] = useState<WorkflowStage[]>([])
   const [advancing, setAdvancing] = useState(false)
+  const { addToast } = useToast()
 
   useEffect(() => {
     invoke<WorkflowStage[]>('workflow:stages').then(setStages)
@@ -22,7 +24,10 @@ export function WorkflowStepper({ targetId, currentStage, onStageChanged }: Work
     setAdvancing(true)
     try {
       await invoke('targets:advance-stage', { id: targetId, to_stage: toStage })
+      addToast(`Stage advanced to ${toStage.replace(/_/g, ' ')}`, 'success')
       onStageChanged()
+    } catch {
+      addToast('Failed to advance stage', 'error')
     } finally {
       setAdvancing(false)
     }

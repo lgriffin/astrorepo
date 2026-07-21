@@ -108,6 +108,36 @@ describe('TargetService', () => {
       expect(page2.targets).toHaveLength(1)
       expect(page2.total).toBe(2)
     })
+
+    it('Given mixed types, When filtering by object_type, Then only matching targets are returned', () => {
+      createTarget({ canonicalName: 'M31', objectType: 'galaxy' })
+      createTarget({ canonicalName: 'M42', objectType: 'emission_nebula' })
+      createTarget({ canonicalName: 'M51', objectType: 'galaxy' })
+
+      const result = searchTargets('', 50, 0, { objectType: 'galaxy' })
+      expect(result.total).toBe(2)
+      expect(result.targets.every(t => t.objectType === 'galaxy')).toBe(true)
+    })
+
+    it('Given targets at different stages, When filtering by workflow_stage, Then only matching targets are returned', () => {
+      const t1 = createTarget({ canonicalName: 'Staged1', objectType: 'star' })
+      createTarget({ canonicalName: 'Staged2', objectType: 'star' })
+
+      updateTarget(t1.id, { workflow_stage: 'raw_captured' })
+
+      const result = searchTargets('', 50, 0, { workflowStage: 'raw_captured' })
+      expect(result.total).toBe(1)
+      expect(result.targets[0].canonicalName).toBe('Staged1')
+    })
+
+    it('Given targets exist, When sorting by name desc, Then results are in reverse alphabetical order', () => {
+      createTarget({ canonicalName: 'Alpha', objectType: 'star' })
+      createTarget({ canonicalName: 'Zeta', objectType: 'star' })
+
+      const result = searchTargets('', 50, 0, { sortBy: 'name', sortDir: 'desc' })
+      expect(result.targets[0].canonicalName).toBe('Zeta')
+      expect(result.targets[1].canonicalName).toBe('Alpha')
+    })
   })
 
   describe('EARS: Target Update', () => {

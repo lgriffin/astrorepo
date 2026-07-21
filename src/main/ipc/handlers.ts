@@ -39,7 +39,12 @@ function validated<C extends Channel>(channel: C, handler: (args: z.infer<Schema
 
 export function registerIpcHandlers(): void {
   handle('targets:search', validated('targets:search', (args) => {
-    return searchTargets(args.query, args.limit, args.offset)
+    return searchTargets(args.query, args.limit, args.offset, {
+      objectType: args.object_type,
+      workflowStage: args.workflow_stage,
+      sortBy: args.sort_by,
+      sortDir: args.sort_dir
+    })
   }))
 
   handle('targets:get', validated('targets:get', (args) => {

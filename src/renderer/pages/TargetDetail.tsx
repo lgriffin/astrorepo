@@ -4,6 +4,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { SessionList } from '../components/session/SessionList'
 import { WorkflowStepper } from '../components/target/WorkflowStepper'
 import { invoke } from '../hooks/useIPC'
+import { useToast } from '../contexts/ToastContext'
 import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
@@ -99,17 +100,21 @@ export function TargetDetail(): React.ReactElement {
             </div>
           </Section>
 
-          {target.description && (
-            <Section title="Description">
-              <p className="text-sm text-astro-text leading-relaxed">{target.description}</p>
-            </Section>
-          )}
+          <EditableTextSection
+            title="Description"
+            value={target.description}
+            fieldName="description"
+            targetId={target.id}
+            onSaved={(v) => setTarget({ ...target, description: v })}
+          />
 
-          {target.notes && (
-            <Section title="Notes">
-              <p className="text-sm text-astro-text leading-relaxed whitespace-pre-wrap">{target.notes}</p>
-            </Section>
-          )}
+          <EditableTextSection
+            title="Notes"
+            value={target.notes}
+            fieldName="notes"
+            targetId={target.id}
+            onSaved={(v) => setTarget({ ...target, notes: v })}
+          />
 
           <Section title="Observation Sessions">
             <SessionList targetId={target.id} />
@@ -318,6 +323,7 @@ function OpenFolderButton({ folderPath }: { folderPath: string | null }): React.
 
 function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; onRefresh: () => void }): React.ReactElement {
   const [sirilStatus, setSirilStatus] = useState<string | null>(null)
+  const { addToast } = useToast()
 
   async function handlePrepSiril(): Promise<void> {
     if (!homeData.rawPath) return
@@ -326,12 +332,15 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
       const result = await invoke<{ moved: number; created: string[]; skipped: boolean }>('home:prep-siril', { raw_path: homeData.rawPath })
       if (result.skipped) {
         setSirilStatus('Skipped — lights/ already exists')
+        addToast('Siril prep skipped — lights/ already exists', 'info')
       } else {
         setSirilStatus(`Moved ${result.moved} files, created ${result.created.join(', ')}`)
+        addToast(`Siril prep complete — moved ${result.moved} files`, 'success')
       }
       onRefresh()
     } catch {
       setSirilStatus('Failed')
+      addToast('Siril prep failed', 'error')
     }
   }
 
@@ -476,6 +485,78 @@ function ThumbnailSection({ targetId, targetName }: { targetId: string; targetNa
         </div>
       )}
     </Section>
+  )
+}
+
+function EditableTextSection({ title, value, fieldName, targetId, onSaved }: {
+  title: string
+  value: string | null
+  fieldName: string
+  targetId: string
+  onSaved: (v: string | null) => void
+}): React.ReactElement {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const [saving, setSaving] = useState(false)
+  const { addToast } = useToast()
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await invoke('targets:update', { id: targetId, fields: { [fieldName]: draft || null } })
+      onSaved(draft || null)
+      addToast(`${title} updated`, 'success')
+      setEditing(false)
+    } catch {
+      addToast(`Failed to update ${title.toLowerCase()}`, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">{title}</h2>
+        {!editing && (
+          <button
+            onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+            className="text-xs text-astro-muted hover:text-astro-accent transition-colors"
+          >
+            {value ? 'Edit' : 'Add'}
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="w-full px-3 py-2 bg-astro-bg border border-astro-border rounded text-sm text-astro-text h-28 resize-y focus:outline-none focus:border-astro-accent"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs bg-astro-accent text-white rounded hover:bg-astro-accent/80 disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="px-3 py-1.5 text-xs text-astro-muted hover:text-astro-text"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : value ? (
+        <p className="text-sm text-astro-text leading-relaxed whitespace-pre-wrap">{value}</p>
+      ) : (
+        <p className="text-sm text-astro-muted italic">No {title.toLowerCase()} yet. Click Add to write one.</p>
+      )}
+    </div>
   )
 }
 
