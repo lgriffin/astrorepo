@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as schema from '../../src/main/db/schema'
+import { initFts } from '../../src/main/db/fts'
 
 let testSqlite: Database.Database | null = null
 
@@ -9,6 +10,7 @@ export function setupTestDb(): Database.Database {
   testSqlite.pragma('journal_mode = WAL')
   testSqlite.pragma('foreign_keys = ON')
   runMigrations(testSqlite)
+  initFts(testSqlite)
   return testSqlite
 }
 
