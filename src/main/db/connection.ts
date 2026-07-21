@@ -105,7 +105,7 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE TABLE IF NOT EXISTS observation_sessions (
       id TEXT PRIMARY KEY,
       date TEXT NOT NULL,
-      observatory_id TEXT REFERENCES observatories(id),
+      observatory_id TEXT,
       location_freetext TEXT,
       sky_quality REAL,
       weather TEXT,
@@ -148,18 +148,6 @@ function runMigrations(sqlite: Database.Database): void {
       equipment_id TEXT NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
       role TEXT,
       PRIMARY KEY (session_id, equipment_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS observatories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL,
-      altitude_m REAL NOT NULL DEFAULT 0,
-      timezone TEXT,
-      is_primary INTEGER NOT NULL DEFAULT 0,
-      notes TEXT,
-      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS workflow_stages (
@@ -294,7 +282,6 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_designation ON catalogue_entries(designation);
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_target ON catalogue_entries(target_id);
     CREATE INDEX IF NOT EXISTS idx_session_date ON observation_sessions(date);
-    CREATE INDEX IF NOT EXISTS idx_session_observatory ON observation_sessions(observatory_id);
     CREATE INDEX IF NOT EXISTS idx_collection_membership_target ON collection_memberships(target_id);
     CREATE INDEX IF NOT EXISTS idx_workflow_transition_target ON workflow_transitions(target_id);
     CREATE INDEX IF NOT EXISTS idx_relationship_source ON target_relationships(source_target_id);

@@ -8,8 +8,7 @@ import { SessionForm } from './pages/SessionForm'
 import { Collections } from './pages/Collections'
 import { CollectionDetail } from './pages/CollectionDetail'
 import { Equipment } from './pages/Equipment'
-import { Observatory } from './pages/Observatory'
-import { Planning } from './pages/Planning'
+import { Images } from './pages/Images'
 import { Poster } from './pages/Poster'
 import { Settings } from './pages/Settings'
 import { FitsAnalyzer } from './pages/FitsAnalyzer'
@@ -30,8 +29,7 @@ export function App(): React.ReactElement {
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/equipment" element={<Equipment />} />
-          <Route path="/observatory" element={<Observatory />} />
-          <Route path="/planning" element={<Planning />} />
+          <Route path="/images" element={<Images />} />
           <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
           <Route path="/analytics" element={<StorageAnalytics />} />
           <Route path="/calibration" element={<Calibration />} />

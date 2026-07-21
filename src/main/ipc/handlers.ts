@@ -1,14 +1,13 @@
 import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
-import { ZodError, type ZodType } from 'zod'
-import { schemas, type Channel } from './schemas'
+import { z } from 'zod'
+import { schemas, type Channel, type SchemaMap } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
 import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
 import { createEquipment, listEquipment, getUsageHistory } from '../services/equipment'
 import { generateFolders, listTemplates, createTemplate } from '../services/folder'
-import { createObservatory, listObservatories, setPrimaryObservatory } from '../services/observatory'
-import { getVisibility, getTonightTargets } from '../services/ephemeris'
+import { scanImages, readImageThumbnail } from '../services/image-scanner'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
 import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats, getTargetObservationData } from '../services/fits-analyzer'
@@ -26,19 +25,15 @@ type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unkn
 
 const registeredChannels: string[] = []
 
-function validate<T>(schema: ZodType<T>, data: unknown): T {
-  return schema.parse(data)
-}
-
 export function handle(channel: string, handler: HandlerFn): void {
   ipcMain.handle(channel, handler)
   registeredChannels.push(channel)
 }
 
-function validated<T>(channel: Channel, handler: (args: T) => unknown): HandlerFn {
+function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): HandlerFn {
   return async (_e: IpcMainInvokeEvent, rawArgs: unknown) => {
-    const args = validate(schemas[channel] as ZodType, rawArgs)
-    return handler(args as T)
+    const args = schemas[channel].parse(rawArgs) as z.infer<SchemaMap[C]>
+    return handler(args)
   }
 }
 
@@ -150,8 +145,8 @@ export function registerIpcHandlers(): void {
     return listStages()
   })
 
-  handle('equipment:list', async (_e, args?: { type?: string }) => {
-    if (args) validate(schemas['equipment:list']!, args)
+  handle('equipment:list', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['equipment:list']!.parse(rawArgs) as { type?: string } : undefined
     return { equipment: listEquipment(args?.type) }
   })
 
@@ -181,30 +176,12 @@ export function registerIpcHandlers(): void {
     return createTemplate(args.name, args.structure as Record<string, unknown>)
   }))
 
-  handle('observatory:list', async () => {
-    return { observatories: listObservatories() }
+  handle('images:scan', async () => {
+    return scanImages()
   })
 
-  handle('observatory:create', validated('observatory:create', (args) => {
-    return createObservatory({
-      name: args.name,
-      latitude: args.latitude,
-      longitude: args.longitude,
-      altitudeM: args.altitude_m,
-      timezone: args.timezone
-    })
-  }))
-
-  handle('observatory:set-primary', validated('observatory:set-primary', (args) => {
-    return setPrimaryObservatory(args.id)
-  }))
-
-  handle('targets:visibility', validated('targets:visibility', (args) => {
-    return getVisibility(args.target_id, args.observatory_id, args.date)
-  }))
-
-  handle('planning:tonight', validated('planning:tonight', (args) => {
-    return { targets: getTonightTargets(args.observatory_id, args.date, args.min_altitude, args.min_hours) }
+  handle('images:read', validated('images:read', (args) => {
+    return readImageThumbnail(args.file_path)
   }))
 
   handle('dashboard:stats', async () => {
@@ -236,8 +213,8 @@ export function registerIpcHandlers(): void {
     return startFolderScan(args.folder_path)
   }))
 
-  handle('fits:list-scans', async (_e, args?: { limit?: number; offset?: number }) => {
-    if (args) validate(schemas['fits:list-scans']!, args)
+  handle('fits:list-scans', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['fits:list-scans']!.parse(rawArgs) as { limit?: number; offset?: number } : undefined
     return listScans(args?.limit, args?.offset)
   })
 
@@ -357,8 +334,8 @@ export function registerIpcHandlers(): void {
     return getCurrentStorageStats()
   })
 
-  handle('storage:history', async (_e, args?: { limit?: number }) => {
-    if (args) validate(schemas['storage:history']!, args)
+  handle('storage:history', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['storage:history']!.parse(rawArgs) as { limit?: number } : undefined
     return { snapshots: getStorageHistory(args?.limit) }
   })
 
@@ -378,13 +355,13 @@ export function registerIpcHandlers(): void {
     return { filters: getStorageByFilter() }
   })
 
-  handle('calibration:library', async (_e, args?: { type?: string; gain?: number; temp?: number; binning?: string }) => {
-    if (args) validate(schemas['calibration:library']!, args)
+  handle('calibration:library', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['calibration:library']!.parse(rawArgs) as { type?: string; gain?: number; temp?: number; binning?: string } : undefined
     return { groups: getCalibrationLibrary(args ?? undefined) }
   })
 
-  handle('calibration:match-lights', async (_e, args?: { scan_id?: string }) => {
-    if (args) validate(schemas['calibration:match-lights']!, args)
+  handle('calibration:match-lights', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['calibration:match-lights']!.parse(rawArgs) as { scan_id?: string } : undefined
     return matchCalibrationToLights(args?.scan_id)
   })
 

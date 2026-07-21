@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
-import { setupTestDb, teardownTestDb, seedTarget, seedObservatory, seedEquipment } from '../helpers/setup'
+import { setupTestDb, teardownTestDb, seedTarget, seedEquipment } from '../helpers/setup'
 
 let sqlite: Database.Database
 
@@ -53,7 +53,7 @@ describe('Session Recording (Integration)', () => {
       expect(session.skyQuality).toBe(21.5)
       expect(session.totalFrames).toBe(120)
 
-      const targetLinks = sqlite.prepare('SELECT * FROM session_targets WHERE session_id = ?').all(session.id) as Array<Record<string, unknown>>
+      const targetLinks = sqlite.prepare('SELECT * FROM session_targets WHERE session_id = ? ORDER BY is_primary DESC').all(session.id) as Array<Record<string, unknown>>
       expect(targetLinks).toHaveLength(2)
       expect((targetLinks[0] as { is_primary: number }).is_primary).toBe(1)
       expect((targetLinks[1] as { is_primary: number }).is_primary).toBe(0)

@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as schema from '../../src/main/db/schema'
+import { initFts } from '../../src/main/db/fts'
 
 let testSqlite: Database.Database | null = null
 
@@ -9,6 +10,7 @@ export function setupTestDb(): Database.Database {
   testSqlite.pragma('journal_mode = WAL')
   testSqlite.pragma('foreign_keys = ON')
   runMigrations(testSqlite)
+  initFts(testSqlite)
   return testSqlite
 }
 
@@ -41,6 +43,7 @@ function runMigrations(sqlite: Database.Database): void {
       workflow_stage TEXT NOT NULL DEFAULT 'planned',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
+      thumbnail_path TEXT,
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -92,7 +95,7 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE TABLE IF NOT EXISTS observation_sessions (
       id TEXT PRIMARY KEY,
       date TEXT NOT NULL,
-      observatory_id TEXT REFERENCES observatories(id),
+      observatory_id TEXT,
       location_freetext TEXT,
       sky_quality REAL,
       weather TEXT,
@@ -137,18 +140,6 @@ function runMigrations(sqlite: Database.Database): void {
       equipment_id TEXT NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
       role TEXT,
       PRIMARY KEY (session_id, equipment_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS observatories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL,
-      altitude_m REAL NOT NULL DEFAULT 0,
-      timezone TEXT,
-      is_primary INTEGER NOT NULL DEFAULT 0,
-      notes TEXT,
-      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS workflow_stages (
@@ -304,7 +295,6 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_designation ON catalogue_entries(designation);
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_target ON catalogue_entries(target_id);
     CREATE INDEX IF NOT EXISTS idx_session_date ON observation_sessions(date);
-    CREATE INDEX IF NOT EXISTS idx_session_observatory ON observation_sessions(observatory_id);
     CREATE INDEX IF NOT EXISTS idx_collection_membership_target ON collection_memberships(target_id);
     CREATE INDEX IF NOT EXISTS idx_workflow_transition_target ON workflow_transitions(target_id);
     CREATE INDEX IF NOT EXISTS idx_relationship_source ON target_relationships(source_target_id);
@@ -361,27 +351,6 @@ export function seedTarget(sqlite: Database.Database, overrides: Partial<{
   return id
 }
 
-export function seedObservatory(sqlite: Database.Database, overrides: Partial<{
-  id: string
-  name: string
-  latitude: number
-  longitude: number
-  altitudeM: number
-}> = {}): string {
-  const id = overrides.id ?? `obs-${Date.now()}`
-  sqlite.prepare(
-    'INSERT INTO observatories (id, name, latitude, longitude, altitude_m, timezone, is_primary, notes, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, NULL, ?)'
-  ).run(
-    id,
-    overrides.name ?? 'Test Observatory',
-    overrides.latitude ?? 51.4769,
-    overrides.longitude ?? -0.0005,
-    overrides.altitudeM ?? 0,
-    new Date().toISOString()
-  )
-  return id
-}
-
 export function seedFitsScan(sqlite: Database.Database, overrides: Partial<{
   id: string
   folderPath: string
@@ -425,6 +394,7 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
   ybinning: number | null
   telescope: string | null
   instrument: string | null
+  targetId: string | null
 }> = {}): string {
   const id = overrides.id ?? `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()
@@ -433,8 +403,8 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     `INSERT INTO fits_files (
       id, scan_id, file_path, file_name, file_size_bytes, folder_name, session_folder,
       object_name, image_type, filter, exposure_sec, date_obs, is_stacked,
-      gain, ccd_temp, xbinning, ybinning, telescope, instrument, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      gain, ccd_temp, xbinning, ybinning, telescope, instrument, target_id, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     scanId,
@@ -455,6 +425,7 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     overrides.ybinning ?? null,
     overrides.telescope ?? null,
     overrides.instrument ?? null,
+    overrides.targetId ?? null,
     now
   )
   return id

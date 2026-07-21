@@ -70,50 +70,6 @@ describe('IPC Zod Validation (Boundary Tests)', () => {
     })
   })
 
-  describe('EARS: Observatory Create Schema', () => {
-    // Event: Renderer sends observatory:create with location data
-    // Action: Zod validates latitude/longitude ranges and required fields
-    // Response: Rejects coordinates outside valid ranges
-    // State: Invalid data never reaches createObservatory()
-
-    it('Given valid observatory data, When validated, Then it passes', () => {
-      const result = schemas['observatory:create'].parse({
-        name: 'Backyard Observatory',
-        latitude: 51.4769,
-        longitude: -0.0005,
-        altitude_m: 11
-      })
-      expect(result.name).toBe('Backyard Observatory')
-    })
-
-    it('Given latitude > 90, When validated, Then it throws', () => {
-      expect(() => schemas['observatory:create'].parse({
-        name: 'Bad',
-        latitude: 91.0,
-        longitude: 0,
-        altitude_m: 0
-      })).toThrow()
-    })
-
-    it('Given longitude > 180, When validated, Then it throws', () => {
-      expect(() => schemas['observatory:create'].parse({
-        name: 'Bad',
-        latitude: 0,
-        longitude: 181.0,
-        altitude_m: 0
-      })).toThrow()
-    })
-
-    it('Given altitude above Everest, When validated, Then it throws', () => {
-      expect(() => schemas['observatory:create'].parse({
-        name: 'Space',
-        latitude: 0,
-        longitude: 0,
-        altitude_m: 10000
-      })).toThrow()
-    })
-  })
-
   describe('EARS: Session Create Schema', () => {
     // Event: Renderer sends sessions:create with session data
     // Action: Zod validates date format, numeric ranges, array types
@@ -139,38 +95,6 @@ describe('IPC Zod Validation (Boundary Tests)', () => {
       expect(() => schemas['sessions:create'].parse({
         date: '2025-01-01',
         total_frames: -5
-      })).toThrow()
-    })
-  })
-
-  describe('EARS: Planning Schema', () => {
-    // Event: Renderer sends planning:tonight with observatory and date
-    // Action: Zod validates date format and numeric constraints
-    // Response: Rejects invalid date formats, negative altitudes
-    // State: Ephemeris computation only runs on valid input
-
-    it('Given valid planning params, When validated, Then it passes', () => {
-      const result = schemas['planning:tonight'].parse({
-        observatory_id: 'obs-123',
-        date: '2025-06-15',
-        min_altitude: 20,
-        min_hours: 2
-      })
-      expect(result.date).toBe('2025-06-15')
-    })
-
-    it('Given an invalid date format, When validated, Then it throws', () => {
-      expect(() => schemas['planning:tonight'].parse({
-        observatory_id: 'obs-123',
-        date: 'June 15 2025'
-      })).toThrow()
-    })
-
-    it('Given min_altitude > 90, When validated, Then it throws', () => {
-      expect(() => schemas['planning:tonight'].parse({
-        observatory_id: 'obs-123',
-        date: '2025-06-15',
-        min_altitude: 91
       })).toThrow()
     })
   })

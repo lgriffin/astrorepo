@@ -11,6 +11,7 @@
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,
+    "jsx": "react-jsx",
     "sourceMap": true,
     "outDir": "dist",
     "baseUrl": ".",

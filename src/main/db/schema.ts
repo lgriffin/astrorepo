@@ -76,7 +76,7 @@ export const collectionMemberships = sqliteTable('collection_memberships', {
 export const observationSessions = sqliteTable('observation_sessions', {
   id: text('id').primaryKey(),
   date: text('date').notNull(),
-  observatoryId: text('observatory_id').references(() => observatories.id),
+  observatoryId: text('observatory_id'),
   locationFreetext: text('location_freetext'),
   skyQuality: real('sky_quality'),
   weather: text('weather'),
@@ -96,8 +96,7 @@ export const observationSessions = sqliteTable('observation_sessions', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
 }, (table) => [
-  index('idx_session_date').on(table.date),
-  index('idx_session_observatory').on(table.observatoryId)
+  index('idx_session_date').on(table.date)
 ])
 
 export const sessionTargets = sqliteTable('session_targets', {
@@ -127,18 +126,6 @@ export const sessionEquipment = sqliteTable('session_equipment', {
 }, (table) => [
   primaryKey({ columns: [table.sessionId, table.equipmentId] })
 ])
-
-export const observatories = sqliteTable('observatories', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull().unique(),
-  latitude: real('latitude').notNull(),
-  longitude: real('longitude').notNull(),
-  altitudeM: real('altitude_m').notNull().default(0),
-  timezone: text('timezone'),
-  isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
-  notes: text('notes'),
-  createdAt: text('created_at').notNull()
-})
 
 export const workflowStages = sqliteTable('workflow_stages', {
   id: text('id').primaryKey(),
