@@ -123,7 +123,7 @@ describe('TargetService', () => {
       const t1 = createTarget({ canonicalName: 'Staged1', objectType: 'star' })
       createTarget({ canonicalName: 'Staged2', objectType: 'star' })
 
-      updateTarget(t1.id, { workflow_stage: 'raw_captured' })
+      updateTarget(t1.id, { workflowStage: 'raw_captured' })
 
       const result = searchTargets('', 50, 0, { workflowStage: 'raw_captured' })
       expect(result.total).toBe(1)
