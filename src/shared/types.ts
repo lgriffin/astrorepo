@@ -182,18 +182,6 @@ export interface SessionEquipment {
   role: string | null
 }
 
-export interface Observatory {
-  id: string
-  name: string
-  latitude: number
-  longitude: number
-  altitudeM: number
-  timezone: string | null
-  isPrimary: boolean
-  notes: string | null
-  createdAt: string
-}
-
 export interface WorkflowStage {
   id: string
   name: string
@@ -234,25 +222,6 @@ export interface FolderTemplate {
 export interface AppSetting {
   key: string
   value: string
-}
-
-export interface VisibilityData {
-  rise: string | null
-  set: string | null
-  transit: string | null
-  transitAltitude: number | null
-  currentAltitude: number
-  currentAzimuth: number
-  bestWindowStart: string | null
-  bestWindowEnd: string | null
-  hoursAboveHorizon: number
-  moonSeparation: number
-  available: boolean
-}
-
-export interface PlannedTarget {
-  target: TargetSummary
-  visibility: VisibilityData
 }
 
 export interface DashboardStats {
@@ -599,6 +568,25 @@ export interface HomeScanProgress {
   totalTargetsFound: number
   result: HomeScanResult | null
   error: string | null
+}
+
+export interface ImageFileInfo {
+  path: string
+  filename: string
+  folder: string
+}
+
+export interface ImageTargetGroup {
+  name: string
+  normalizedName: string
+  folderPath: string
+  images: ImageFileInfo[]
+}
+
+export interface ImageScanResult {
+  targets: ImageTargetGroup[]
+  unmatched: ImageFileInfo[]
+  totalImages: number
 }
 
 export interface CalibrationGroup {

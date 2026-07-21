@@ -1,5 +1,5 @@
 import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
-import { ZodError, type ZodType } from 'zod'
+import { type ZodType } from 'zod'
 import { schemas, type Channel } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
@@ -7,8 +7,7 @@ import { createCollection, listCollections, getCollectionWithTargets, addTargetT
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
 import { createEquipment, listEquipment, getUsageHistory } from '../services/equipment'
 import { generateFolders, listTemplates, createTemplate } from '../services/folder'
-import { createObservatory, listObservatories, setPrimaryObservatory } from '../services/observatory'
-import { getVisibility, getTonightTargets } from '../services/ephemeris'
+import { scanImages, readImageThumbnail } from '../services/image-scanner'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
 import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats, getTargetObservationData } from '../services/fits-analyzer'
@@ -181,30 +180,12 @@ export function registerIpcHandlers(): void {
     return createTemplate(args.name, args.structure as Record<string, unknown>)
   }))
 
-  handle('observatory:list', async () => {
-    return { observatories: listObservatories() }
+  handle('images:scan', async () => {
+    return scanImages()
   })
 
-  handle('observatory:create', validated('observatory:create', (args) => {
-    return createObservatory({
-      name: args.name,
-      latitude: args.latitude,
-      longitude: args.longitude,
-      altitudeM: args.altitude_m,
-      timezone: args.timezone
-    })
-  }))
-
-  handle('observatory:set-primary', validated('observatory:set-primary', (args) => {
-    return setPrimaryObservatory(args.id)
-  }))
-
-  handle('targets:visibility', validated('targets:visibility', (args) => {
-    return getVisibility(args.target_id, args.observatory_id, args.date)
-  }))
-
-  handle('planning:tonight', validated('planning:tonight', (args) => {
-    return { targets: getTonightTargets(args.observatory_id, args.date, args.min_altitude, args.min_hours) }
+  handle('images:read', validated('images:read', (args) => {
+    return readImageThumbnail(args.file_path)
   }))
 
   handle('dashboard:stats', async () => {

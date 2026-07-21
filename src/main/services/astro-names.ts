@@ -26,3 +26,36 @@ export function isAstronomicalName(name: string): boolean {
   const trimmed = name.trim()
   return ASTRO_NAME_PATTERNS.some(p => p.test(trimmed))
 }
+
+const ASTRO_EXTRACT_PATTERNS = [
+  /\bM\s*\d+/i,
+  /\bNGC\s*\d+/i,
+  /\bIC\s*\d+/i,
+  /\bSh2[\s-]*\d+/i,
+  /\bAbell\s*\d+/i,
+  /\bPGC\s*\d+/i,
+  /\bUGC\s*\d+/i,
+  /\bCed\s*\d+/i,
+  /\bvdB\s*\d+/i,
+  /\bLDN\s*\d+/i,
+  /\bLBN\s*\d+/i,
+  /\bB\s*\d+\b/i,
+  /\bCr\s*\d+/i,
+  /\bMel\s*\d+/i,
+  /\bPal\s*\d+/i,
+  /\bStock\s*\d+/i,
+  /\bTr\s*\d+/i,
+  /\bMrk\s*\d+/i,
+  /\bHCG\s*\d+/i,
+  /\bArp\s*\d+/i,
+  /\bC\s*\d+\b/i,
+]
+
+export function extractAstronomicalName(text: string): string | null {
+  const normalized = text.trim().replace(/_/g, ' ')
+  for (const pattern of ASTRO_EXTRACT_PATTERNS) {
+    const match = normalized.match(pattern)
+    if (match) return match[0]
+  }
+  return null
+}

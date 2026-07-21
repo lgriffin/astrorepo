@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
-import { setupTestDb, teardownTestDb, seedTarget, seedObservatory, seedEquipment } from '../helpers/setup'
+import { setupTestDb, teardownTestDb, seedTarget, seedEquipment } from '../helpers/setup'
 
 let sqlite: Database.Database
 

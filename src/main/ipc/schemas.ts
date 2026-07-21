@@ -18,7 +18,6 @@ const relationshipTypes = [
 ] as const
 
 const id = z.string().min(1)
-const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
 
 export const schemas = {
   'targets:search': z.object({
@@ -55,12 +54,6 @@ export const schemas = {
     id,
     to_stage: z.string().min(1),
     notes: z.string().optional()
-  }),
-
-  'targets:visibility': z.object({
-    target_id: id,
-    observatory_id: id,
-    date: dateStr
   }),
 
   'sessions:list': z.object({
@@ -146,22 +139,8 @@ export const schemas = {
     structure: z.record(z.unknown())
   }),
 
-  'observatory:create': z.object({
-    name: z.string().min(1),
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180),
-    altitude_m: z.number().min(-500).max(9000),
-    timezone: z.string().optional()
-  }),
-
-  'observatory:set-primary': z.object({ id }),
-
-  'planning:tonight': z.object({
-    observatory_id: id,
-    date: dateStr,
-    min_altitude: z.number().min(0).max(90).optional(),
-    min_hours: z.number().nonnegative().optional()
-  }),
+  'images:scan': z.object({}).optional(),
+  'images:read': z.object({ file_path: z.string().min(1) }),
 
   'relationships:create': z.object({
     source_target_id: id,
