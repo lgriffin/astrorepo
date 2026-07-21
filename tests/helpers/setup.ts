@@ -261,6 +261,17 @@ function runMigrations(sqlite: Database.Database): void {
       ordinal INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS integration_goals (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      filter TEXT NOT NULL,
+      goal_seconds REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(target_id, filter)
+    );
+    CREATE INDEX IF NOT EXISTS idx_integration_goal_target ON integration_goals(target_id);
+
     CREATE TABLE IF NOT EXISTS storage_snapshots (
       id TEXT PRIMARY KEY,
       snapshot_date TEXT NOT NULL,
@@ -388,6 +399,9 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
   exposureSec: number | null
   dateObs: string | null
   isStacked: boolean
+  ncombine: number | null
+  totalExposure: number | null
+  software: string | null
   gain: number | null
   ccdTemp: number | null
   xbinning: number | null
@@ -395,6 +409,10 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
   telescope: string | null
   instrument: string | null
   targetId: string | null
+  qualityScore: number | null
+  qualityFlag: string | null
+  fwhmEstimate: number | null
+  noiseLevel: number | null
 }> = {}): string {
   const id = overrides.id ?? `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()
@@ -403,8 +421,10 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     `INSERT INTO fits_files (
       id, scan_id, file_path, file_name, file_size_bytes, folder_name, session_folder,
       object_name, image_type, filter, exposure_sec, date_obs, is_stacked,
-      gain, ccd_temp, xbinning, ybinning, telescope, instrument, target_id, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ncombine, total_exposure, software,
+      gain, ccd_temp, xbinning, ybinning, telescope, instrument, target_id,
+      quality_score, quality_flag, fwhm_estimate, noise_level, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     scanId,
@@ -419,6 +439,9 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     overrides.exposureSec ?? null,
     overrides.dateObs ?? null,
     overrides.isStacked ? 1 : 0,
+    overrides.ncombine ?? null,
+    overrides.totalExposure ?? null,
+    overrides.software ?? null,
     overrides.gain ?? null,
     overrides.ccdTemp ?? null,
     overrides.xbinning ?? null,
@@ -426,8 +449,27 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     overrides.telescope ?? null,
     overrides.instrument ?? null,
     overrides.targetId ?? null,
+    overrides.qualityScore ?? null,
+    overrides.qualityFlag ?? null,
+    overrides.fwhmEstimate ?? null,
+    overrides.noiseLevel ?? null,
     now
   )
+  return id
+}
+
+export function seedIntegrationGoal(sqlite: Database.Database, overrides: Partial<{
+  id: string
+  targetId: string
+  filter: string
+  goalSeconds: number
+}> = {}): string {
+  const id = overrides.id ?? `goal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const now = new Date().toISOString()
+  sqlite.prepare(
+    `INSERT INTO integration_goals (id, target_id, filter, goal_seconds, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(id, overrides.targetId ?? 'target-1', overrides.filter ?? 'Ha', overrides.goalSeconds ?? 21600, now, now)
   return id
 }
 

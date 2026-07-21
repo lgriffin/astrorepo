@@ -19,6 +19,7 @@ import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getG
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
 import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { resetDatabase } from '../db/connection'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
@@ -415,6 +416,30 @@ export function registerIpcHandlers(): void {
 
   handle('targets:images', validated('targets:images', (args) => {
     return { images: getTargetImages(args.id) }
+  }))
+
+  handle('stacking:summary', async () => {
+    return getStackingSummary()
+  })
+
+  handle('stacking:sub-frames', validated('stacking:sub-frames', (args) => {
+    return getSubFramesForStacked(args.stacked_file_id)
+  }))
+
+  handle('stacking:integration-progress', async () => {
+    return { targets: getIntegrationProgress() }
+  })
+
+  handle('stacking:goals', validated('stacking:goals', (args) => {
+    return { goals: getIntegrationGoals(args.target_id) }
+  }))
+
+  handle('stacking:set-goal', validated('stacking:set-goal', (args) => {
+    return setIntegrationGoal(args.target_id, args.filter, args.goal_hours * 3600)
+  }))
+
+  handle('stacking:delete-goal', validated('stacking:delete-goal', (args) => {
+    return { success: deleteIntegrationGoal(args.id) }
   }))
 
   handle('db:reset', async () => {

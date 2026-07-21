@@ -249,6 +249,17 @@ export const schemas = {
   'targets:observation-data': z.object({ target_id: z.string().min(1) }),
   'targets:get-thumbnail': z.object({ id: z.string().min(1) }),
   'targets:images': z.object({ id: z.string().min(1) }),
+  'stacking:summary': z.object({}).optional(),
+  'stacking:sub-frames': z.object({ stacked_file_id: z.string().min(1) }),
+  'stacking:integration-progress': z.object({}).optional(),
+  'stacking:goals': z.object({ target_id: z.string().min(1) }),
+  'stacking:set-goal': z.object({
+    target_id: z.string().min(1),
+    filter: z.string().min(1),
+    goal_hours: z.number().positive()
+  }),
+  'stacking:delete-goal': z.object({ id: z.string().min(1) }),
+
   'db:reset': z.object({}).optional()
 } as const
 
