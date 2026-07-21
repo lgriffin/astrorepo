@@ -23,7 +23,11 @@ export const schemas = {
   'targets:search': z.object({
     query: z.string(),
     limit: z.number().int().positive().optional(),
-    offset: z.number().int().nonnegative().optional()
+    offset: z.number().int().nonnegative().optional(),
+    object_type: z.string().optional(),
+    workflow_stage: z.string().optional(),
+    sort_by: z.enum(['name', 'magnitude', 'constellation', 'workflow_stage']).optional(),
+    sort_dir: z.enum(['asc', 'desc']).optional()
   }),
 
   'targets:get': z.object({ id }),

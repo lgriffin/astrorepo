@@ -15,6 +15,15 @@ export default {
           warning: '#f59e0b',
           danger: '#ef4444'
         }
+      },
+      keyframes: {
+        'slide-in': {
+          from: { opacity: '0', transform: 'translateX(1rem)' },
+          to: { opacity: '1', transform: 'translateX(0)' }
+        }
+      },
+      animation: {
+        'slide-in': 'slide-in 0.2s ease-out'
       }
     }
   },

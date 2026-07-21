@@ -9,20 +9,58 @@ interface SearchResult {
   total: number
 }
 
-export function searchTargets(query: string, limit = 50, offset = 0): SearchResult {
+interface SearchOptions {
+  objectType?: string
+  workflowStage?: string
+  sortBy?: string
+  sortDir?: string
+}
+
+const SORT_COLUMNS: Record<string, string> = {
+  name: 't.canonical_name',
+  magnitude: 't.magnitude',
+  constellation: 't.constellation',
+  workflow_stage: 't.workflow_stage'
+}
+
+function buildOrderClause(sortBy?: string, sortDir?: string): string {
+  const col = SORT_COLUMNS[sortBy ?? ''] ?? 't.canonical_name'
+  const dir = sortDir === 'desc' ? 'DESC' : 'ASC'
+  if (sortBy === 'magnitude') return `${col} IS NULL, ${col} ${dir}`
+  return `${col} ${dir}`
+}
+
+function buildFilterClauses(opts: SearchOptions): { where: string; params: unknown[] } {
+  const clauses: string[] = []
+  const params: unknown[] = []
+  if (opts.objectType) {
+    clauses.push('t.object_type = ?')
+    params.push(opts.objectType)
+  }
+  if (opts.workflowStage) {
+    clauses.push('t.workflow_stage = ?')
+    params.push(opts.workflowStage)
+  }
+  return { where: clauses.length ? 'WHERE ' + clauses.join(' AND ') : '', params }
+}
+
+export function searchTargets(query: string, limit = 50, offset = 0, opts: SearchOptions = {}): SearchResult {
   const sqlite = getSqlite()
+  const order = buildOrderClause(opts.sortBy, opts.sortDir)
 
   if (!query.trim()) {
-    const total = (sqlite.prepare('SELECT COUNT(*) as cnt FROM targets').get() as { cnt: number }).cnt
+    const { where, params } = buildFilterClauses(opts)
+    const total = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM targets t ${where}`).get(...params) as { cnt: number }).cnt
     const rows = sqlite
       .prepare(
         `SELECT t.id, t.canonical_name, t.object_type, t.constellation, t.magnitude,
                 t.workflow_stage, t.is_custom
          FROM targets t
-         ORDER BY t.canonical_name
+         ${where}
+         ORDER BY ${order}
          LIMIT ? OFFSET ?`
       )
-      .all(limit, offset) as RawTarget[]
+      .all(...params, limit, offset) as RawTarget[]
 
     return {
       targets: rows.map((r) => toTargetSummary(r, sqlite)),
@@ -31,12 +69,16 @@ export function searchTargets(query: string, limit = 50, offset = 0): SearchResu
   }
 
   const ftsQuery = buildFtsQuery(query)
+  const { where: filterWhere, params: filterParams } = buildFilterClauses(opts)
+  const ftsFilter = filterWhere ? 'AND ' + filterWhere.replace('WHERE ', '') : ''
 
   const countRow = sqlite
     .prepare(
-      `SELECT COUNT(*) as cnt FROM targets_fts WHERE targets_fts MATCH ?`
+      `SELECT COUNT(*) as cnt FROM targets_fts fts
+       JOIN targets t ON t.rowid = fts.rowid
+       WHERE targets_fts MATCH ? ${ftsFilter}`
     )
-    .get(ftsQuery) as { cnt: number } | undefined
+    .get(ftsQuery, ...filterParams) as { cnt: number } | undefined
 
   const total = countRow?.cnt ?? 0
 
@@ -46,14 +88,14 @@ export function searchTargets(query: string, limit = 50, offset = 0): SearchResu
               t.workflow_stage, t.is_custom
        FROM targets_fts fts
        JOIN targets t ON t.rowid = fts.rowid
-       WHERE targets_fts MATCH ?
-       ORDER BY rank
+       WHERE targets_fts MATCH ? ${ftsFilter}
+       ORDER BY ${order}
        LIMIT ? OFFSET ?`
     )
-    .all(ftsQuery, limit, offset) as RawTarget[]
+    .all(ftsQuery, ...filterParams, limit, offset) as RawTarget[]
 
   if (rows.length === 0 && total === 0) {
-    return searchByAlias(query, limit, offset, sqlite)
+    return searchByAlias(query, limit, offset, sqlite, opts)
   }
 
   return {
@@ -62,17 +104,20 @@ export function searchTargets(query: string, limit = 50, offset = 0): SearchResu
   }
 }
 
-function searchByAlias(query: string, limit: number, offset: number, sqlite: ReturnType<typeof getSqlite>): SearchResult {
+function searchByAlias(query: string, limit: number, offset: number, sqlite: ReturnType<typeof getSqlite>, opts: SearchOptions = {}): SearchResult {
   const pattern = `%${query}%`
+  const { where: filterWhere, params: filterParams } = buildFilterClauses(opts)
+  const extraFilter = filterWhere ? 'AND ' + filterWhere.replace('WHERE ', '') : ''
+  const order = buildOrderClause(opts.sortBy, opts.sortDir)
 
   const countRow = sqlite
     .prepare(
       `SELECT COUNT(DISTINCT t.id) as cnt
        FROM targets t
        LEFT JOIN target_aliases ta ON ta.target_id = t.id
-       WHERE t.canonical_name LIKE ? OR ta.alias LIKE ?`
+       WHERE (t.canonical_name LIKE ? OR ta.alias LIKE ?) ${extraFilter}`
     )
-    .get(pattern, pattern) as { cnt: number }
+    .get(pattern, pattern, ...filterParams) as { cnt: number }
 
   const rows = sqlite
     .prepare(
@@ -80,11 +125,11 @@ function searchByAlias(query: string, limit: number, offset: number, sqlite: Ret
               t.workflow_stage, t.is_custom
        FROM targets t
        LEFT JOIN target_aliases ta ON ta.target_id = t.id
-       WHERE t.canonical_name LIKE ? OR ta.alias LIKE ?
-       ORDER BY t.canonical_name
+       WHERE (t.canonical_name LIKE ? OR ta.alias LIKE ?) ${extraFilter}
+       ORDER BY ${order}
        LIMIT ? OFFSET ?`
     )
-    .all(pattern, pattern, limit, offset) as RawTarget[]
+    .all(pattern, pattern, ...filterParams, limit, offset) as RawTarget[]
 
   return {
     targets: rows.map((r) => toTargetSummary(r, sqlite)),
