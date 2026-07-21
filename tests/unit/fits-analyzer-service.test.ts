@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
-import { setupTestDb, teardownTestDb, seedFitsScan, seedFitsFile } from '../helpers/setup'
+import { setupTestDb, teardownTestDb, seedFitsScan, seedFitsFile, seedTarget } from '../helpers/setup'
 
 let sqlite: Database.Database
 
@@ -182,11 +182,13 @@ describe('FitsAnalyzerService', () => {
   })
 
   describe('EARS: Target Summaries', () => {
-    it('Given files grouped by folder, When getTargetSummaries is called, Then returns per-folder stats', () => {
+    it('Given files linked to targets, When getTargetSummaries is called, Then returns per-target stats', () => {
       const scanId = seedFitsScan(sqlite)
-      seedFitsFile(sqlite, scanId, { folderName: 'M31', sessionFolder: 'night1', filter: 'Ha', exposureSec: 300 })
-      seedFitsFile(sqlite, scanId, { folderName: 'M31', sessionFolder: 'night2', filter: 'Ha', exposureSec: 300 })
-      seedFitsFile(sqlite, scanId, { folderName: 'M42', sessionFolder: 'night1', filter: 'SII', exposureSec: 600 })
+      const t1 = seedTarget(sqlite, { canonicalName: 'M31' })
+      const t2 = seedTarget(sqlite, { canonicalName: 'M42' })
+      seedFitsFile(sqlite, scanId, { folderName: 'M31', sessionFolder: 'night1', filter: 'Ha', exposureSec: 300, targetId: t1 })
+      seedFitsFile(sqlite, scanId, { folderName: 'M31', sessionFolder: 'night2', filter: 'Ha', exposureSec: 300, targetId: t1 })
+      seedFitsFile(sqlite, scanId, { folderName: 'M42', sessionFolder: 'night1', filter: 'SII', exposureSec: 600, targetId: t2 })
 
       const summaries = getTargetSummaries(scanId)
       expect(summaries).toHaveLength(2)

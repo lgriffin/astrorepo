@@ -52,8 +52,9 @@ describe('FolderService', () => {
 
       const result = generateFolders(targetId)
 
-      expect(result.path).not.toContain(':')
-      expect(result.path).not.toContain('/')
+      const folderName = path.basename(result.path)
+      expect(folderName).not.toContain(':')
+      expect(folderName).not.toContain('/')
       expect(fs.existsSync(result.path)).toBe(true)
     })
 

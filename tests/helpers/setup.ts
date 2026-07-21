@@ -41,6 +41,7 @@ function runMigrations(sqlite: Database.Database): void {
       workflow_stage TEXT NOT NULL DEFAULT 'planned',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
+      thumbnail_path TEXT,
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -391,6 +392,7 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
   ybinning: number | null
   telescope: string | null
   instrument: string | null
+  targetId: string | null
 }> = {}): string {
   const id = overrides.id ?? `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()
@@ -399,8 +401,8 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     `INSERT INTO fits_files (
       id, scan_id, file_path, file_name, file_size_bytes, folder_name, session_folder,
       object_name, image_type, filter, exposure_sec, date_obs, is_stacked,
-      gain, ccd_temp, xbinning, ybinning, telescope, instrument, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      gain, ccd_temp, xbinning, ybinning, telescope, instrument, target_id, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     scanId,
@@ -421,6 +423,7 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     overrides.ybinning ?? null,
     overrides.telescope ?? null,
     overrides.instrument ?? null,
+    overrides.targetId ?? null,
     now
   )
   return id
