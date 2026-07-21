@@ -269,6 +269,18 @@ export const fitsThumbnails = sqliteTable('fits_thumbnails', {
   createdAt: text('created_at').notNull()
 })
 
+export const integrationGoals = sqliteTable('integration_goals', {
+  id: text('id').primaryKey(),
+  targetId: text('target_id').notNull().references(() => targets.id, { onDelete: 'cascade' }),
+  filter: text('filter').notNull(),
+  goalSeconds: real('goal_seconds').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+}, (table) => [
+  uniqueIndex('idx_integration_goal_unique').on(table.targetId, table.filter),
+  index('idx_integration_goal_target').on(table.targetId)
+])
+
 export const fitsHeaders = sqliteTable('fits_headers', {
   id: text('id').primaryKey(),
   fileId: text('file_id').notNull().references(() => fitsFiles.id, { onDelete: 'cascade' }),

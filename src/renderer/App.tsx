@@ -14,6 +14,7 @@ import { Settings } from './pages/Settings'
 import { FitsAnalyzer } from './pages/FitsAnalyzer'
 import { StorageAnalytics } from './pages/StorageAnalytics'
 import { Calibration } from './pages/Calibration'
+import { StackingAnalysis } from './pages/StackingAnalysis'
 import { ToastProvider } from './contexts/ToastContext'
 
 export function App(): React.ReactElement {
@@ -33,6 +34,7 @@ export function App(): React.ReactElement {
             <Route path="/equipment" element={<Equipment />} />
             <Route path="/images" element={<Images />} />
             <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
+            <Route path="/stacking" element={<StackingAnalysis />} />
             <Route path="/analytics" element={<StorageAnalytics />} />
             <Route path="/calibration" element={<Calibration />} />
             <Route path="/poster" element={<Poster />} />

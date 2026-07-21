@@ -385,6 +385,20 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_home_folders_target ON target_home_folders(target_id);
   `)
 
+  // Migration: add integration_goals table
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS integration_goals (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      filter TEXT NOT NULL,
+      goal_seconds REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(target_id, filter)
+    );
+    CREATE INDEX IF NOT EXISTS idx_integration_goal_target ON integration_goals(target_id);
+  `)
+
   // Migration: add quality columns to fits_files
   const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }
   if (hasFwhm.cnt === 0) {
@@ -416,6 +430,7 @@ export function resetDatabase(): { cleared: boolean } {
     DELETE FROM catalogue_entries;
     DELETE FROM target_aliases;
     DELETE FROM target_relationships;
+    DELETE FROM integration_goals;
     DELETE FROM storage_snapshots;
     DELETE FROM targets;
   `)

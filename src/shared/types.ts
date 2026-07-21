@@ -601,6 +601,82 @@ export interface CalibrationGroup {
   dateRange: { earliest: string | null; latest: string | null }
 }
 
+// Stacking Analysis types
+
+export interface StackingSummaryRow {
+  fileId: string
+  fileName: string
+  targetId: string | null
+  targetName: string | null
+  filter: string | null
+  ncombine: number | null
+  totalExposureSec: number | null
+  software: string | null
+  calstat: string | null
+  sessionFolder: string | null
+  dateObs: string | null
+  fileSizeBytes: number
+}
+
+export interface StackingSummary {
+  totalStacked: number
+  totalNcombine: number
+  totalIntegrationSec: number
+  softwareUsed: string[]
+  filtersUsed: string[]
+  rows: StackingSummaryRow[]
+}
+
+export interface SubFrameInfo {
+  fileId: string
+  fileName: string
+  exposureSec: number | null
+  dateObs: string | null
+  qualityScore: number | null
+  qualityFlag: string | null
+  fwhmEstimate: number | null
+  noiseLevel: number | null
+}
+
+export interface StackedWithSubFrames {
+  stackedFileId: string
+  stackedFileName: string
+  targetId: string | null
+  targetName: string | null
+  filter: string | null
+  sessionFolder: string | null
+  ncombine: number | null
+  totalExposureSec: number | null
+  subFrames: SubFrameInfo[]
+  matchedCount: number
+}
+
+export interface FilterProgress {
+  filter: string
+  integrationSec: number
+  goalSec: number | null
+  frameCount: number
+  stackedCount: number
+  percentComplete: number | null
+}
+
+export interface TargetIntegrationProgress {
+  targetId: string
+  targetName: string
+  totalIntegrationSec: number
+  filters: FilterProgress[]
+  sessionCount: number
+}
+
+export interface IntegrationGoal {
+  id: string
+  targetId: string
+  filter: string
+  goalSeconds: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface CalibrationMatch {
   type: 'dark' | 'flat' | 'bias'
   status: 'matched' | 'close' | 'missing'
