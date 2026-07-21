@@ -163,8 +163,12 @@ function TargetSearchSelect({ selected, onAdd, onRemove }: {
 
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) { setResults([]); return }
-    const r = await invoke<{ targets: TargetSummary[]; total: number }>('targets:search', { query: q, limit: 10 })
-    setResults(r.targets.filter(t => !selected.some(s => s.id === t.id)))
+    try {
+      const r = await invoke<{ targets: TargetSummary[]; total: number }>('targets:search', { query: q, limit: 10 })
+      setResults(r.targets.filter(t => !selected.some(s => s.id === t.id)))
+    } catch {
+      setResults([])
+    }
   }, [selected])
 
   useEffect(() => {

@@ -130,6 +130,18 @@ describe('TargetService', () => {
       expect(result.targets[0].canonicalName).toBe('Staged1')
     })
 
+    it('Given targets with aliases, When searching by alias with filters, Then filters apply to alias fallback results', () => {
+      const t1 = createTarget({ canonicalName: 'Eagle Nebula', objectType: 'emission_nebula' })
+      const t2 = createTarget({ canonicalName: 'Andromeda Galaxy', objectType: 'galaxy' })
+      addAlias(t1.id, 'M16', 'messier')
+      addAlias(t2.id, 'M31', 'messier')
+
+      const result = searchTargets('M', 50, 0, { objectType: 'galaxy' })
+      expect(result.targets.every(t => t.objectType === 'galaxy')).toBe(true)
+      expect(result.targets.some(t => t.canonicalName === 'Andromeda Galaxy')).toBe(true)
+      expect(result.targets.some(t => t.canonicalName === 'Eagle Nebula')).toBe(false)
+    })
+
     it('Given targets exist, When sorting by name desc, Then results are in reverse alphabetical order', () => {
       createTarget({ canonicalName: 'Alpha', objectType: 'star' })
       createTarget({ canonicalName: 'Zeta', objectType: 'star' })

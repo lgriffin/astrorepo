@@ -95,7 +95,7 @@ export function searchTargets(query: string, limit = 50, offset = 0, opts: Searc
     .all(ftsQuery, ...filterParams, limit, offset) as RawTarget[]
 
   if (rows.length === 0 && total === 0) {
-    return searchByAlias(query, limit, offset, sqlite)
+    return searchByAlias(query, limit, offset, sqlite, opts)
   }
 
   return {
@@ -104,17 +104,20 @@ export function searchTargets(query: string, limit = 50, offset = 0, opts: Searc
   }
 }
 
-function searchByAlias(query: string, limit: number, offset: number, sqlite: ReturnType<typeof getSqlite>): SearchResult {
+function searchByAlias(query: string, limit: number, offset: number, sqlite: ReturnType<typeof getSqlite>, opts: SearchOptions = {}): SearchResult {
   const pattern = `%${query}%`
+  const { where: filterWhere, params: filterParams } = buildFilterClauses(opts)
+  const extraFilter = filterWhere ? 'AND ' + filterWhere.replace('WHERE ', '') : ''
+  const order = buildOrderClause(opts.sortBy, opts.sortDir)
 
   const countRow = sqlite
     .prepare(
       `SELECT COUNT(DISTINCT t.id) as cnt
        FROM targets t
        LEFT JOIN target_aliases ta ON ta.target_id = t.id
-       WHERE t.canonical_name LIKE ? OR ta.alias LIKE ?`
+       WHERE (t.canonical_name LIKE ? OR ta.alias LIKE ?) ${extraFilter}`
     )
-    .get(pattern, pattern) as { cnt: number }
+    .get(pattern, pattern, ...filterParams) as { cnt: number }
 
   const rows = sqlite
     .prepare(
@@ -122,11 +125,11 @@ function searchByAlias(query: string, limit: number, offset: number, sqlite: Ret
               t.workflow_stage, t.is_custom
        FROM targets t
        LEFT JOIN target_aliases ta ON ta.target_id = t.id
-       WHERE t.canonical_name LIKE ? OR ta.alias LIKE ?
-       ORDER BY t.canonical_name
+       WHERE (t.canonical_name LIKE ? OR ta.alias LIKE ?) ${extraFilter}
+       ORDER BY ${order}
        LIMIT ? OFFSET ?`
     )
-    .all(pattern, pattern, limit, offset) as RawTarget[]
+    .all(pattern, pattern, ...filterParams, limit, offset) as RawTarget[]
 
   return {
     targets: rows.map((r) => toTargetSummary(r, sqlite)),
