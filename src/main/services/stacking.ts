@@ -5,6 +5,12 @@ import type {
   TargetIntegrationProgress, FilterProgress, IntegrationGoal
 } from '@shared/types'
 
+const LIGHT_FRAME_PREDICATE = "(f.image_type = 'Light Frame' OR f.image_type = 'light' OR f.image_type IS NULL)"
+
+function filterKey(filter: string | null): string {
+  return filter ?? 'No Filter'
+}
+
 interface RawStackedRow {
   id: string
   file_name: string
@@ -106,7 +112,7 @@ export function getSubFramesForStacked(stackedFileId: string): StackedWithSubFra
 
   if (!stacked) return null
 
-  const conditions: string[] = ['f.is_stacked = 0', "f.image_type LIKE '%ight%'"]
+  const conditions: string[] = ['f.is_stacked = 0', LIGHT_FRAME_PREDICATE]
   const params: unknown[] = []
 
   if (stacked.target_id) {
@@ -213,7 +219,7 @@ export function getIntegrationProgress(): TargetIntegrationProgress[] {
      FROM fits_files f
      JOIN targets t ON f.target_id = t.id
      WHERE f.is_stacked = 0
-       AND f.image_type LIKE '%ight%'
+       AND ${LIGHT_FRAME_PREDICATE}
        AND f.target_id IS NOT NULL
      GROUP BY f.target_id, f.filter`
   ).all() as RawLightAgg[]
@@ -226,10 +232,11 @@ export function getIntegrationProgress(): TargetIntegrationProgress[] {
   ).all() as RawStackedAgg[]
 
   const sessionRows = sqlite.prepare(
-    `SELECT target_id, COUNT(DISTINCT session_folder) as session_count
-     FROM fits_files
-     WHERE target_id IS NOT NULL AND session_folder IS NOT NULL
-     GROUP BY target_id`
+    `SELECT f.target_id, COUNT(DISTINCT f.session_folder) as session_count
+     FROM fits_files f
+     WHERE f.target_id IS NOT NULL AND f.session_folder IS NOT NULL
+       AND f.is_stacked = 0 AND ${LIGHT_FRAME_PREDICATE}
+     GROUP BY f.target_id`
   ).all() as RawSessionCount[]
 
   const goalRows = sqlite.prepare(
@@ -239,7 +246,7 @@ export function getIntegrationProgress(): TargetIntegrationProgress[] {
 
   const stackedMap = new Map<string, number>()
   for (const r of stackedRows) {
-    stackedMap.set(`${r.target_id}|${r.filter ?? ''}`, r.stacked_count)
+    stackedMap.set(`${r.target_id}|${filterKey(r.filter)}`, r.stacked_count)
   }
 
   const goalMap = new Map<string, number>()
