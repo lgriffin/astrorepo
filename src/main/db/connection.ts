@@ -427,12 +427,14 @@ export function resetDatabase(): { cleared: boolean } {
     DELETE FROM session_equipment;
     DELETE FROM observation_sessions;
     DELETE FROM collection_memberships;
+    DELETE FROM collections;
     DELETE FROM catalogue_entries;
     DELETE FROM target_aliases;
     DELETE FROM target_relationships;
     DELETE FROM integration_goals;
     DELETE FROM storage_snapshots;
     DELETE FROM targets;
+    DELETE FROM catalogues;
   `)
   sqlite.exec('VACUUM')
   return { cleared: true }

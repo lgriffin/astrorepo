@@ -1,40 +1,35 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { ImageScanResult, ImageTargetGroup, ImageFileInfo } from '@shared/types'
 
 export function Images(): React.ReactElement {
-  const [homeFolderSet, setHomeFolderSet] = useState<boolean | null>(null)
-  const [scanning, setScanning] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [result, setResult] = useState<ImageScanResult | null>(null)
   const [lightbox, setLightbox] = useState<{ path: string; filename: string } | null>(null)
 
   useEffect(() => {
-    invoke<{ value: string | null }>('settings:get', { key: 'home_folder_path' }).then(r => {
-      setHomeFolderSet(!!r.value)
-    })
+    invoke<ImageScanResult>('images:scan')
+      .then(setResult)
+      .finally(() => setLoading(false))
   }, [])
 
-  const handleScan = useCallback(async () => {
-    setScanning(true)
-    try {
-      const data = await invoke<ImageScanResult>('images:scan')
-      setResult(data)
-    } finally {
-      setScanning(false)
-    }
-  }, [])
+  if (loading) {
+    return (
+      <PageContainer title="Images" subtitle="Browse your astrophotography images">
+        <div className="text-astro-muted">Loading images...</div>
+      </PageContainer>
+    )
+  }
 
-  if (homeFolderSet === null) return <PageContainer title="Images" subtitle="Browse your astrophotography images"><div /></PageContainer>
-
-  if (!homeFolderSet) {
+  if (!result || (result.targets.length === 0 && result.unmatched.length === 0)) {
     return (
       <PageContainer title="Images" subtitle="Browse your astrophotography images">
         <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
           <p className="text-sm text-astro-muted">
-            No home folder configured. Set your home folder path in{' '}
-            <a href="#/settings" className="text-astro-accent hover:underline">Settings</a>{' '}
-            to browse images from your <code className="text-xs bg-astro-bg px-1 py-0.5 rounded">images/</code> directory.
+            No images found. Run a library scan from the{' '}
+            <a href="#/library" className="text-astro-accent hover:underline">Library</a>{' '}
+            page to discover and organize your images.
           </p>
         </div>
       </PageContainer>
@@ -44,39 +39,12 @@ export function Images(): React.ReactElement {
   return (
     <PageContainer title="Images" subtitle="Browse your astrophotography images">
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleScan}
-            disabled={scanning}
-            className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
-          >
-            {scanning ? 'Scanning...' : result ? 'Rescan Images' : 'Scan Images'}
-          </button>
-          {scanning && (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-astro-accent border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-astro-muted">Scanning images folder...</span>
-            </div>
-          )}
-          {result && !scanning && (
-            <span className="text-sm text-astro-muted">
-              {result.totalImages} images found across {result.targets.length} targets
-              {result.unmatched.length > 0 && ` + ${result.unmatched.length} unmatched`}
-            </span>
-          )}
+        <div className="text-sm text-astro-muted">
+          {result.totalImages} images across {result.targets.length} targets
+          {result.unmatched.length > 0 && ` + ${result.unmatched.length} unmatched`}
         </div>
 
-        {result && result.targets.length === 0 && result.unmatched.length === 0 && (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-6">
-            <p className="text-sm text-astro-muted">
-              No images found in the <code className="text-xs bg-astro-bg px-1 py-0.5 rounded">images/</code> subfolder.
-              Place your processed images in folders named after targets (e.g. <code className="text-xs bg-astro-bg px-1 py-0.5 rounded">images/M31/</code>,
-              <code className="text-xs bg-astro-bg px-1 py-0.5 rounded">images/NGC7000/</code>).
-            </p>
-          </div>
-        )}
-
-        {result && result.targets.map(group => (
+        {result.targets.map(group => (
           <TargetImageGroup
             key={group.normalizedName}
             group={group}
@@ -84,7 +52,7 @@ export function Images(): React.ReactElement {
           />
         ))}
 
-        {result && result.unmatched.length > 0 && (
+        {result.unmatched.length > 0 && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">

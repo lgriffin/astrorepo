@@ -84,6 +84,15 @@ export function getDashboardStats(): DashboardStats {
     "SELECT canonical_name as name, created_at FROM targets WHERE workflow_stage NOT IN ('published','printed','archived') ORDER BY created_at ASC LIMIT 1"
   ).get() as { name: string; created_at: string } | undefined
 
+  const dataAwareness = sqlite.prepare(
+    `SELECT
+       COUNT(CASE WHEN raw_files > 0 THEN 1 END) as with_raw,
+       COUNT(CASE WHEN stacked_files > 0 THEN 1 END) as with_stacked,
+       COUNT(CASE WHEN tif_files > 0 THEN 1 END) as with_tif,
+       COUNT(CASE WHEN image_files > 0 THEN 1 END) as with_images
+     FROM target_home_data`
+  ).get() as Record<string, number>
+
   return {
     totalTargets: totals.total,
     completedTargets: totals.completed,
@@ -100,7 +109,11 @@ export function getDashboardStats(): DashboardStats {
     largestDataset: largestRow ? { targetName: largestRow.name, frameCount: largestRow.cnt } : null,
     deepestIntegration: deepestRow && deepestRow.total > 0 ? { targetName: deepestRow.name, exposureSec: deepestRow.total } : null,
     longestProject: longestRow && longestRow.days > 0 ? { targetName: longestRow.name, days: longestRow.days } : null,
-    oldestUnfinished: oldestRow ? { targetName: oldestRow.name, createdAt: oldestRow.created_at } : null
+    oldestUnfinished: oldestRow ? { targetName: oldestRow.name, createdAt: oldestRow.created_at } : null,
+    targetsWithRawData: dataAwareness.with_raw,
+    targetsWithStackedData: dataAwareness.with_stacked,
+    targetsWithTifData: dataAwareness.with_tif,
+    targetsWithImageData: dataAwareness.with_images
   }
 }
 
@@ -109,6 +122,7 @@ export function getCatalogueProgressStats(): CatalogueProgress[] {
   const rows = sqlite.prepare(
     `SELECT c.id as catalogue_id, c.name as catalogue_name, c.abbreviation,
             COUNT(ce.id) as total,
+            COUNT(CASE WHEN t.workflow_stage != 'not_observed' THEN 1 END) as observed,
             COUNT(CASE WHEN t.workflow_stage IN ('published','printed','archived') THEN 1 END) as completed
      FROM catalogues c
      LEFT JOIN catalogue_entries ce ON ce.catalogue_id = c.id
@@ -121,6 +135,7 @@ export function getCatalogueProgressStats(): CatalogueProgress[] {
     catalogueId: r.catalogue_id as string,
     catalogueName: r.catalogue_name as string,
     abbreviation: r.abbreviation as string,
+    observed: r.observed as number,
     completed: r.completed as number,
     total: r.total as number
   }))

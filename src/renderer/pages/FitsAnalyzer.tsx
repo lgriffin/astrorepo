@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
-import { ScanControls } from '../components/fits/ScanControls'
 import { ScanHistory } from '../components/fits/ScanHistory'
 import { AggregateView } from '../components/fits/AggregateView'
 import { FileTable } from '../components/fits/FileTable'
@@ -54,10 +53,6 @@ export function FitsAnalyzer(): React.ReactElement {
     setLoading(false)
   }
 
-  function handleScanComplete(): void {
-    loadScans()
-  }
-
   function handleSelectScan(id: string): void {
     setSelectedScanId(id)
   }
@@ -71,9 +66,17 @@ export function FitsAnalyzer(): React.ReactElement {
   }
 
   return (
-    <PageContainer title="FITS Analyzer" subtitle="Scan and analyze FITS file metadata across your astrophotography folders">
+    <PageContainer title="FITS Analyzer" subtitle="Browse and analyze FITS file metadata">
       <div className="space-y-4">
-        <ScanControls onScanComplete={handleScanComplete} />
+        {scans.length === 0 && (
+          <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
+            <p className="text-sm text-astro-muted">
+              No FITS scans found. Run a library scan from the{' '}
+              <a href="#/library" className="text-astro-accent hover:underline">Library</a>{' '}
+              page to analyze your FITS data.
+            </p>
+          </div>
+        )}
 
         <ScanHistory
           scans={scans}

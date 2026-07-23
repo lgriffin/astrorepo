@@ -5,6 +5,7 @@ import { normalizeCatalogName } from './fits-linker'
 import { isAstronomicalName } from './astro-names'
 import { startFolderScan } from './fits-analyzer'
 import { advanceStage } from './workflow'
+import { syncTargetsToCollections } from './collection'
 import { ulid } from 'ulid'
 import type {
   HomeFolderTarget, HomeScanResult, HomeScanProgress, HomeScanPhaseProgress,
@@ -431,6 +432,11 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
         }
         result.targets.push(entry)
       }
+
+      const processedTargetIds = result.targets.map(t => t.targetId).filter((id): id is string => !!id)
+      syncTargetsToCollections(processedTargetIds)
+
+      sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan', datetime('now'))").run()
 
       scanState.status = 'done'
       scanState.result = result

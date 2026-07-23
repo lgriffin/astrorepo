@@ -41,20 +41,30 @@ export function Dashboard(): React.ReactElement {
         <StatCard label="Catalogues" value={Object.keys(stats.objectsByCatalogue).length} />
       </div>
 
+      <div className="mb-8">
+        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Library Data</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="With Raw Data" value={stats.targetsWithRawData} />
+          <StatCard label="With Stacked Data" value={stats.targetsWithStackedData} />
+          <StatCard label="With TIF Data" value={stats.targetsWithTifData} />
+          <StatCard label="With Image Data" value={stats.targetsWithImageData} />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Catalogue Progress</h2>
           <div className="space-y-3">
             {catalogues.map((c) => {
-              const pct = c.total > 0 ? Math.round((c.completed / c.total) * 100) : 0
+              const obsPct = c.total > 0 ? Math.round((c.observed / c.total) * 100) : 0
               return (
                 <div key={c.catalogueId}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-astro-text">{c.catalogueName}</span>
-                    <span className="text-astro-muted">{c.completed}/{c.total} ({pct}%)</span>
+                    <span className="text-astro-muted">{c.observed}/{c.total} observed ({obsPct}%)</span>
                   </div>
                   <div className="w-full h-1.5 bg-astro-bg rounded-full overflow-hidden">
-                    <div className="h-full bg-astro-accent rounded-full" style={{ width: `${pct}%` }} />
+                    <div className="h-full bg-astro-accent rounded-full" style={{ width: `${obsPct}%` }} />
                   </div>
                 </div>
               )
