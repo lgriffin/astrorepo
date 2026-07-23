@@ -140,7 +140,7 @@ export function startFolderScan(folderPath: string): FitsScan {
           const dec = getHeaderString(hm, 'DEC', 'OBJCTDEC', 'CRVAL2')
           const software = getHeaderString(hm, 'SWCREATE', 'PROGRAM', 'SOFTWARE', 'CREATOR')
 
-          insertFile.run(
+          const insertResult = insertFile.run(
             fileId, scanId, filePath, fileName, fileSizeBytes, fileModifiedAt, folderName, sessionFolder,
             objectName,
             getHeaderString(hm, 'TELESCOP'),
@@ -175,6 +175,8 @@ export function startFolderScan(folderPath: string): FitsScan {
             result.imageStats?.stddev ?? null,
             now
           )
+
+          if (insertResult.changes === 0) continue
 
           for (let ordinal = 0; ordinal < result.headers.length; ordinal++) {
             const h = result.headers[ordinal]

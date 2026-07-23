@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { schemas, type Channel, type SchemaMap } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
-import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection } from '../services/collection'
+import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection, autoGenerateCatalogueCollections } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
 import { createEquipment, listEquipment, getUsageHistory } from '../services/equipment'
 import { generateFolders, listTemplates, createTemplate } from '../services/folder'
@@ -21,6 +21,7 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { resetDatabase } from '../db/connection'
+import { loadCatalogueSeedData } from '../services/catalogue'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -443,7 +444,14 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('db:reset', async () => {
-    return resetDatabase()
+    const result = resetDatabase()
+    try {
+      loadCatalogueSeedData()
+      autoGenerateCatalogueCollections()
+    } catch (err) {
+      console.error('Re-seed after reset failed:', err)
+    }
+    return result
   })
 }
 

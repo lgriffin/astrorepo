@@ -10,6 +10,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: '◉' },
   { to: '/targets', label: 'Targets', icon: '★' },
+  { to: '/library', label: 'Library', icon: '⊟' },
   { to: '/sessions/new', label: 'New Session', icon: '+' },
   { to: '/collections', label: 'Collections', icon: '▦' },
   { to: '/equipment', label: 'Equipment', icon: '⚙' },

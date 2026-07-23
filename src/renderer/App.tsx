@@ -9,6 +9,7 @@ import { Collections } from './pages/Collections'
 import { CollectionDetail } from './pages/CollectionDetail'
 import { Equipment } from './pages/Equipment'
 import { Images } from './pages/Images'
+import { Library } from './pages/Library'
 import { Poster } from './pages/Poster'
 import { Settings } from './pages/Settings'
 import { FitsAnalyzer } from './pages/FitsAnalyzer'
@@ -32,6 +33,7 @@ export function App(): React.ReactElement {
             <Route path="/collections" element={<Collections />} />
             <Route path="/collections/:id" element={<CollectionDetail />} />
             <Route path="/equipment" element={<Equipment />} />
+            <Route path="/library" element={<Library />} />
             <Route path="/images" element={<Images />} />
             <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
             <Route path="/stacking" element={<StackingAnalysis />} />

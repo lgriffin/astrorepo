@@ -115,6 +115,7 @@ export interface Collection {
 }
 
 export interface CollectionWithStats extends Collection {
+  observed: number
   completed: number
   total: number
 }
@@ -241,12 +242,17 @@ export interface DashboardStats {
   deepestIntegration: { targetName: string; exposureSec: number } | null
   longestProject: { targetName: string; days: number } | null
   oldestUnfinished: { targetName: string; createdAt: string } | null
+  targetsWithRawData: number
+  targetsWithStackedData: number
+  targetsWithTifData: number
+  targetsWithImageData: number
 }
 
 export interface CatalogueProgress {
   catalogueId: string
   catalogueName: string
   abbreviation: string
+  observed: number
   completed: number
   total: number
 }
