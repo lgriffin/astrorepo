@@ -1,6 +1,4 @@
 import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as schema from '../../src/main/db/schema'
 import { initFts } from '../../src/main/db/fts'
 
 let testSqlite: Database.Database | null = null
@@ -9,6 +7,7 @@ export function setupTestDb(): Database.Database {
   testSqlite = new Database(':memory:')
   testSqlite.pragma('journal_mode = WAL')
   testSqlite.pragma('foreign_keys = ON')
+  testSqlite.pragma('busy_timeout = 5000')
   runMigrations(testSqlite)
   initFts(testSqlite)
   return testSqlite
@@ -40,7 +39,7 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'planned',
+      workflow_stage TEXT NOT NULL DEFAULT 'not_observed',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
       thumbnail_path TEXT,
@@ -286,6 +285,32 @@ function runMigrations(sqlite: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_storage_snapshot_date ON storage_snapshots(snapshot_date);
 
+    CREATE TABLE IF NOT EXISTS target_home_data (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      raw_files INTEGER NOT NULL DEFAULT 0,
+      stacked_files INTEGER NOT NULL DEFAULT 0,
+      tif_files INTEGER NOT NULL DEFAULT 0,
+      image_files INTEGER NOT NULL DEFAULT 0,
+      raw_path TEXT,
+      stacked_path TEXT,
+      tif_path TEXT,
+      images_path TEXT,
+      suggested_stage TEXT,
+      scanned_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS target_home_folders (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      folder_type TEXT NOT NULL,
+      subfolder_name TEXT,
+      subfolder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      scanned_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_home_folders_target ON target_home_folders(target_id);
+
     CREATE INDEX IF NOT EXISTS idx_target_alias_alias ON target_aliases(alias);
     CREATE INDEX IF NOT EXISTS idx_fits_scan_status ON fits_scans(status);
     CREATE INDEX IF NOT EXISTS idx_fits_scan_started ON fits_scans(started_at);
@@ -312,18 +337,16 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_relationship_related ON target_relationships(related_target_id);
 
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
-      ('ws-01', 'planned', 1, 1),
-      ('ws-02', 'scheduled', 2, 1),
-      ('ws-03', 'observed', 3, 1),
-      ('ws-04', 'raw_captured', 4, 1),
-      ('ws-05', 'calibrated', 5, 1),
-      ('ws-06', 'registered', 6, 1),
-      ('ws-07', 'integrated', 7, 1),
-      ('ws-08', 'processing', 8, 1),
-      ('ws-09', 'edited', 9, 1),
-      ('ws-10', 'published', 10, 1),
-      ('ws-11', 'printed', 11, 1),
-      ('ws-12', 'archived', 12, 1);
+      ('ws-00', 'not_observed', 0, 1),
+      ('ws-04', 'raw_captured', 1, 1),
+      ('ws-05', 'calibrated', 2, 1),
+      ('ws-06', 'registered', 3, 1),
+      ('ws-07', 'integrated', 4, 1),
+      ('ws-08', 'processing', 5, 1),
+      ('ws-09', 'edited', 6, 1),
+      ('ws-10', 'published', 7, 1),
+      ('ws-11', 'printed', 8, 1),
+      ('ws-12', 'archived', 9, 1);
 
     INSERT OR IGNORE INTO folder_templates (id, name, structure, is_builtin, created_at) VALUES
       ('ft-siril', 'Siril Default', '{"lights":{},"darks":{},"biases":{},"flats":{}}', 1, datetime('now'));
@@ -355,7 +378,7 @@ export function seedTarget(sqlite: Database.Database, overrides: Partial<{
     overrides.decDegrees ?? null,
     overrides.magnitude ?? null,
     overrides.constellation ?? null,
-    overrides.workflowStage ?? 'planned',
+    overrides.workflowStage ?? 'not_observed',
     now,
     now
   )

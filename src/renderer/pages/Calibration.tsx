@@ -20,10 +20,6 @@ export function Calibration(): React.ReactElement {
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   async function loadData(): Promise<void> {
     setLoading(true)
     try {
@@ -38,6 +34,10 @@ export function Calibration(): React.ReactElement {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   async function handleAnalyzeCoverage(): Promise<void> {
     setAnalyzing(true)

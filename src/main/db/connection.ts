@@ -18,6 +18,7 @@ export function initDatabase(): void {
   sqlite = new Database(dbPath)
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
+  sqlite.pragma('busy_timeout = 5000')
   db = drizzle(sqlite, { schema })
   runMigrations(sqlite)
   try {

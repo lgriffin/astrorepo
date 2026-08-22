@@ -173,7 +173,7 @@ export function createTarget(input: {
       `INSERT INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
         angular_size_arcmin, constellation, description, simbad_id, ned_id,
         workflow_stage, is_custom, folder_path, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', 1, NULL, NULL, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_observed', 1, NULL, NULL, ?, ?)`
     )
     .run(
       id,

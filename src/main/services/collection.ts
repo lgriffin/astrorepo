@@ -47,6 +47,7 @@ export function listCollections(): CollectionWithStats[] {
 export function getCollectionWithTargets(id: string, limit = 100, offset = 0): {
   collection: Collection
   targets: TargetSummary[]
+  observed: number
   completed: number
   total: number
 } | null {

@@ -131,7 +131,7 @@ describe('FitsLinkerService', () => {
     it('Event: file already has target_id, Action: linkFitsFilesToTargets, Response: file not re-linked, State: original target_id preserved', () => {
       // Arrange
       const target1Id = seedTarget(sqlite, { id: 'target-1', canonicalName: 'M31' })
-      const target2Id = seedTarget(sqlite, { id: 'target-2', canonicalName: 'M42' })
+      seedTarget(sqlite, { id: 'target-2', canonicalName: 'M42' })
       const scanId = seedFitsScan(sqlite)
       const fileId = seedFitsFile(sqlite, scanId, { objectName: 'M42' })
 
@@ -255,7 +255,7 @@ describe('FitsLinkerService', () => {
   describe('EARS: linkFitsFilesToTargets without scanId', () => {
     it('Event: called without scanId, Action: links all unlinked files across scans, Response: all matching files linked', () => {
       // Arrange
-      const targetId = seedTarget(sqlite, { canonicalName: 'M31' })
+      seedTarget(sqlite, { canonicalName: 'M31' })
       const scan1 = seedFitsScan(sqlite, { id: 'scan-1' })
       const scan2 = seedFitsScan(sqlite, { id: 'scan-2' })
       seedFitsFile(sqlite, scan1, { id: 'f1', fileName: 'f1.fits', filePath: '/a/f1.fits', objectName: 'M31' })

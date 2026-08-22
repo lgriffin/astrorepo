@@ -33,10 +33,6 @@ export function Settings(): React.ReactElement {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetStatus, setResetStatus] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
   async function loadSettings(): Promise<void> {
     const results = await Promise.all(
       FOLDER_SETTINGS.map(async (s) => {
@@ -46,6 +42,10 @@ export function Settings(): React.ReactElement {
     )
     setFolders(results)
   }
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
 
   async function handleBrowse(key: string): Promise<void> {
     const result = await invoke<{ path: string | null }>('settings:pick-folder')

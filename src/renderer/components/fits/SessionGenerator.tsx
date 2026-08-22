@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import type { AutoSessionPreview, GeneratedSessionResult } from '@shared/types'
 
@@ -15,17 +15,12 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
   const [result, setResult] = useState<GeneratedSessionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadPreviews()
-  }, [scanId])
-
-  async function loadPreviews(): Promise<void> {
+  const loadPreviews = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await invoke<{ previews: AutoSessionPreview[] }>('sessions:preview-auto', { scan_id: scanId })
       setPreviews(data.previews)
-      // Select all pending (non-existing) sessions by default
       const pendingKeys = new Set(
         data.previews
           .filter((p) => !p.existingSessionId)
@@ -37,7 +32,11 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
     } finally {
       setLoading(false)
     }
-  }
+  }, [scanId])
+
+  useEffect(() => {
+    loadPreviews()
+  }, [loadPreviews])
 
   function toggleSelection(key: string): void {
     setSelected((prev) => {

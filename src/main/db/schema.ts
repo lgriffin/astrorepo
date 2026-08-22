@@ -12,7 +12,7 @@ export const targets = sqliteTable('targets', {
   description: text('description'),
   simbadId: text('simbad_id'),
   nedId: text('ned_id'),
-  workflowStage: text('workflow_stage').notNull().default('planned'),
+  workflowStage: text('workflow_stage').notNull().default('not_observed'),
   isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false),
   folderPath: text('folder_path'),
   notes: text('notes'),

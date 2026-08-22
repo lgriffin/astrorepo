@@ -9,8 +9,8 @@ export function getDashboardStats(): DashboardStats {
     `SELECT
        COUNT(*) as total,
        COUNT(CASE WHEN workflow_stage IN ('published','printed','archived') THEN 1 END) as completed,
-       COUNT(CASE WHEN workflow_stage NOT IN ('planned','published','printed','archived') THEN 1 END) as in_progress,
-       COUNT(CASE WHEN workflow_stage = 'planned' THEN 1 END) as planned
+       COUNT(CASE WHEN workflow_stage NOT IN ('not_observed','published','printed','archived') THEN 1 END) as in_progress,
+       COUNT(CASE WHEN workflow_stage = 'not_observed' THEN 1 END) as planned
      FROM targets`
   ).get() as Record<string, number>
 
