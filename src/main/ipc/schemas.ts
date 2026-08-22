@@ -260,7 +260,15 @@ export const schemas = {
   }),
   'stacking:delete-goal': z.object({ id: z.string().min(1) }),
 
-  'db:reset': z.object({}).optional()
+  'db:reset': z.object({}).optional(),
+
+  'insights:summary': z.object({}).optional(),
+  'insights:monthly-activity': z.object({ months: z.number().int().positive().optional() }),
+  'insights:best-nights': z.object({ limit: z.number().int().positive().optional() }),
+  'insights:equipment-effectiveness': z.object({}).optional(),
+  'insights:quality-trends': z.object({ months: z.number().int().positive().optional() }),
+  'insights:filter-usage': z.object({}).optional(),
+  'insights:target-progress': z.object({ limit: z.number().int().positive().optional() })
 } as const
 
 export type SchemaMap = typeof schemas

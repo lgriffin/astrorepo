@@ -22,6 +22,7 @@ import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, ge
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { resetDatabase } from '../db/connection'
 import { loadCatalogueSeedData } from '../services/catalogue'
+import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -441,6 +442,34 @@ export function registerIpcHandlers(): void {
 
   handle('stacking:delete-goal', validated('stacking:delete-goal', (args) => {
     return { success: deleteIntegrationGoal(args.id) }
+  }))
+
+  handle('insights:summary', async () => {
+    return getInsightsSummary()
+  })
+
+  handle('insights:monthly-activity', validated('insights:monthly-activity', (args) => {
+    return getMonthlyActivity(args.months)
+  }))
+
+  handle('insights:best-nights', validated('insights:best-nights', (args) => {
+    return getBestNights(args.limit)
+  }))
+
+  handle('insights:equipment-effectiveness', async () => {
+    return getEquipmentEffectiveness()
+  })
+
+  handle('insights:quality-trends', validated('insights:quality-trends', (args) => {
+    return getQualityTrends(args.months)
+  }))
+
+  handle('insights:filter-usage', async () => {
+    return getFilterUsageBreakdown()
+  })
+
+  handle('insights:target-progress', validated('insights:target-progress', (args) => {
+    return getTargetProgress(args.limit)
   }))
 
   handle('db:reset', async () => {

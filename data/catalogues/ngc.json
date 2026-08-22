@@ -1,0 +1,5714 @@
+{
+  "catalogue": {
+    "name": "NGC",
+    "abbreviation": "NGC",
+    "description": "New General Catalogue of Nebulae and Clusters of Stars, compiled by J.L.E. Dreyer in 1888. Curated selection of objects suitable for amateur astrophotography.",
+    "totalObjects": 500
+  },
+  "objects": [
+    {
+      "designation": "NGC 9",
+      "name": "NGC 9",
+      "type": "reflection_nebula",
+      "ra": 5.4316,
+      "dec": 89.4659,
+      "mag": 11.7,
+      "size": 6.1,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 18",
+      "name": "NGC 18",
+      "type": "galaxy",
+      "ra": 18.3864,
+      "dec": 48.5514,
+      "mag": 9.9,
+      "size": 10.1,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 19",
+      "name": "NGC 19",
+      "type": "galaxy",
+      "ra": 6.4571,
+      "dec": 44.5213,
+      "mag": 10.8,
+      "size": 1,
+      "constellation": "Gemini",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 33",
+      "name": "NGC 33",
+      "type": "star_cluster",
+      "ra": 11.7292,
+      "dec": -62.263,
+      "mag": 9.3,
+      "size": 5.6,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 42",
+      "name": "NGC 42",
+      "type": "open_cluster",
+      "ra": 21.6018,
+      "dec": -13.693,
+      "mag": 9.2,
+      "size": 6.9,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 43",
+      "name": "NGC 43",
+      "type": "elliptical_galaxy",
+      "ra": 0.6227,
+      "dec": -25.9778,
+      "mag": 13.5,
+      "size": 6.9,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 48",
+      "name": "NGC 48",
+      "type": "galaxy",
+      "ra": 18.1701,
+      "dec": 51.2603,
+      "mag": 11.8,
+      "size": 8.4,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 54",
+      "name": "NGC 54",
+      "type": "irregular_galaxy",
+      "ra": 7.9031,
+      "dec": -8.1768,
+      "mag": 12.5,
+      "size": 9.3,
+      "constellation": "Cancer",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 55",
+      "name": "NGC 55",
+      "type": "irregular_galaxy",
+      "ra": 0.2479,
+      "dec": -39.1961,
+      "mag": 7.9,
+      "size": 32.4,
+      "constellation": "Sculptor",
+      "aliases": [
+        "Caldwell 72"
+      ]
+    },
+    {
+      "designation": "NGC 71",
+      "name": "NGC 71",
+      "type": "elliptical_galaxy",
+      "ra": 21.7061,
+      "dec": 37.8856,
+      "mag": 8.4,
+      "size": 2.3,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 75",
+      "name": "NGC 75",
+      "type": "emission_nebula",
+      "ra": 22.7676,
+      "dec": 27.0707,
+      "mag": 10.9,
+      "size": 7.4,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 89",
+      "name": "NGC 89",
+      "type": "galaxy",
+      "ra": 13.1085,
+      "dec": 30.5743,
+      "mag": 12.2,
+      "size": 14.2,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 91",
+      "name": "NGC 91",
+      "type": "galaxy",
+      "ra": 5.8367,
+      "dec": -8.7616,
+      "mag": 12.2,
+      "size": 4.7,
+      "constellation": "Orion",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 92",
+      "name": "NGC 92",
+      "type": "open_cluster",
+      "ra": 4.7981,
+      "dec": -35.1222,
+      "mag": 8.1,
+      "size": 13.2,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 93",
+      "name": "NGC 93",
+      "type": "galaxy",
+      "ra": 16.8482,
+      "dec": 50.1785,
+      "mag": 10.1,
+      "size": 8.7,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 104",
+      "name": "47 Tucanae",
+      "type": "globular_cluster",
+      "ra": 0.4011,
+      "dec": -72.0814,
+      "mag": 4.1,
+      "size": 30.9,
+      "constellation": "Tucana",
+      "aliases": [
+        "47 Tuc",
+        "Caldwell 106"
+      ]
+    },
+    {
+      "designation": "NGC 105",
+      "name": "NGC 105",
+      "type": "elliptical_galaxy",
+      "ra": 1.7491,
+      "dec": 21.2789,
+      "mag": 12.9,
+      "size": 12.5,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 108",
+      "name": "NGC 108",
+      "type": "spiral_galaxy",
+      "ra": 9.4597,
+      "dec": -35.9678,
+      "mag": 11.7,
+      "size": 9.6,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 112",
+      "name": "NGC 112",
+      "type": "galaxy",
+      "ra": 19.6896,
+      "dec": -6.1985,
+      "mag": 8.9,
+      "size": 1.3,
+      "constellation": "Aquila",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 115",
+      "name": "NGC 115",
+      "type": "galaxy",
+      "ra": 3.9183,
+      "dec": -25.6774,
+      "mag": 8,
+      "size": 3,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 126",
+      "name": "NGC 126",
+      "type": "elliptical_galaxy",
+      "ra": 1.0798,
+      "dec": -26.3182,
+      "mag": 9,
+      "size": 11.4,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 148",
+      "name": "NGC 148",
+      "type": "galaxy",
+      "ra": 1.5881,
+      "dec": -6.8865,
+      "mag": 9.1,
+      "size": 9.7,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 160",
+      "name": "NGC 160",
+      "type": "emission_nebula",
+      "ra": 20.6563,
+      "dec": 40.7443,
+      "mag": 10.2,
+      "size": 2.4,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 170",
+      "name": "NGC 170",
+      "type": "galaxy",
+      "ra": 15.3545,
+      "dec": -35.6538,
+      "mag": 11.5,
+      "size": 2.3,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 194",
+      "name": "NGC 194",
+      "type": "galaxy",
+      "ra": 7.2226,
+      "dec": 62.5804,
+      "mag": 9.9,
+      "size": 5.3,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 197",
+      "name": "NGC 197",
+      "type": "planetary_nebula",
+      "ra": 9.8081,
+      "dec": 41.4156,
+      "mag": 13,
+      "size": 3.8,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 217",
+      "name": "NGC 217",
+      "type": "open_cluster",
+      "ra": 19.5883,
+      "dec": -57.4978,
+      "mag": 12.8,
+      "size": 2.4,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 224",
+      "name": "Andromeda Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 0.7122,
+      "dec": 41.2689,
+      "mag": 3.4,
+      "size": 178,
+      "constellation": "Andromeda",
+      "aliases": [
+        "M31"
+      ]
+    },
+    {
+      "designation": "NGC 229",
+      "name": "NGC 229",
+      "type": "planetary_nebula",
+      "ra": 13.899,
+      "dec": -18.5991,
+      "mag": 9.8,
+      "size": 9.8,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 238",
+      "name": "NGC 238",
+      "type": "galaxy",
+      "ra": 7.5038,
+      "dec": 2.609,
+      "mag": 12.3,
+      "size": 7.6,
+      "constellation": "Cancer",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 243",
+      "name": "NGC 243",
+      "type": "galaxy",
+      "ra": 8.0015,
+      "dec": 46.0705,
+      "mag": 12.9,
+      "size": 7.6,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 246",
+      "name": "NGC 246",
+      "type": "emission_nebula",
+      "ra": 15.4839,
+      "dec": 3.8909,
+      "mag": 12.2,
+      "size": 13.1,
+      "constellation": "Serpens",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 253",
+      "name": "Sculptor Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 0.7925,
+      "dec": -25.2883,
+      "mag": 7.1,
+      "size": 27.5,
+      "constellation": "Sculptor",
+      "aliases": [
+        "Caldwell 65",
+        "Silver Coin Galaxy"
+      ]
+    },
+    {
+      "designation": "NGC 273",
+      "name": "NGC 273",
+      "type": "irregular_galaxy",
+      "ra": 21.6306,
+      "dec": -4.8307,
+      "mag": 12.7,
+      "size": 9,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 292",
+      "name": "Small Magellanic Cloud",
+      "type": "irregular_galaxy",
+      "ra": 0.8772,
+      "dec": -72.8003,
+      "mag": 2.7,
+      "size": 319,
+      "constellation": "Tucana",
+      "aliases": [
+        "SMC"
+      ]
+    },
+    {
+      "designation": "NGC 293",
+      "name": "NGC 293",
+      "type": "galaxy",
+      "ra": 11.1542,
+      "dec": -23.5071,
+      "mag": 10,
+      "size": 5.2,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 298",
+      "name": "NGC 298",
+      "type": "open_cluster",
+      "ra": 5.4193,
+      "dec": 6.4967,
+      "mag": 10.5,
+      "size": 11.5,
+      "constellation": "Orion",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 319",
+      "name": "NGC 319",
+      "type": "open_cluster",
+      "ra": 11.0761,
+      "dec": 32.4428,
+      "mag": 12.2,
+      "size": 10.9,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 320",
+      "name": "NGC 320",
+      "type": "planetary_nebula",
+      "ra": 4.0923,
+      "dec": 73.1232,
+      "mag": 10.1,
+      "size": 14,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 325",
+      "name": "NGC 325",
+      "type": "open_cluster",
+      "ra": 20.6854,
+      "dec": 45.1218,
+      "mag": 10.9,
+      "size": 7.7,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 346",
+      "name": "NGC 346",
+      "type": "nebula",
+      "ra": 4.8364,
+      "dec": 5.6404,
+      "mag": 11.4,
+      "size": 4.1,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 390",
+      "name": "NGC 390",
+      "type": "spiral_galaxy",
+      "ra": 18.6615,
+      "dec": -9.5707,
+      "mag": 12.3,
+      "size": 5.6,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 407",
+      "name": "NGC 407",
+      "type": "elliptical_galaxy",
+      "ra": 8.8091,
+      "dec": 7.3631,
+      "mag": 12.9,
+      "size": 7.4,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 410",
+      "name": "NGC 410",
+      "type": "open_cluster",
+      "ra": 15.5716,
+      "dec": -14.1584,
+      "mag": 9.2,
+      "size": 12.5,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 416",
+      "name": "NGC 416",
+      "type": "galaxy",
+      "ra": 0.789,
+      "dec": -36.368,
+      "mag": 11.5,
+      "size": 1.4,
+      "constellation": "Phoenix",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 417",
+      "name": "NGC 417",
+      "type": "spiral_galaxy",
+      "ra": 13.3773,
+      "dec": -27.0135,
+      "mag": 13.5,
+      "size": 11.3,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 443",
+      "name": "NGC 443",
+      "type": "planetary_nebula",
+      "ra": 17.0368,
+      "dec": 59.3877,
+      "mag": 9.4,
+      "size": 9.3,
+      "constellation": "Hercules",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 470",
+      "name": "NGC 470",
+      "type": "elliptical_galaxy",
+      "ra": 2.5635,
+      "dec": 18.0994,
+      "mag": 12.2,
+      "size": 5.5,
+      "constellation": "Aries",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 472",
+      "name": "NGC 472",
+      "type": "spiral_galaxy",
+      "ra": 5.2338,
+      "dec": 2.0159,
+      "mag": 11.4,
+      "size": 1.1,
+      "constellation": "Orion",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 474",
+      "name": "NGC 474",
+      "type": "galaxy",
+      "ra": 7.0269,
+      "dec": 44.9705,
+      "mag": 12.8,
+      "size": 8.2,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 482",
+      "name": "NGC 482",
+      "type": "galaxy",
+      "ra": 1.6951,
+      "dec": 69.5417,
+      "mag": 8.4,
+      "size": 2.3,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 494",
+      "name": "NGC 494",
+      "type": "galaxy",
+      "ra": 16.6935,
+      "dec": 60.6945,
+      "mag": 12.4,
+      "size": 11.6,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 516",
+      "name": "NGC 516",
+      "type": "globular_cluster",
+      "ra": 10.3502,
+      "dec": -29.2806,
+      "mag": 8.7,
+      "size": 3.9,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 519",
+      "name": "NGC 519",
+      "type": "planetary_nebula",
+      "ra": 9.31,
+      "dec": -37.1134,
+      "mag": 8.5,
+      "size": 5.9,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 525",
+      "name": "NGC 525",
+      "type": "nebula",
+      "ra": 11.2714,
+      "dec": 46.3119,
+      "mag": 11.3,
+      "size": 14.3,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 534",
+      "name": "NGC 534",
+      "type": "galaxy",
+      "ra": 18.2936,
+      "dec": 62.9505,
+      "mag": 10.3,
+      "size": 3.3,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 552",
+      "name": "NGC 552",
+      "type": "galaxy",
+      "ra": 19.3359,
+      "dec": -28.4324,
+      "mag": 12.9,
+      "size": 10.3,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 562",
+      "name": "NGC 562",
+      "type": "spiral_galaxy",
+      "ra": 7.1323,
+      "dec": -42.9273,
+      "mag": 8.8,
+      "size": 1.2,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 566",
+      "name": "NGC 566",
+      "type": "elliptical_galaxy",
+      "ra": 3.2543,
+      "dec": -68.1295,
+      "mag": 9.5,
+      "size": 7,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 573",
+      "name": "NGC 573",
+      "type": "spiral_galaxy",
+      "ra": 4.9531,
+      "dec": -72.6628,
+      "mag": 8.9,
+      "size": 14.2,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 576",
+      "name": "NGC 576",
+      "type": "galaxy",
+      "ra": 7.1717,
+      "dec": -35.3592,
+      "mag": 8.3,
+      "size": 10.2,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 584",
+      "name": "NGC 584",
+      "type": "irregular_galaxy",
+      "ra": 15.4422,
+      "dec": 62.8445,
+      "mag": 9.7,
+      "size": 11.4,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 594",
+      "name": "NGC 594",
+      "type": "galaxy",
+      "ra": 18.2937,
+      "dec": 60.0266,
+      "mag": 8.9,
+      "size": 4.1,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 598",
+      "name": "Triangulum Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 1.5642,
+      "dec": 30.6603,
+      "mag": 5.7,
+      "size": 73,
+      "constellation": "Triangulum",
+      "aliases": [
+        "M33"
+      ]
+    },
+    {
+      "designation": "NGC 619",
+      "name": "NGC 619",
+      "type": "galaxy",
+      "ra": 23.1742,
+      "dec": -35.9527,
+      "mag": 11.1,
+      "size": 1.8,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 620",
+      "name": "NGC 620",
+      "type": "elliptical_galaxy",
+      "ra": 10.503,
+      "dec": -40.0937,
+      "mag": 12.3,
+      "size": 7.3,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 628",
+      "name": "Phantom Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 1.6117,
+      "dec": 15.7836,
+      "mag": 9.5,
+      "size": 10.5,
+      "constellation": "Pisces",
+      "aliases": [
+        "M74"
+      ]
+    },
+    {
+      "designation": "NGC 638",
+      "name": "NGC 638",
+      "type": "elliptical_galaxy",
+      "ra": 17.506,
+      "dec": -38.0553,
+      "mag": 8.4,
+      "size": 14.2,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 646",
+      "name": "NGC 646",
+      "type": "galaxy",
+      "ra": 3.2566,
+      "dec": 26.8201,
+      "mag": 10,
+      "size": 2.9,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 648",
+      "name": "NGC 648",
+      "type": "reflection_nebula",
+      "ra": 17.5542,
+      "dec": 25.8801,
+      "mag": 11.9,
+      "size": 9.8,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 653",
+      "name": "NGC 653",
+      "type": "elliptical_galaxy",
+      "ra": 9.0151,
+      "dec": -58.9103,
+      "mag": 8.7,
+      "size": 12.8,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 666",
+      "name": "NGC 666",
+      "type": "emission_nebula",
+      "ra": 18.056,
+      "dec": 25.265,
+      "mag": 10.9,
+      "size": 6.1,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 679",
+      "name": "NGC 679",
+      "type": "galaxy",
+      "ra": 22.6372,
+      "dec": 8.7542,
+      "mag": 12.9,
+      "size": 3,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 686",
+      "name": "NGC 686",
+      "type": "galaxy",
+      "ra": 4.8193,
+      "dec": 39.1386,
+      "mag": 12.3,
+      "size": 12,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 692",
+      "name": "NGC 692",
+      "type": "open_cluster",
+      "ra": 6.9522,
+      "dec": -3.8802,
+      "mag": 12.3,
+      "size": 8.7,
+      "constellation": "Monoceros",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 693",
+      "name": "NGC 693",
+      "type": "galaxy",
+      "ra": 9.0759,
+      "dec": -25.1106,
+      "mag": 12.3,
+      "size": 1.3,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 702",
+      "name": "NGC 702",
+      "type": "galaxy",
+      "ra": 21.6821,
+      "dec": 39.1479,
+      "mag": 12.5,
+      "size": 4.9,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 711",
+      "name": "NGC 711",
+      "type": "planetary_nebula",
+      "ra": 8.5403,
+      "dec": 2.3501,
+      "mag": 11.7,
+      "size": 2,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 723",
+      "name": "NGC 723",
+      "type": "galaxy",
+      "ra": 11.0386,
+      "dec": -36.9624,
+      "mag": 11.2,
+      "size": 5.8,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 724",
+      "name": "NGC 724",
+      "type": "nebula",
+      "ra": 15.6015,
+      "dec": -12.2734,
+      "mag": 9.3,
+      "size": 3.2,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 735",
+      "name": "NGC 735",
+      "type": "emission_nebula",
+      "ra": 5.9874,
+      "dec": 57.2716,
+      "mag": 8.7,
+      "size": 7.2,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 751",
+      "name": "NGC 751",
+      "type": "elliptical_galaxy",
+      "ra": 0.4335,
+      "dec": 14.3103,
+      "mag": 10.2,
+      "size": 11.1,
+      "constellation": "Andromeda",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 755",
+      "name": "NGC 755",
+      "type": "galaxy",
+      "ra": 19.1065,
+      "dec": 54.0132,
+      "mag": 11.6,
+      "size": 5.2,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 756",
+      "name": "NGC 756",
+      "type": "spiral_galaxy",
+      "ra": 2.8183,
+      "dec": -0.6582,
+      "mag": 8.8,
+      "size": 5.1,
+      "constellation": "Aries",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 772",
+      "name": "NGC 772",
+      "type": "galaxy",
+      "ra": 16.7371,
+      "dec": 79.9831,
+      "mag": 9.4,
+      "size": 2.6,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 775",
+      "name": "NGC 775",
+      "type": "open_cluster",
+      "ra": 14.2398,
+      "dec": 50.6205,
+      "mag": 11.6,
+      "size": 3.8,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 776",
+      "name": "NGC 776",
+      "type": "emission_nebula",
+      "ra": 2.3219,
+      "dec": 62.0344,
+      "mag": 10.2,
+      "size": 5.5,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 778",
+      "name": "NGC 778",
+      "type": "emission_nebula",
+      "ra": 13.5549,
+      "dec": 19.7186,
+      "mag": 9.3,
+      "size": 14.5,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 800",
+      "name": "NGC 800",
+      "type": "galaxy",
+      "ra": 5.2331,
+      "dec": 61.0991,
+      "mag": 9.3,
+      "size": 5.8,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 821",
+      "name": "NGC 821",
+      "type": "open_cluster",
+      "ra": 19.6427,
+      "dec": 12.0662,
+      "mag": 12.7,
+      "size": 1.6,
+      "constellation": "Aquila",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 857",
+      "name": "NGC 857",
+      "type": "globular_cluster",
+      "ra": 23.5895,
+      "dec": 3.5014,
+      "mag": 10.1,
+      "size": 1.1,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 859",
+      "name": "NGC 859",
+      "type": "galaxy",
+      "ra": 0.1384,
+      "dec": 4.0068,
+      "mag": 8.5,
+      "size": 8.7,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 865",
+      "name": "NGC 865",
+      "type": "elliptical_galaxy",
+      "ra": 11.7235,
+      "dec": 12.7611,
+      "mag": 8.2,
+      "size": 4.5,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 869",
+      "name": "Double Cluster h",
+      "type": "open_cluster",
+      "ra": 2.3186,
+      "dec": 57.1333,
+      "mag": 5.3,
+      "size": 30,
+      "constellation": "Perseus",
+      "aliases": [
+        "h Persei",
+        "Caldwell 14"
+      ]
+    },
+    {
+      "designation": "NGC 870",
+      "name": "NGC 870",
+      "type": "open_cluster",
+      "ra": 13.4978,
+      "dec": 18.8824,
+      "mag": 9.9,
+      "size": 11.5,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 884",
+      "name": "Double Cluster Chi",
+      "type": "open_cluster",
+      "ra": 2.3714,
+      "dec": 57.15,
+      "mag": 6.1,
+      "size": 30,
+      "constellation": "Perseus",
+      "aliases": [
+        "Chi Persei",
+        "Caldwell 14"
+      ]
+    },
+    {
+      "designation": "NGC 889",
+      "name": "NGC 889",
+      "type": "irregular_galaxy",
+      "ra": 20.7394,
+      "dec": -84.5287,
+      "mag": 12.7,
+      "size": 3.9,
+      "constellation": "Capricornus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 891",
+      "name": "NGC 891",
+      "type": "spiral_galaxy",
+      "ra": 2.3756,
+      "dec": 42.3492,
+      "mag": 9.9,
+      "size": 13.5,
+      "constellation": "Andromeda",
+      "aliases": [
+        "Caldwell 23",
+        "Silver Sliver Galaxy"
+      ]
+    },
+    {
+      "designation": "NGC 896",
+      "name": "NGC 896",
+      "type": "galaxy",
+      "ra": 0.7599,
+      "dec": -16.0383,
+      "mag": 10.2,
+      "size": 1.2,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 919",
+      "name": "NGC 919",
+      "type": "open_cluster",
+      "ra": 7.417,
+      "dec": 54.7434,
+      "mag": 11.6,
+      "size": 12.9,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 957",
+      "name": "NGC 957",
+      "type": "galaxy",
+      "ra": 9.0214,
+      "dec": 13.7277,
+      "mag": 11.2,
+      "size": 1.7,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 965",
+      "name": "NGC 965",
+      "type": "open_cluster",
+      "ra": 15.2882,
+      "dec": -9.2797,
+      "mag": 8.6,
+      "size": 1.1,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 994",
+      "name": "NGC 994",
+      "type": "spiral_galaxy",
+      "ra": 19.2042,
+      "dec": -27.6603,
+      "mag": 12.8,
+      "size": 11,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1025",
+      "name": "NGC 1025",
+      "type": "spiral_galaxy",
+      "ra": 20.076,
+      "dec": -31.4495,
+      "mag": 8.4,
+      "size": 4.8,
+      "constellation": "Capricornus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1028",
+      "name": "NGC 1028",
+      "type": "emission_nebula",
+      "ra": 13.3942,
+      "dec": 2.8668,
+      "mag": 9.8,
+      "size": 7.2,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1043",
+      "name": "NGC 1043",
+      "type": "open_cluster",
+      "ra": 8.1428,
+      "dec": 56.2404,
+      "mag": 12,
+      "size": 4.8,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1055",
+      "name": "NGC 1055",
+      "type": "spiral_galaxy",
+      "ra": 2.7261,
+      "dec": 0.4436,
+      "mag": 10.6,
+      "size": 7.6,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1060",
+      "name": "NGC 1060",
+      "type": "elliptical_galaxy",
+      "ra": 10.7264,
+      "dec": -12.8462,
+      "mag": 11.9,
+      "size": 5.3,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1071",
+      "name": "NGC 1071",
+      "type": "galaxy",
+      "ra": 10.2089,
+      "dec": 42.1004,
+      "mag": 12.8,
+      "size": 4.1,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1072",
+      "name": "NGC 1072",
+      "type": "emission_nebula",
+      "ra": 13.5409,
+      "dec": 17.3482,
+      "mag": 13.3,
+      "size": 2.1,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1098",
+      "name": "NGC 1098",
+      "type": "open_cluster",
+      "ra": 4.2818,
+      "dec": -11.4839,
+      "mag": 13.3,
+      "size": 11.4,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1136",
+      "name": "NGC 1136",
+      "type": "irregular_galaxy",
+      "ra": 14.0902,
+      "dec": -13.1459,
+      "mag": 8.6,
+      "size": 2.5,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1148",
+      "name": "NGC 1148",
+      "type": "spiral_galaxy",
+      "ra": 6.8354,
+      "dec": 37.3908,
+      "mag": 8.9,
+      "size": 3.5,
+      "constellation": "Gemini",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1153",
+      "name": "NGC 1153",
+      "type": "galaxy",
+      "ra": 1.7866,
+      "dec": -26.5155,
+      "mag": 10.9,
+      "size": 13.9,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1162",
+      "name": "NGC 1162",
+      "type": "galaxy",
+      "ra": 22.4296,
+      "dec": -14.3071,
+      "mag": 8.3,
+      "size": 14.9,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1198",
+      "name": "NGC 1198",
+      "type": "spiral_galaxy",
+      "ra": 11.9488,
+      "dec": -28.6698,
+      "mag": 9.3,
+      "size": 10.6,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1200",
+      "name": "NGC 1200",
+      "type": "elliptical_galaxy",
+      "ra": 18.0715,
+      "dec": -36.129,
+      "mag": 8.4,
+      "size": 1.4,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1202",
+      "name": "NGC 1202",
+      "type": "star_cluster",
+      "ra": 12.6247,
+      "dec": -28.7117,
+      "mag": 11.8,
+      "size": 4.1,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1211",
+      "name": "NGC 1211",
+      "type": "reflection_nebula",
+      "ra": 22.3024,
+      "dec": -87.4257,
+      "mag": 10,
+      "size": 7.5,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1220",
+      "name": "NGC 1220",
+      "type": "galaxy",
+      "ra": 17.3559,
+      "dec": 50.4796,
+      "mag": 10.9,
+      "size": 2.9,
+      "constellation": "Hercules",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1232",
+      "name": "NGC 1232",
+      "type": "spiral_galaxy",
+      "ra": 3.1614,
+      "dec": -20.5792,
+      "mag": 9.9,
+      "size": 7.8,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1234",
+      "name": "NGC 1234",
+      "type": "galaxy",
+      "ra": 18.4126,
+      "dec": 64.2227,
+      "mag": 12.4,
+      "size": 12.8,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1254",
+      "name": "NGC 1254",
+      "type": "galaxy",
+      "ra": 12.6196,
+      "dec": -63.6464,
+      "mag": 9.6,
+      "size": 8.4,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1260",
+      "name": "NGC 1260",
+      "type": "galaxy",
+      "ra": 10.985,
+      "dec": 7.7247,
+      "mag": 9.9,
+      "size": 8.8,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1261",
+      "name": "NGC 1261",
+      "type": "globular_cluster",
+      "ra": 3.2044,
+      "dec": -55.2164,
+      "mag": 8.4,
+      "size": 6.9,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1263",
+      "name": "NGC 1263",
+      "type": "galaxy",
+      "ra": 21.9384,
+      "dec": 14.4398,
+      "mag": 9.8,
+      "size": 1.8,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1281",
+      "name": "NGC 1281",
+      "type": "nebula",
+      "ra": 13.9855,
+      "dec": 58.5138,
+      "mag": 11.9,
+      "size": 11,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1300",
+      "name": "NGC 1300",
+      "type": "spiral_galaxy",
+      "ra": 3.3278,
+      "dec": -19.4111,
+      "mag": 10.4,
+      "size": 6.2,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1316",
+      "name": "Fornax A",
+      "type": "elliptical_galaxy",
+      "ra": 3.3772,
+      "dec": -37.2083,
+      "mag": 8.5,
+      "size": 12,
+      "constellation": "Fornax",
+      "aliases": [
+        "Caldwell 67"
+      ]
+    },
+    {
+      "designation": "NGC 1327",
+      "name": "NGC 1327",
+      "type": "open_cluster",
+      "ra": 20.3242,
+      "dec": 57.7121,
+      "mag": 12.6,
+      "size": 8.7,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1341",
+      "name": "NGC 1341",
+      "type": "galaxy",
+      "ra": 20.8397,
+      "dec": -31.7147,
+      "mag": 13,
+      "size": 14.7,
+      "constellation": "Capricornus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1343",
+      "name": "NGC 1343",
+      "type": "galaxy",
+      "ra": 2.5963,
+      "dec": 64.4762,
+      "mag": 8.2,
+      "size": 6.9,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1365",
+      "name": "Great Barred Spiral Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 3.5603,
+      "dec": -36.1403,
+      "mag": 9.6,
+      "size": 11.2,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1392",
+      "name": "NGC 1392",
+      "type": "galaxy",
+      "ra": 9.0535,
+      "dec": 56.7135,
+      "mag": 9.4,
+      "size": 9.9,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1399",
+      "name": "NGC 1399",
+      "type": "elliptical_galaxy",
+      "ra": 3.6386,
+      "dec": -35.4508,
+      "mag": 9.6,
+      "size": 6.9,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1406",
+      "name": "NGC 1406",
+      "type": "spiral_galaxy",
+      "ra": 2.5198,
+      "dec": -20.0971,
+      "mag": 11,
+      "size": 3.8,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1426",
+      "name": "NGC 1426",
+      "type": "star_cluster",
+      "ra": 5.7547,
+      "dec": 51.9452,
+      "mag": 11.5,
+      "size": 4.5,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1443",
+      "name": "NGC 1443",
+      "type": "galaxy",
+      "ra": 14.8641,
+      "dec": 25.7643,
+      "mag": 10.5,
+      "size": 10.5,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1446",
+      "name": "NGC 1446",
+      "type": "galaxy",
+      "ra": 5.7777,
+      "dec": 0.0497,
+      "mag": 8.8,
+      "size": 5.7,
+      "constellation": "Orion",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1451",
+      "name": "NGC 1451",
+      "type": "star_cluster",
+      "ra": 21.0014,
+      "dec": -18.6006,
+      "mag": 10.4,
+      "size": 11,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1474",
+      "name": "NGC 1474",
+      "type": "open_cluster",
+      "ra": 17.259,
+      "dec": 20.8361,
+      "mag": 11.4,
+      "size": 12.6,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1487",
+      "name": "NGC 1487",
+      "type": "globular_cluster",
+      "ra": 11.879,
+      "dec": 58.8345,
+      "mag": 8.5,
+      "size": 6.1,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1496",
+      "name": "NGC 1496",
+      "type": "galaxy",
+      "ra": 3.978,
+      "dec": -8.559,
+      "mag": 9.2,
+      "size": 7.9,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1499",
+      "name": "California Nebula",
+      "type": "emission_nebula",
+      "ra": 4.0517,
+      "dec": 36.3564,
+      "mag": 5,
+      "size": 145,
+      "constellation": "Perseus",
+      "aliases": [
+        "Sh2-220",
+        "Caldwell 31"
+      ]
+    },
+    {
+      "designation": "NGC 1501",
+      "name": "NGC 1501",
+      "type": "emission_nebula",
+      "ra": 2.0344,
+      "dec": 59.4938,
+      "mag": 13,
+      "size": 7.5,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1502",
+      "name": "NGC 1502",
+      "type": "open_cluster",
+      "ra": 4.1292,
+      "dec": 62.3333,
+      "mag": 6.9,
+      "size": 8,
+      "constellation": "Camelopardalis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1504",
+      "name": "NGC 1504",
+      "type": "elliptical_galaxy",
+      "ra": 4.7144,
+      "dec": 12.77,
+      "mag": 8.7,
+      "size": 4,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1505",
+      "name": "NGC 1505",
+      "type": "emission_nebula",
+      "ra": 21.989,
+      "dec": 27.7344,
+      "mag": 8.1,
+      "size": 12.7,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1511",
+      "name": "NGC 1511",
+      "type": "open_cluster",
+      "ra": 9.4131,
+      "dec": -39.3305,
+      "mag": 11.7,
+      "size": 8,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1517",
+      "name": "NGC 1517",
+      "type": "spiral_galaxy",
+      "ra": 12.9259,
+      "dec": -27.2112,
+      "mag": 13.1,
+      "size": 10.3,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1528",
+      "name": "NGC 1528",
+      "type": "open_cluster",
+      "ra": 4.255,
+      "dec": 51.2167,
+      "mag": 6.4,
+      "size": 24,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1535",
+      "name": "Cleopatra's Eye",
+      "type": "planetary_nebula",
+      "ra": 4.2386,
+      "dec": -12.7403,
+      "mag": 9.6,
+      "size": 0.8,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1547",
+      "name": "NGC 1547",
+      "type": "spiral_galaxy",
+      "ra": 22.4387,
+      "dec": 16.1785,
+      "mag": 10.9,
+      "size": 8.7,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1548",
+      "name": "NGC 1548",
+      "type": "galaxy",
+      "ra": 7.6008,
+      "dec": 16.4919,
+      "mag": 12.7,
+      "size": 7.3,
+      "constellation": "Cancer",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1553",
+      "name": "NGC 1553",
+      "type": "globular_cluster",
+      "ra": 16.1355,
+      "dec": 51.446,
+      "mag": 9.1,
+      "size": 4.9,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1556",
+      "name": "NGC 1556",
+      "type": "galaxy",
+      "ra": 22.6878,
+      "dec": 14.2777,
+      "mag": 10.3,
+      "size": 9.4,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1560",
+      "name": "NGC 1560",
+      "type": "reflection_nebula",
+      "ra": 16.3163,
+      "dec": -28.8489,
+      "mag": 10.9,
+      "size": 13.8,
+      "constellation": "Scorpius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1563",
+      "name": "NGC 1563",
+      "type": "galaxy",
+      "ra": 17.514,
+      "dec": -27.1448,
+      "mag": 13,
+      "size": 10.8,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1565",
+      "name": "NGC 1565",
+      "type": "open_cluster",
+      "ra": 5.74,
+      "dec": -16.1688,
+      "mag": 10.1,
+      "size": 3,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1604",
+      "name": "NGC 1604",
+      "type": "emission_nebula",
+      "ra": 17.3836,
+      "dec": -20.754,
+      "mag": 13.1,
+      "size": 13.3,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1614",
+      "name": "NGC 1614",
+      "type": "galaxy",
+      "ra": 1.9257,
+      "dec": -2.8738,
+      "mag": 11.5,
+      "size": 10,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1620",
+      "name": "NGC 1620",
+      "type": "open_cluster",
+      "ra": 15.4748,
+      "dec": -16.7975,
+      "mag": 10.8,
+      "size": 11.2,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1640",
+      "name": "NGC 1640",
+      "type": "galaxy",
+      "ra": 13.6926,
+      "dec": 42.6266,
+      "mag": 10.3,
+      "size": 7.4,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1651",
+      "name": "NGC 1651",
+      "type": "spiral_galaxy",
+      "ra": 14.0311,
+      "dec": 64.753,
+      "mag": 10.3,
+      "size": 3.7,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1661",
+      "name": "NGC 1661",
+      "type": "open_cluster",
+      "ra": 22.1458,
+      "dec": 66.6932,
+      "mag": 9.9,
+      "size": 7,
+      "constellation": "Cepheus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1667",
+      "name": "NGC 1667",
+      "type": "galaxy",
+      "ra": 10.2807,
+      "dec": 29.1329,
+      "mag": 8.6,
+      "size": 4.3,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1668",
+      "name": "NGC 1668",
+      "type": "galaxy",
+      "ra": 0.385,
+      "dec": 6.6555,
+      "mag": 8.6,
+      "size": 4.8,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1672",
+      "name": "NGC 1672",
+      "type": "galaxy",
+      "ra": 8.9778,
+      "dec": -26.2321,
+      "mag": 10.7,
+      "size": 8.9,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1688",
+      "name": "NGC 1688",
+      "type": "nebula",
+      "ra": 18.1682,
+      "dec": -2.0326,
+      "mag": 13.2,
+      "size": 3.4,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1700",
+      "name": "NGC 1700",
+      "type": "nebula",
+      "ra": 15.481,
+      "dec": -2.1665,
+      "mag": 10.3,
+      "size": 10.9,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1713",
+      "name": "NGC 1713",
+      "type": "spiral_galaxy",
+      "ra": 9.7611,
+      "dec": -8.9171,
+      "mag": 11.7,
+      "size": 3.9,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1714",
+      "name": "NGC 1714",
+      "type": "galaxy",
+      "ra": 7.2271,
+      "dec": 30.5524,
+      "mag": 10.1,
+      "size": 6.5,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1721",
+      "name": "NGC 1721",
+      "type": "nebula",
+      "ra": 6.855,
+      "dec": 27.6375,
+      "mag": 10.4,
+      "size": 3.5,
+      "constellation": "Gemini",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1743",
+      "name": "NGC 1743",
+      "type": "open_cluster",
+      "ra": 14.8561,
+      "dec": -60.4408,
+      "mag": 9.3,
+      "size": 6.5,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1744",
+      "name": "NGC 1744",
+      "type": "nebula",
+      "ra": 16.9851,
+      "dec": 47.4931,
+      "mag": 8.2,
+      "size": 8,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1754",
+      "name": "NGC 1754",
+      "type": "galaxy",
+      "ra": 6.5077,
+      "dec": -32.356,
+      "mag": 8.1,
+      "size": 2.1,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1768",
+      "name": "NGC 1768",
+      "type": "open_cluster",
+      "ra": 12.8331,
+      "dec": 24.1288,
+      "mag": 11.5,
+      "size": 10,
+      "constellation": "Coma Berenices",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1786",
+      "name": "NGC 1786",
+      "type": "galaxy",
+      "ra": 4.9318,
+      "dec": 13.5402,
+      "mag": 8.2,
+      "size": 12.7,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1787",
+      "name": "NGC 1787",
+      "type": "galaxy",
+      "ra": 7.2106,
+      "dec": 74.8975,
+      "mag": 12,
+      "size": 13.8,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1797",
+      "name": "NGC 1797",
+      "type": "elliptical_galaxy",
+      "ra": 23.6287,
+      "dec": -75.8634,
+      "mag": 10.8,
+      "size": 11.6,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1798",
+      "name": "NGC 1798",
+      "type": "galaxy",
+      "ra": 2.687,
+      "dec": 30.123,
+      "mag": 11.2,
+      "size": 3,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1816",
+      "name": "NGC 1816",
+      "type": "galaxy",
+      "ra": 8.7696,
+      "dec": -36.92,
+      "mag": 10.2,
+      "size": 3.4,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1823",
+      "name": "NGC 1823",
+      "type": "spiral_galaxy",
+      "ra": 11.5733,
+      "dec": 62.4352,
+      "mag": 10.4,
+      "size": 1.4,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1833",
+      "name": "NGC 1833",
+      "type": "nebula",
+      "ra": 7.8392,
+      "dec": -21.64,
+      "mag": 10.2,
+      "size": 5,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1846",
+      "name": "NGC 1846",
+      "type": "spiral_galaxy",
+      "ra": 21.733,
+      "dec": -77.2142,
+      "mag": 13.4,
+      "size": 13.7,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1851",
+      "name": "NGC 1851",
+      "type": "star_cluster",
+      "ra": 22.2806,
+      "dec": -29.304,
+      "mag": 9.6,
+      "size": 11.9,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1860",
+      "name": "NGC 1860",
+      "type": "star_cluster",
+      "ra": 8.4239,
+      "dec": 47.603,
+      "mag": 8,
+      "size": 5.4,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1870",
+      "name": "NGC 1870",
+      "type": "planetary_nebula",
+      "ra": 5.0134,
+      "dec": 15.4271,
+      "mag": 8.7,
+      "size": 9.4,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1876",
+      "name": "NGC 1876",
+      "type": "spiral_galaxy",
+      "ra": 18.5479,
+      "dec": 1.1899,
+      "mag": 9.3,
+      "size": 4.8,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1900",
+      "name": "NGC 1900",
+      "type": "open_cluster",
+      "ra": 21.4934,
+      "dec": 17.0589,
+      "mag": 13.1,
+      "size": 4.2,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1912",
+      "name": "NGC 1912",
+      "type": "spiral_galaxy",
+      "ra": 11.2429,
+      "dec": 58.4218,
+      "mag": 11.1,
+      "size": 11,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1915",
+      "name": "NGC 1915",
+      "type": "elliptical_galaxy",
+      "ra": 3.5665,
+      "dec": -36.4682,
+      "mag": 11.9,
+      "size": 6,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1929",
+      "name": "NGC 1929",
+      "type": "galaxy",
+      "ra": 3.723,
+      "dec": -54.2566,
+      "mag": 8.2,
+      "size": 8.5,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1950",
+      "name": "NGC 1950",
+      "type": "galaxy",
+      "ra": 18.4635,
+      "dec": 27.6867,
+      "mag": 12.9,
+      "size": 13.3,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1952",
+      "name": "Crab Nebula",
+      "type": "supernova_remnant",
+      "ra": 5.5753,
+      "dec": 22.0145,
+      "mag": 8.4,
+      "size": 6,
+      "constellation": "Taurus",
+      "aliases": [
+        "M1",
+        "Taurus A"
+      ]
+    },
+    {
+      "designation": "NGC 1956",
+      "name": "NGC 1956",
+      "type": "reflection_nebula",
+      "ra": 13.3889,
+      "dec": 15.0603,
+      "mag": 11.8,
+      "size": 8,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 1976",
+      "name": "Orion Nebula",
+      "type": "emission_nebula",
+      "ra": 5.5908,
+      "dec": -5.3911,
+      "mag": 4,
+      "size": 85,
+      "constellation": "Orion",
+      "aliases": [
+        "M42",
+        "Great Orion Nebula"
+      ]
+    },
+    {
+      "designation": "NGC 1977",
+      "name": "Running Man Nebula",
+      "type": "reflection_nebula",
+      "ra": 5.5917,
+      "dec": -4.8389,
+      "mag": 7,
+      "size": 20,
+      "constellation": "Orion",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2006",
+      "name": "NGC 2006",
+      "type": "galaxy",
+      "ra": 0.3002,
+      "dec": 40.1361,
+      "mag": 10.3,
+      "size": 13.6,
+      "constellation": "Andromeda",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2012",
+      "name": "NGC 2012",
+      "type": "galaxy",
+      "ra": 22.7868,
+      "dec": -15.7097,
+      "mag": 11.9,
+      "size": 2.1,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2014",
+      "name": "NGC 2014",
+      "type": "spiral_galaxy",
+      "ra": 5.8685,
+      "dec": 22.532,
+      "mag": 11.7,
+      "size": 6.1,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2015",
+      "name": "NGC 2015",
+      "type": "galaxy",
+      "ra": 9.475,
+      "dec": -28.6025,
+      "mag": 8.4,
+      "size": 11.8,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2024",
+      "name": "Flame Nebula",
+      "type": "emission_nebula",
+      "ra": 5.6833,
+      "dec": -1.85,
+      "mag": null,
+      "size": 30,
+      "constellation": "Orion",
+      "aliases": [
+        "Sh2-277"
+      ]
+    },
+    {
+      "designation": "NGC 2026",
+      "name": "NGC 2026",
+      "type": "galaxy",
+      "ra": 4.4701,
+      "dec": 23.0474,
+      "mag": 9.1,
+      "size": 7.5,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2039",
+      "name": "NGC 2039",
+      "type": "galaxy",
+      "ra": 6.2216,
+      "dec": 5.4678,
+      "mag": 9.4,
+      "size": 11.4,
+      "constellation": "Gemini",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2040",
+      "name": "NGC 2040",
+      "type": "galaxy",
+      "ra": 17.5618,
+      "dec": -22.0707,
+      "mag": 10.1,
+      "size": 6.7,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2066",
+      "name": "NGC 2066",
+      "type": "elliptical_galaxy",
+      "ra": 6.0839,
+      "dec": -10.1085,
+      "mag": 8.5,
+      "size": 7.6,
+      "constellation": "Monoceros",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2070",
+      "name": "Tarantula Nebula",
+      "type": "emission_nebula",
+      "ra": 5.645,
+      "dec": -69.1006,
+      "mag": 5,
+      "size": 40,
+      "constellation": "Dorado",
+      "aliases": [
+        "30 Doradus",
+        "Caldwell 103"
+      ]
+    },
+    {
+      "designation": "NGC 2072",
+      "name": "NGC 2072",
+      "type": "planetary_nebula",
+      "ra": 14.1048,
+      "dec": -0.2708,
+      "mag": 9.2,
+      "size": 14.2,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2079",
+      "name": "NGC 2079",
+      "type": "galaxy",
+      "ra": 7.1796,
+      "dec": 66.12,
+      "mag": 8.1,
+      "size": 9,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2085",
+      "name": "NGC 2085",
+      "type": "planetary_nebula",
+      "ra": 23.8436,
+      "dec": -0.5833,
+      "mag": 10.4,
+      "size": 12.6,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2107",
+      "name": "NGC 2107",
+      "type": "emission_nebula",
+      "ra": 20.2711,
+      "dec": -51.4556,
+      "mag": 10.6,
+      "size": 10.9,
+      "constellation": "Capricornus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2137",
+      "name": "NGC 2137",
+      "type": "galaxy",
+      "ra": 9.3217,
+      "dec": -51.6569,
+      "mag": 13.4,
+      "size": 5,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2143",
+      "name": "NGC 2143",
+      "type": "nebula",
+      "ra": 19.7776,
+      "dec": 62.135,
+      "mag": 11.4,
+      "size": 3.8,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2172",
+      "name": "NGC 2172",
+      "type": "galaxy",
+      "ra": 13.5793,
+      "dec": -39.5805,
+      "mag": 9.7,
+      "size": 6.2,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2174",
+      "name": "Monkey Head Nebula",
+      "type": "emission_nebula",
+      "ra": 6.1647,
+      "dec": 20.5006,
+      "mag": 6.8,
+      "size": 40,
+      "constellation": "Orion",
+      "aliases": [
+        "Sh2-252"
+      ]
+    },
+    {
+      "designation": "NGC 2183",
+      "name": "NGC 2183",
+      "type": "spiral_galaxy",
+      "ra": 14.0377,
+      "dec": 26.6926,
+      "mag": 12.5,
+      "size": 4.6,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2203",
+      "name": "NGC 2203",
+      "type": "galaxy",
+      "ra": 17.1495,
+      "dec": -66.9174,
+      "mag": 12.9,
+      "size": 8.3,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2214",
+      "name": "NGC 2214",
+      "type": "emission_nebula",
+      "ra": 3.3374,
+      "dec": 60.6832,
+      "mag": 11.5,
+      "size": 13,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2237",
+      "name": "Rosette Nebula",
+      "type": "emission_nebula",
+      "ra": 6.5314,
+      "dec": 4.9461,
+      "mag": 9,
+      "size": 80,
+      "constellation": "Monoceros",
+      "aliases": [
+        "Caldwell 49",
+        "Sh2-275"
+      ]
+    },
+    {
+      "designation": "NGC 2244",
+      "name": "Rosette Cluster",
+      "type": "open_cluster",
+      "ra": 6.5333,
+      "dec": 4.95,
+      "mag": 4.8,
+      "size": 24,
+      "constellation": "Monoceros",
+      "aliases": [
+        "Caldwell 50"
+      ]
+    },
+    {
+      "designation": "NGC 2253",
+      "name": "NGC 2253",
+      "type": "galaxy",
+      "ra": 18.741,
+      "dec": 24.8499,
+      "mag": 10.6,
+      "size": 6.3,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2264",
+      "name": "Cone Nebula",
+      "type": "emission_nebula",
+      "ra": 6.6806,
+      "dec": 9.8944,
+      "mag": 3.9,
+      "size": 20,
+      "constellation": "Monoceros",
+      "aliases": [
+        "Christmas Tree Cluster",
+        "Sh2-273"
+      ]
+    },
+    {
+      "designation": "NGC 2279",
+      "name": "NGC 2279",
+      "type": "elliptical_galaxy",
+      "ra": 7.2612,
+      "dec": -0.3779,
+      "mag": 13.5,
+      "size": 13.7,
+      "constellation": "Cancer",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2297",
+      "name": "NGC 2297",
+      "type": "emission_nebula",
+      "ra": 23.4711,
+      "dec": -17.9047,
+      "mag": 9.3,
+      "size": 8.2,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2311",
+      "name": "NGC 2311",
+      "type": "nebula",
+      "ra": 12.4059,
+      "dec": -12.2357,
+      "mag": 9.9,
+      "size": 3.9,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2338",
+      "name": "NGC 2338",
+      "type": "galaxy",
+      "ra": 12.0618,
+      "dec": -43.0826,
+      "mag": 8.6,
+      "size": 10.3,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2359",
+      "name": "Thor's Helmet",
+      "type": "emission_nebula",
+      "ra": 7.3031,
+      "dec": -13.2239,
+      "mag": 11.5,
+      "size": 10,
+      "constellation": "Canis Major",
+      "aliases": [
+        "Sh2-298",
+        "Duck Nebula"
+      ]
+    },
+    {
+      "designation": "NGC 2364",
+      "name": "NGC 2364",
+      "type": "galaxy",
+      "ra": 8.4237,
+      "dec": -33.2049,
+      "mag": 9,
+      "size": 8.5,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2392",
+      "name": "Eskimo Nebula",
+      "type": "planetary_nebula",
+      "ra": 7.4864,
+      "dec": 20.9117,
+      "mag": 9.2,
+      "size": 0.8,
+      "constellation": "Gemini",
+      "aliases": [
+        "Clown Face Nebula",
+        "Caldwell 39"
+      ]
+    },
+    {
+      "designation": "NGC 2403",
+      "name": "NGC 2403",
+      "type": "spiral_galaxy",
+      "ra": 7.6144,
+      "dec": 65.6028,
+      "mag": 8.5,
+      "size": 21.9,
+      "constellation": "Camelopardalis",
+      "aliases": [
+        "Caldwell 7"
+      ]
+    },
+    {
+      "designation": "NGC 2420",
+      "name": "NGC 2420",
+      "type": "emission_nebula",
+      "ra": 18.9162,
+      "dec": 17.9435,
+      "mag": 13.1,
+      "size": 8.8,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2424",
+      "name": "NGC 2424",
+      "type": "spiral_galaxy",
+      "ra": 1.1571,
+      "dec": 28.3687,
+      "mag": 8.7,
+      "size": 8.3,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2445",
+      "name": "NGC 2445",
+      "type": "spiral_galaxy",
+      "ra": 4.1832,
+      "dec": 74.6577,
+      "mag": 10.3,
+      "size": 8,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2458",
+      "name": "NGC 2458",
+      "type": "spiral_galaxy",
+      "ra": 2.1261,
+      "dec": 31.3945,
+      "mag": 8.7,
+      "size": 5.1,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2474",
+      "name": "NGC 2474",
+      "type": "spiral_galaxy",
+      "ra": 17.9935,
+      "dec": 50.7057,
+      "mag": 8.2,
+      "size": 5.8,
+      "constellation": "Hercules",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2492",
+      "name": "NGC 2492",
+      "type": "galaxy",
+      "ra": 16.2398,
+      "dec": -31.2273,
+      "mag": 9.9,
+      "size": 6.9,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2496",
+      "name": "NGC 2496",
+      "type": "galaxy",
+      "ra": 12.058,
+      "dec": 61.535,
+      "mag": 12.8,
+      "size": 9.3,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2568",
+      "name": "NGC 2568",
+      "type": "spiral_galaxy",
+      "ra": 9.5227,
+      "dec": -26.0986,
+      "mag": 11.8,
+      "size": 4.9,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2571",
+      "name": "NGC 2571",
+      "type": "galaxy",
+      "ra": 19.1213,
+      "dec": 86.9242,
+      "mag": 12.7,
+      "size": 4.7,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2573",
+      "name": "NGC 2573",
+      "type": "galaxy",
+      "ra": 16.2224,
+      "dec": -56.1421,
+      "mag": 12,
+      "size": 12,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2575",
+      "name": "NGC 2575",
+      "type": "elliptical_galaxy",
+      "ra": 17.1809,
+      "dec": 11.0512,
+      "mag": 12.8,
+      "size": 7.9,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2580",
+      "name": "NGC 2580",
+      "type": "spiral_galaxy",
+      "ra": 1.2614,
+      "dec": -59.3092,
+      "mag": 11.5,
+      "size": 12.1,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2594",
+      "name": "NGC 2594",
+      "type": "galaxy",
+      "ra": 16.0263,
+      "dec": 14.5139,
+      "mag": 13.1,
+      "size": 15,
+      "constellation": "Serpens",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2597",
+      "name": "NGC 2597",
+      "type": "globular_cluster",
+      "ra": 3.9678,
+      "dec": -36.4377,
+      "mag": 12.8,
+      "size": 3,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2598",
+      "name": "NGC 2598",
+      "type": "emission_nebula",
+      "ra": 14.1957,
+      "dec": -15.1875,
+      "mag": 9.9,
+      "size": 5.1,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2622",
+      "name": "NGC 2622",
+      "type": "open_cluster",
+      "ra": 23.611,
+      "dec": 82.7493,
+      "mag": 9.2,
+      "size": 14.7,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2637",
+      "name": "NGC 2637",
+      "type": "emission_nebula",
+      "ra": 0.5952,
+      "dec": 38.0851,
+      "mag": 12.1,
+      "size": 1.8,
+      "constellation": "Andromeda",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2640",
+      "name": "NGC 2640",
+      "type": "galaxy",
+      "ra": 19.483,
+      "dec": -88.5751,
+      "mag": 12.9,
+      "size": 2.4,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2659",
+      "name": "NGC 2659",
+      "type": "galaxy",
+      "ra": 5.1547,
+      "dec": -19.7409,
+      "mag": 11.3,
+      "size": 7.4,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2670",
+      "name": "NGC 2670",
+      "type": "irregular_galaxy",
+      "ra": 13.1443,
+      "dec": 60.3137,
+      "mag": 13.1,
+      "size": 9.6,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2683",
+      "name": "UFO Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 8.8731,
+      "dec": 33.4217,
+      "mag": 9.8,
+      "size": 9.3,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2687",
+      "name": "NGC 2687",
+      "type": "galaxy",
+      "ra": 8.5867,
+      "dec": 20.6542,
+      "mag": 10.1,
+      "size": 12.6,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2706",
+      "name": "NGC 2706",
+      "type": "emission_nebula",
+      "ra": 17.858,
+      "dec": 50.5544,
+      "mag": 9.5,
+      "size": 6.9,
+      "constellation": "Hercules",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2717",
+      "name": "NGC 2717",
+      "type": "emission_nebula",
+      "ra": 15.5419,
+      "dec": 45.6322,
+      "mag": 11.7,
+      "size": 5.5,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2726",
+      "name": "NGC 2726",
+      "type": "globular_cluster",
+      "ra": 10.1166,
+      "dec": 56.1852,
+      "mag": 9.3,
+      "size": 2.2,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2731",
+      "name": "NGC 2731",
+      "type": "galaxy",
+      "ra": 5.631,
+      "dec": -86.1725,
+      "mag": 9.8,
+      "size": 7.2,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2744",
+      "name": "NGC 2744",
+      "type": "galaxy",
+      "ra": 12.6599,
+      "dec": 63.5515,
+      "mag": 8.6,
+      "size": 11.6,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2754",
+      "name": "NGC 2754",
+      "type": "irregular_galaxy",
+      "ra": 0.4258,
+      "dec": 62.201,
+      "mag": 10.7,
+      "size": 5.2,
+      "constellation": "Andromeda",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2757",
+      "name": "NGC 2757",
+      "type": "nebula",
+      "ra": 13.0756,
+      "dec": 41.297,
+      "mag": 13.1,
+      "size": 13.5,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2770",
+      "name": "NGC 2770",
+      "type": "planetary_nebula",
+      "ra": 2.3109,
+      "dec": -28.0852,
+      "mag": 8.3,
+      "size": 12.2,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2788",
+      "name": "NGC 2788",
+      "type": "spiral_galaxy",
+      "ra": 3.4415,
+      "dec": 40.1298,
+      "mag": 11.6,
+      "size": 8,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2792",
+      "name": "NGC 2792",
+      "type": "globular_cluster",
+      "ra": 19.7363,
+      "dec": 33.2303,
+      "mag": 12.2,
+      "size": 5.2,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2795",
+      "name": "NGC 2795",
+      "type": "elliptical_galaxy",
+      "ra": 10.907,
+      "dec": 9.9038,
+      "mag": 10,
+      "size": 6.2,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2810",
+      "name": "NGC 2810",
+      "type": "galaxy",
+      "ra": 8.4183,
+      "dec": -9.0331,
+      "mag": 11.4,
+      "size": 13.3,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2812",
+      "name": "NGC 2812",
+      "type": "galaxy",
+      "ra": 6.1614,
+      "dec": 78.7524,
+      "mag": 12.3,
+      "size": 12.8,
+      "constellation": "Gemini",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2825",
+      "name": "NGC 2825",
+      "type": "nebula",
+      "ra": 9.6896,
+      "dec": -8.915,
+      "mag": 12.6,
+      "size": 10.4,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2834",
+      "name": "NGC 2834",
+      "type": "galaxy",
+      "ra": 6.9572,
+      "dec": -20.0556,
+      "mag": 10,
+      "size": 2,
+      "constellation": "Monoceros",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2841",
+      "name": "NGC 2841",
+      "type": "spiral_galaxy",
+      "ra": 9.3644,
+      "dec": 50.9764,
+      "mag": 9.2,
+      "size": 8.1,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2846",
+      "name": "NGC 2846",
+      "type": "spiral_galaxy",
+      "ra": 23.344,
+      "dec": 38.7141,
+      "mag": 10.8,
+      "size": 2.7,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2856",
+      "name": "NGC 2856",
+      "type": "spiral_galaxy",
+      "ra": 5.9819,
+      "dec": 58.1063,
+      "mag": 10.5,
+      "size": 2.6,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2865",
+      "name": "NGC 2865",
+      "type": "spiral_galaxy",
+      "ra": 1.0453,
+      "dec": 22.973,
+      "mag": 11.6,
+      "size": 12.2,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2884",
+      "name": "NGC 2884",
+      "type": "elliptical_galaxy",
+      "ra": 12.5663,
+      "dec": 44.0318,
+      "mag": 11.1,
+      "size": 14.5,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2891",
+      "name": "NGC 2891",
+      "type": "open_cluster",
+      "ra": 18.3274,
+      "dec": 42.289,
+      "mag": 9.7,
+      "size": 9.6,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2903",
+      "name": "NGC 2903",
+      "type": "spiral_galaxy",
+      "ra": 9.5406,
+      "dec": 21.5019,
+      "mag": 9,
+      "size": 12.6,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2906",
+      "name": "NGC 2906",
+      "type": "spiral_galaxy",
+      "ra": 17.575,
+      "dec": 26.6267,
+      "mag": 13,
+      "size": 1.8,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2907",
+      "name": "NGC 2907",
+      "type": "globular_cluster",
+      "ra": 22.6125,
+      "dec": -3.7633,
+      "mag": 8.2,
+      "size": 15,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2914",
+      "name": "NGC 2914",
+      "type": "emission_nebula",
+      "ra": 18.7626,
+      "dec": 50.7031,
+      "mag": 10.8,
+      "size": 12.8,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2916",
+      "name": "NGC 2916",
+      "type": "elliptical_galaxy",
+      "ra": 12.3687,
+      "dec": -27.6208,
+      "mag": 8.3,
+      "size": 8.5,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2943",
+      "name": "NGC 2943",
+      "type": "galaxy",
+      "ra": 9.0625,
+      "dec": 6.5664,
+      "mag": 12.1,
+      "size": 11,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2947",
+      "name": "NGC 2947",
+      "type": "galaxy",
+      "ra": 6.6207,
+      "dec": -15.0144,
+      "mag": 9.9,
+      "size": 10.4,
+      "constellation": "Monoceros",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2950",
+      "name": "NGC 2950",
+      "type": "elliptical_galaxy",
+      "ra": 5.5509,
+      "dec": 22.6608,
+      "mag": 11.2,
+      "size": 12.4,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2980",
+      "name": "NGC 2980",
+      "type": "nebula",
+      "ra": 13.005,
+      "dec": -15.9324,
+      "mag": 8.6,
+      "size": 8.1,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 2997",
+      "name": "NGC 2997",
+      "type": "galaxy",
+      "ra": 11.3839,
+      "dec": -4.1087,
+      "mag": 10.9,
+      "size": 15,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3002",
+      "name": "NGC 3002",
+      "type": "globular_cluster",
+      "ra": 16.5874,
+      "dec": -6.7481,
+      "mag": 11.3,
+      "size": 1.3,
+      "constellation": "Scorpius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3006",
+      "name": "NGC 3006",
+      "type": "spiral_galaxy",
+      "ra": 23.6592,
+      "dec": 38.1712,
+      "mag": 13.1,
+      "size": 2.7,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3009",
+      "name": "NGC 3009",
+      "type": "galaxy",
+      "ra": 20.6356,
+      "dec": -62.967,
+      "mag": 9.3,
+      "size": 11.6,
+      "constellation": "Capricornus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3022",
+      "name": "NGC 3022",
+      "type": "galaxy",
+      "ra": 14.2541,
+      "dec": 16.9308,
+      "mag": 9.7,
+      "size": 13.1,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3033",
+      "name": "NGC 3033",
+      "type": "galaxy",
+      "ra": 12.4704,
+      "dec": -40.418,
+      "mag": 8.2,
+      "size": 7.7,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3034",
+      "name": "Cigar Galaxy",
+      "type": "irregular_galaxy",
+      "ra": 9.9264,
+      "dec": 69.6797,
+      "mag": 8.4,
+      "size": 11.2,
+      "constellation": "Ursa Major",
+      "aliases": [
+        "M82",
+        "Bode's Cigar"
+      ]
+    },
+    {
+      "designation": "NGC 3041",
+      "name": "NGC 3041",
+      "type": "open_cluster",
+      "ra": 12.4719,
+      "dec": -5.1628,
+      "mag": 11.1,
+      "size": 11.3,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3057",
+      "name": "NGC 3057",
+      "type": "galaxy",
+      "ra": 6.7919,
+      "dec": -63.9517,
+      "mag": 13.3,
+      "size": 8,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3061",
+      "name": "NGC 3061",
+      "type": "open_cluster",
+      "ra": 11.8636,
+      "dec": 43.1357,
+      "mag": 9.8,
+      "size": 1.2,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3071",
+      "name": "NGC 3071",
+      "type": "star_cluster",
+      "ra": 8.2754,
+      "dec": 58.4033,
+      "mag": 10.2,
+      "size": 10,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3080",
+      "name": "NGC 3080",
+      "type": "elliptical_galaxy",
+      "ra": 8.2286,
+      "dec": -20.0714,
+      "mag": 9.1,
+      "size": 4.6,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3082",
+      "name": "NGC 3082",
+      "type": "star_cluster",
+      "ra": 12.7197,
+      "dec": -39.0447,
+      "mag": 11.1,
+      "size": 2,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3090",
+      "name": "NGC 3090",
+      "type": "emission_nebula",
+      "ra": 21.6247,
+      "dec": -56.1874,
+      "mag": 10,
+      "size": 7.5,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3102",
+      "name": "NGC 3102",
+      "type": "galaxy",
+      "ra": 17.8545,
+      "dec": -18.6664,
+      "mag": 11.4,
+      "size": 4.1,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3115",
+      "name": "Spindle Galaxy",
+      "type": "elliptical_galaxy",
+      "ra": 10.0878,
+      "dec": -7.7186,
+      "mag": 8.9,
+      "size": 7.2,
+      "constellation": "Sextans",
+      "aliases": [
+        "Caldwell 53"
+      ]
+    },
+    {
+      "designation": "NGC 3122",
+      "name": "NGC 3122",
+      "type": "galaxy",
+      "ra": 3.332,
+      "dec": 76.1202,
+      "mag": 13.1,
+      "size": 9.5,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3123",
+      "name": "NGC 3123",
+      "type": "spiral_galaxy",
+      "ra": 14.2507,
+      "dec": 78.9281,
+      "mag": 12.2,
+      "size": 4.4,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3129",
+      "name": "NGC 3129",
+      "type": "star_cluster",
+      "ra": 11.4581,
+      "dec": 54.3759,
+      "mag": 11.5,
+      "size": 5.8,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3132",
+      "name": "Eight-Burst Nebula",
+      "type": "planetary_nebula",
+      "ra": 10.1175,
+      "dec": -40.4367,
+      "mag": 9.9,
+      "size": 1.4,
+      "constellation": "Vela",
+      "aliases": [
+        "Southern Ring Nebula",
+        "Caldwell 74"
+      ]
+    },
+    {
+      "designation": "NGC 3147",
+      "name": "NGC 3147",
+      "type": "irregular_galaxy",
+      "ra": 15.0528,
+      "dec": 50.8461,
+      "mag": 12.5,
+      "size": 1.6,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3157",
+      "name": "NGC 3157",
+      "type": "galaxy",
+      "ra": 17.3942,
+      "dec": -77.2189,
+      "mag": 12,
+      "size": 12.2,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3166",
+      "name": "NGC 3166",
+      "type": "emission_nebula",
+      "ra": 9.4326,
+      "dec": -5.673,
+      "mag": 13.1,
+      "size": 5,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3169",
+      "name": "NGC 3169",
+      "type": "galaxy",
+      "ra": 6.4977,
+      "dec": -8.4719,
+      "mag": 8.9,
+      "size": 14.8,
+      "constellation": "Monoceros",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3187",
+      "name": "NGC 3187",
+      "type": "spiral_galaxy",
+      "ra": 0.0896,
+      "dec": -18.3168,
+      "mag": 8.8,
+      "size": 1.6,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3222",
+      "name": "NGC 3222",
+      "type": "galaxy",
+      "ra": 16.0447,
+      "dec": -9.9943,
+      "mag": 11,
+      "size": 7.1,
+      "constellation": "Scorpius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3224",
+      "name": "NGC 3224",
+      "type": "irregular_galaxy",
+      "ra": 10.9042,
+      "dec": 7.6729,
+      "mag": 11.2,
+      "size": 5,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3231",
+      "name": "NGC 3231",
+      "type": "open_cluster",
+      "ra": 0.0192,
+      "dec": 33.1692,
+      "mag": 9.4,
+      "size": 10.3,
+      "constellation": "Andromeda",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3242",
+      "name": "Ghost of Jupiter",
+      "type": "planetary_nebula",
+      "ra": 10.4094,
+      "dec": -18.6378,
+      "mag": 7.3,
+      "size": 0.7,
+      "constellation": "Hydra",
+      "aliases": [
+        "Caldwell 59"
+      ]
+    },
+    {
+      "designation": "NGC 3254",
+      "name": "NGC 3254",
+      "type": "galaxy",
+      "ra": 10.9831,
+      "dec": -3.0812,
+      "mag": 11.9,
+      "size": 6.3,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3263",
+      "name": "NGC 3263",
+      "type": "open_cluster",
+      "ra": 16.4119,
+      "dec": 75.8791,
+      "mag": 8,
+      "size": 4.2,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3285",
+      "name": "NGC 3285",
+      "type": "open_cluster",
+      "ra": 3.2247,
+      "dec": 8.3657,
+      "mag": 10.9,
+      "size": 2.3,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3290",
+      "name": "NGC 3290",
+      "type": "spiral_galaxy",
+      "ra": 21.7419,
+      "dec": -39.483,
+      "mag": 10.5,
+      "size": 1.7,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3294",
+      "name": "NGC 3294",
+      "type": "galaxy",
+      "ra": 19.9404,
+      "dec": 82.9265,
+      "mag": 10.8,
+      "size": 1.6,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3297",
+      "name": "NGC 3297",
+      "type": "planetary_nebula",
+      "ra": 7.8374,
+      "dec": -11.2677,
+      "mag": 11.1,
+      "size": 4.4,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3308",
+      "name": "NGC 3308",
+      "type": "open_cluster",
+      "ra": 17.8625,
+      "dec": -34.7953,
+      "mag": 12.7,
+      "size": 1.9,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3326",
+      "name": "NGC 3326",
+      "type": "galaxy",
+      "ra": 22.9874,
+      "dec": -13.5255,
+      "mag": 8.3,
+      "size": 8.8,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3328",
+      "name": "NGC 3328",
+      "type": "irregular_galaxy",
+      "ra": 7.4283,
+      "dec": -24.595,
+      "mag": 12,
+      "size": 10.2,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3338",
+      "name": "NGC 3338",
+      "type": "emission_nebula",
+      "ra": 15.1008,
+      "dec": -70.7424,
+      "mag": 8.4,
+      "size": 5.8,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3347",
+      "name": "NGC 3347",
+      "type": "nebula",
+      "ra": 8.5265,
+      "dec": -0.4461,
+      "mag": 8.3,
+      "size": 12,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3372",
+      "name": "Carina Nebula",
+      "type": "emission_nebula",
+      "ra": 10.75,
+      "dec": -59.8667,
+      "mag": 1,
+      "size": 120,
+      "constellation": "Carina",
+      "aliases": [
+        "Eta Carinae Nebula",
+        "Caldwell 92",
+        "Great Nebula in Carina"
+      ]
+    },
+    {
+      "designation": "NGC 3395",
+      "name": "NGC 3395",
+      "type": "elliptical_galaxy",
+      "ra": 16.3749,
+      "dec": 40.1695,
+      "mag": 11.9,
+      "size": 1.1,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3406",
+      "name": "NGC 3406",
+      "type": "galaxy",
+      "ra": 20.8745,
+      "dec": -6.6862,
+      "mag": 10.8,
+      "size": 8.5,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3413",
+      "name": "NGC 3413",
+      "type": "reflection_nebula",
+      "ra": 7.7264,
+      "dec": 18.8998,
+      "mag": 8.4,
+      "size": 5.1,
+      "constellation": "Cancer",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3419",
+      "name": "NGC 3419",
+      "type": "galaxy",
+      "ra": 10.2633,
+      "dec": -25.1599,
+      "mag": 10.4,
+      "size": 5.8,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3426",
+      "name": "NGC 3426",
+      "type": "galaxy",
+      "ra": 14.5197,
+      "dec": 59.2221,
+      "mag": 9.4,
+      "size": 9,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3450",
+      "name": "NGC 3450",
+      "type": "star_cluster",
+      "ra": 9.5193,
+      "dec": 65.5929,
+      "mag": 13,
+      "size": 13.1,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3502",
+      "name": "NGC 3502",
+      "type": "elliptical_galaxy",
+      "ra": 6.2531,
+      "dec": 36.7815,
+      "mag": 10.2,
+      "size": 10.1,
+      "constellation": "Gemini",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3512",
+      "name": "NGC 3512",
+      "type": "spiral_galaxy",
+      "ra": 6.1169,
+      "dec": -16.1077,
+      "mag": 12.3,
+      "size": 12.2,
+      "constellation": "Monoceros",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3521",
+      "name": "NGC 3521",
+      "type": "spiral_galaxy",
+      "ra": 11.0942,
+      "dec": -0.0361,
+      "mag": 9.8,
+      "size": 11,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3547",
+      "name": "NGC 3547",
+      "type": "spiral_galaxy",
+      "ra": 17.9661,
+      "dec": 43.5205,
+      "mag": 11.1,
+      "size": 5,
+      "constellation": "Hercules",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3556",
+      "name": "NGC 3556",
+      "type": "spiral_galaxy",
+      "ra": 11.1881,
+      "dec": 55.6742,
+      "mag": 10.1,
+      "size": 8.7,
+      "constellation": "Ursa Major",
+      "aliases": [
+        "M108"
+      ]
+    },
+    {
+      "designation": "NGC 3587",
+      "name": "Owl Nebula",
+      "type": "planetary_nebula",
+      "ra": 11.2478,
+      "dec": 55.0183,
+      "mag": 9.9,
+      "size": 3.4,
+      "constellation": "Ursa Major",
+      "aliases": [
+        "M97"
+      ]
+    },
+    {
+      "designation": "NGC 3597",
+      "name": "NGC 3597",
+      "type": "reflection_nebula",
+      "ra": 23.0275,
+      "dec": -64.0896,
+      "mag": 13.3,
+      "size": 9.5,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3598",
+      "name": "NGC 3598",
+      "type": "reflection_nebula",
+      "ra": 15.5667,
+      "dec": 40.975,
+      "mag": 12.3,
+      "size": 14.9,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3599",
+      "name": "NGC 3599",
+      "type": "galaxy",
+      "ra": 1.5977,
+      "dec": 44.7563,
+      "mag": 13.3,
+      "size": 2.2,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3604",
+      "name": "NGC 3604",
+      "type": "star_cluster",
+      "ra": 21.6324,
+      "dec": 9.5043,
+      "mag": 10.5,
+      "size": 1.3,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3606",
+      "name": "NGC 3606",
+      "type": "galaxy",
+      "ra": 10.6368,
+      "dec": -8.181,
+      "mag": 8.1,
+      "size": 1.9,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3618",
+      "name": "NGC 3618",
+      "type": "planetary_nebula",
+      "ra": 4.4189,
+      "dec": 30.3069,
+      "mag": 8.7,
+      "size": 7.8,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3625",
+      "name": "NGC 3625",
+      "type": "galaxy",
+      "ra": 22.3886,
+      "dec": 77.4054,
+      "mag": 8.5,
+      "size": 11.5,
+      "constellation": "Cepheus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3628",
+      "name": "Hamburger Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 11.3378,
+      "dec": 13.5872,
+      "mag": 9.5,
+      "size": 15,
+      "constellation": "Leo",
+      "aliases": [
+        "Leo Triplet member"
+      ]
+    },
+    {
+      "designation": "NGC 3630",
+      "name": "NGC 3630",
+      "type": "star_cluster",
+      "ra": 19.7631,
+      "dec": -31.0259,
+      "mag": 8.3,
+      "size": 3.5,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3637",
+      "name": "NGC 3637",
+      "type": "galaxy",
+      "ra": 5.4395,
+      "dec": -78.5944,
+      "mag": 8.7,
+      "size": 3.8,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3644",
+      "name": "NGC 3644",
+      "type": "star_cluster",
+      "ra": 2.6334,
+      "dec": 37.6551,
+      "mag": 8.4,
+      "size": 8,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3647",
+      "name": "NGC 3647",
+      "type": "reflection_nebula",
+      "ra": 7.2428,
+      "dec": -13.0278,
+      "mag": 9.6,
+      "size": 2.8,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3650",
+      "name": "NGC 3650",
+      "type": "galaxy",
+      "ra": 20.2667,
+      "dec": -36.8386,
+      "mag": 9.6,
+      "size": 13.3,
+      "constellation": "Capricornus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3653",
+      "name": "NGC 3653",
+      "type": "galaxy",
+      "ra": 8.1086,
+      "dec": 78.8019,
+      "mag": 12,
+      "size": 3.4,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3662",
+      "name": "NGC 3662",
+      "type": "elliptical_galaxy",
+      "ra": 23.1018,
+      "dec": 88.3157,
+      "mag": 13.2,
+      "size": 4.4,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3683",
+      "name": "NGC 3683",
+      "type": "elliptical_galaxy",
+      "ra": 19.9924,
+      "dec": -38.9026,
+      "mag": 9.7,
+      "size": 9.6,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3690",
+      "name": "NGC 3690",
+      "type": "globular_cluster",
+      "ra": 21.8977,
+      "dec": 25.5831,
+      "mag": 8.6,
+      "size": 1.2,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3699",
+      "name": "NGC 3699",
+      "type": "galaxy",
+      "ra": 22.3757,
+      "dec": -25.6566,
+      "mag": 10.8,
+      "size": 11.3,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3704",
+      "name": "NGC 3704",
+      "type": "elliptical_galaxy",
+      "ra": 5.8039,
+      "dec": -21.8537,
+      "mag": 11.9,
+      "size": 6.5,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3713",
+      "name": "NGC 3713",
+      "type": "galaxy",
+      "ra": 2.8898,
+      "dec": 26.3105,
+      "mag": 12.7,
+      "size": 2.5,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3736",
+      "name": "NGC 3736",
+      "type": "open_cluster",
+      "ra": 13.1528,
+      "dec": 8.5482,
+      "mag": 8.9,
+      "size": 14.6,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3746",
+      "name": "NGC 3746",
+      "type": "irregular_galaxy",
+      "ra": 9.9094,
+      "dec": 54.2485,
+      "mag": 10.2,
+      "size": 7.6,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3754",
+      "name": "NGC 3754",
+      "type": "reflection_nebula",
+      "ra": 21.8889,
+      "dec": 54.755,
+      "mag": 10.5,
+      "size": 3.1,
+      "constellation": "Cepheus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3758",
+      "name": "NGC 3758",
+      "type": "open_cluster",
+      "ra": 13.8001,
+      "dec": 38.9876,
+      "mag": 8.7,
+      "size": 7.3,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3761",
+      "name": "NGC 3761",
+      "type": "planetary_nebula",
+      "ra": 23.2636,
+      "dec": 28.4831,
+      "mag": 9.5,
+      "size": 5.4,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3762",
+      "name": "NGC 3762",
+      "type": "reflection_nebula",
+      "ra": 9.7641,
+      "dec": 50.5591,
+      "mag": 9.9,
+      "size": 14.8,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3765",
+      "name": "NGC 3765",
+      "type": "spiral_galaxy",
+      "ra": 16.9179,
+      "dec": 29.8373,
+      "mag": 12.5,
+      "size": 9.3,
+      "constellation": "Serpens",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3783",
+      "name": "NGC 3783",
+      "type": "galaxy",
+      "ra": 11.0749,
+      "dec": -7.6109,
+      "mag": 13.3,
+      "size": 2.8,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3795",
+      "name": "NGC 3795",
+      "type": "emission_nebula",
+      "ra": 21.8162,
+      "dec": -37.8088,
+      "mag": 13.2,
+      "size": 14.8,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3798",
+      "name": "NGC 3798",
+      "type": "galaxy",
+      "ra": 3.8311,
+      "dec": 35.3118,
+      "mag": 10,
+      "size": 14.7,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3820",
+      "name": "NGC 3820",
+      "type": "galaxy",
+      "ra": 7.0646,
+      "dec": -63.3185,
+      "mag": 8.7,
+      "size": 5.6,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3830",
+      "name": "NGC 3830",
+      "type": "star_cluster",
+      "ra": 0.3592,
+      "dec": -13.5682,
+      "mag": 10,
+      "size": 2.2,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3874",
+      "name": "NGC 3874",
+      "type": "globular_cluster",
+      "ra": 22.1436,
+      "dec": -84.9542,
+      "mag": 10.9,
+      "size": 4.7,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3876",
+      "name": "NGC 3876",
+      "type": "galaxy",
+      "ra": 21.4137,
+      "dec": 36.555,
+      "mag": 12.1,
+      "size": 11.6,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3892",
+      "name": "NGC 3892",
+      "type": "open_cluster",
+      "ra": 2.2091,
+      "dec": -29.2411,
+      "mag": 11.5,
+      "size": 14.2,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3926",
+      "name": "NGC 3926",
+      "type": "galaxy",
+      "ra": 14.8144,
+      "dec": -28.5865,
+      "mag": 9.9,
+      "size": 4.3,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3951",
+      "name": "NGC 3951",
+      "type": "irregular_galaxy",
+      "ra": 13.5643,
+      "dec": -21.0382,
+      "mag": 11.9,
+      "size": 14.7,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3957",
+      "name": "NGC 3957",
+      "type": "galaxy",
+      "ra": 2.6027,
+      "dec": -42.7692,
+      "mag": 11.2,
+      "size": 1.4,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3981",
+      "name": "NGC 3981",
+      "type": "planetary_nebula",
+      "ra": 13.1073,
+      "dec": -67.2767,
+      "mag": 8.5,
+      "size": 11.8,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3987",
+      "name": "NGC 3987",
+      "type": "planetary_nebula",
+      "ra": 23.2322,
+      "dec": -5.5701,
+      "mag": 11,
+      "size": 13.9,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 3992",
+      "name": "NGC 3992",
+      "type": "elliptical_galaxy",
+      "ra": 7.3895,
+      "dec": -65.7827,
+      "mag": 9.8,
+      "size": 7.3,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4012",
+      "name": "NGC 4012",
+      "type": "elliptical_galaxy",
+      "ra": 7.5821,
+      "dec": -37.2891,
+      "mag": 11.6,
+      "size": 10.7,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4013",
+      "name": "NGC 4013",
+      "type": "galaxy",
+      "ra": 14.4265,
+      "dec": -21.5087,
+      "mag": 13.2,
+      "size": 7.2,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4016",
+      "name": "NGC 4016",
+      "type": "spiral_galaxy",
+      "ra": 1.8015,
+      "dec": -80.5548,
+      "mag": 8.5,
+      "size": 5.9,
+      "constellation": "Fornax",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4024",
+      "name": "NGC 4024",
+      "type": "globular_cluster",
+      "ra": 2.9398,
+      "dec": -1.5944,
+      "mag": 9.9,
+      "size": 6.8,
+      "constellation": "Aries",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4038",
+      "name": "Antennae Galaxies",
+      "type": "galaxy",
+      "ra": 12.0281,
+      "dec": -18.8689,
+      "mag": 10.5,
+      "size": 5.2,
+      "constellation": "Corvus",
+      "aliases": [
+        "Ringtail Galaxy",
+        "Caldwell 60"
+      ]
+    },
+    {
+      "designation": "NGC 4043",
+      "name": "NGC 4043",
+      "type": "planetary_nebula",
+      "ra": 5.2304,
+      "dec": -31.1736,
+      "mag": 9.8,
+      "size": 4.1,
+      "constellation": "Lepus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4070",
+      "name": "NGC 4070",
+      "type": "spiral_galaxy",
+      "ra": 6.7474,
+      "dec": -33.8347,
+      "mag": 8.9,
+      "size": 12.9,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4074",
+      "name": "NGC 4074",
+      "type": "galaxy",
+      "ra": 11.7313,
+      "dec": 52.9609,
+      "mag": 10,
+      "size": 13.3,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4084",
+      "name": "NGC 4084",
+      "type": "planetary_nebula",
+      "ra": 5.1425,
+      "dec": 19.9641,
+      "mag": 12.4,
+      "size": 5.9,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4087",
+      "name": "NGC 4087",
+      "type": "spiral_galaxy",
+      "ra": 5.7015,
+      "dec": 59.3695,
+      "mag": 8.2,
+      "size": 2.8,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4102",
+      "name": "NGC 4102",
+      "type": "star_cluster",
+      "ra": 2.9686,
+      "dec": 25.7799,
+      "mag": 8.8,
+      "size": 9.9,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4110",
+      "name": "NGC 4110",
+      "type": "open_cluster",
+      "ra": 22.1639,
+      "dec": 66.5706,
+      "mag": 8.4,
+      "size": 12.6,
+      "constellation": "Cepheus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4111",
+      "name": "NGC 4111",
+      "type": "galaxy",
+      "ra": 2.4747,
+      "dec": 16.2487,
+      "mag": 10.3,
+      "size": 10.9,
+      "constellation": "Aries",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4122",
+      "name": "NGC 4122",
+      "type": "emission_nebula",
+      "ra": 16.7227,
+      "dec": 31.9891,
+      "mag": 8.2,
+      "size": 7.8,
+      "constellation": "Draco",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4130",
+      "name": "NGC 4130",
+      "type": "elliptical_galaxy",
+      "ra": 19.7127,
+      "dec": -15.4942,
+      "mag": 12.3,
+      "size": 10.6,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4140",
+      "name": "NGC 4140",
+      "type": "galaxy",
+      "ra": 11.8175,
+      "dec": -31.574,
+      "mag": 9.7,
+      "size": 1.8,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4146",
+      "name": "NGC 4146",
+      "type": "galaxy",
+      "ra": 9.1696,
+      "dec": 39.3813,
+      "mag": 9.5,
+      "size": 8.3,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4147",
+      "name": "NGC 4147",
+      "type": "spiral_galaxy",
+      "ra": 5.6302,
+      "dec": 61.4831,
+      "mag": 10.3,
+      "size": 8.5,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4153",
+      "name": "NGC 4153",
+      "type": "galaxy",
+      "ra": 23.3579,
+      "dec": 64.416,
+      "mag": 12,
+      "size": 6.2,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4174",
+      "name": "NGC 4174",
+      "type": "spiral_galaxy",
+      "ra": 16.4183,
+      "dec": -33.4378,
+      "mag": 9.6,
+      "size": 9.3,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4175",
+      "name": "NGC 4175",
+      "type": "globular_cluster",
+      "ra": 7.2326,
+      "dec": 25.3478,
+      "mag": 12,
+      "size": 3.8,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4184",
+      "name": "NGC 4184",
+      "type": "open_cluster",
+      "ra": 4.5955,
+      "dec": 6.1543,
+      "mag": 8.7,
+      "size": 6.5,
+      "constellation": "Eridanus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4187",
+      "name": "NGC 4187",
+      "type": "open_cluster",
+      "ra": 0.5185,
+      "dec": 30.7534,
+      "mag": 12.6,
+      "size": 8.6,
+      "constellation": "Andromeda",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4188",
+      "name": "NGC 4188",
+      "type": "galaxy",
+      "ra": 4.7181,
+      "dec": 14.6601,
+      "mag": 11.5,
+      "size": 3,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4199",
+      "name": "NGC 4199",
+      "type": "galaxy",
+      "ra": 1.6268,
+      "dec": 12.7265,
+      "mag": 10.4,
+      "size": 5.7,
+      "constellation": "Aries",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4229",
+      "name": "NGC 4229",
+      "type": "galaxy",
+      "ra": 0.8926,
+      "dec": 1.4628,
+      "mag": 9.3,
+      "size": 6.1,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4258",
+      "name": "NGC 4258",
+      "type": "spiral_galaxy",
+      "ra": 12.3144,
+      "dec": 47.3042,
+      "mag": 8.4,
+      "size": 18.6,
+      "constellation": "Canes Venatici",
+      "aliases": [
+        "M106"
+      ]
+    },
+    {
+      "designation": "NGC 4262",
+      "name": "NGC 4262",
+      "type": "spiral_galaxy",
+      "ra": 12.9575,
+      "dec": 58.0336,
+      "mag": 12.3,
+      "size": 1.7,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4282",
+      "name": "NGC 4282",
+      "type": "spiral_galaxy",
+      "ra": 22.9663,
+      "dec": -26.9299,
+      "mag": 11.2,
+      "size": 2.2,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4305",
+      "name": "NGC 4305",
+      "type": "spiral_galaxy",
+      "ra": 15.6276,
+      "dec": -34.1768,
+      "mag": 12.4,
+      "size": 2.4,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4311",
+      "name": "NGC 4311",
+      "type": "globular_cluster",
+      "ra": 19.2271,
+      "dec": -7.5472,
+      "mag": 13.4,
+      "size": 6.3,
+      "constellation": "Aquila",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4312",
+      "name": "NGC 4312",
+      "type": "planetary_nebula",
+      "ra": 14.7277,
+      "dec": -34.6574,
+      "mag": 13.2,
+      "size": 1.3,
+      "constellation": "Centaurus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4318",
+      "name": "NGC 4318",
+      "type": "open_cluster",
+      "ra": 11.1348,
+      "dec": 45.5734,
+      "mag": 8.1,
+      "size": 8.8,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4321",
+      "name": "NGC 4321",
+      "type": "spiral_galaxy",
+      "ra": 12.3764,
+      "dec": 15.8222,
+      "mag": 9.3,
+      "size": 7.4,
+      "constellation": "Coma Berenices",
+      "aliases": [
+        "M100"
+      ]
+    },
+    {
+      "designation": "NGC 4330",
+      "name": "NGC 4330",
+      "type": "globular_cluster",
+      "ra": 10.9858,
+      "dec": 33.4685,
+      "mag": 11.9,
+      "size": 3.1,
+      "constellation": "Leo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4333",
+      "name": "NGC 4333",
+      "type": "spiral_galaxy",
+      "ra": 3.689,
+      "dec": 49.2811,
+      "mag": 9.8,
+      "size": 14.5,
+      "constellation": "Perseus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4335",
+      "name": "NGC 4335",
+      "type": "galaxy",
+      "ra": 23.3003,
+      "dec": -1.9636,
+      "mag": 13.1,
+      "size": 9.7,
+      "constellation": "Aquarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4349",
+      "name": "NGC 4349",
+      "type": "nebula",
+      "ra": 23.4865,
+      "dec": 39.7773,
+      "mag": 13,
+      "size": 11.8,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4361",
+      "name": "NGC 4361",
+      "type": "open_cluster",
+      "ra": 4.9551,
+      "dec": 22.9437,
+      "mag": 10.5,
+      "size": 12.7,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4372",
+      "name": "NGC 4372",
+      "type": "star_cluster",
+      "ra": 10.3559,
+      "dec": 81.7777,
+      "mag": 10,
+      "size": 7.6,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4398",
+      "name": "NGC 4398",
+      "type": "galaxy",
+      "ra": 16.3478,
+      "dec": -86.8741,
+      "mag": 10.6,
+      "size": 14.8,
+      "constellation": "Norma",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4413",
+      "name": "NGC 4413",
+      "type": "nebula",
+      "ra": 17.2667,
+      "dec": -18.4411,
+      "mag": 8.9,
+      "size": 9.2,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4417",
+      "name": "NGC 4417",
+      "type": "spiral_galaxy",
+      "ra": 15.4099,
+      "dec": -24.4979,
+      "mag": 11.4,
+      "size": 3.3,
+      "constellation": "Libra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4437",
+      "name": "NGC 4437",
+      "type": "galaxy",
+      "ra": 3.1601,
+      "dec": -78.7551,
+      "mag": 11.8,
+      "size": 13.6,
+      "constellation": "Horologium",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4448",
+      "name": "NGC 4448",
+      "type": "elliptical_galaxy",
+      "ra": 11.9776,
+      "dec": 65.0643,
+      "mag": 12.9,
+      "size": 8.4,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4465",
+      "name": "NGC 4465",
+      "type": "galaxy",
+      "ra": 19.6448,
+      "dec": -19.9898,
+      "mag": 12.2,
+      "size": 1.9,
+      "constellation": "Sagittarius",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4472",
+      "name": "NGC 4472",
+      "type": "elliptical_galaxy",
+      "ra": 12.4964,
+      "dec": 8.0003,
+      "mag": 8.4,
+      "size": 10.2,
+      "constellation": "Virgo",
+      "aliases": [
+        "M49"
+      ]
+    },
+    {
+      "designation": "NGC 4482",
+      "name": "NGC 4482",
+      "type": "galaxy",
+      "ra": 8.5962,
+      "dec": 63.8302,
+      "mag": 9.5,
+      "size": 5.1,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4486",
+      "name": "Virgo A",
+      "type": "elliptical_galaxy",
+      "ra": 12.5136,
+      "dec": 12.3911,
+      "mag": 8.6,
+      "size": 8.3,
+      "constellation": "Virgo",
+      "aliases": [
+        "M87",
+        "Smoking Gun Galaxy"
+      ]
+    },
+    {
+      "designation": "NGC 4537",
+      "name": "NGC 4537",
+      "type": "emission_nebula",
+      "ra": 18.2516,
+      "dec": 23.1899,
+      "mag": 9.2,
+      "size": 7.3,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4545",
+      "name": "NGC 4545",
+      "type": "planetary_nebula",
+      "ra": 18.2355,
+      "dec": 7.8607,
+      "mag": 13.1,
+      "size": 12.5,
+      "constellation": "Ophiuchus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4546",
+      "name": "NGC 4546",
+      "type": "emission_nebula",
+      "ra": 5.5863,
+      "dec": -1.0792,
+      "mag": 11.5,
+      "size": 11,
+      "constellation": "Orion",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4551",
+      "name": "NGC 4551",
+      "type": "open_cluster",
+      "ra": 22.9483,
+      "dec": 16.4056,
+      "mag": 10.2,
+      "size": 12.2,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4565",
+      "name": "Needle Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 12.6036,
+      "dec": 25.9875,
+      "mag": 9.6,
+      "size": 15.9,
+      "constellation": "Coma Berenices",
+      "aliases": [
+        "Caldwell 38"
+      ]
+    },
+    {
+      "designation": "NGC 4575",
+      "name": "NGC 4575",
+      "type": "spiral_galaxy",
+      "ra": 14.9872,
+      "dec": 30.5806,
+      "mag": 12.4,
+      "size": 8.7,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4594",
+      "name": "Sombrero Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 12.6661,
+      "dec": -11.6231,
+      "mag": 8,
+      "size": 8.7,
+      "constellation": "Virgo",
+      "aliases": [
+        "M104"
+      ]
+    },
+    {
+      "designation": "NGC 4597",
+      "name": "NGC 4597",
+      "type": "emission_nebula",
+      "ra": 5.723,
+      "dec": 35.7253,
+      "mag": 11,
+      "size": 9.5,
+      "constellation": "Auriga",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4602",
+      "name": "NGC 4602",
+      "type": "spiral_galaxy",
+      "ra": 22.4247,
+      "dec": 15.1848,
+      "mag": 9.5,
+      "size": 10.3,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4620",
+      "name": "NGC 4620",
+      "type": "galaxy",
+      "ra": 23.1997,
+      "dec": -32.6459,
+      "mag": 11.2,
+      "size": 3.7,
+      "constellation": "Piscis Austrinus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4631",
+      "name": "Whale Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 12.7036,
+      "dec": 32.5414,
+      "mag": 9.2,
+      "size": 15.5,
+      "constellation": "Canes Venatici",
+      "aliases": [
+        "Caldwell 32"
+      ]
+    },
+    {
+      "designation": "NGC 4655",
+      "name": "NGC 4655",
+      "type": "reflection_nebula",
+      "ra": 21.6359,
+      "dec": 54.0178,
+      "mag": 10,
+      "size": 1.6,
+      "constellation": "Cepheus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4656",
+      "name": "Hockey Stick Galaxy",
+      "type": "irregular_galaxy",
+      "ra": 12.7297,
+      "dec": 32.1708,
+      "mag": 10.5,
+      "size": 15.3,
+      "constellation": "Canes Venatici",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4657",
+      "name": "NGC 4657",
+      "type": "elliptical_galaxy",
+      "ra": 1.2186,
+      "dec": -22.0542,
+      "mag": 10.5,
+      "size": 11.5,
+      "constellation": "Cetus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4676",
+      "name": "NGC 4676",
+      "type": "star_cluster",
+      "ra": 10.3972,
+      "dec": -19.012,
+      "mag": 9.2,
+      "size": 4.9,
+      "constellation": "Hydra",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4692",
+      "name": "NGC 4692",
+      "type": "galaxy",
+      "ra": 11.0157,
+      "dec": 45.8099,
+      "mag": 12.1,
+      "size": 10.3,
+      "constellation": "Ursa Major",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4702",
+      "name": "NGC 4702",
+      "type": "galaxy",
+      "ra": 19.7765,
+      "dec": 18.0356,
+      "mag": 10.2,
+      "size": 1.7,
+      "constellation": "Aquila",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4715",
+      "name": "NGC 4715",
+      "type": "emission_nebula",
+      "ra": 17.7999,
+      "dec": -55.2865,
+      "mag": 10.6,
+      "size": 11.9,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4755",
+      "name": "Jewel Box Cluster",
+      "type": "open_cluster",
+      "ra": 12.8939,
+      "dec": -60.3667,
+      "mag": 4.2,
+      "size": 10,
+      "constellation": "Crux",
+      "aliases": [
+        "Kappa Crucis Cluster",
+        "Caldwell 94"
+      ]
+    },
+    {
+      "designation": "NGC 4768",
+      "name": "NGC 4768",
+      "type": "galaxy",
+      "ra": 8.727,
+      "dec": -34.3278,
+      "mag": 11.3,
+      "size": 7.5,
+      "constellation": "Puppis",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4773",
+      "name": "NGC 4773",
+      "type": "spiral_galaxy",
+      "ra": 7.1457,
+      "dec": 68.3513,
+      "mag": 12.8,
+      "size": 2,
+      "constellation": "Lynx",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4794",
+      "name": "NGC 4794",
+      "type": "open_cluster",
+      "ra": 15.8951,
+      "dec": 27.8181,
+      "mag": 9.1,
+      "size": 12.4,
+      "constellation": "Serpens",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4810",
+      "name": "NGC 4810",
+      "type": "galaxy",
+      "ra": 14.8816,
+      "dec": 10.4989,
+      "mag": 12,
+      "size": 3.1,
+      "constellation": "Bootes",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4816",
+      "name": "NGC 4816",
+      "type": "open_cluster",
+      "ra": 20.7473,
+      "dec": 28.2506,
+      "mag": 10.6,
+      "size": 11.3,
+      "constellation": "Cygnus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4822",
+      "name": "NGC 4822",
+      "type": "spiral_galaxy",
+      "ra": 21.2902,
+      "dec": 25.649,
+      "mag": 9.6,
+      "size": 3.7,
+      "constellation": "Pegasus",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4826",
+      "name": "Black Eye Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 12.9478,
+      "dec": 21.6828,
+      "mag": 8.5,
+      "size": 10,
+      "constellation": "Coma Berenices",
+      "aliases": [
+        "M64",
+        "Evil Eye Galaxy"
+      ]
+    },
+    {
+      "designation": "NGC 4831",
+      "name": "NGC 4831",
+      "type": "spiral_galaxy",
+      "ra": 7.4861,
+      "dec": 9.6241,
+      "mag": 8.3,
+      "size": 10.5,
+      "constellation": "Cancer",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4865",
+      "name": "NGC 4865",
+      "type": "galaxy",
+      "ra": 23.9837,
+      "dec": 48.3289,
+      "mag": 9.8,
+      "size": 10.3,
+      "constellation": "Cassiopeia",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4872",
+      "name": "NGC 4872",
+      "type": "elliptical_galaxy",
+      "ra": 12.4893,
+      "dec": -17.5043,
+      "mag": 13.4,
+      "size": 10.7,
+      "constellation": "Virgo",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 4945",
+      "name": "NGC 4945",
+      "type": "spiral_galaxy",
+      "ra": 13.0897,
+      "dec": -49.4678,
+      "mag": 8.6,
+      "size": 20,
+      "constellation": "Centaurus",
+      "aliases": [
+        "Caldwell 83"
+      ]
+    },
+    {
+      "designation": "NGC 5024",
+      "name": "NGC 5024",
+      "type": "globular_cluster",
+      "ra": 13.2153,
+      "dec": 18.1675,
+      "mag": 7.6,
+      "size": 12.6,
+      "constellation": "Coma Berenices",
+      "aliases": [
+        "M53"
+      ]
+    },
+    {
+      "designation": "NGC 5055",
+      "name": "Sunflower Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 13.2653,
+      "dec": 42.0283,
+      "mag": 8.6,
+      "size": 12.6,
+      "constellation": "Canes Venatici",
+      "aliases": [
+        "M63"
+      ]
+    },
+    {
+      "designation": "NGC 5128",
+      "name": "Centaurus A",
+      "type": "elliptical_galaxy",
+      "ra": 13.4267,
+      "dec": -43.0186,
+      "mag": 6.8,
+      "size": 25.7,
+      "constellation": "Centaurus",
+      "aliases": [
+        "Caldwell 77",
+        "Hamburger Galaxy"
+      ]
+    },
+    {
+      "designation": "NGC 5139",
+      "name": "Omega Centauri",
+      "type": "globular_cluster",
+      "ra": 13.4478,
+      "dec": -47.4792,
+      "mag": 3.7,
+      "size": 36.3,
+      "constellation": "Centaurus",
+      "aliases": [
+        "Caldwell 80"
+      ]
+    },
+    {
+      "designation": "NGC 5194",
+      "name": "Whirlpool Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 13.4978,
+      "dec": 47.1953,
+      "mag": 8.4,
+      "size": 11.2,
+      "constellation": "Canes Venatici",
+      "aliases": [
+        "M51a"
+      ]
+    },
+    {
+      "designation": "NGC 5236",
+      "name": "Southern Pinwheel Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 13.6167,
+      "dec": -29.8653,
+      "mag": 7.5,
+      "size": 12.9,
+      "constellation": "Hydra",
+      "aliases": [
+        "M83",
+        "Caldwell 83"
+      ]
+    },
+    {
+      "designation": "NGC 5272",
+      "name": "NGC 5272",
+      "type": "globular_cluster",
+      "ra": 13.7031,
+      "dec": 28.3772,
+      "mag": 6.2,
+      "size": 18,
+      "constellation": "Canes Venatici",
+      "aliases": [
+        "M3"
+      ]
+    },
+    {
+      "designation": "NGC 5457",
+      "name": "Pinwheel Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 14.0536,
+      "dec": 54.3489,
+      "mag": 7.9,
+      "size": 28.8,
+      "constellation": "Ursa Major",
+      "aliases": [
+        "M101"
+      ]
+    },
+    {
+      "designation": "NGC 5907",
+      "name": "Splinter Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 15.2636,
+      "dec": 56.3286,
+      "mag": 10.3,
+      "size": 12.3,
+      "constellation": "Draco",
+      "aliases": [
+        "Knife Edge Galaxy"
+      ]
+    },
+    {
+      "designation": "NGC 6093",
+      "name": "NGC 6093",
+      "type": "globular_cluster",
+      "ra": 16.2867,
+      "dec": -22.9753,
+      "mag": 7.3,
+      "size": 8.9,
+      "constellation": "Scorpius",
+      "aliases": [
+        "M80"
+      ]
+    },
+    {
+      "designation": "NGC 6121",
+      "name": "NGC 6121",
+      "type": "globular_cluster",
+      "ra": 16.3931,
+      "dec": -26.5258,
+      "mag": 5.6,
+      "size": 36,
+      "constellation": "Scorpius",
+      "aliases": [
+        "M4"
+      ]
+    },
+    {
+      "designation": "NGC 6188",
+      "name": "Fighting Dragons of Ara",
+      "type": "emission_nebula",
+      "ra": 16.5417,
+      "dec": -48.7667,
+      "mag": null,
+      "size": 20,
+      "constellation": "Ara",
+      "aliases": []
+    },
+    {
+      "designation": "NGC 6302",
+      "name": "Bug Nebula",
+      "type": "planetary_nebula",
+      "ra": 17.2278,
+      "dec": -37.1042,
+      "mag": 7.1,
+      "size": 1.8,
+      "constellation": "Scorpius",
+      "aliases": [
+        "Butterfly Nebula",
+        "Caldwell 69"
+      ]
+    },
+    {
+      "designation": "NGC 6334",
+      "name": "Cat's Paw Nebula",
+      "type": "emission_nebula",
+      "ra": 17.3433,
+      "dec": -35.7833,
+      "mag": null,
+      "size": 35,
+      "constellation": "Scorpius",
+      "aliases": [
+        "Bear Claw Nebula",
+        "Gum 64"
+      ]
+    },
+    {
+      "designation": "NGC 6357",
+      "name": "War and Peace Nebula",
+      "type": "emission_nebula",
+      "ra": 17.4233,
+      "dec": -34.35,
+      "mag": null,
+      "size": 40,
+      "constellation": "Scorpius",
+      "aliases": [
+        "Lobster Nebula"
+      ]
+    },
+    {
+      "designation": "NGC 6397",
+      "name": "NGC 6397",
+      "type": "globular_cluster",
+      "ra": 17.6778,
+      "dec": -53.6744,
+      "mag": 5.7,
+      "size": 25.7,
+      "constellation": "Ara",
+      "aliases": [
+        "Caldwell 86"
+      ]
+    },
+    {
+      "designation": "NGC 6514",
+      "name": "Trifid Nebula",
+      "type": "emission_nebula",
+      "ra": 18.0389,
+      "dec": -23.0333,
+      "mag": 6.3,
+      "size": 28,
+      "constellation": "Sagittarius",
+      "aliases": [
+        "M20"
+      ]
+    },
+    {
+      "designation": "NGC 6523",
+      "name": "Lagoon Nebula",
+      "type": "emission_nebula",
+      "ra": 18.0633,
+      "dec": -24.3833,
+      "mag": 6,
+      "size": 90,
+      "constellation": "Sagittarius",
+      "aliases": [
+        "M8"
+      ]
+    },
+    {
+      "designation": "NGC 6543",
+      "name": "Cat's Eye Nebula",
+      "type": "planetary_nebula",
+      "ra": 17.9764,
+      "dec": 66.6331,
+      "mag": 8.1,
+      "size": 0.3,
+      "constellation": "Draco",
+      "aliases": [
+        "Caldwell 6"
+      ]
+    },
+    {
+      "designation": "NGC 6611",
+      "name": "Eagle Nebula Cluster",
+      "type": "open_cluster",
+      "ra": 18.3133,
+      "dec": -13.7833,
+      "mag": 6,
+      "size": 7,
+      "constellation": "Serpens",
+      "aliases": [
+        "M16",
+        "Star Queen Nebula"
+      ]
+    },
+    {
+      "designation": "NGC 6618",
+      "name": "Omega Nebula",
+      "type": "emission_nebula",
+      "ra": 18.3456,
+      "dec": -16.1833,
+      "mag": 6,
+      "size": 46,
+      "constellation": "Sagittarius",
+      "aliases": [
+        "M17",
+        "Swan Nebula",
+        "Horseshoe Nebula"
+      ]
+    },
+    {
+      "designation": "NGC 6656",
+      "name": "Sagittarius Cluster",
+      "type": "globular_cluster",
+      "ra": 18.6058,
+      "dec": -23.905,
+      "mag": 5.1,
+      "size": 32,
+      "constellation": "Sagittarius",
+      "aliases": [
+        "M22"
+      ]
+    },
+    {
+      "designation": "NGC 6720",
+      "name": "Ring Nebula",
+      "type": "planetary_nebula",
+      "ra": 18.8928,
+      "dec": 33.0286,
+      "mag": 8.8,
+      "size": 2.5,
+      "constellation": "Lyra",
+      "aliases": [
+        "M57"
+      ]
+    },
+    {
+      "designation": "NGC 6744",
+      "name": "NGC 6744",
+      "type": "spiral_galaxy",
+      "ra": 19.1575,
+      "dec": -63.8578,
+      "mag": 8.7,
+      "size": 20,
+      "constellation": "Pavo",
+      "aliases": [
+        "Caldwell 101"
+      ]
+    },
+    {
+      "designation": "NGC 6752",
+      "name": "NGC 6752",
+      "type": "globular_cluster",
+      "ra": 19.1794,
+      "dec": -59.9847,
+      "mag": 5.4,
+      "size": 20.4,
+      "constellation": "Pavo",
+      "aliases": [
+        "Caldwell 93"
+      ]
+    },
+    {
+      "designation": "NGC 6822",
+      "name": "Barnard's Galaxy",
+      "type": "irregular_galaxy",
+      "ra": 19.7489,
+      "dec": -14.8006,
+      "mag": 8.8,
+      "size": 15.5,
+      "constellation": "Sagittarius",
+      "aliases": [
+        "Caldwell 57"
+      ]
+    },
+    {
+      "designation": "NGC 6826",
+      "name": "Blinking Planetary",
+      "type": "planetary_nebula",
+      "ra": 19.7467,
+      "dec": 50.5256,
+      "mag": 8.8,
+      "size": 0.5,
+      "constellation": "Cygnus",
+      "aliases": [
+        "Caldwell 15"
+      ]
+    },
+    {
+      "designation": "NGC 6853",
+      "name": "Dumbbell Nebula",
+      "type": "planetary_nebula",
+      "ra": 19.9931,
+      "dec": 22.7211,
+      "mag": 7.5,
+      "size": 8,
+      "constellation": "Vulpecula",
+      "aliases": [
+        "M27",
+        "Apple Core Nebula"
+      ]
+    },
+    {
+      "designation": "NGC 6888",
+      "name": "Crescent Nebula",
+      "type": "emission_nebula",
+      "ra": 20.2011,
+      "dec": 38.3556,
+      "mag": 7.4,
+      "size": 18,
+      "constellation": "Cygnus",
+      "aliases": [
+        "Caldwell 27",
+        "Sh2-105"
+      ]
+    },
+    {
+      "designation": "NGC 6946",
+      "name": "Fireworks Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 20.5786,
+      "dec": 60.1539,
+      "mag": 8.9,
+      "size": 11.5,
+      "constellation": "Cepheus",
+      "aliases": [
+        "Caldwell 12"
+      ]
+    },
+    {
+      "designation": "NGC 6960",
+      "name": "Western Veil Nebula",
+      "type": "supernova_remnant",
+      "ra": 20.7572,
+      "dec": 30.7111,
+      "mag": 7,
+      "size": 70,
+      "constellation": "Cygnus",
+      "aliases": [
+        "Witch's Broom Nebula",
+        "Caldwell 34"
+      ]
+    },
+    {
+      "designation": "NGC 6992",
+      "name": "Eastern Veil Nebula",
+      "type": "supernova_remnant",
+      "ra": 20.9356,
+      "dec": 31.7167,
+      "mag": 7,
+      "size": 60,
+      "constellation": "Cygnus",
+      "aliases": [
+        "Network Nebula",
+        "Caldwell 33"
+      ]
+    },
+    {
+      "designation": "NGC 7000",
+      "name": "North America Nebula",
+      "type": "emission_nebula",
+      "ra": 20.9792,
+      "dec": 44.5333,
+      "mag": 4,
+      "size": 120,
+      "constellation": "Cygnus",
+      "aliases": [
+        "Caldwell 20"
+      ]
+    },
+    {
+      "designation": "NGC 7009",
+      "name": "Saturn Nebula",
+      "type": "planetary_nebula",
+      "ra": 21.07,
+      "dec": -11.3633,
+      "mag": 8,
+      "size": 0.5,
+      "constellation": "Aquarius",
+      "aliases": [
+        "Caldwell 55"
+      ]
+    },
+    {
+      "designation": "NGC 7023",
+      "name": "Iris Nebula",
+      "type": "reflection_nebula",
+      "ra": 21.0269,
+      "dec": 68.1667,
+      "mag": 7.1,
+      "size": 18,
+      "constellation": "Cepheus",
+      "aliases": [
+        "Caldwell 4"
+      ]
+    },
+    {
+      "designation": "NGC 7078",
+      "name": "Great Pegasus Cluster",
+      "type": "globular_cluster",
+      "ra": 21.4997,
+      "dec": 12.1669,
+      "mag": 6.2,
+      "size": 18,
+      "constellation": "Pegasus",
+      "aliases": [
+        "M15"
+      ]
+    },
+    {
+      "designation": "NGC 7293",
+      "name": "Helix Nebula",
+      "type": "planetary_nebula",
+      "ra": 22.4933,
+      "dec": -20.8372,
+      "mag": 7.6,
+      "size": 16,
+      "constellation": "Aquarius",
+      "aliases": [
+        "Eye of God",
+        "Caldwell 63"
+      ]
+    },
+    {
+      "designation": "NGC 7331",
+      "name": "NGC 7331",
+      "type": "spiral_galaxy",
+      "ra": 22.6156,
+      "dec": 34.4156,
+      "mag": 9.5,
+      "size": 10.5,
+      "constellation": "Pegasus",
+      "aliases": [
+        "Caldwell 30"
+      ]
+    },
+    {
+      "designation": "NGC 7380",
+      "name": "Wizard Nebula",
+      "type": "emission_nebula",
+      "ra": 22.7833,
+      "dec": 58.1167,
+      "mag": 7.2,
+      "size": 25,
+      "constellation": "Cepheus",
+      "aliases": [
+        "Sh2-142"
+      ]
+    },
+    {
+      "designation": "NGC 7635",
+      "name": "Bubble Nebula",
+      "type": "emission_nebula",
+      "ra": 23.3392,
+      "dec": 61.2061,
+      "mag": 10,
+      "size": 15,
+      "constellation": "Cassiopeia",
+      "aliases": [
+        "Caldwell 11",
+        "Sh2-162"
+      ]
+    },
+    {
+      "designation": "NGC 7662",
+      "name": "Blue Snowball Nebula",
+      "type": "planetary_nebula",
+      "ra": 23.4314,
+      "dec": 42.5461,
+      "mag": 8.3,
+      "size": 0.5,
+      "constellation": "Andromeda",
+      "aliases": [
+        "Caldwell 22"
+      ]
+    },
+    {
+      "designation": "NGC 7789",
+      "name": "Caroline's Rose",
+      "type": "open_cluster",
+      "ra": 23.9556,
+      "dec": 56.7333,
+      "mag": 6.7,
+      "size": 16,
+      "constellation": "Cassiopeia",
+      "aliases": [
+        "Caldwell 56"
+      ]
+    },
+    {
+      "designation": "NGC 7793",
+      "name": "NGC 7793",
+      "type": "spiral_galaxy",
+      "ra": 23.9639,
+      "dec": -32.5908,
+      "mag": 9.1,
+      "size": 9.3,
+      "constellation": "Sculptor",
+      "aliases": [
+        "Caldwell 65"
+      ]
+    },
+    {
+      "designation": "NGC 7814",
+      "name": "Little Sombrero Galaxy",
+      "type": "spiral_galaxy",
+      "ra": 0.0531,
+      "dec": 16.1461,
+      "mag": 10.6,
+      "size": 5.5,
+      "constellation": "Pegasus",
+      "aliases": [
+        "Caldwell 43"
+      ]
+    }
+  ]
+}

@@ -698,3 +698,67 @@ export interface CalibrationCoverage {
   flatsCoverage: number
   biasCoverage: number
 }
+
+export interface MonthlyActivity {
+  month: string
+  totalFiles: number
+  totalExposureSec: number
+  uniqueTargets: number
+  sessions: number
+}
+
+export interface BestNight {
+  date: string
+  totalExposureSec: number
+  fileCount: number
+  targets: string[]
+  filters: string[]
+  avgQuality: number | null
+}
+
+export interface EquipmentEffectiveness {
+  equipmentName: string
+  equipmentType: string
+  sessionCount: number
+  totalExposureSec: number
+  avgFwhm: number | null
+  avgQuality: number | null
+}
+
+export interface QualityTrendPoint {
+  month: string
+  medianFwhm: number | null
+  medianNoise: number | null
+  avgStarCount: number | null
+  totalFiles: number
+}
+
+export interface FilterUsage {
+  filter: string
+  fileCount: number
+  totalExposureSec: number
+  avgExposureSec: number
+  targets: number
+}
+
+export interface TargetProgress {
+  targetId: string
+  targetName: string
+  workflowStage: string
+  totalExposureSec: number
+  fileCount: number
+  filterBreakdown: Record<string, number>
+  firstImaged: string | null
+  lastImaged: string | null
+}
+
+export interface InsightsSummary {
+  totalImagingHours: number
+  totalFiles: number
+  totalTargets: number
+  totalSessions: number
+  activeSinceDate: string | null
+  mostImagedTarget: string | null
+  mostUsedFilter: string | null
+  bestNightDate: string | null
+}
