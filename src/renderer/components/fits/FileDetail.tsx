@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
+import { formatSize } from '../../utils/format'
 import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, QualityMetrics } from '@shared/types'
 
 interface FileDetailProps {
@@ -15,11 +16,6 @@ function Field({ label, value }: { label: string; value: string | number | null 
       <dd className="text-sm text-astro-text mt-0.5">{value}</dd>
     </div>
   )
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactElement {

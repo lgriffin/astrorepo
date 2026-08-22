@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
-import { setupTestDb, teardownTestDb, seedTarget } from '../helpers/setup'
+import { setupTestDb, teardownTestDb } from '../helpers/setup'
 
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, addAlias, mergeTargets } = await import('../../src/main/services/target')
@@ -23,15 +22,15 @@ describe('TargetService', () => {
     // Event: User submits a new target with required fields
     // Action: System persists the target to the database
     // Response: Returns a fully populated Target object
-    // State: Database contains one new target row with 'planned' workflow stage
+    // State: Database contains one new target row with 'not_observed' workflow stage
 
-    it('Given no targets exist, When a target is created with name and type, Then it returns a Target with a ULID and planned stage', () => {
+    it('Given no targets exist, When a target is created with name and type, Then it returns a Target with a ULID and not_observed stage', () => {
       const result = createTarget({ canonicalName: 'Andromeda Galaxy', objectType: 'galaxy' })
 
       expect(result.id).toBeTruthy()
       expect(result.canonicalName).toBe('Andromeda Galaxy')
       expect(result.objectType).toBe('galaxy')
-      expect(result.workflowStage).toBe('planned')
+      expect(result.workflowStage).toBe('not_observed')
       expect(result.isCustom).toBe(true)
       expect(result.createdAt).toBeTruthy()
     })

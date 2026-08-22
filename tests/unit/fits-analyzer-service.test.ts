@@ -5,8 +5,7 @@ import { setupTestDb, teardownTestDb, seedFitsScan, seedFitsFile, seedTarget } f
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const {
@@ -145,8 +144,6 @@ describe('FitsAnalyzerService', () => {
     it('Given a file with headers, When getFileHeaders is called, Then returns headers in order', () => {
       const scanId = seedFitsScan(sqlite)
       const fileId = seedFitsFile(sqlite, scanId)
-      const now = new Date().toISOString()
-
       sqlite.prepare('INSERT INTO fits_headers (id, file_id, keyword, value, comment, ordinal) VALUES (?, ?, ?, ?, ?, ?)').run('h1', fileId, 'SIMPLE', 'T', 'FITS standard', 0)
       sqlite.prepare('INSERT INTO fits_headers (id, file_id, keyword, value, comment, ordinal) VALUES (?, ?, ?, ?, ?, ?)').run('h2', fileId, 'BITPIX', '16', null, 1)
       sqlite.prepare('INSERT INTO fits_headers (id, file_id, keyword, value, comment, ordinal) VALUES (?, ?, ?, ?, ?, ?)').run('h3', fileId, 'NAXIS', '2', null, 2)

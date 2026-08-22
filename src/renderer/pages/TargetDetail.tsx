@@ -5,6 +5,7 @@ import { SessionList } from '../components/session/SessionList'
 import { WorkflowStepper } from '../components/target/WorkflowStepper'
 import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
+import { formatExposure, formatSize } from '../utils/format'
 import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
@@ -162,18 +163,6 @@ export function TargetDetail(): React.ReactElement {
       </div>
     </PageContainer>
   )
-}
-
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec.toFixed(0)}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(1)}m`
-  return `${(sec / 3600).toFixed(1)}h`
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
 function ObservationDataSection({ data }: { data: TargetObservationData }): React.ReactElement {

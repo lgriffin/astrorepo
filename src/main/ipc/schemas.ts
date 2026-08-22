@@ -260,7 +260,41 @@ export const schemas = {
   }),
   'stacking:delete-goal': z.object({ id: z.string().min(1) }),
 
-  'db:reset': z.object({}).optional()
+  'equipment:update': z.object({ id, fields: z.record(z.unknown()) }),
+  'equipment:delete': z.object({ id }),
+  'equipment:calculate-fov': z.object({ telescope_id: id, camera_id: id, reducer_id: z.string().optional() }),
+  'equipment:calculate-image-scale': z.object({ telescope_id: id, camera_id: id }),
+
+  'sky:altitude-curve': z.object({ target_id: id, date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:best-tonight': z.object({ lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:moon-info': z.object({ date: z.string() }),
+  'sky:twilight': z.object({ date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:target-visibility': z.object({ target_id: id, lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+
+  'targets:batch-advance-stage': z.object({ target_ids: z.array(z.string().min(1)), to_stage: z.string().min(1), notes: z.string().optional() }),
+  'targets:batch-add-collection': z.object({ target_ids: z.array(z.string().min(1)), collection_id: z.string().min(1) }),
+  'targets:batch-delete': z.object({ target_ids: z.array(z.string().min(1)) }),
+
+  'export:targets-csv': z.object({}).optional(),
+  'export:sessions-csv': z.object({}).optional(),
+  'export:fits-csv': z.object({}).optional(),
+  'import:nina-sequence': z.object({ file_path: z.string().min(1) }),
+  'import:pick-file': z.object({}).optional(),
+
+  'timeline:calendar': z.object({ year: z.number().int(), month: z.number().int().min(1).max(12).optional() }),
+  'timeline:year-summary': z.object({ year: z.number().int() }),
+
+  'recommendations:list': z.object({}).optional(),
+
+  'db:reset': z.object({}).optional(),
+
+  'insights:summary': z.object({}).optional(),
+  'insights:monthly-activity': z.object({ months: z.number().int().positive().optional() }),
+  'insights:best-nights': z.object({ limit: z.number().int().positive().optional() }),
+  'insights:equipment-effectiveness': z.object({}).optional(),
+  'insights:quality-trends': z.object({ months: z.number().int().positive().optional() }),
+  'insights:filter-usage': z.object({}).optional(),
+  'insights:target-progress': z.object({ limit: z.number().int().positive().optional() })
 } as const
 
 export type SchemaMap = typeof schemas

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
+import { formatExposure } from '../../utils/format'
 import type { AutoSessionPreview, GeneratedSessionResult } from '@shared/types'
 
 interface SessionGeneratorProps {
@@ -15,17 +16,12 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
   const [result, setResult] = useState<GeneratedSessionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadPreviews()
-  }, [scanId])
-
-  async function loadPreviews(): Promise<void> {
+  const loadPreviews = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await invoke<{ previews: AutoSessionPreview[] }>('sessions:preview-auto', { scan_id: scanId })
       setPreviews(data.previews)
-      // Select all pending (non-existing) sessions by default
       const pendingKeys = new Set(
         data.previews
           .filter((p) => !p.existingSessionId)
@@ -37,7 +33,11 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
     } finally {
       setLoading(false)
     }
-  }
+  }, [scanId])
+
+  useEffect(() => {
+    loadPreviews()
+  }, [loadPreviews])
 
   function toggleSelection(key: string): void {
     setSelected((prev) => {
@@ -76,16 +76,6 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
     } finally {
       setGenerating(false)
     }
-  }
-
-  function formatExposure(seconds: number): string {
-    if (seconds < 60) return `${seconds}s`
-    const minutes = Math.floor(seconds / 60)
-    const remaining = Math.round(seconds % 60)
-    if (minutes < 60) return remaining > 0 ? `${minutes}m ${remaining}s` : `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const remMins = minutes % 60
-    return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`
   }
 
   if (loading) {

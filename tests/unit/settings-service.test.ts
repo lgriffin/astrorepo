@@ -5,8 +5,7 @@ import { setupTestDb, teardownTestDb } from '../helpers/setup'
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { getSetting, setSetting, deleteSetting, listSettings } = await import('../../src/main/services/settings')

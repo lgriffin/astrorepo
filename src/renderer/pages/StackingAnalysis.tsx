@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
+import { StatCard } from '../components/common/StatCard'
 import { useToast } from '../contexts/ToastContext'
 import { invoke } from '../hooks/useIPC'
+import { formatSize } from '../utils/format'
 import type {
   StackingSummary, StackingSummaryRow, StackedWithSubFrames, SubFrameInfo,
   TargetIntegrationProgress, FilterProgress
@@ -11,12 +13,6 @@ import type {
 function formatHours(seconds: number): string {
   const h = seconds / 3600
   return h >= 1 ? `${h.toFixed(1)}h` : `${Math.round(seconds / 60)}m`
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
-  return `${(bytes / 1024).toFixed(0)} KB`
 }
 
 export function StackingAnalysis(): React.ReactElement {
@@ -87,11 +83,11 @@ function StackingSummarySection({ summary }: { summary: StackingSummary | null }
   return (
     <Section title="Stacking Summary">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-        <StatCard label="Stacked Masters" value={summary.totalStacked} />
-        <StatCard label="Combined Subs" value={summary.totalNcombine} />
-        <StatCard label="Total Integration" value={formatHours(summary.totalIntegrationSec)} />
-        <StatCard label="Software" value={summary.softwareUsed.join(', ') || 'Unknown'} small />
-        <StatCard label="Filters" value={summary.filtersUsed.join(', ') || 'None'} small />
+        <StatCard label="Stacked Masters" value={summary.totalStacked} compact />
+        <StatCard label="Combined Subs" value={summary.totalNcombine} compact />
+        <StatCard label="Total Integration" value={formatHours(summary.totalIntegrationSec)} compact />
+        <StatCard label="Software" value={summary.softwareUsed.join(', ') || 'Unknown'} compact />
+        <StatCard label="Filters" value={summary.filtersUsed.join(', ') || 'None'} compact />
       </div>
 
       <div className="flex gap-3 mb-3">
@@ -460,11 +456,3 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function StatCard({ label, value, small }: { label: string; value: string | number; small?: boolean }): React.ReactElement {
-  return (
-    <div className="bg-astro-bg rounded-lg p-3 border border-astro-border/50">
-      <p className="text-xs text-astro-muted mb-1">{label}</p>
-      <p className={`text-astro-text font-semibold ${small ? 'text-xs' : 'text-lg'}`}>{value}</p>
-    </div>
-  )
-}

@@ -5,7 +5,7 @@ import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesFor
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
 import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection, autoGenerateCatalogueCollections } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
-import { createEquipment, listEquipment, getUsageHistory } from '../services/equipment'
+import { createEquipment, listEquipment, getUsageHistory, updateEquipment, deleteEquipment, calculateFOV, calculateImageScale } from '../services/equipment'
 import { generateFolders, listTemplates, createTemplate } from '../services/folder'
 import { scanImages, readImageThumbnail } from '../services/image-scanner'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
@@ -22,6 +22,14 @@ import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, ge
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { resetDatabase } from '../db/connection'
 import { loadCatalogueSeedData } from '../services/catalogue'
+import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
+import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
+import { getCalendarData, getYearSummary } from '../services/timeline'
+import { batchAdvanceStage, batchAddToCollection, batchDeleteTargets } from '../services/batch'
+import { exportTargetsCsv, exportSessionsCsv, exportFitsAggregatesCsv } from '../services/export'
+import { importNinaSequence } from '../services/nina-import'
+import { getRecommendations } from '../services/recommendations'
+import fs from 'fs'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -442,6 +450,135 @@ export function registerIpcHandlers(): void {
   handle('stacking:delete-goal', validated('stacking:delete-goal', (args) => {
     return { success: deleteIntegrationGoal(args.id) }
   }))
+
+  handle('insights:summary', async () => {
+    return getInsightsSummary()
+  })
+
+  handle('insights:monthly-activity', validated('insights:monthly-activity', (args) => {
+    return getMonthlyActivity(args.months)
+  }))
+
+  handle('insights:best-nights', validated('insights:best-nights', (args) => {
+    return getBestNights(args.limit)
+  }))
+
+  handle('insights:equipment-effectiveness', async () => {
+    return getEquipmentEffectiveness()
+  })
+
+  handle('insights:quality-trends', validated('insights:quality-trends', (args) => {
+    return getQualityTrends(args.months)
+  }))
+
+  handle('insights:filter-usage', async () => {
+    return getFilterUsageBreakdown()
+  })
+
+  handle('insights:target-progress', validated('insights:target-progress', (args) => {
+    return getTargetProgress(args.limit)
+  }))
+
+  handle('equipment:update', validated('equipment:update', (args) => {
+    return updateEquipment(args.id, args.fields)
+  }))
+
+  handle('equipment:delete', validated('equipment:delete', (args) => {
+    return { success: deleteEquipment(args.id) }
+  }))
+
+  handle('equipment:calculate-fov', validated('equipment:calculate-fov', (args) => {
+    return calculateFOV(args.telescope_id, args.camera_id, args.reducer_id)
+  }))
+
+  handle('equipment:calculate-image-scale', validated('equipment:calculate-image-scale', (args) => {
+    return calculateImageScale(args.telescope_id, args.camera_id)
+  }))
+
+  handle('sky:altitude-curve', validated('sky:altitude-curve', (args) => {
+    return { points: getTargetAltitudeCurve(args.target_id, args.date, args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('sky:best-tonight', validated('sky:best-tonight', (args) => {
+    return { targets: getBestTargetsTonight(args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('sky:moon-info', validated('sky:moon-info', (args) => {
+    return getMoonInfo(args.date)
+  }))
+
+  handle('sky:twilight', validated('sky:twilight', (args) => {
+    return getTwilightTimes(args.date, args.lat, args.lon, args.elevation)
+  }))
+
+  handle('sky:target-visibility', validated('sky:target-visibility', (args) => {
+    return { months: getTargetVisibility(args.target_id, args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('targets:batch-advance-stage', validated('targets:batch-advance-stage', (args) => {
+    return batchAdvanceStage(args.target_ids, args.to_stage, args.notes)
+  }))
+
+  handle('targets:batch-add-collection', validated('targets:batch-add-collection', (args) => {
+    return batchAddToCollection(args.target_ids, args.collection_id)
+  }))
+
+  handle('targets:batch-delete', validated('targets:batch-delete', (args) => {
+    return batchDeleteTargets(args.target_ids)
+  }))
+
+  handle('export:targets-csv', async () => {
+    const csv = exportTargetsCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'targets.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('export:sessions-csv', async () => {
+    const csv = exportSessionsCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'sessions.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('export:fits-csv', async () => {
+    const csv = exportFitsAggregatesCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'fits-aggregates.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('import:pick-file', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      title: 'Select NINA Sequence File',
+      filters: [
+        { name: 'NINA Sequence', extensions: ['xml', 'json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
+
+  handle('import:nina-sequence', validated('import:nina-sequence', (args) => {
+    return importNinaSequence(args.file_path)
+  }))
+
+  handle('timeline:calendar', validated('timeline:calendar', (args) => {
+    return { months: getCalendarData(args.year, args.month) }
+  }))
+
+  handle('timeline:year-summary', validated('timeline:year-summary', (args) => {
+    return { months: getYearSummary(args.year) }
+  }))
+
+  handle('recommendations:list', async () => {
+    return { recommendations: getRecommendations() }
+  })
 
   handle('db:reset', async () => {
     const result = resetDatabase()

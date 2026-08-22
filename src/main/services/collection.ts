@@ -47,6 +47,7 @@ export function listCollections(): CollectionWithStats[] {
 export function getCollectionWithTargets(id: string, limit = 100, offset = 0): {
   collection: Collection
   targets: TargetSummary[]
+  observed: number
   completed: number
   total: number
 } | null {
@@ -77,22 +78,30 @@ export function getCollectionWithTargets(id: string, limit = 100, offset = 0): {
     )
     .all(id, limit, offset) as Array<Record<string, unknown>>
 
-  const targets: TargetSummary[] = rows.map((r) => {
-    const aliases = sqlite
-      .prepare('SELECT alias FROM target_aliases WHERE target_id = ?')
-      .all(r.id as string) as { alias: string }[]
-
-    return {
-      id: r.id as string,
-      canonicalName: r.canonical_name as string,
-      objectType: r.object_type as TargetSummary['objectType'],
-      constellation: r.constellation as string | null,
-      magnitude: r.magnitude as number | null,
-      workflowStage: r.workflow_stage as string,
-      isCustom: (r.is_custom as number) === 1,
-      aliases: aliases.map((a) => a.alias)
+  const targetIds = rows.map(r => r.id as string)
+  const aliasMap = new Map<string, string[]>()
+  if (targetIds.length > 0) {
+    const placeholders = targetIds.map(() => '?').join(',')
+    const aliasRows = sqlite
+      .prepare(`SELECT target_id, alias FROM target_aliases WHERE target_id IN (${placeholders})`)
+      .all(...targetIds) as { target_id: string; alias: string }[]
+    for (const ar of aliasRows) {
+      const list = aliasMap.get(ar.target_id)
+      if (list) list.push(ar.alias)
+      else aliasMap.set(ar.target_id, [ar.alias])
     }
-  })
+  }
+
+  const targets: TargetSummary[] = rows.map((r) => ({
+    id: r.id as string,
+    canonicalName: r.canonical_name as string,
+    objectType: r.object_type as TargetSummary['objectType'],
+    constellation: r.constellation as string | null,
+    magnitude: r.magnitude as number | null,
+    workflowStage: r.workflow_stage as string,
+    isCustom: (r.is_custom as number) === 1,
+    aliases: aliasMap.get(r.id as string) ?? []
+  }))
 
   return { collection, targets, observed: stats.observed, completed: stats.completed, total: stats.total }
 }

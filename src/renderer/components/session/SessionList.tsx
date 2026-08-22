@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
+import { formatExposure } from '../../utils/format'
 import type { SessionSummary } from '@shared/types'
 
 interface SessionListProps {
@@ -61,8 +62,3 @@ export function SessionList({ targetId }: SessionListProps): React.ReactElement 
   )
 }
 
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(0)}m`
-  return `${(sec / 3600).toFixed(1)}h`
-}

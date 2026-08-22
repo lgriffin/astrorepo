@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
+import { ulid } from 'ulid'
 import { setupTestDb, teardownTestDb } from '../helpers/setup'
 
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 vi.mock('electron', () => ({
@@ -161,7 +161,6 @@ function loadSeedDirect(sqlite: Database.Database, seed: {
     mag: number | null; size: number | null; constellation: string; aliases: string[]
   }>
 }): void {
-  const { ulid } = require('ulid')
   const now = new Date().toISOString()
 
   const catId = ulid()
@@ -198,7 +197,7 @@ function loadSeedDirect(sqlite: Database.Database, seed: {
         `INSERT OR IGNORE INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
           angular_size_arcmin, constellation, description, simbad_id, ned_id, workflow_stage, is_custom,
           folder_path, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'planned', 0, NULL, NULL, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'not_observed', 0, NULL, NULL, ?, ?)`
       ).run(targetId, obj.name, obj.type, obj.ra, obj.dec, obj.mag, obj.size, obj.constellation, now, now)
     }
 

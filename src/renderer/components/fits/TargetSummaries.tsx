@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
+import { formatExposure, formatSize } from '../../utils/format'
 import type { FitsTargetSummary } from '@shared/types'
 
 interface TargetSummariesProps {
   scanId: string
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec.toFixed(0)}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(1)}m`
-  return `${(sec / 3600).toFixed(1)}h`
 }
 
 export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactElement {

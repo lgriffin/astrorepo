@@ -174,6 +174,14 @@ export interface Equipment {
   serialNumber: string | null
   notes: string | null
   isActive: boolean
+  focalLengthMm: number | null
+  apertureMm: number | null
+  sensorWidthMm: number | null
+  sensorHeightMm: number | null
+  pixelSizeUm: number | null
+  sensorWidthPx: number | null
+  sensorHeightPx: number | null
+  reducerFactor: number | null
   createdAt: string
 }
 
@@ -697,4 +705,159 @@ export interface CalibrationCoverage {
   darksCoverage: number
   flatsCoverage: number
   biasCoverage: number
+}
+
+export interface MonthlyActivity {
+  month: string
+  totalFiles: number
+  totalExposureSec: number
+  uniqueTargets: number
+  sessions: number
+}
+
+export interface BestNight {
+  date: string
+  totalExposureSec: number
+  fileCount: number
+  targets: string[]
+  filters: string[]
+  avgQuality: number | null
+}
+
+export interface EquipmentEffectiveness {
+  equipmentName: string
+  equipmentType: string
+  sessionCount: number
+  totalExposureSec: number
+  avgFwhm: number | null
+  avgQuality: number | null
+}
+
+export interface QualityTrendPoint {
+  month: string
+  medianFwhm: number | null
+  medianNoise: number | null
+  avgStarCount: number | null
+  totalFiles: number
+}
+
+export interface FilterUsage {
+  filter: string
+  fileCount: number
+  totalExposureSec: number
+  avgExposureSec: number
+  targets: number
+}
+
+export interface TargetProgress {
+  targetId: string
+  targetName: string
+  workflowStage: string
+  totalExposureSec: number
+  fileCount: number
+  filterBreakdown: Record<string, number>
+  firstImaged: string | null
+  lastImaged: string | null
+}
+
+export interface InsightsSummary {
+  totalImagingHours: number
+  totalFiles: number
+  totalTargets: number
+  totalSessions: number
+  activeSinceDate: string | null
+  mostImagedTarget: string | null
+  mostUsedFilter: string | null
+  bestNightDate: string | null
+}
+
+// Sky Planning types
+
+export interface AltitudePoint {
+  time: string
+  altitude: number
+  azimuth: number
+}
+
+export interface BestTargetTonight {
+  targetId: string
+  targetName: string
+  objectType: string
+  maxAltitude: number
+  transitTime: string | null
+  hoursAbove30: number
+}
+
+export interface MoonInfo {
+  phase: number
+  illumination: number
+  phaseName: string
+}
+
+export interface TwilightTimes {
+  sunset: string | null
+  sunrise: string | null
+  civilDusk: string | null
+  civilDawn: string | null
+  nauticalDusk: string | null
+  nauticalDawn: string | null
+  astronomicalDusk: string | null
+  astronomicalDawn: string | null
+}
+
+export interface MonthlyVisibility {
+  month: string
+  maxAltitude: number
+  isVisible: boolean
+}
+
+// Equipment calculation types
+
+export interface FOVResult {
+  widthArcmin: number
+  heightArcmin: number
+  widthDeg: number
+  heightDeg: number
+  effectiveFocalLength: number
+  focalRatio: number | null
+}
+
+export interface ImageScaleResult {
+  arcsecondsPerPixel: number
+  effectiveFocalLength: number
+}
+
+// Timeline/Calendar types
+
+export interface CalendarDay {
+  date: string
+  totalExposureSec: number
+  fileCount: number
+  targets: string[]
+  filters: string[]
+  sessionIds: string[]
+}
+
+export interface CalendarMonth {
+  month: string
+  days: CalendarDay[]
+  totalExposureSec: number
+  activeDays: number
+}
+
+export interface YearSummaryMonth {
+  month: string
+  activeDays: number
+  totalExposureSec: number
+}
+
+export interface Recommendation {
+  id: string
+  category: 'calibration' | 'integration' | 'equipment' | 'quality' | 'workflow'
+  priority: 'high' | 'medium' | 'low'
+  title: string
+  description: string
+  targetId: string | null
+  targetName: string | null
+  actionLabel: string | null
 }

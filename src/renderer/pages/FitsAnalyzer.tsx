@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { ScanHistory } from '../components/fits/ScanHistory'
 import { AggregateView } from '../components/fits/AggregateView'
@@ -19,9 +19,19 @@ export function FitsAnalyzer(): React.ReactElement {
   const [showSessionGenerator, setShowSessionGenerator] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const loadScans = useCallback(async () => {
+    setLoading(true)
+    const result = await invoke<{ scans: FitsScanSummary[]; total: number }>('fits:list-scans', { limit: 50 })
+    setScans(result.scans)
+    if (result.scans.length > 0 && !selectedScanId) {
+      setSelectedScanId(result.scans[0].id)
+    }
+    setLoading(false)
+  }, [selectedScanId])
+
   useEffect(() => {
     loadScans()
-  }, [])
+  }, [loadScans])
 
   useEffect(() => {
     if (selectedScanId) {
@@ -41,16 +51,6 @@ export function FitsAnalyzer(): React.ReactElement {
     const status = await invoke<FitsLinkingStatus>('fits:linking-status', { scan_id: selectedScanId })
     setLinkingStatus(status)
     setLinking(false)
-  }
-
-  async function loadScans(): Promise<void> {
-    setLoading(true)
-    const result = await invoke<{ scans: FitsScanSummary[]; total: number }>('fits:list-scans', { limit: 50 })
-    setScans(result.scans)
-    if (result.scans.length > 0 && !selectedScanId) {
-      setSelectedScanId(result.scans[0].id)
-    }
-    setLoading(false)
   }
 
   function handleSelectScan(id: string): void {

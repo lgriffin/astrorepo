@@ -62,8 +62,9 @@ export function searchTargets(query: string, limit = 50, offset = 0, opts: Searc
       )
       .all(...params, limit, offset) as RawTarget[]
 
+    const aliasMap = batchFetchAliases(sqlite, rows.map(r => r.id))
     return {
-      targets: rows.map((r) => toTargetSummary(r, sqlite)),
+      targets: rows.map((r) => toTargetSummary(r, aliasMap)),
       total
     }
   }
@@ -98,8 +99,9 @@ export function searchTargets(query: string, limit = 50, offset = 0, opts: Searc
     return searchByAlias(query, limit, offset, sqlite, opts)
   }
 
+  const aliasMap = batchFetchAliases(sqlite, rows.map(r => r.id))
   return {
-    targets: rows.map((r) => toTargetSummary(r, sqlite)),
+    targets: rows.map((r) => toTargetSummary(r, aliasMap)),
     total
   }
 }
@@ -131,8 +133,9 @@ function searchByAlias(query: string, limit: number, offset: number, sqlite: Ret
     )
     .all(pattern, pattern, ...filterParams, limit, offset) as RawTarget[]
 
+  const aliasMap = batchFetchAliases(sqlite, rows.map(r => r.id))
   return {
-    targets: rows.map((r) => toTargetSummary(r, sqlite)),
+    targets: rows.map((r) => toTargetSummary(r, aliasMap)),
     total: countRow.cnt
   }
 }
@@ -173,7 +176,7 @@ export function createTarget(input: {
       `INSERT INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
         angular_size_arcmin, constellation, description, simbad_id, ned_id,
         workflow_stage, is_custom, folder_path, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', 1, NULL, NULL, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_observed', 1, NULL, NULL, ?, ?)`
     )
     .run(
       id,
@@ -349,11 +352,7 @@ interface RawTargetFull extends RawTarget {
   updated_at: string
 }
 
-function toTargetSummary(row: RawTarget, sqlite: ReturnType<typeof getSqlite>): TargetSummary {
-  const aliases = sqlite
-    .prepare('SELECT alias FROM target_aliases WHERE target_id = ?')
-    .all(row.id) as { alias: string }[]
-
+function toTargetSummary(row: RawTarget, aliasMap: Map<string, string[]>): TargetSummary {
   return {
     id: row.id,
     canonicalName: row.canonical_name,
@@ -362,8 +361,23 @@ function toTargetSummary(row: RawTarget, sqlite: ReturnType<typeof getSqlite>): 
     magnitude: row.magnitude,
     workflowStage: row.workflow_stage,
     isCustom: row.is_custom === 1,
-    aliases: aliases.map((a) => a.alias)
+    aliases: aliasMap.get(row.id) ?? []
   }
+}
+
+function batchFetchAliases(sqlite: ReturnType<typeof getSqlite>, ids: string[]): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+  if (ids.length === 0) return map
+  const placeholders = ids.map(() => '?').join(',')
+  const rows = sqlite
+    .prepare(`SELECT target_id, alias FROM target_aliases WHERE target_id IN (${placeholders})`)
+    .all(...ids) as { target_id: string; alias: string }[]
+  for (const row of rows) {
+    const list = map.get(row.target_id)
+    if (list) list.push(row.alias)
+    else map.set(row.target_id, [row.alias])
+  }
+  return map
 }
 
 function toTarget(row: RawTargetFull): Target {

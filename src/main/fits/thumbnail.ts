@@ -1,26 +1,10 @@
 import fs from 'fs'
 import { parseFitsHeaders } from './parser'
 import { encodeGreyscalePng } from './png-encoder'
+import { readPixelValue } from './pixel-reader'
 
 const BLOCK_SIZE = 2880
 const RECORD_SIZE = 80
-
-function readPixelValue(buf: Buffer, offset: number, bitpix: number): number {
-  switch (bitpix) {
-    case 8:
-      return buf.readUInt8(offset)
-    case 16:
-      return buf.readInt16BE(offset)
-    case 32:
-      return buf.readInt32BE(offset)
-    case -32:
-      return buf.readFloatBE(offset)
-    case -64:
-      return buf.readDoubleBE(offset)
-    default:
-      return 0
-  }
-}
 
 export function generateThumbnail(
   filePath: string,
