@@ -260,6 +260,17 @@ export const schemas = {
   }),
   'stacking:delete-goal': z.object({ id: z.string().min(1) }),
 
+  'equipment:update': z.object({ id, fields: z.record(z.unknown()) }),
+  'equipment:delete': z.object({ id }),
+  'equipment:calculate-fov': z.object({ telescope_id: id, camera_id: id, reducer_id: z.string().optional() }),
+  'equipment:calculate-image-scale': z.object({ telescope_id: id, camera_id: id }),
+
+  'sky:altitude-curve': z.object({ target_id: id, date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:best-tonight': z.object({ lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:moon-info': z.object({ date: z.string() }),
+  'sky:twilight': z.object({ date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:target-visibility': z.object({ target_id: id, lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+
   'db:reset': z.object({}).optional(),
 
   'insights:summary': z.object({}).optional(),

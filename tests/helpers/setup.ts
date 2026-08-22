@@ -131,6 +131,14 @@ function runMigrations(sqlite: Database.Database): void {
       serial_number TEXT,
       notes TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
+      focal_length_mm REAL,
+      aperture_mm REAL,
+      sensor_width_mm REAL,
+      sensor_height_mm REAL,
+      pixel_size_um REAL,
+      sensor_width_px INTEGER,
+      sensor_height_px INTEGER,
+      reducer_factor REAL,
       created_at TEXT NOT NULL
     );
 

@@ -27,9 +27,17 @@ const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }
   }
 ]
 
+const OBSERVER_SETTINGS = [
+  { key: 'observer_latitude', label: 'Latitude (°N)', placeholder: 'e.g. 51.5074', min: -90, max: 90 },
+  { key: 'observer_longitude', label: 'Longitude (°E)', placeholder: 'e.g. -0.1278', min: -180, max: 180 },
+  { key: 'observer_elevation', label: 'Elevation (m)', placeholder: 'e.g. 100', min: 0, max: 10000 }
+]
+
 export function Settings(): React.ReactElement {
   const [folders, setFolders] = useState<FolderSetting[]>([])
   const [saving, setSaving] = useState<string | null>(null)
+  const [observer, setObserver] = useState<Record<string, string>>({})
+  const [observerSaving, setObserverSaving] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetStatus, setResetStatus] = useState<string | null>(null)
 
@@ -41,6 +49,14 @@ export function Settings(): React.ReactElement {
       })
     )
     setFolders(results)
+
+    const obsResults = await Promise.all(
+      OBSERVER_SETTINGS.map(async s => {
+        const result = await invoke<{ value: string | null }>('settings:get', { key: s.key })
+        return [s.key, result.value ?? ''] as const
+      })
+    )
+    setObserver(Object.fromEntries(obsResults))
   }
 
   useEffect(() => {
@@ -100,6 +116,45 @@ export function Settings(): React.ReactElement {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>
+          <p className="text-xs text-astro-muted mb-4">Used by the Sky Planner to calculate target visibility, twilight times, and altitude curves.</p>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            {OBSERVER_SETTINGS.map(s => (
+              <label key={s.key} className="block">
+                <span className="text-xs text-astro-muted">{s.label}</span>
+                <input
+                  type="number"
+                  step="any"
+                  min={s.min}
+                  max={s.max}
+                  value={observer[s.key] ?? ''}
+                  onChange={e => setObserver(prev => ({ ...prev, [s.key]: e.target.value }))}
+                  placeholder={s.placeholder}
+                  className="w-full mt-1 px-3 py-2 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent"
+                />
+              </label>
+            ))}
+          </div>
+          <button
+            onClick={async () => {
+              setObserverSaving(true)
+              await Promise.all(
+                OBSERVER_SETTINGS.map(s =>
+                  observer[s.key]
+                    ? invoke('settings:set', { key: s.key, value: observer[s.key] })
+                    : Promise.resolve()
+                )
+              )
+              setObserverSaving(false)
+            }}
+            disabled={observerSaving}
+            className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50"
+          >
+            {observerSaving ? 'Saving...' : 'Save Location'}
+          </button>
         </div>
 
         {homeFolderPath && (

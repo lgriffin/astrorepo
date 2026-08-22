@@ -5,7 +5,7 @@ import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesFor
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
 import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection, autoGenerateCatalogueCollections } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
-import { createEquipment, listEquipment, getUsageHistory } from '../services/equipment'
+import { createEquipment, listEquipment, getUsageHistory, updateEquipment, deleteEquipment, calculateFOV, calculateImageScale } from '../services/equipment'
 import { generateFolders, listTemplates, createTemplate } from '../services/folder'
 import { scanImages, readImageThumbnail } from '../services/image-scanner'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
@@ -23,6 +23,7 @@ import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, get
 import { resetDatabase } from '../db/connection'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
+import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -470,6 +471,42 @@ export function registerIpcHandlers(): void {
 
   handle('insights:target-progress', validated('insights:target-progress', (args) => {
     return getTargetProgress(args.limit)
+  }))
+
+  handle('equipment:update', validated('equipment:update', (args) => {
+    return updateEquipment(args.id, args.fields)
+  }))
+
+  handle('equipment:delete', validated('equipment:delete', (args) => {
+    return { success: deleteEquipment(args.id) }
+  }))
+
+  handle('equipment:calculate-fov', validated('equipment:calculate-fov', (args) => {
+    return calculateFOV(args.telescope_id, args.camera_id, args.reducer_id)
+  }))
+
+  handle('equipment:calculate-image-scale', validated('equipment:calculate-image-scale', (args) => {
+    return calculateImageScale(args.telescope_id, args.camera_id)
+  }))
+
+  handle('sky:altitude-curve', validated('sky:altitude-curve', (args) => {
+    return { points: getTargetAltitudeCurve(args.target_id, args.date, args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('sky:best-tonight', validated('sky:best-tonight', (args) => {
+    return { targets: getBestTargetsTonight(args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('sky:moon-info', validated('sky:moon-info', (args) => {
+    return getMoonInfo(args.date)
+  }))
+
+  handle('sky:twilight', validated('sky:twilight', (args) => {
+    return getTwilightTimes(args.date, args.lat, args.lon, args.elevation)
+  }))
+
+  handle('sky:target-visibility', validated('sky:target-visibility', (args) => {
+    return { months: getTargetVisibility(args.target_id, args.lat, args.lon, args.elevation) }
   }))
 
   handle('db:reset', async () => {

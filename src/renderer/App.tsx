@@ -17,6 +17,7 @@ import { StorageAnalytics } from './pages/StorageAnalytics'
 import { Calibration } from './pages/Calibration'
 import { StackingAnalysis } from './pages/StackingAnalysis'
 import { Insights } from './pages/Insights'
+import { SkyPlanner } from './pages/SkyPlanner'
 import { ToastProvider } from './contexts/ToastContext'
 
 export function App(): React.ReactElement {
@@ -39,6 +40,7 @@ export function App(): React.ReactElement {
             <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
             <Route path="/stacking" element={<StackingAnalysis />} />
             <Route path="/insights" element={<Insights />} />
+            <Route path="/sky-planner" element={<SkyPlanner />} />
             <Route path="/analytics" element={<StorageAnalytics />} />
             <Route path="/calibration" element={<Calibration />} />
             <Route path="/poster" element={<Poster />} />

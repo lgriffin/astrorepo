@@ -335,18 +335,19 @@ function runMigrations(sqlite: Database.Database): void {
     sqlite.exec(`ALTER TABLE targets ADD COLUMN thumbnail_path TEXT`)
   }
 
-  // Migration: remove old workflow stages and update targets that used them
-  sqlite.exec(`
-    UPDATE targets SET workflow_stage = 'not_observed' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
-    DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
-  `)
+  // Versioned migrations — run once per schema version bump
+  const version = getSchemaVersion(sqlite)
 
-  // Migration: reset raw_captured targets with no FITS data back to not_observed
-  sqlite.exec(`
-    UPDATE targets SET workflow_stage = 'not_observed'
-    WHERE workflow_stage = 'raw_captured'
-    AND id NOT IN (SELECT DISTINCT target_id FROM fits_files WHERE target_id IS NOT NULL);
-  `)
+  if (version < 1) {
+    sqlite.exec(`
+      UPDATE targets SET workflow_stage = 'not_observed' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
+      DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
+      UPDATE targets SET workflow_stage = 'not_observed'
+      WHERE workflow_stage = 'raw_captured'
+      AND id NOT IN (SELECT DISTINCT target_id FROM fits_files WHERE target_id IS NOT NULL);
+    `)
+    setSchemaVersion(sqlite, 1)
+  }
 
   // Migration: add target_home_data table
   sqlite.exec(`
@@ -391,6 +392,21 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_integration_goal_target ON integration_goals(target_id);
   `)
 
+  // Migration: add equipment profile columns
+  const hasFocalLength = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('equipment') WHERE name='focal_length_mm'").get() as { cnt: number }
+  if (hasFocalLength.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE equipment ADD COLUMN focal_length_mm REAL;
+      ALTER TABLE equipment ADD COLUMN aperture_mm REAL;
+      ALTER TABLE equipment ADD COLUMN sensor_width_mm REAL;
+      ALTER TABLE equipment ADD COLUMN sensor_height_mm REAL;
+      ALTER TABLE equipment ADD COLUMN pixel_size_um REAL;
+      ALTER TABLE equipment ADD COLUMN sensor_width_px INTEGER;
+      ALTER TABLE equipment ADD COLUMN sensor_height_px INTEGER;
+      ALTER TABLE equipment ADD COLUMN reducer_factor REAL;
+    `)
+  }
+
   // Migration: add quality columns to fits_files
   const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }
   if (hasFwhm.cnt === 0) {
@@ -403,6 +419,15 @@ function runMigrations(sqlite: Database.Database): void {
       ALTER TABLE fits_files ADD COLUMN quality_flag TEXT;
     `)
   }
+}
+
+function getSchemaVersion(db: Database.Database): number {
+  const row = db.prepare("SELECT value FROM app_settings WHERE key = 'schema_version'").get() as { value: string } | undefined
+  return row ? parseInt(row.value, 10) : 0
+}
+
+function setSchemaVersion(db: Database.Database, version: number): void {
+  db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('schema_version', ?)").run(String(version))
 }
 
 export function resetDatabase(): { cleared: boolean } {

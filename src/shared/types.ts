@@ -174,6 +174,14 @@ export interface Equipment {
   serialNumber: string | null
   notes: string | null
   isActive: boolean
+  focalLengthMm: number | null
+  apertureMm: number | null
+  sensorWidthMm: number | null
+  sensorHeightMm: number | null
+  pixelSizeUm: number | null
+  sensorWidthPx: number | null
+  sensorHeightPx: number | null
+  reducerFactor: number | null
   createdAt: string
 }
 
@@ -761,4 +769,60 @@ export interface InsightsSummary {
   mostImagedTarget: string | null
   mostUsedFilter: string | null
   bestNightDate: string | null
+}
+
+// Sky Planning types
+
+export interface AltitudePoint {
+  time: string
+  altitude: number
+  azimuth: number
+}
+
+export interface BestTargetTonight {
+  targetId: string
+  targetName: string
+  objectType: string
+  maxAltitude: number
+  transitTime: string | null
+  hoursAbove30: number
+}
+
+export interface MoonInfo {
+  phase: number
+  illumination: number
+  phaseName: string
+}
+
+export interface TwilightTimes {
+  sunset: string | null
+  sunrise: string | null
+  civilDusk: string | null
+  civilDawn: string | null
+  nauticalDusk: string | null
+  nauticalDawn: string | null
+  astronomicalDusk: string | null
+  astronomicalDawn: string | null
+}
+
+export interface MonthlyVisibility {
+  month: string
+  maxAltitude: number
+  isVisible: boolean
+}
+
+// Equipment calculation types
+
+export interface FOVResult {
+  widthArcmin: number
+  heightArcmin: number
+  widthDeg: number
+  heightDeg: number
+  effectiveFocalLength: number
+  focalRatio: number | null
+}
+
+export interface ImageScaleResult {
+  arcsecondsPerPixel: number
+  effectiveFocalLength: number
 }
