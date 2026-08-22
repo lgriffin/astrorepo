@@ -24,6 +24,12 @@ import { resetDatabase } from '../db/connection'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
+import { getCalendarData, getYearSummary } from '../services/timeline'
+import { batchAdvanceStage, batchAddToCollection, batchDeleteTargets } from '../services/batch'
+import { exportTargetsCsv, exportSessionsCsv, exportFitsAggregatesCsv } from '../services/export'
+import { importNinaSequence } from '../services/nina-import'
+import { getRecommendations } from '../services/recommendations'
+import fs from 'fs'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -508,6 +514,71 @@ export function registerIpcHandlers(): void {
   handle('sky:target-visibility', validated('sky:target-visibility', (args) => {
     return { months: getTargetVisibility(args.target_id, args.lat, args.lon, args.elevation) }
   }))
+
+  handle('targets:batch-advance-stage', validated('targets:batch-advance-stage', (args) => {
+    return batchAdvanceStage(args.target_ids, args.to_stage, args.notes)
+  }))
+
+  handle('targets:batch-add-collection', validated('targets:batch-add-collection', (args) => {
+    return batchAddToCollection(args.target_ids, args.collection_id)
+  }))
+
+  handle('targets:batch-delete', validated('targets:batch-delete', (args) => {
+    return batchDeleteTargets(args.target_ids)
+  }))
+
+  handle('export:targets-csv', async () => {
+    const csv = exportTargetsCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'targets.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('export:sessions-csv', async () => {
+    const csv = exportSessionsCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'sessions.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('export:fits-csv', async () => {
+    const csv = exportFitsAggregatesCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'fits-aggregates.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('import:pick-file', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      title: 'Select NINA Sequence File',
+      filters: [
+        { name: 'NINA Sequence', extensions: ['xml', 'json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
+
+  handle('import:nina-sequence', validated('import:nina-sequence', (args) => {
+    return importNinaSequence(args.file_path)
+  }))
+
+  handle('timeline:calendar', validated('timeline:calendar', (args) => {
+    return { months: getCalendarData(args.year, args.month) }
+  }))
+
+  handle('timeline:year-summary', validated('timeline:year-summary', (args) => {
+    return { months: getYearSummary(args.year) }
+  }))
+
+  handle('recommendations:list', async () => {
+    return { recommendations: getRecommendations() }
+  })
 
   handle('db:reset', async () => {
     const result = resetDatabase()

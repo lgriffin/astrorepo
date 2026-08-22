@@ -18,6 +18,7 @@ import { Calibration } from './pages/Calibration'
 import { StackingAnalysis } from './pages/StackingAnalysis'
 import { Insights } from './pages/Insights'
 import { SkyPlanner } from './pages/SkyPlanner'
+import { SessionTimeline } from './pages/SessionTimeline'
 import { ToastProvider } from './contexts/ToastContext'
 
 export function App(): React.ReactElement {
@@ -43,6 +44,7 @@ export function App(): React.ReactElement {
             <Route path="/sky-planner" element={<SkyPlanner />} />
             <Route path="/analytics" element={<StorageAnalytics />} />
             <Route path="/calibration" element={<Calibration />} />
+            <Route path="/timeline" element={<SessionTimeline />} />
             <Route path="/poster" element={<Poster />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

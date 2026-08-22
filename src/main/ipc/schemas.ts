@@ -271,6 +271,21 @@ export const schemas = {
   'sky:twilight': z.object({ date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
   'sky:target-visibility': z.object({ target_id: id, lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
 
+  'targets:batch-advance-stage': z.object({ target_ids: z.array(z.string().min(1)), to_stage: z.string().min(1), notes: z.string().optional() }),
+  'targets:batch-add-collection': z.object({ target_ids: z.array(z.string().min(1)), collection_id: z.string().min(1) }),
+  'targets:batch-delete': z.object({ target_ids: z.array(z.string().min(1)) }),
+
+  'export:targets-csv': z.object({}).optional(),
+  'export:sessions-csv': z.object({}).optional(),
+  'export:fits-csv': z.object({}).optional(),
+  'import:nina-sequence': z.object({ file_path: z.string().min(1) }),
+  'import:pick-file': z.object({}).optional(),
+
+  'timeline:calendar': z.object({ year: z.number().int(), month: z.number().int().min(1).max(12).optional() }),
+  'timeline:year-summary': z.object({ year: z.number().int() }),
+
+  'recommendations:list': z.object({}).optional(),
+
   'db:reset': z.object({}).optional(),
 
   'insights:summary': z.object({}).optional(),

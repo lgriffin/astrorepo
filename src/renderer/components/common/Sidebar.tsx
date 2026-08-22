@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { to: '/calibration', label: 'Calibration', icon: '◇' },
   { to: '/insights', label: 'Insights', icon: '◎' },
   { to: '/sky-planner', label: 'Sky Planner', icon: '☽' },
+  { to: '/timeline', label: 'Timeline', icon: '▥' },
   { to: '/analytics', label: 'Analytics', icon: '▤' },
   { to: '/poster', label: 'Posters', icon: '▣' },
   { to: '/settings', label: 'Settings', icon: '⚒' }

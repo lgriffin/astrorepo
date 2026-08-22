@@ -152,7 +152,7 @@ export function SkyPlanner(): React.ReactElement {
     setLoading(true)
 
     const [targets, moon, tw] = await Promise.all([
-      invoke<BestTargetTonight[]>('sky:best-tonight', { lat, lon, elevation, date }),
+      invoke<{ targets: BestTargetTonight[] }>('sky:best-tonight', { lat, lon, elevation }).then(r => r.targets),
       invoke<MoonInfo>('sky:moon-info', { date }),
       invoke<TwilightTimes>('sky:twilight', { date, lat, lon, elevation })
     ])
@@ -174,8 +174,8 @@ export function SkyPlanner(): React.ReactElement {
     setSelectedTarget(targetId)
 
     const [curve, vis] = await Promise.all([
-      invoke<AltitudePoint[]>('sky:altitude-curve', { target_id: targetId, date, lat, lon, elevation }),
-      invoke<MonthlyVisibility[]>('sky:target-visibility', { target_id: targetId, lat, lon, elevation })
+      invoke<{ points: AltitudePoint[] }>('sky:altitude-curve', { target_id: targetId, date, lat, lon, elevation }).then(r => r.points),
+      invoke<{ months: MonthlyVisibility[] }>('sky:target-visibility', { target_id: targetId, lat, lon, elevation }).then(r => r.months)
     ])
 
     setAltitudeCurve(curve)

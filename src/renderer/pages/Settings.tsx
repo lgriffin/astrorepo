@@ -38,6 +38,7 @@ export function Settings(): React.ReactElement {
   const [saving, setSaving] = useState<string | null>(null)
   const [observer, setObserver] = useState<Record<string, string>>({})
   const [observerSaving, setObserverSaving] = useState(false)
+  const [importResult, setImportResult] = useState<string | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetStatus, setResetStatus] = useState<string | null>(null)
 
@@ -167,6 +168,50 @@ export function Settings(): React.ReactElement {
             </p>
           </div>
         )}
+
+        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Import / Export</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm text-astro-text mb-2">Export Data</h3>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => invoke('export:targets-csv')}
+                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                >
+                  Export Targets CSV
+                </button>
+                <button
+                  onClick={() => invoke('export:sessions-csv')}
+                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                >
+                  Export Sessions CSV
+                </button>
+                <button
+                  onClick={() => invoke('export:fits-csv')}
+                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                >
+                  Export FITS Data CSV
+                </button>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm text-astro-text mb-2">Import</h3>
+              <button
+                onClick={async () => {
+                  const pick = await invoke<{ path: string | null }>('import:pick-file')
+                  if (!pick.path) return
+                  const result = await invoke<{ created: unknown[]; skipped: string[] }>('import:nina-sequence', { file_path: pick.path })
+                  setImportResult(`Imported ${result.created.length} targets.${result.skipped.length > 0 ? ` Skipped: ${result.skipped.join(', ')}` : ''}`)
+                }}
+                className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+              >
+                Import NINA Sequence
+              </button>
+              {importResult && <p className="text-xs text-astro-muted mt-2">{importResult}</p>}
+            </div>
+          </div>
+        </div>
 
         <div className="bg-astro-surface border border-red-500/30 rounded-lg p-4">
           <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Danger Zone</h2>

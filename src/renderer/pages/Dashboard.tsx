@@ -1,23 +1,28 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
-import type { DashboardStats, CatalogueProgress } from '@shared/types'
+import type { DashboardStats, CatalogueProgress, Recommendation } from '@shared/types'
 
 export function Dashboard(): React.ReactElement {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [catalogues, setCatalogues] = useState<CatalogueProgress[]>([])
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       invoke<DashboardStats>('dashboard:stats'),
-      invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress')
+      invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress'),
+      invoke<{ recommendations: Recommendation[] }>('recommendations:list')
     ])
-      .then(([s, c]) => {
+      .then(([s, c, r]) => {
         setStats(s)
         setCatalogues(c.catalogues)
+        setRecommendations(r.recommendations)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -104,6 +109,37 @@ export function Dashboard(): React.ReactElement {
           </div>
         )}
       </div>
+
+      {recommendations.length > 0 && (
+        <div className="mt-8 bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Recommendations</h2>
+          <div className="space-y-3">
+            {recommendations.slice(0, 8).map(rec => {
+              const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+              return (
+                <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">
+                  <div className="flex flex-col gap-1 shrink-0 pt-0.5">
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityColor}`}>{rec.priority}</span>
+                    <span className="text-[10px] text-astro-muted capitalize">{rec.category}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-astro-text font-medium">{rec.title}</p>
+                    <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>
+                  </div>
+                  {rec.actionLabel && rec.targetId && (
+                    <button
+                      onClick={() => navigate(`/targets/${rec.targetId}`)}
+                      className="shrink-0 text-xs text-astro-accent hover:underline"
+                    >
+                      {rec.actionLabel}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }

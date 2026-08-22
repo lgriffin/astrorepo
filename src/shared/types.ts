@@ -826,3 +826,38 @@ export interface ImageScaleResult {
   arcsecondsPerPixel: number
   effectiveFocalLength: number
 }
+
+// Timeline/Calendar types
+
+export interface CalendarDay {
+  date: string
+  totalExposureSec: number
+  fileCount: number
+  targets: string[]
+  filters: string[]
+  sessionIds: string[]
+}
+
+export interface CalendarMonth {
+  month: string
+  days: CalendarDay[]
+  totalExposureSec: number
+  activeDays: number
+}
+
+export interface YearSummaryMonth {
+  month: string
+  activeDays: number
+  totalExposureSec: number
+}
+
+export interface Recommendation {
+  id: string
+  category: 'calibration' | 'integration' | 'equipment' | 'quality' | 'workflow'
+  priority: 'high' | 'medium' | 'low'
+  title: string
+  description: string
+  targetId: string | null
+  targetName: string | null
+  actionLabel: string | null
+}
