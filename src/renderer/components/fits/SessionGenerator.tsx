@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
+import { formatExposure } from '../../utils/format'
 import type { AutoSessionPreview, GeneratedSessionResult } from '@shared/types'
 
 interface SessionGeneratorProps {
@@ -75,16 +76,6 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
     } finally {
       setGenerating(false)
     }
-  }
-
-  function formatExposure(seconds: number): string {
-    if (seconds < 60) return `${seconds}s`
-    const minutes = Math.floor(seconds / 60)
-    const remaining = Math.round(seconds % 60)
-    if (minutes < 60) return remaining > 0 ? `${minutes}m ${remaining}s` : `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const remMins = minutes % 60
-    return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`
   }
 
   if (loading) {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
+import { formatExposure } from '../utils/format'
 import type { DashboardStats, CatalogueProgress } from '@shared/types'
 
 export function Dashboard(): React.ReactElement {
@@ -106,17 +108,3 @@ export function Dashboard(): React.ReactElement {
   )
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number | string; accent?: boolean }): React.ReactElement {
-  return (
-    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <p className="text-xs text-astro-muted uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accent ? 'text-astro-accent' : 'text-astro-text'}`}>{value}</p>
-    </div>
-  )
-}
-
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(0)}m`
-  return `${(sec / 3600).toFixed(1)}h`
-}

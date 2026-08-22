@@ -1,19 +1,13 @@
 import React from 'react'
 import type { FitsScanSummary } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
+import { formatSize } from '../../utils/format'
 
 interface ScanHistoryProps {
   scans: FitsScanSummary[]
   selectedScanId: string | null
   onSelectScan: (id: string) => void
   onRefresh: () => void
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
 function formatDate(iso: string): string {

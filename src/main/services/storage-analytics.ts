@@ -1,16 +1,7 @@
 import { getSqlite } from '../db/connection'
 import { ulid } from 'ulid'
 import type { StorageSnapshot, StorageCurrentStats, StorageGrowthProjection } from '@shared/types'
-
-function normalizeImageType(raw: string | null): string {
-  if (!raw) return 'other'
-  const lower = raw.toLowerCase().trim()
-  if (lower.includes('light') || lower === 'light frame' || lower === 'light') return 'light'
-  if (lower.includes('dark') || lower === 'dark frame' || lower === 'dark') return 'dark'
-  if (lower.includes('flat') || lower === 'flat frame' || lower === 'flat') return 'flat'
-  if (lower.includes('bias') || lower === 'bias frame' || lower === 'bias' || lower.includes('offset')) return 'bias'
-  return 'other'
-}
+import { normalizeImageType } from './image-type'
 
 export function captureStorageSnapshot(): StorageSnapshot {
   const sqlite = getSqlite()

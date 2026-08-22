@@ -1,31 +1,11 @@
 import React from 'react'
+import { StatCard } from '../common/StatCard'
+import { formatExposure, formatSize } from '../../utils/format'
 import type { FitsScanAggregates, FitsLinkingStatus } from '@shared/types'
 
 interface AggregateViewProps {
   aggregates: FitsScanAggregates
   linkingStatus?: FitsLinkingStatus | null
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec.toFixed(0)}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(1)}m`
-  return `${(sec / 3600).toFixed(1)}h`
-}
-
-function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }): React.ReactElement {
-  return (
-    <div className="bg-astro-bg border border-astro-border rounded-lg p-3">
-      <p className="text-xs text-astro-muted uppercase tracking-wider">{label}</p>
-      <p className={`text-xl font-bold mt-1 ${accent ? 'text-astro-accent' : 'text-astro-text'}`}>{value}</p>
-    </div>
-  )
 }
 
 function BreakdownCard({ title, data }: { title: string; data: Record<string, number> }): React.ReactElement | null {
@@ -53,14 +33,14 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Total Files" value={a.totalFiles} accent />
-        <StatCard label="Total Size" value={formatSize(a.totalSizeBytes)} />
-        <StatCard label="Total Exposure" value={formatExposure(a.totalExposureSec)} />
-        <StatCard label="Avg Exposure" value={a.avgExposureSec ? formatExposure(a.avgExposureSec) : '-'} />
-        <StatCard label="Targets" value={a.uniqueObjects.length} />
-        <StatCard label="Filters" value={a.uniqueFilters.length} />
-        <StatCard label="Stacked" value={a.stackedCount} />
-        <StatCard label="Individual" value={a.individualCount} />
+        <StatCard label="Total Files" value={a.totalFiles} accent compact />
+        <StatCard label="Total Size" value={formatSize(a.totalSizeBytes)} compact />
+        <StatCard label="Total Exposure" value={formatExposure(a.totalExposureSec)} compact />
+        <StatCard label="Avg Exposure" value={a.avgExposureSec ? formatExposure(a.avgExposureSec) : '-'} compact />
+        <StatCard label="Targets" value={a.uniqueObjects.length} compact />
+        <StatCard label="Filters" value={a.uniqueFilters.length} compact />
+        <StatCard label="Stacked" value={a.stackedCount} compact />
+        <StatCard label="Individual" value={a.individualCount} compact />
       </div>
 
       {linkingStatus && (

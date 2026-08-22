@@ -5,8 +5,7 @@ import { setupTestDb, teardownTestDb, seedTarget, seedEquipment } from '../helpe
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { createSession, updateSession, listSessions, getSessionById } = await import('../../src/main/services/session')

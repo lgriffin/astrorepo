@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
+import { formatSize } from '../../utils/format'
 import type { FitsFileSummary } from '@shared/types'
 
 interface FileTableProps {
@@ -10,11 +11,6 @@ interface FileTableProps {
 }
 
 type SortCol = 'file_name' | 'date_obs' | 'exposure_sec' | 'object_name' | 'filter' | 'file_size_bytes' | 'folder_name'
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = false }: FileTableProps): React.ReactElement {
   const [files, setFiles] = useState<FitsFileSummary[]>([])
@@ -44,7 +40,7 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
     })
   }, [scanId])
 
-  async function loadFiles(): Promise<void> {
+  const loadFiles = useCallback(async () => {
     const params: Record<string, unknown> = {
       scan_id: scanId,
       limit,
@@ -60,11 +56,11 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
     const result = await invoke<{ files: FitsFileSummary[]; total: number }>('fits:list-files', params)
     setFiles(result.files)
     setTotal(result.total)
-  }
+  }, [scanId, page, sortBy, sortDir, filterFolder, filterObj, filterType, filterFilter])
 
   useEffect(() => {
     loadFiles()
-  }, [scanId, page, sortBy, sortDir, filterFolder, filterObj, filterType, filterFilter])
+  }, [loadFiles])
 
   function handleSort(col: SortCol): void {
     if (sortBy === col) {

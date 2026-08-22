@@ -1,11 +1,8 @@
 import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { app } from 'electron'
 import path from 'path'
-import * as schema from './schema'
 import { initFts } from './fts'
 
-let db: ReturnType<typeof drizzle> | null = null
 let sqlite: Database.Database | null = null
 
 export function getDbPath(): string {
@@ -19,18 +16,12 @@ export function initDatabase(): void {
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
   sqlite.pragma('busy_timeout = 5000')
-  db = drizzle(sqlite, { schema })
   runMigrations(sqlite)
   try {
     initFts(sqlite)
   } catch {
     console.warn('FTS5 initialization skipped — search will use LIKE fallback')
   }
-}
-
-export function getDb(): ReturnType<typeof drizzle> {
-  if (!db) throw new Error('Database not initialized. Call initDatabase() first.')
-  return db
 }
 
 export function getSqlite(): Database.Database {
@@ -441,11 +432,3 @@ export function resetDatabase(): { cleared: boolean } {
   return { cleared: true }
 }
 
-export function createTestDatabase(): { db: ReturnType<typeof drizzle>; sqlite: Database.Database } {
-  const testSqlite = new Database(':memory:')
-  testSqlite.pragma('journal_mode = WAL')
-  testSqlite.pragma('foreign_keys = ON')
-  const testDb = drizzle(testSqlite, { schema })
-  runMigrations(testSqlite)
-  return { db: testDb, sqlite: testSqlite }
-}

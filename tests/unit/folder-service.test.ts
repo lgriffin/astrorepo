@@ -8,8 +8,7 @@ import { setupTestDb, teardownTestDb, seedTarget } from '../helpers/setup'
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { generateFolders, listTemplates, createTemplate } = await import('../../src/main/services/folder')

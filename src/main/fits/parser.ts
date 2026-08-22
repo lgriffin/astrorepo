@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { readPixelValue } from './pixel-reader'
 
 const BLOCK_SIZE = 2880
 const RECORD_SIZE = 80
@@ -146,23 +147,6 @@ export function parseFitsHeaders(filePath: string): { headers: FitsHeaderRecord[
   }
 }
 
-function readPixelValue(buf: Buffer, offset: number, bitpix: number): number {
-  switch (bitpix) {
-    case 8:
-      return buf.readUInt8(offset)
-    case 16:
-      return buf.readInt16BE(offset)
-    case 32:
-      return buf.readInt32BE(offset)
-    case -32:
-      return buf.readFloatBE(offset)
-    case -64:
-      return buf.readDoubleBE(offset)
-    default:
-      return 0
-  }
-}
-
 export function computeImageStats(
   filePath: string,
   headerBlockCount: number,
@@ -202,8 +186,7 @@ export function computeImageStats(
 
       const usableBytes = bytesRead - (bytesRead % bytesPerPixel)
       for (let i = 0; i < usableBytes; i += bytesPerPixel) {
-        const raw = readPixelValue(chunkBuf, i, bitpix)
-        const val = raw * bscale + bzero
+        const val = readPixelValue(chunkBuf, i, bitpix, bscale, bzero)
         if (val < min) min = val
         if (val > max) max = val
         sum += val
