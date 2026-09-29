@@ -56,7 +56,9 @@ rewrite: the app works at every commit.
 
 The Windows PC does all heavy work (Siril, PixInsight, RC Astro). The Synology NAS stores the data
 and will host the catalogue and API. The DGX Spark is an enabler that runs local models through
-Ollama; everything works when it is off, and no image or prompt leaves the network. Proprietary
+Ollama; everything works when it is off, and no image or prompt leaves the network. Sky planning is
+computed on the machine from the ephemeris; online services such as weather are optional adapters,
+never required. Proprietary
 tools are called, never bundled. Dependencies are OSI licensed.
 
 ### VII. Docs move with the code
@@ -84,4 +86,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
+**Version**: 1.0.2 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30

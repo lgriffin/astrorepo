@@ -927,3 +927,50 @@ export interface CockpitOverview {
   progress: { state: ProgressState; label: string; count: number }[]
   hidden: HiddenDataItem[]
 }
+
+/** A target named in a plan, with the one line that says why. */
+export interface PlanTargetView {
+  targetId: string
+  targetName: string
+  detail: string
+}
+
+export interface TonightView {
+  night: string
+  /** ISO instants; the renderer shows them in local time. */
+  darkStart: string
+  darkEnd: string
+  darkness: 'astronomical' | 'nautical'
+  moonPercent: number
+  /** Why the list is short or empty because of the moon, when it is. */
+  moonNote: string | null
+  darknessNote: string | null
+  choices: PlanTargetView[]
+}
+
+export interface DarkWindowView {
+  newMoon: string
+  start: string
+  end: string
+  label: string
+  targets: PlanTargetView[]
+}
+
+export interface TargetSeasonView {
+  targetId: string
+  targetName: string
+  bestMonth: string | null
+  months: { month: string; hoursPerNight: number; newMoon: boolean }[]
+}
+
+export type ForwardPlanView =
+  | { status: 'no-site'; message: string }
+  | {
+      status: 'ok'
+      site: { latitudeDeg: number; longitudeDeg: number }
+      /** Null when the sun never gets 12° below the horizon tonight. */
+      tonight: TonightView | null
+      closing: PlanTargetView[]
+      windows: DarkWindowView[]
+      seasons: TargetSeasonView[]
+    }

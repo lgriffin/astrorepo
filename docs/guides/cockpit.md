@@ -4,6 +4,12 @@ The dashboard opens on the cockpit: what is hiding in your files, how far each t
 and what is worth doing next. Everything on it is worked out from the files the app has indexed
 (the Library and FITS Analyzer scans), so it changes as you capture, stack and process.
 
+## Coming nights
+
+Next to the hidden-data card, the **Coming nights** card plans ahead from your site: tonight's
+targets given the moon, targets whose season is closing, and the next new-moon window. See
+[Planning ahead](planning.md) for what each part means.
+
 ## Progress strip
 
 Six boxes count your targets by how far they have got, from their files rather than the manual

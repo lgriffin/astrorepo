@@ -6,8 +6,9 @@ import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
 import { ProgressStrip } from '../components/cockpit/ProgressStrip'
 import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
+import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
 import { useToast } from '../contexts/ToastContext'
-import type { DashboardStats, CatalogueProgress, Recommendation, CockpitOverview } from '@shared/types'
+import type { DashboardStats, CatalogueProgress, Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
 
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
@@ -16,6 +17,7 @@ export function Dashboard(): React.ReactElement {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [cockpit, setCockpit] = useState<CockpitOverview | null>(null)
   const [loading, setLoading] = useState(true)
+  const [plan, setPlan] = useState<ForwardPlanView | null>(null)
   const { addToast } = useToast()
 
   useEffect(() => {
@@ -32,6 +34,8 @@ export function Dashboard(): React.ReactElement {
         setCockpit(k)
       })
       .finally(() => setLoading(false))
+    // Planning computes a year of nights, so it loads on its own and never holds up the page.
+    invoke<ForwardPlanView>('planning:forward').then(setPlan).catch(() => setPlan(null))
   }, [])
 
   const dismiss = (rec: Recommendation) => {
@@ -62,10 +66,13 @@ export function Dashboard(): React.ReactElement {
       {cockpit && (
         <div className="mb-8 space-y-4">
           <ProgressStrip progress={cockpit.progress} />
-          <HiddenDataCard
-            items={cockpit.hidden}
-            onChanged={() => invoke<CockpitOverview>('cockpit:overview').then(setCockpit).catch(() => undefined)}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <HiddenDataCard
+              items={cockpit.hidden}
+              onChanged={() => invoke<CockpitOverview>('cockpit:overview').then(setCockpit).catch(() => undefined)}
+            />
+            {plan && <ComingNightsCard plan={plan} />}
+          </div>
         </div>
       )}
 

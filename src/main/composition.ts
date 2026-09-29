@@ -5,6 +5,7 @@ import {
   makeDismissSuggestion,
   makeFindDuplicates,
   makeListStackingSuggestions,
+  makePlanForward,
   makePrepareSirilWorkspace,
   makeReportHiddenData
 } from '@astro/application'
@@ -14,6 +15,8 @@ import { SqliteFileHashStore, SqliteFileIndex } from './adapters/sqlite-file-has
 import { NodeContentHasher } from './adapters/node-content-hasher'
 import { NodeSirilWorkspace } from './adapters/node-siril-workspace'
 import { systemClock } from './adapters/system-clock'
+import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
+import { SqlitePlanningSettings, SqliteTargetPositions } from './adapters/sqlite-planning'
 
 /**
  * Composition root for the hexagonal core inside the desktop app. IPC handlers call these use
@@ -30,7 +33,14 @@ export function composeCore(db: Database.Database) {
     discoverTarget: makeDiscoverTarget({ frames }),
     reportHiddenData: makeReportHiddenData({ frames, hashes }),
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
-    prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db) })
+    prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db) }),
+    planForward: makePlanForward({
+      frames,
+      positions: new SqliteTargetPositions(db),
+      settings: new SqlitePlanningSettings(db),
+      ephemeris: new AstronomyEngineEphemeris(),
+      clock: systemClock
+    })
   }
 }
 

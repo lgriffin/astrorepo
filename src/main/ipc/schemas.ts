@@ -289,6 +289,7 @@ export const schemas = {
   'ingest:find-duplicates': z.object({}).optional(),
   'cockpit:dismiss': z.object({ suggestion_id: id }),
   'discovery:target': z.object({ target_id: id }),
+  'planning:forward': z.object({}).optional(),
 
   'db:reset': z.object({}).optional(),
 

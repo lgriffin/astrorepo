@@ -10,11 +10,12 @@
 
 Desktop application for managing astronomical targets across any catalogue, recording observation sessions, tracking equipment, planning observations with real-time ephemeris computation, and visualizing collection progress.
 
-It is becoming a local-first observatory cockpit: it shows what is hiding in your FITS files and what each target is ready to become. Start with these:
+It is becoming a local-first observatory cockpit: it shows what is hiding in your FITS files, what each target is ready to become, and what to shoot in the coming nights given the season and the moon. Start with these:
 
 - [Charter](.specify/memory/constitution.md): the principles every change is checked against.
 - [Roadmap](docs/roadmap.md): which slices have landed and what comes next.
 - [Using the cockpit](docs/guides/cockpit.md): what the dashboard's progress strip, hidden-data card and suggestions mean.
+- [Planning ahead](docs/guides/planning.md): seasons, closing windows, new-moon windows and bright-moon choices from your site.
 - [Hexagonal core](docs/architecture/hexagonal.md): how code is laid out and how a service moves into the core.
 
 ## Features
@@ -33,6 +34,7 @@ It is becoming a local-first observatory cockpit: it shows what is hiding in you
 - **Safe Ingest** -- Source folders are read-only: Siril prep builds its folders in a work area, rescans read only changed files, unreadable files are quarantined with the reason, and a duplicate check reports copies and reclaimable space without deleting anything.
 - **Project Folder Generation** -- Create imaging project directories from configurable templates (default Siril structure).
 - **Observatory Cockpit** -- What is hidden in your files (nights never stacked, subs with no target, orphan calibration, rejected subs), progress derived from your data, and dismissible "ready to stack" and "restack" suggestions.
+- **Seasons and Moon Planning** -- From your site: tonight's targets with work left and how close the moon comes, bright-moon filtering for dual-band or narrowband filters, targets whose season closes within 30 days, new-moon windows with the best targets, and a 12-month season table.
 - **Observatory Dashboard** -- Aggregate statistics across sessions, targets, and equipment.
 - **Dark Astronomy UI** -- Tailwind CSS custom palette designed for nighttime use.
 

@@ -38,6 +38,7 @@ export function Settings(): React.ReactElement {
   const [saving, setSaving] = useState<string | null>(null)
   const [observer, setObserver] = useState<Record<string, string>>({})
   const [observerSaving, setObserverSaving] = useState(false)
+  const [narrowband, setNarrowband] = useState(true)
   const [importResult, setImportResult] = useState<string | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetStatus, setResetStatus] = useState<string | null>(null)
@@ -58,6 +59,8 @@ export function Settings(): React.ReactElement {
       })
     )
     setObserver(Object.fromEntries(obsResults))
+    const nb = await invoke<{ value: string | null }>('settings:get', { key: 'has_narrowband_filter' })
+    setNarrowband(nb.value === null || !['false', '0', 'no'].includes(nb.value.toLowerCase()))
   }
 
   useEffect(() => {
@@ -121,7 +124,7 @@ export function Settings(): React.ReactElement {
 
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>
-          <p className="text-xs text-astro-muted mb-4">Used by the Sky Planner to calculate target visibility, twilight times, and altitude curves.</p>
+          <p className="text-xs text-astro-muted mb-4">Used by the Sky Planner and the dashboard's coming-nights card for seasons, moon windows, twilight times and altitude curves.</p>
           <div className="grid grid-cols-3 gap-3 mb-3">
             {OBSERVER_SETTINGS.map(s => (
               <label key={s.key} className="block">
@@ -156,6 +159,24 @@ export function Settings(): React.ReactElement {
           >
             {observerSaving ? 'Saving...' : 'Save Location'}
           </button>
+          <label className="flex items-start gap-2 mt-4 text-sm text-astro-text">
+            <input
+              type="checkbox"
+              checked={narrowband}
+              onChange={e => {
+                const next = e.target.checked
+                setNarrowband(next)
+                invoke('settings:set', { key: 'has_narrowband_filter', value: String(next) })
+              }}
+              className="mt-1"
+            />
+            <span>
+              I have a dual-band or narrowband filter
+              <span className="block text-xs text-astro-muted">
+                The Seestar S50's light-pollution filter counts. With it, emission nebulae are still suggested when the moon is bright.
+              </span>
+            </span>
+          </label>
         </div>
 
         {homeFolderPath && (
