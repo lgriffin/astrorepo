@@ -860,4 +860,51 @@ export interface Recommendation {
   targetId: string | null
   targetName: string | null
   actionLabel: string | null
+  /** Core suggestions can be set aside until the target's data changes. */
+  dismissible?: boolean
+}
+
+// Cockpit discovery (specs/010-discovery-cockpit)
+
+export type ProgressState = 'planned' | 'capturing' | 'enough-data' | 'stacked' | 'processed' | 'final'
+
+export interface IntegrationBucketView {
+  key: string
+  integrationSec: number
+  subCount: number
+}
+
+export interface TargetDiscoveryView {
+  targetId: string
+  targetName: string
+  integrationSec: number
+  subCount: number
+  rejectedSubCount: number
+  byFilter: IntegrationBucketView[]
+  byScope: IntegrationBucketView[]
+  byNight: IntegrationBucketView[]
+  lastCapturedAt: string | null
+  stackCount: number
+  lastStackedAt: string | null
+  unstackedNights: string[]
+  unstackedSec: number
+  goalSec: number | null
+  processedCount: number
+  finalCount: number
+  progress: ProgressState
+}
+
+/** One line of the "hidden in your files" card. */
+export interface HiddenDataItem {
+  id: string
+  kind: 'never-stacked' | 'unassigned' | 'orphan-calibration' | 'rejected'
+  title: string
+  detail: string
+  /** Where in the app to act on it. */
+  link: string | null
+}
+
+export interface CockpitOverview {
+  progress: { state: ProgressState; label: string; count: number }[]
+  hidden: HiddenDataItem[]
 }

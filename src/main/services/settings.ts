@@ -16,7 +16,12 @@ export function deleteSetting(key: string): void {
   sqlite.prepare('DELETE FROM app_settings WHERE key = ?').run(key)
 }
 
+/** Keys the app keeps for itself in app_settings; they are not user settings. */
+const INTERNAL_KEYS = ['schema_version']
+
 export function listSettings(): Array<{ key: string; value: string }> {
   const sqlite = getSqlite()
-  return sqlite.prepare('SELECT key, value FROM app_settings ORDER BY key').all() as Array<{ key: string; value: string }>
+  return sqlite
+    .prepare(`SELECT key, value FROM app_settings WHERE key NOT IN (${INTERNAL_KEYS.map(() => '?').join(', ')}) ORDER BY key`)
+    .all(...INTERNAL_KEYS) as Array<{ key: string; value: string }>
 }

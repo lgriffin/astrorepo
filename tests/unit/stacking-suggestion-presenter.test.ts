@@ -4,20 +4,22 @@ import { formatDuration, toRecommendation } from '../../src/main/adapters/stacki
 describe('Stacking suggestion presenter', () => {
   it('[DSC-010] Given a ready-to-stack suggestion, When presented, Then it states integration, subs and nights', () => {
     const rec = toRecommendation({
-      kind: 'ready-to-stack', targetId: 't-m81', targetName: 'M 81', integrationSec: 29520, subCount: 2952, nights: 6
+      kind: 'ready-to-stack', id: 'ready-to-stack:t-m81', targetId: 't-m81', targetName: 'M 81', integrationSec: 29520, subCount: 2952, nights: 6
     })
     expect(rec).toMatchObject({
       category: 'stacking',
       priority: 'high',
       title: 'M 81 · 8 h 12 m, never stacked',
       description: '2952 subs across 6 nights are waiting to be stacked.',
-      targetId: 't-m81'
+      targetId: 't-m81',
+      id: 'ready-to-stack:t-m81',
+      dismissible: true
     })
   })
 
   it('[DSC-004] Given a restack suggestion, When presented, Then it states the integration added since the last stack', () => {
     const rec = toRecommendation({
-      kind: 'restack', targetId: 't-m101', targetName: 'M 101', addedSec: 7800, addedSubCount: 1,
+      kind: 'restack', id: 'restack:t-m101', targetId: 't-m101', targetName: 'M 101', addedSec: 7800, addedSubCount: 1,
       lastStackedAt: new Date('2026-02-15T12:00:00Z')
     })
     expect(rec.title).toBe('M 101 · +2 h 10 m since last stack')

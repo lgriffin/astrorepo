@@ -10,6 +10,13 @@
 
 Desktop application for managing astronomical targets across any catalogue, recording observation sessions, tracking equipment, planning observations with real-time ephemeris computation, and visualizing collection progress.
 
+It is becoming a local-first observatory cockpit: it shows what is hiding in your FITS files and what each target is ready to become. Start with these:
+
+- [Charter](.specify/memory/constitution.md): the principles every change is checked against.
+- [Roadmap](docs/roadmap.md): which slices have landed and what comes next.
+- [Using the cockpit](docs/guides/cockpit.md): what the dashboard's progress strip, hidden-data card and suggestions mean.
+- [Hexagonal core](docs/architecture/hexagonal.md): how code is laid out and how a service moves into the core.
+
 ## Features
 
 - **Universal Target Model** -- 22 object types covering galaxies, nebulae, clusters, double stars, asterisms, quasars, dark nebulae, supernova remnants, and custom targets.
@@ -24,6 +31,7 @@ Desktop application for managing astronomical targets across any catalogue, reco
 - **Collections & Progress** -- Group targets into collections with completion tracking and poster views.
 - **Target Relationships** -- Model spatial relationships: *contains*, *nearby*, *parent_region*, and more.
 - **Project Folder Generation** -- Create imaging project directories from configurable templates (default Siril structure).
+- **Observatory Cockpit** -- What is hidden in your files (nights never stacked, subs with no target, orphan calibration, rejected subs), progress derived from your data, and dismissible "ready to stack" and "restack" suggestions.
 - **Observatory Dashboard** -- Aggregate statistics across sessions, targets, and equipment.
 - **Dark Astronomy UI** -- Tailwind CSS custom palette designed for nighttime use.
 
@@ -35,7 +43,7 @@ Desktop application for managing astronomical targets across any catalogue, reco
 | UI | React 18 | Component framework |
 | Language | TypeScript 5.x | Type safety |
 | Database | better-sqlite3 | Local SQLite with WAL mode |
-| ORM | Drizzle ORM | Schema definition + query builder |
+| Queries | Hand-written SQL | One migration source in `src/main/db/migrations.ts` |
 | Ephemeris | astronomy-engine | VSOP87 positional computation |
 | Validation | Zod | Runtime IPC boundary validation |
 | Styling | Tailwind CSS | Utility-first with astro-dark theme |
@@ -46,7 +54,7 @@ Desktop application for managing astronomical targets across any catalogue, reco
 
 ## Architecture
 
-The application follows a standard Electron three-process architecture. See `docs/architecture/` for detailed Mermaid diagrams.
+The application follows a standard Electron three-process architecture, with a hexagonal core growing inside the main process (`packages/domain`, `packages/application`, `packages/testkit`). See `docs/architecture/` for detailed Mermaid diagrams and `docs/architecture/hexagonal.md` for the core.
 
 - **Main Process** -- Database connection, service layer, and IPC handlers. All incoming IPC calls are validated with Zod schemas before reaching business logic.
 - **Preload** -- Exposes a minimal `api.invoke()` bridge via `contextBridge`.
@@ -107,8 +115,10 @@ npm run build        # Production build
 Tests use Vitest with BDD-style EARS (Easy Approach to Requirements Syntax) patterns:
 
 - **Given/When/Then** structure with explicit Event, Action, Response, and State tracking
-- In-memory SQLite for full test isolation
+- In-memory SQLite for full test isolation, built from the same migrations as the app
 - Service-level integration tests covering core business logic
+- Every requirement in `specs/*/requirements.md` is cited by ID in a test name; `npm run ears` fails the build otherwise
+- Port contract suites run against both the in-memory and SQLite adapters
 
 ```bash
 npm test

@@ -13,6 +13,7 @@ describe('assessStackingReadiness', () => {
 
       expect(assessStackingReadiness(m81, policy)).toEqual({
         kind: 'ready-to-stack',
+        id: `ready-to-stack:${m81.targetId}`,
         targetId: m81.targetId,
         targetName: 'M 81',
         integrationSec: 28800,
@@ -46,6 +47,7 @@ describe('assessStackingReadiness', () => {
 
       expect(assessStackingReadiness(m101, policy)).toEqual({
         kind: 'restack',
+        id: `restack:${m101.targetId}`,
         targetId: m101.targetId,
         targetName: 'M 101',
         addedSec: 7800,

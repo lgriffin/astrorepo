@@ -23,6 +23,7 @@ import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, get
 import { getSqlite, resetDatabase } from '../db/connection'
 import { composeCore } from '../composition'
 import { toRecommendation } from '../adapters/stacking-suggestion-presenter'
+import { toCockpitOverview, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -583,6 +584,21 @@ export function registerIpcHandlers(): void {
     const stacking = await composeCore(getSqlite()).listStackingSuggestions()
     return { recommendations: [...stacking.map(toRecommendation), ...getRecommendations()] }
   })
+
+  handle('cockpit:overview', async () => {
+    const core = composeCore(getSqlite())
+    const [discovery, hidden] = await Promise.all([core.discoverTargets(), core.reportHiddenData()])
+    return toCockpitOverview(discovery, hidden)
+  })
+
+  handle('cockpit:dismiss', validated('cockpit:dismiss', (args) => {
+    return composeCore(getSqlite()).dismissSuggestion(args.suggestion_id)
+  }))
+
+  handle('discovery:target', validated('discovery:target', async (args) => {
+    const d = await composeCore(getSqlite()).discoverTarget(args.target_id)
+    return d ? toTargetDiscoveryView(d) : null
+  }))
 
   handle('db:reset', async () => {
     const result = resetDatabase()

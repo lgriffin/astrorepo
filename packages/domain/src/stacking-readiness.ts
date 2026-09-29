@@ -3,6 +3,12 @@ import { observingNightOf } from './observing-night'
 export interface LightSub {
   exposureSec: number
   capturedAt: Date | null
+  /** FILTER header, as written by the capture software. */
+  filter: string | null
+  /** The instrument that took it (TELESCOP, else INSTRUME). */
+  scope: string | null
+  /** True when quality analysis flagged the sub for rejection. */
+  rejected: boolean
 }
 
 export interface StackedImage {
@@ -15,6 +21,12 @@ export interface TargetFrames {
   targetName: string
   subs: LightSub[]
   stacks: StackedImage[]
+  /** Sum of the user's integration goals for the target, if any are set. */
+  goalSec: number | null
+  /** Processed files (for example TIFFs out of Siril) found for the target. */
+  processedCount: number
+  /** Finished images (JPEG, PNG) found for the target. */
+  finalCount: number
 }
 
 export interface StackingPolicy {
@@ -32,6 +44,7 @@ export const DEFAULT_STACKING_POLICY: StackingPolicy = {
 export type StackingSuggestion =
   | {
       kind: 'ready-to-stack'
+      id: string
       targetId: string
       targetName: string
       integrationSec: number
@@ -40,6 +53,7 @@ export type StackingSuggestion =
     }
   | {
       kind: 'restack'
+      id: string
       targetId: string
       targetName: string
       addedSec: number
@@ -47,13 +61,18 @@ export type StackingSuggestion =
       lastStackedAt: Date
     }
 
+/** Stable across runs, so a dismissal can find the suggestion again. */
+export function suggestionId(kind: StackingSuggestion['kind'], targetId: string): string {
+  return `${kind}:${targetId}`
+}
+
 function nightsSpanned(subs: LightSub[]): number {
   const nights = new Set<string>()
   for (const s of subs) if (s.capturedAt) nights.add(observingNightOf(s.capturedAt))
   return nights.size
 }
 
-function totalSec(subs: LightSub[]): number {
+export function totalSec(subs: LightSub[]): number {
   return subs.reduce((sum, s) => sum + s.exposureSec, 0)
 }
 
@@ -67,6 +86,7 @@ export function assessStackingReadiness(
     if (integrationSec < policy.readyToStackSec) return null
     return {
       kind: 'ready-to-stack',
+      id: suggestionId('ready-to-stack', target.targetId),
       targetId: target.targetId,
       targetName: target.targetName,
       integrationSec,
@@ -81,6 +101,7 @@ export function assessStackingReadiness(
   if (addedSec < policy.restackSec) return null
   return {
     kind: 'restack',
+    id: suggestionId('restack', target.targetId),
     targetId: target.targetId,
     targetName: target.targetName,
     addedSec,

@@ -24,7 +24,15 @@ Architecture: hexagonal core in `packages/` (see docs/architecture/hexagonal.md)
 
 TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 
+## Charter and docs
+
+- Charter: `.specify/memory/constitution.md`. Roadmap: `docs/roadmap.md`. Guides: `docs/guides/`, `docs/architecture/hexagonal.md`.
+- Every behaviour change updates its spec's `requirements.md`, the roadmap and the relevant guide in the same PR.
+- Schema changes go in `src/main/db/migrations.ts` only (tests use it too).
+
 ## Recent Changes
+
+- 010-discovery-cockpit: hidden-data report, derived progress, per-target discovery, dismissible suggestions, one migration source, charter
 
 - 002-fits-metadata-analyzer: Added custom FITS parser, metadata analyzer, settings service, per-target/per-night aggregates
 - 001-universal-observatory: Added TypeScript 5.x (Node.js 20 LTS) + Electron, React 18, better-sqlite3, Drizzle ORM, astronomy-engine, Vite

@@ -20,15 +20,32 @@ src/main/
 
 ```mermaid
 flowchart LR
-  UI[Renderer] -->|IPC recommendations:list| H[ipc/handlers.ts]
+  UI[Renderer] -->|IPC recommendations:list, cockpit:*, discovery:target| H[ipc/handlers.ts]
   H --> C[composition.ts]
-  C --> UC[application: listStackingSuggestions]
-  UC --> D[domain: assessStackingReadiness]
-  UC -->|FrameCatalogue port| A[adapters: SqliteFrameCatalogue]
-  A --> DB[(SQLite fits_files)]
-  T[testkit: InMemoryFrameCatalogue] -.same contract suite.-> A
+  C --> UC[application use cases]
+  UC --> D[domain rules]
+  UC -->|FrameCatalogue| A1[SqliteFrameCatalogue]
+  UC -->|DismissalStore| A2[SqliteDismissalStore]
+  UC -->|Clock| A3[systemClock]
+  A1 --> DB[(SQLite)]
+  A2 --> DB
+  T[testkit in-memory adapters] -.same contract suites.-> A1 & A2
+  H -->|presenters| P[adapters/*-presenter.ts]
   H -->|legacy, until moved| S[services/recommendations.ts]
 ```
+
+## What is in the core today
+
+| Use case | Domain rules | Ports | IPC channel | Spec |
+|---|---|---|---|---|
+| `listStackingSuggestions` | `assessStackingReadiness`, `isDismissed` | FrameCatalogue, DismissalStore | `recommendations:list` | 009, 010 |
+| `dismissSuggestion` | `dataFingerprint` | FrameCatalogue, DismissalStore, Clock | `cockpit:dismiss` | 010 |
+| `discoverTargets`, `discoverTarget` | `discoverTarget`, `deriveProgress` | FrameCatalogue | `cockpit:overview`, `discovery:target` | 010 |
+| `reportHiddenData` | `reportHiddenData`, `calibrates` | FrameCatalogue | `cockpit:overview` | 010 |
+
+Presenters in `src/main/adapters/*-presenter.ts` turn domain results into the plain shapes in
+`src/shared/types.ts` (ISO date strings, human sentences) that the renderer shows. Rules never
+live in presenters; wording does.
 
 The packages are folders with path aliases (`@astro/domain`, `@astro/application`, `@astro/testkit`)
 wired in `tsconfig.json`, `vitest.config.ts` and `electron.vite.config.ts`, so Vite bundles them into
@@ -45,6 +62,7 @@ better-sqlite3 without any gain.
 | Core code takes its dependencies as arguments; no `getSqlite()`, no `vi.mock` of modules in core tests | Review; adapters take a `Database` in their constructor |
 | Every requirement ID is cited by a test; no test cites an unknown ID (NFR-005, NFR-007) | `npm run ears` in CI |
 | Core and adapters keep high coverage | `vitest.config.ts` per-path thresholds |
+| Production and tests build the schema from `src/main/db/migrations.ts` (NFR-008) | `tests/helpers/setup.ts` imports it; `tests/integration/migrations.test.ts` |
 
 ## Moving a service into the core
 
@@ -53,7 +71,9 @@ better-sqlite3 without any gain.
 3. Put the orchestration in a use case in `packages/application`, with a port for each thing it reads or writes.
 4. Add an in-memory adapter to `packages/testkit` and a contract suite for the port.
 5. Implement the port in `src/main/adapters` against the existing tables and run the same contract suite on it.
+   New tables go in `src/main/db/migrations.ts` only, guarded so a second run changes nothing.
 6. Wire it in `src/main/composition.ts` and point the IPC handler at the use case. Delete the old service code.
+7. Update `docs/roadmap.md`, the user guide in `docs/guides/`, and the charter if a principle moved.
 
 ## EARS
 

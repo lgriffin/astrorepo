@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { makeListStackingSuggestions } from '@astro/application'
-import { InMemoryFrameCatalogue, subs, stackAt, target } from '@astro/testkit'
+import { InMemoryDismissalStore, InMemoryFrameCatalogue, subs, stackAt, target } from '@astro/testkit'
 
 describe('ListStackingSuggestions', () => {
   it('[DSC-011] Given several targets with unprocessed data, When suggestions are listed, Then the most unprocessed integration comes first', async () => {
@@ -12,7 +12,7 @@ describe('ListStackingSuggestions', () => {
         stacks: [stackAt('2026-02-15T12:00:00Z')]
       }))
 
-    const suggestions = await makeListStackingSuggestions({ frames })()
+    const suggestions = await makeListStackingSuggestions({ frames, dismissals: new InMemoryDismissalStore() })()
 
     expect(suggestions.map(s => [s.targetName, s.kind])).toEqual([
       ['M 81', 'ready-to-stack'],
@@ -27,14 +27,14 @@ describe('ListStackingSuggestions', () => {
       .add(target('M 42', { subs: subs(2000, 10, '2026-01-01T21:00:00Z'), stacks: [stackAt('2026-02-01T12:00:00Z')] }))
       .add(target('M 33', { subs: subs(900, 10, '2026-03-01T21:00:00Z') }))
 
-    const suggestions = await makeListStackingSuggestions({ frames })()
+    const suggestions = await makeListStackingSuggestions({ frames, dismissals: new InMemoryDismissalStore() })()
 
     expect(suggestions.map(s => s.targetName)).toEqual(['M 33'])
   })
 
   it('[DSC-010] Given a custom policy, When suggestions are listed, Then its threshold is used', async () => {
     const frames = new InMemoryFrameCatalogue().add(target('M 1', { subs: subs(360, 10, '2026-03-01T21:00:00Z') }))
-    const suggestions = await makeListStackingSuggestions({ frames }, { readyToStackSec: 3600, restackSec: 3600 })()
+    const suggestions = await makeListStackingSuggestions({ frames, dismissals: new InMemoryDismissalStore() }, { readyToStackSec: 3600, restackSec: 3600 })()
     expect(suggestions).toHaveLength(1)
   })
 })
