@@ -2,6 +2,7 @@ import { observingNightOf } from './observing-night'
 import {
   DEFAULT_STACKING_POLICY,
   totalSec,
+  usableSubs,
   type LightSub,
   type StackingPolicy,
   type TargetFrames
@@ -63,11 +64,15 @@ function latest(dates: (Date | null)[]): Date | null {
   return best
 }
 
-/** Subs a stack does not yet include: all of them before the first stack, newer ones after. */
+/**
+ * Usable subs a stack does not yet include: all of them before the first stack, newer ones after.
+ * Rejected subs never count as waiting to be stacked.
+ */
 export function unstackedSubs(target: TargetFrames): LightSub[] {
+  const usable = usableSubs(target)
   const lastStackedAt = latest(target.stacks.map(s => s.producedAt))
-  if (!lastStackedAt) return target.subs
-  return target.subs.filter(s => s.capturedAt !== null && s.capturedAt.getTime() > lastStackedAt.getTime())
+  if (!lastStackedAt) return usable
+  return usable.filter(s => s.capturedAt !== null && s.capturedAt.getTime() > lastStackedAt.getTime())
 }
 
 /**
@@ -79,7 +84,7 @@ export function deriveProgress(target: TargetFrames, policy: StackingPolicy = DE
   if (target.processedCount > 0) return 'processed'
   if (target.stacks.length > 0) return 'stacked'
   if (target.subs.length === 0) return 'planned'
-  return totalSec(target.subs) >= policy.readyToStackSec ? 'enough-data' : 'capturing'
+  return totalSec(usableSubs(target)) >= policy.readyToStackSec ? 'enough-data' : 'capturing'
 }
 
 /** Everything the files say about one target. Pure: no I/O, no clock. */
@@ -111,20 +116,26 @@ export function discoverTarget(target: TargetFrames, policy: StackingPolicy = DE
   }
 }
 
+/** 32-bit FNV-1a, enough to notice a change; not a security hash. */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
 /**
- * A short digest of a target's data. It changes whenever subs, stacks or outputs are added or
- * removed, which is what lets a dismissed suggestion come back once there is something new.
+ * A short digest of a target's data. It changes whenever a sub, stack or output is added, removed
+ * or re-read with a different filter, scope, exposure or quality verdict, which is what lets a
+ * dismissed suggestion come back once there is something new.
  */
 export function dataFingerprint(target: TargetFrames): string {
-  const lastSub = latest(target.subs.map(s => s.capturedAt))?.toISOString() ?? '-'
-  const lastStack = latest(target.stacks.map(s => s.producedAt))?.toISOString() ?? '-'
-  return [
-    target.subs.length,
-    totalSec(target.subs),
-    lastSub,
-    target.stacks.length,
-    lastStack,
-    target.processedCount,
-    target.finalCount
-  ].join('|')
+  const subs = target.subs
+    .map(s => [s.capturedAt?.toISOString() ?? '-', s.exposureSec, s.filter ?? '', s.scope ?? '', s.rejected ? 1 : 0].join(','))
+    .sort()
+    .join(';')
+  const stacks = target.stacks.map(s => s.producedAt.toISOString()).sort().join(';')
+  return [target.subs.length, target.stacks.length, target.processedCount, target.finalCount, fnv1a(subs), fnv1a(stacks)].join('|')
 }

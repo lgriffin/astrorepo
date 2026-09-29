@@ -112,6 +112,19 @@ describe('dataFingerprint', () => {
     expect(dataFingerprint(base)).toBe(dataFingerprint(structuredClone(base)))
   })
 
+  it('[DSC-008] Given a sub re-read with another quality verdict, filter or scope, When fingerprinted, Then the fingerprint changes', () => {
+    const before = dataFingerprint(base)
+    const change = (patch: object) => ({ ...base, subs: base.subs.map((s, i) => (i === 0 ? { ...s, ...patch } : s)) })
+    expect(dataFingerprint(change({ rejected: true }))).not.toBe(before)
+    expect(dataFingerprint(change({ filter: 'LP' }))).not.toBe(before)
+    expect(dataFingerprint(change({ scope: 'Vespera Pro' }))).not.toBe(before)
+  })
+
+  it('[DSC-009] Given 2 h of subs of which some were rejected, When progress is derived, Then only usable subs count toward enough data', () => {
+    const t = target('M 1', { subs: [...subs(700, 10, '2026-01-10T21:00:00Z'), ...subs(20, 10, '2026-01-10T23:00:00Z', { rejected: true })] })
+    expect(deriveProgress(t, policy)).toBe('capturing')
+  })
+
   it('[DSC-008] Given new subs, a new stack or a new output, When fingerprinted, Then the fingerprint changes', () => {
     const before = dataFingerprint(base)
     expect(dataFingerprint({ ...base, subs: [...base.subs, ...subs(1, 10, '2026-03-05T21:00:00Z')] })).not.toBe(before)

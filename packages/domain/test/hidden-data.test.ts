@@ -35,10 +35,10 @@ describe('reportHiddenData', () => {
     const report = reportHiddenData({
       targets: [],
       unassigned: [
-        { exposureSec: 20, capturedAt: new Date('2026-04-01T22:00:00Z'), folder: 'NGC 7000_sub', objectName: null },
-        { exposureSec: 20, capturedAt: new Date('2026-04-02T22:00:00Z'), folder: 'NGC 7000_sub', objectName: null },
-        { exposureSec: 10, capturedAt: null, folder: null, objectName: 'Mystery' },
-        { exposureSec: 10, capturedAt: null, folder: '  ', objectName: null }
+        { exposureSec: 20, capturedAt: new Date('2026-04-01T22:00:00Z'), folder: 'NGC 7000_sub', objectName: null, rejected: false },
+        { exposureSec: 20, capturedAt: new Date('2026-04-02T22:00:00Z'), folder: 'NGC 7000_sub', objectName: null, rejected: false },
+        { exposureSec: 10, capturedAt: null, folder: null, objectName: 'Mystery', rejected: false },
+        { exposureSec: 10, capturedAt: null, folder: '  ', objectName: null, rejected: false }
       ],
       calibration: [],
       lightSettings: []
@@ -67,7 +67,26 @@ describe('reportHiddenData', () => {
       calibration: [],
       lightSettings: []
     })
-    expect(report.rejected).toEqual({ subCount: 5, integrationSec: 90, targets: 2 })
+    expect(report.rejected).toEqual({ subCount: 5, integrationSec: 90, targets: 2, unassigned: 0 })
+  })
+
+  it('[DSC-006] Given a rejected sub with no target, When reported, Then it counts as rejected and as unassigned', () => {
+    const report = reportHiddenData({
+      targets: [target('M 2', { subs: subs(1, 30, '2026-01-01T21:00:00Z', { rejected: true }) })],
+      unassigned: [{ exposureSec: 20, capturedAt: null, folder: 'x', objectName: null, rejected: true }],
+      calibration: [],
+      lightSettings: []
+    })
+    expect(report.rejected).toEqual({ subCount: 2, integrationSec: 50, targets: 1, unassigned: 1 })
+    expect(report.unassigned.subCount).toBe(1)
+  })
+
+  it('[DSC-006] Given a target whose only unstacked subs were rejected, When reported, Then no nights are listed as never stacked', () => {
+    const report = reportHiddenData({
+      targets: [target('M 3', { subs: subs(10, 30, '2026-01-01T21:00:00Z', { rejected: true }) })],
+      unassigned: [], calibration: [], lightSettings: []
+    })
+    expect(report.neverStacked).toEqual([])
   })
 
   it('[DSC-006] Given darks, flats and biases that match no lights, When reported, Then they are grouped by kind and settings', () => {
@@ -93,7 +112,7 @@ describe('reportHiddenData', () => {
       unstackedSec: 0,
       unassigned: { subCount: 0, integrationSec: 0, nights: 0, byFolder: [] },
       orphanCalibration: [],
-      rejected: { subCount: 0, integrationSec: 0, targets: 0 }
+      rejected: { subCount: 0, integrationSec: 0, targets: 0, unassigned: 0 }
     })
   })
 })

@@ -68,12 +68,17 @@ export function frameCatalogueContract(
       expect(ids).toEqual(['target-m81'])
     })
 
-    it('[NFR-006] Given light subs no target claims, When unassigned lights are listed, Then each comes back with its folder and time', async () => {
+    it('[NFR-006] Given light subs no target claims, When unassigned lights are listed, Then each comes back with its folder, time and quality verdict', async () => {
       const catalogue = await make({
-        unassigned: [{ exposureSec: 20, capturedAt: new Date('2026-04-01T22:00:00Z'), folder: 'NGC 7000_sub', objectName: 'NGC 7000' }]
+        unassigned: [
+          { exposureSec: 20, capturedAt: new Date('2026-04-01T22:00:00Z'), folder: 'NGC 7000_sub', objectName: 'NGC 7000', rejected: false },
+          { exposureSec: 20, capturedAt: new Date('2026-04-01T22:01:00Z'), folder: 'NGC 7000_sub', objectName: 'NGC 7000', rejected: true }
+        ]
       })
-      expect(await catalogue.listUnassignedLights()).toEqual([
-        { exposureSec: 20, capturedAt: new Date('2026-04-01T22:00:00Z'), folder: 'NGC 7000_sub', objectName: 'NGC 7000' }
+      const got = await catalogue.listUnassignedLights()
+      expect([...got].sort((a, b) => (a.capturedAt?.getTime() ?? 0) - (b.capturedAt?.getTime() ?? 0))).toEqual([
+        { exposureSec: 20, capturedAt: new Date('2026-04-01T22:00:00Z'), folder: 'NGC 7000_sub', objectName: 'NGC 7000', rejected: false },
+        { exposureSec: 20, capturedAt: new Date('2026-04-01T22:01:00Z'), folder: 'NGC 7000_sub', objectName: 'NGC 7000', rejected: true }
       ])
     })
 

@@ -43,7 +43,7 @@ frameCatalogueContract('SQLite', seed => {
     }
   }
   for (const u of seed.unassigned ?? []) {
-    seedFitsFile(sqlite, scanId, { exposureSec: u.exposureSec, dateObs: dateObs(u.capturedAt), folderName: u.folder, objectName: u.objectName })
+    seedFitsFile(sqlite, scanId, { exposureSec: u.exposureSec, dateObs: dateObs(u.capturedAt), folderName: u.folder, objectName: u.objectName, qualityFlag: u.rejected ? 'reject' : 'good' })
   }
   const imageType = { dark: 'Dark Frame', flat: 'Flat Field', bias: 'Bias Frame' }
   for (const c of seed.calibration ?? []) {

@@ -9,6 +9,8 @@ export interface UnassignedLight {
   /** The folder it sits in, which is often the best hint to what it shows. */
   folder: string | null
   objectName: string | null
+  /** True when quality analysis flagged the sub for rejection. */
+  rejected: boolean
 }
 
 export type CalibrationKind = 'dark' | 'flat' | 'bias'
@@ -59,7 +61,8 @@ export interface HiddenDataReport {
     byFolder: { folder: string; subCount: number; integrationSec: number }[]
   }
   orphanCalibration: OrphanCalibrationGroup[]
-  rejected: { subCount: number; integrationSec: number; targets: number }
+  /** Rejected subs across targets, plus rejected subs no target claims yet (`unassigned`). */
+  rejected: { subCount: number; integrationSec: number; targets: number; unassigned: number }
 }
 
 /** Unknown on either side is not a mismatch: a missing header should not orphan a frame. */
@@ -143,7 +146,13 @@ export function reportHiddenData(input: {
 
   const byFolder = new Map<string, { folder: string; subCount: number; integrationSec: number }>()
   const unassignedNights = new Set<string>()
+  let rejectedUnassigned = 0
   for (const u of input.unassigned) {
+    if (u.rejected) {
+      rejectedUnassigned += 1
+      rejectedSubs += 1
+      rejectedSec += u.exposureSec
+    }
     const folder = u.folder?.trim() || u.objectName?.trim() || 'Unknown folder'
     const f = byFolder.get(folder) ?? { folder, subCount: 0, integrationSec: 0 }
     f.subCount += 1
@@ -163,6 +172,6 @@ export function reportHiddenData(input: {
       byFolder: [...byFolder.values()].sort((a, b) => b.integrationSec - a.integrationSec || a.folder.localeCompare(b.folder))
     },
     orphanCalibration: findOrphanCalibration(input.calibration, input.lightSettings, input.policy),
-    rejected: { subCount: rejectedSubs, integrationSec: rejectedSec, targets: rejectedTargets }
+    rejected: { subCount: rejectedSubs, integrationSec: rejectedSec, targets: rejectedTargets, unassigned: rejectedUnassigned }
   }
 }

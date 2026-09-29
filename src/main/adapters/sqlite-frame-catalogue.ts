@@ -99,16 +99,17 @@ export class SqliteFrameCatalogue implements FrameCatalogue {
 
   async listUnassignedLights(): Promise<UnassignedLight[]> {
     const rows = this.db.prepare(
-      `SELECT f.exposure_sec, f.date_obs, f.folder_name, f.object_name
+      `SELECT f.exposure_sec, f.date_obs, f.folder_name, f.object_name, f.quality_flag
        FROM fits_files f
        WHERE f.target_id IS NULL AND f.is_stacked = 0 AND f.exposure_sec IS NOT NULL AND ${IS_LIGHT}
        ORDER BY f.date_obs`
-    ).all() as { exposure_sec: number; date_obs: string | null; folder_name: string | null; object_name: string | null }[]
+    ).all() as { exposure_sec: number; date_obs: string | null; folder_name: string | null; object_name: string | null; quality_flag: string | null }[]
     return rows.map(r => ({
       exposureSec: r.exposure_sec,
       capturedAt: parseUtc(r.date_obs),
       folder: r.folder_name,
-      objectName: r.object_name
+      objectName: r.object_name,
+      rejected: r.quality_flag === 'reject'
     }))
   }
 

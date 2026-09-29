@@ -37,7 +37,7 @@ describe('Discovery presenter', () => {
         { kind: 'flat', exposureSec: 1, gain: null, sensorTempC: null, filter: null, count: 1 },
         { kind: 'bias', exposureSec: null, gain: null, sensorTempC: null, filter: null, count: 5 }
       ],
-      rejected: { subCount: 12, integrationSec: 120, targets: 1 }
+      rejected: { subCount: 12, integrationSec: 120, targets: 1, unassigned: 2 }
     })
     expect(items.map(i => [i.title, i.link])).toEqual([
       ['90 subs with no target', '/fits-analyzer'],
@@ -50,6 +50,9 @@ describe('Discovery presenter', () => {
     expect(items[1].detail).toBe('Taken at gain 100, 300 s, -10 °C. No light frames share those settings.')
     expect(items[2].detail).toBe('Taken at no filter. No light frames share those settings.')
     expect(items[3].detail).toBe('Taken at unrecorded settings. No light frames share those settings.')
+    expect(items[4].detail).toBe('2 m across 1 target and 2 with no target. Leave them out of the next stack.')
+    const onlyUnassigned = toHiddenDataItems({ ...empty, rejected: { subCount: 1, integrationSec: 60, targets: 0, unassigned: 1 } })
+    expect(onlyUnassigned[0].detail).toBe('1 m 1 with no target. Leave them out of the next stack.')
   })
 
   it('[DSC-006] Given nothing hidden, When presented, Then there are no lines', () => {

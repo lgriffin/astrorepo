@@ -72,6 +72,11 @@ function nightsSpanned(subs: LightSub[]): number {
   return nights.size
 }
 
+/** Subs worth stacking: everything quality analysis did not reject. */
+export function usableSubs(target: TargetFrames): LightSub[] {
+  return target.subs.filter(s => !s.rejected)
+}
+
 export function totalSec(subs: LightSub[]): number {
   return subs.reduce((sum, s) => sum + s.exposureSec, 0)
 }
@@ -81,8 +86,9 @@ export function assessStackingReadiness(
   target: TargetFrames,
   policy: StackingPolicy = DEFAULT_STACKING_POLICY
 ): StackingSuggestion | null {
+  const usable = usableSubs(target)
   if (target.stacks.length === 0) {
-    const integrationSec = totalSec(target.subs)
+    const integrationSec = totalSec(usable)
     if (integrationSec < policy.readyToStackSec) return null
     return {
       kind: 'ready-to-stack',
@@ -90,13 +96,13 @@ export function assessStackingReadiness(
       targetId: target.targetId,
       targetName: target.targetName,
       integrationSec,
-      subCount: target.subs.length,
-      nights: nightsSpanned(target.subs)
+      subCount: usable.length,
+      nights: nightsSpanned(usable)
     }
   }
 
   const lastStackedAt = new Date(Math.max(...target.stacks.map(s => s.producedAt.getTime())))
-  const newer = target.subs.filter(s => s.capturedAt !== null && s.capturedAt.getTime() > lastStackedAt.getTime())
+  const newer = usable.filter(s => s.capturedAt !== null && s.capturedAt.getTime() > lastStackedAt.getTime())
   const addedSec = totalSec(newer)
   if (addedSec < policy.restackSec) return null
   return {

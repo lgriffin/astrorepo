@@ -31,6 +31,13 @@ function describeSettings(g: OrphanCalibrationGroup): string {
 
 const KIND_NAME = { dark: 'dark', flat: 'flat', bias: 'bias frame' } as const
 
+function rejectedWhere(r: HiddenDataReport['rejected']): string {
+  const parts: string[] = []
+  if (r.targets > 0) parts.push(`across ${plural(r.targets, 'target')}`)
+  if (r.unassigned > 0) parts.push(`${r.targets > 0 ? 'and ' : ''}${r.unassigned} with no target`)
+  return parts.join(' ')
+}
+
 /** The "hidden in your files" card, one line per kind of forgotten data, biggest first. */
 export function toHiddenDataItems(r: HiddenDataReport): HiddenDataItem[] {
   const items: HiddenDataItem[] = []
@@ -68,7 +75,7 @@ export function toHiddenDataItems(r: HiddenDataReport): HiddenDataItem[] {
       id: 'rejected',
       kind: 'rejected',
       title: `${plural(r.rejected.subCount, 'sub')} rejected by quality checks`,
-      detail: `${formatDuration(r.rejected.integrationSec)} across ${plural(r.rejected.targets, 'target')}. Leave them out of the next stack.`,
+      detail: `${formatDuration(r.rejected.integrationSec)} ${rejectedWhere(r.rejected)}. Leave them out of the next stack.`,
       link: '/fits-analyzer'
     })
   }

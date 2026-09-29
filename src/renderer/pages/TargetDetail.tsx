@@ -21,9 +21,13 @@ export function TargetDetail(): React.ReactElement {
 
   useEffect(() => {
     if (!id) return
+    // A response for a target the user has already navigated away from must not land on this page.
+    let current = true
     setLoading(true)
+    setDiscovery(null)
     invoke<Target>('targets:get', { id })
       .then((t) => {
+        if (!current) return null
         setTarget(t)
         return Promise.all([
           invoke<TargetAlias[]>('targets:aliases', { target_id: id }).catch(() => []),
@@ -33,14 +37,17 @@ export function TargetDetail(): React.ReactElement {
           invoke<TargetDiscoveryView | null>('discovery:target', { target_id: id }).catch(() => null)
         ])
       })
-      .then(([a, c, hd, od, disc]) => {
+      .then((results) => {
+        if (!current || !results) return
+        const [a, c, hd, od, disc] = results
         setDiscovery(disc)
         setAliases(a)
         setCatalogueEntries(c)
         setHomeData(hd)
         setObsData(od)
       })
-      .finally(() => setLoading(false))
+      .finally(() => { if (current) setLoading(false) })
+    return () => { current = false }
   }, [id])
 
   if (loading) {

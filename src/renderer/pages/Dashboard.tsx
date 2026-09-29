@@ -36,9 +36,15 @@ export function Dashboard(): React.ReactElement {
 
   const dismiss = (rec: Recommendation) => {
     invoke<{ dismissed: boolean }>('cockpit:dismiss', { suggestion_id: rec.id })
-      .then(() => {
-        setRecommendations(prev => prev.filter(r => r.id !== rec.id))
-        addToast(`Hidden until ${rec.targetName ?? 'the target'} gets new data`, 'success')
+      .then(result => {
+        if (result.dismissed) {
+          setRecommendations(prev => prev.filter(r => r.id !== rec.id))
+          addToast(`Hidden until ${rec.targetName ?? 'the target'} gets new data`, 'success')
+          return
+        }
+        // The data moved on since the list was loaded, so the suggestion it showed no longer exists.
+        addToast('That suggestion has changed; the list is refreshed', 'info')
+        return invoke<{ recommendations: Recommendation[] }>('recommendations:list').then(r => setRecommendations(r.recommendations))
       })
       .catch(() => addToast('Could not dismiss that suggestion', 'error'))
   }
