@@ -7,7 +7,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -30,7 +30,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ['tests/**/*.ts'],
+    files: ['tests/**/*.ts', 'packages/*/test/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node

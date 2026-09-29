@@ -20,7 +20,9 @@ import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationSta
 import { getSetting, setSetting, listSettings } from '../services/settings'
 import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
-import { resetDatabase } from '../db/connection'
+import { getSqlite, resetDatabase } from '../db/connection'
+import { composeCore } from '../composition'
+import { toRecommendation } from '../adapters/stacking-suggestion-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -577,7 +579,9 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('recommendations:list', async () => {
-    return { recommendations: getRecommendations() }
+    // Strangler seam: stacking suggestions come from the hexagonal core, the rest from the legacy service.
+    const stacking = await composeCore(getSqlite()).listStackingSuggestions()
+    return { recommendations: [...stacking.map(toRecommendation), ...getRecommendations()] }
   })
 
   handle('db:reset', async () => {

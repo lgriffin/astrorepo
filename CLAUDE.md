@@ -15,7 +15,10 @@ tests/
 
 ## Commands
 
-npm test; npm run lint
+npm test; npm run lint; npm run ears (EARS traceability gate)
+
+Architecture: hexagonal core in `packages/` (see docs/architecture/hexagonal.md). New logic goes in
+`packages/domain` / `packages/application`; requirement IDs from `specs/*/requirements.md` go in test names.
 
 ## Code Style
 
