@@ -13,6 +13,8 @@ export interface HashingStats {
   reused: number
   sampled: number
   fullyHashed: number
+  /** Files that could not be read (moved, locked or offline); they are left out of this check. */
+  unreadable: number
 }
 
 export type FindDuplicates = () => Promise<DuplicateReport & { stats: HashingStats }>
@@ -26,7 +28,17 @@ export function makeFindDuplicates(deps: FindDuplicatesDeps): FindDuplicates {
   return async () => {
     const [indexed, stored] = await Promise.all([deps.files.listIndexedFiles(), deps.hashes.listHashes()])
     const storedByPath = new Map(stored.map(h => [h.path, h]))
-    const stats: HashingStats = { indexed: indexed.length, reused: 0, sampled: 0, fullyHashed: 0 }
+    const stats: HashingStats = { indexed: indexed.length, reused: 0, sampled: 0, fullyHashed: 0, unreadable: 0 }
+
+    /** One unreadable file must not sink the whole check. */
+    const read = async (hash: () => Promise<string>): Promise<string | null> => {
+      try {
+        return await hash()
+      } catch {
+        stats.unreadable++
+        return null
+      }
+    }
 
     const current: FileHash[] = []
     const updated = new Map<string, FileHash>()
@@ -37,24 +49,34 @@ export function makeFindDuplicates(deps: FindDuplicatesDeps): FindDuplicates {
         current.push(old)
         continue
       }
-      const hash: FileHash = { ...file, quickKey: await deps.hasher.quickKey(file), fullHash: null }
+      const quickKey = await read(() => deps.hasher.quickKey(file))
+      if (quickKey === null) continue
+      const hash: FileHash = { ...file, quickKey, fullHash: null }
       stats.sampled++
       current.push(hash)
       updated.set(hash.path, hash)
     }
 
+    const lost = new Set<string>()
     for (const group of duplicateCandidates(current)) {
       for (const f of group) {
         if (f.fullHash) continue
-        f.fullHash = await deps.hasher.fullHash(f.path)
+        const full = await read(() => deps.hasher.fullHash(f.path))
+        if (full === null) {
+          lost.add(f.path)
+          updated.delete(f.path)
+          continue
+        }
+        f.fullHash = full
         stats.fullyHashed++
         updated.set(f.path, f)
       }
     }
+    const hashed = current.filter(h => !lost.has(h.path))
 
     const indexedPaths = new Set(indexed.map(f => f.path))
     await deps.hashes.removeHashes(stored.filter(h => !indexedPaths.has(h.path)).map(h => h.path))
     if (updated.size > 0) await deps.hashes.saveHashes([...updated.values()])
-    return { ...groupDuplicates(current), stats }
+    return { ...groupDuplicates(hashed), stats }
   }
 }

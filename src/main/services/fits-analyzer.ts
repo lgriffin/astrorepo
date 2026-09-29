@@ -73,7 +73,15 @@ function getHeaderNumber(headerMap: Map<string, { value: string | number | boole
   return null
 }
 
-export function startFolderScan(folderPath: string): FitsScan {
+/** One spelling per folder, so "D:\\Astro\\" and "D:\\Astro" are the same scan root. */
+export function normaliseScanRoot(folderPath: string): string {
+  const resolved = path.resolve(folderPath)
+  const root = path.parse(resolved).root
+  return resolved.length > root.length ? resolved.replace(/[\\/]+$/, '') : resolved
+}
+
+export function startFolderScan(requestedPath: string): FitsScan {
+  const folderPath = normaliseScanRoot(requestedPath)
   const sqlite = getSqlite()
   const now = new Date().toISOString()
   const scanId = ulid()
@@ -99,23 +107,43 @@ export function startFolderScan(folderPath: string): FitsScan {
         // Vanished between the walk and the stat; treated as removed.
       }
     }
+    // Every indexed file under this folder counts, whichever scan found it: a scan of a parent
+    // folder, or an earlier spelling of this one, must not leave files behind or hide them.
+    const prefix = folderPath + path.sep
+    const under = `substr(file_path, 1, ?) = ?`
     const indexed = sqlite.prepare(
-      `SELECT file_path, file_size_bytes, file_modified_at FROM fits_files
-       WHERE scan_id IN (SELECT id FROM fits_scans WHERE folder_path = ? AND id != ?)`
-    ).all(folderPath, scanId) as { file_path: string; file_size_bytes: number; file_modified_at: string | null }[]
+      `SELECT file_path, file_size_bytes, file_modified_at FROM fits_files WHERE ${under}`
+    ).all(prefix.length, prefix) as { file_path: string; file_size_bytes: number; file_modified_at: string | null }[]
     const plan = planRescan(
       indexed.map(r => ({ path: r.file_path, sizeBytes: r.file_size_bytes, modifiedAt: r.file_modified_at ?? '' })),
       [...stamps.values()]
     )
+    // An unreadable file that has not changed stays in quarantine without being read again.
+    const quarantined = sqlite.prepare(
+      `SELECT file_path, size_bytes, modified_at FROM quarantined_files WHERE ${under}`
+    ).all(prefix.length, prefix) as { file_path: string; size_bytes: number | null; modified_at: string | null }[]
+    const stillQuarantined = new Set(
+      quarantined
+        .filter(q => {
+          const now = stamps.get(q.file_path)
+          return now !== undefined && now.sizeBytes === q.size_bytes && now.modifiedAt === q.modified_at
+        })
+        .map(q => q.file_path)
+    )
     const keep = sqlite.prepare('UPDATE fits_files SET scan_id = ? WHERE file_path = ?')
     const drop = sqlite.prepare('DELETE FROM fits_files WHERE file_path = ?')
+    const keepQuarantine = sqlite.prepare('UPDATE quarantined_files SET folder_path = ? WHERE file_path = ?')
+    const release = sqlite.prepare('DELETE FROM quarantined_files WHERE file_path = ?')
     sqlite.transaction(() => {
       for (const p of plan.unchanged) keep.run(scanId, p)
       for (const p of [...plan.changed, ...plan.removed]) drop.run(p)
       sqlite.prepare("DELETE FROM fits_scans WHERE folder_path = ? AND id != ?").run(folderPath, scanId)
-      sqlite.prepare('DELETE FROM quarantined_files WHERE folder_path = ?').run(folderPath)
+      for (const q of quarantined) {
+        if (stillQuarantined.has(q.file_path)) keepQuarantine.run(folderPath, q.file_path)
+        else release.run(q.file_path)
+      }
     })()
-    const toRead = new Set([...plan.added, ...plan.changed])
+    const toRead = new Set([...plan.added, ...plan.changed].filter(p => !stillQuarantined.has(p)))
 
     // A file that cannot be parsed is set aside with the reason and the scan carries on (ING-006).
     const quarantine = sqlite.prepare(

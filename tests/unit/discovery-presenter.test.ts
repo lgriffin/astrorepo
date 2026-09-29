@@ -96,11 +96,19 @@ describe('Discovery presenter: unreadable and duplicate files', () => {
   })
 
   it('[ING-003] Given a duplicate check result, When presented, Then it summarises copies and space, or says there are none', () => {
-    const stats = { indexed: 10, reused: 8, sampled: 2, fullyHashed: 2 }
+    const stats = { indexed: 10, reused: 8, sampled: 2, fullyHashed: 2, unreadable: 0 }
     expect(toDuplicateView({ groups: [{ contentHash: 'h', sizeBytes: 2048, paths: ['/a', '/b'] }], duplicateFiles: 1, reclaimableBytes: 2048, stats }).summary)
       .toBe('1 duplicate file, 2.0 KB reclaimable. Nothing was deleted.')
     expect(toDuplicateView({ groups: [], duplicateFiles: 0, reclaimableBytes: 0, stats }).summary).toBe('No duplicates among 10 indexed files.')
     expect(formatBytes(512)).toBe('512 B')
     expect(formatBytes(5 * 1024 ** 5)).toBe('5120.0 TB')
+  })
+
+  it('[ING-003] Given more groups than the card shows and files that could not be read, When presented, Then it counts every group and says what was skipped', () => {
+    const groups = Array.from({ length: 60 }, (_, i) => ({ contentHash: `h${i}`, sizeBytes: 100, paths: [`/a${i}`, `/b${i}`] }))
+    const view = toDuplicateView({ groups, duplicateFiles: 60, reclaimableBytes: 6000, stats: { indexed: 130, reused: 0, sampled: 128, fullyHashed: 120, unreadable: 2 } })
+    expect(view.groups).toHaveLength(50)
+    expect(view.totalGroups).toBe(60)
+    expect(view.summary).toBe('60 duplicate files, 5.9 KB reclaimable. Nothing was deleted. 2 files could not be read and were skipped.')
   })
 })

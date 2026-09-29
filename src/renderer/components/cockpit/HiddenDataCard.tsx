@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
+import { formatSize } from '../../utils/format'
 import type { DuplicateView, HiddenDataItem } from '@shared/types'
 
 /** "Hidden in your files": data that exists but has not become anything yet (DSC-006). */
@@ -8,15 +9,20 @@ export function HiddenDataCard({ items, onChanged }: { items: HiddenDataItem[]; 
   const navigate = useNavigate()
   const [checking, setChecking] = useState(false)
   const [duplicateSummary, setDuplicateSummary] = useState<string | null>(null)
+  const [duplicates, setDuplicates] = useState<DuplicateView | null>(null)
 
   const checkDuplicates = () => {
     setChecking(true)
     invoke<DuplicateView>('ingest:find-duplicates')
       .then(r => {
         setDuplicateSummary(r.summary)
+        setDuplicates(r)
         onChanged?.()
       })
-      .catch(() => setDuplicateSummary('The duplicate check failed.'))
+      .catch(() => {
+        setDuplicateSummary('The duplicate check failed.')
+        setDuplicates(null)
+      })
       .finally(() => setChecking(false))
   }
 
@@ -34,6 +40,26 @@ export function HiddenDataCard({ items, onChanged }: { items: HiddenDataItem[]; 
         </button>
       </div>
       {duplicateSummary && <p className="text-xs text-astro-muted mb-3">{duplicateSummary}</p>}
+      {duplicates && duplicates.groups.length > 0 && (
+        <details className="mb-3 text-xs">
+          <summary className="cursor-pointer text-astro-accent">
+            Show where the copies are
+            {duplicates.totalGroups > duplicates.groups.length
+              ? ` (the ${duplicates.groups.length} biggest of ${duplicates.totalGroups} groups)`
+              : ''}
+          </summary>
+          <ul className="mt-2 space-y-2 max-h-72 overflow-y-auto">
+            {duplicates.groups.map(g => (
+              <li key={g.paths[0]} className="p-2 bg-astro-bg rounded">
+                <p className="text-astro-muted mb-1">{g.paths.length} copies of {formatSize(g.sizeBytes)}</p>
+                {g.paths.map(p => (
+                  <p key={p} className="text-astro-text break-all font-mono">{p}</p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {items.length === 0 ? (
         <p className="text-sm text-astro-muted">Nothing hiding: every night is stacked and every sub has a target.</p>
       ) : (

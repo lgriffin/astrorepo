@@ -418,7 +418,10 @@ export function registerIpcHandlers(): void {
     // Never rearranges the source folder (ING-001): Siril gets its own layout in the work area.
     const workArea = getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
     const workDir = path.join(workArea, 'siril', sirilFolderName(args.raw_path))
-    return composeCore(getSqlite()).prepareSirilWorkspace(args.raw_path, workDir)
+    // A work area inside any folder the app reads would write into it, so those are refused.
+    const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
+    const protectedDirs = [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
+    return composeCore(getSqlite()).prepareSirilWorkspace(args.raw_path, workDir, protectedDirs)
   }))
 
   handle('ingest:find-duplicates', async () => {

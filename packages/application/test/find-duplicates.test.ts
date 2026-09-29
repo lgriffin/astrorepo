@@ -26,7 +26,7 @@ describe('FindDuplicates', () => {
   it('[ING-012] Given same-size subs whose sampled bytes differ, When duplicates are found, Then only files with colliding samples are read in full', async () => {
     const { find, disk } = setup()
     const { stats } = await find()
-    expect(stats).toEqual({ indexed: 4, reused: 0, sampled: 4, fullyHashed: 2 })
+    expect(stats).toEqual({ indexed: 4, reused: 0, sampled: 4, fullyHashed: 2, unreadable: 0 })
     expect(disk.reads.filter(r => r.kind === 'full').map(r => r.path).sort()).toEqual([
       '/nas/old-backup/2024/m81/Light_001.fit',
       '/nas/seestar/M 81_sub/Light_001.fit'
@@ -39,7 +39,7 @@ describe('FindDuplicates', () => {
     disk.reads.length = 0
     const second = await find()
     expect(disk.reads).toEqual([])
-    expect(second.stats).toEqual({ indexed: 4, reused: 4, sampled: 0, fullyHashed: 0 })
+    expect(second.stats).toEqual({ indexed: 4, reused: 4, sampled: 0, fullyHashed: 0, unreadable: 0 })
     expect(second.groups).toEqual(first.groups)
   })
 
@@ -62,5 +62,18 @@ describe('FindDuplicates', () => {
     const before = structuredClone([...disk.files.entries()])
     await find()
     expect([...disk.files.entries()]).toEqual(before)
+  })
+
+  it('[ING-003] Given a file that cannot be read, When duplicates are found, Then it is counted as unreadable and the rest of the check stands', async () => {
+    const { disk, hashes } = setup()
+    const failing = {
+      listIndexedFiles: () => disk.listIndexedFiles(),
+      quickKey: (f: Parameters<typeof disk.quickKey>[0]) => (f.path.includes('M 42') ? Promise.reject(new Error('EBUSY')) : disk.quickKey(f)),
+      fullHash: (p: string) => (p.startsWith('/nas/old-backup') ? Promise.reject(new Error('offline')) : disk.fullHash(p))
+    }
+    const report = await makeFindDuplicates({ files: failing, hasher: failing, hashes })()
+    expect(report.stats.unreadable).toBe(2)
+    expect(report.groups).toEqual([])
+    expect((await hashes.listHashes()).map(h => h.path).sort()).toEqual(['/nas/seestar/M 81_sub/Light_001.fit', '/nas/seestar/M 81_sub/Light_002.fit'])
   })
 })

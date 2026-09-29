@@ -1,5 +1,5 @@
 import type { DuplicateReport, HiddenDataReport, OrphanCalibrationGroup, ProgressState, TargetDiscovery } from '@astro/domain'
-import type { DiscoveryOverview } from '@astro/application'
+import type { DiscoveryOverview, HashingStats } from '@astro/application'
 import type { CockpitOverview, DuplicateView, HiddenDataItem, TargetDiscoveryView } from '@shared/types'
 import { formatDuration, plural } from './stacking-suggestion-presenter'
 
@@ -44,17 +44,23 @@ export function formatBytes(bytes: number): string {
   return `${i === 0 ? v : v.toFixed(1)} ${units[i]}`
 }
 
+/** Groups shown in the card; the rest are counted so nothing is silently dropped. */
+export const DUPLICATE_GROUPS_SHOWN = 50
+
 /** The duplicate check's result, for the renderer. */
-export function toDuplicateView(r: DuplicateReport & { stats: { indexed: number; reused: number; sampled: number; fullyHashed: number } }): DuplicateView {
+export function toDuplicateView(r: DuplicateReport & { stats: HashingStats }): DuplicateView {
+  const found =
+    r.duplicateFiles === 0
+      ? `No duplicates among ${plural(r.stats.indexed, 'indexed file')}.`
+      : `${plural(r.duplicateFiles, 'duplicate file')}, ${formatBytes(r.reclaimableBytes)} reclaimable. Nothing was deleted.`
+  const skipped = r.stats.unreadable > 0 ? ` ${plural(r.stats.unreadable, 'file')} could not be read and ${r.stats.unreadable === 1 ? 'was' : 'were'} skipped.` : ''
   return {
     duplicateFiles: r.duplicateFiles,
     reclaimableBytes: r.reclaimableBytes,
-    groups: r.groups.slice(0, 50).map(g => ({ sizeBytes: g.sizeBytes, paths: g.paths })),
+    groups: r.groups.slice(0, DUPLICATE_GROUPS_SHOWN).map(g => ({ sizeBytes: g.sizeBytes, paths: g.paths })),
+    totalGroups: r.groups.length,
     stats: r.stats,
-    summary:
-      r.duplicateFiles === 0
-        ? `No duplicates among ${plural(r.stats.indexed, 'indexed file')}.`
-        : `${plural(r.duplicateFiles, 'duplicate file')}, ${formatBytes(r.reclaimableBytes)} reclaimable. Nothing was deleted.`
+    summary: found + skipped
   }
 }
 

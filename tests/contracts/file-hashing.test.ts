@@ -10,23 +10,35 @@ import { setupTestDb, teardownTestDb, seedFitsScan, seedFitsFile } from '../help
 
 afterEach(() => teardownTestDb())
 
+const tempDirs: string[] = []
+afterEach(() => {
+  for (const d of tempDirs.splice(0)) fs.rmSync(d, { recursive: true, force: true })
+})
+
 fileHashStoreContract('in-memory', () => new InMemoryFileHashStore())
 fileHashStoreContract('SQLite', () => new SqliteFileHashStore(setupTestDb()))
 
-fileIndexContract('in-memory', files => {
+fileIndexContract('in-memory', ({ files }) => {
   const disk = new InMemoryDisk()
-  // The fake derives size from content length.
-  for (const f of files) disk.put(f.path, 'x'.repeat(f.sizeBytes), f.modifiedAt)
-  return disk
+  // The fake derives size from content length; files that are gone are simply not on it.
+  for (const f of files) disk.put(`/z/${f.name}`, 'x'.repeat(f.sizeBytes), f.modifiedAt)
+  return { index: disk, pathOf: name => `/z/${name}` }
 })
-fileIndexContract('SQLite', files => {
+fileIndexContract('SQLite', ({ files, gone }) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-index-'))
+  tempDirs.push(dir)
   const db = setupTestDb()
   const scanId = seedFitsScan(db)
   for (const f of files) {
-    const id = seedFitsFile(db, scanId, { filePath: f.path, fileSizeBytes: f.sizeBytes })
-    db.prepare('UPDATE fits_files SET file_modified_at = ? WHERE id = ?').run(f.modifiedAt, id)
+    const p = path.join(dir, f.name)
+    fs.writeFileSync(p, 'x'.repeat(f.sizeBytes))
+    fs.utimesSync(p, new Date(f.modifiedAt), new Date(f.modifiedAt))
+    // The catalogue's stamp is from an older scan; the adapter must read the disk instead.
+    const id = seedFitsFile(db, scanId, { filePath: p, fileSizeBytes: f.sizeBytes + 1 })
+    db.prepare('UPDATE fits_files SET file_modified_at = ? WHERE id = ?').run('2020-01-01T00:00:00.000Z', id)
   }
-  return new SqliteFileIndex(db)
+  for (const name of gone) seedFitsFile(db, scanId, { filePath: path.join(dir, name), fileSizeBytes: 5 })
+  return { index: new SqliteFileIndex(db), pathOf: name => path.join(dir, name) }
 })
 
 contentHasherContract('in-memory', async () => {
@@ -38,10 +50,6 @@ contentHasherContract('in-memory', async () => {
   }
 })
 
-const tempDirs: string[] = []
-afterEach(() => {
-  for (const d of tempDirs.splice(0)) fs.rmSync(d, { recursive: true, force: true })
-})
 
 contentHasherContract('Node', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-hash-'))

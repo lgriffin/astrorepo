@@ -342,8 +342,10 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
       addToast(`Siril work area ready with ${total} frames`, 'success')
       invoke('home:open-folder', { folder_path: result.workDir }).catch(() => undefined)
       onRefresh()
-    } catch {
-      setSirilStatus('Failed')
+    } catch (e) {
+      // Electron prefixes the main process's message; the user needs only the message itself.
+      const reason = e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '') : ''
+      setSirilStatus(reason ? `Failed: ${reason}` : 'Failed')
       addToast('Siril prep failed', 'error')
     }
   }

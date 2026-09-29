@@ -7,10 +7,18 @@ export type PlacementResult = 'linked' | 'copied' | 'existing'
  * lands under `workDir`.
  */
 export interface SirilWorkspace {
-  /** FITS frames directly inside the source folder, with IMAGETYP when the catalogue knows it. */
+  /**
+   * FITS frames in the source folder and its subfolders, with IMAGETYP when the catalogue knows it
+   * (else a hint from a folder named for the frame type, such as "darks").
+   */
   listSourceFrames(sourceDir: string): Promise<{ path: string; name: string; imageType: string | null }[]>
-  /** Puts one frame in place: a hard link when the volume allows it, else a copy. */
+  /**
+   * Puts one frame in place: a hard link when the volume allows it, else a copy. A frame already
+   * there is kept only while it still matches its source; a stale one is replaced.
+   */
   place(placement: SirilPlacement, workDir: string): Promise<PlacementResult>
   /** Creates the four Siril folders under workDir. */
   prepareFolders(workDir: string): Promise<void>
+  /** Whether `candidate` is `dir` or lies inside it, following links. */
+  contains(dir: string, candidate: string): Promise<boolean>
 }

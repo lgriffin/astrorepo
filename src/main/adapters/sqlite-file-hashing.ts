@@ -1,16 +1,28 @@
 import type Database from 'better-sqlite3'
+import fs from 'fs'
 import type { FileHashStore, FileIndex } from '@astro/application'
 import type { FileHash, FileStamp } from '@astro/domain'
 
-/** FileIndex over the FITS files the scanners have indexed. */
+/**
+ * FileIndex over the FITS files the scanners have indexed. Size and modified time are read from
+ * the disk now, not from the last scan, so a file changed since then is never matched to an old
+ * hash; indexed files that are gone are left out.
+ */
 export class SqliteFileIndex implements FileIndex {
   constructor(private readonly db: Database.Database) {}
 
   async listIndexedFiles(): Promise<FileStamp[]> {
-    const rows = this.db.prepare(
-      'SELECT file_path, file_size_bytes, file_modified_at FROM fits_files ORDER BY file_path'
-    ).all() as { file_path: string; file_size_bytes: number; file_modified_at: string | null }[]
-    return rows.map(r => ({ path: r.file_path, sizeBytes: r.file_size_bytes, modifiedAt: r.file_modified_at ?? '' }))
+    const rows = this.db.prepare('SELECT file_path FROM fits_files ORDER BY file_path').all() as { file_path: string }[]
+    const stamps: FileStamp[] = []
+    for (const { file_path } of rows) {
+      try {
+        const st = await fs.promises.stat(file_path)
+        if (st.isFile()) stamps.push({ path: file_path, sizeBytes: st.size, modifiedAt: st.mtime.toISOString() })
+      } catch {
+        // Moved or deleted since the scan, or on a share that is offline: nothing to hash.
+      }
+    }
+    return stamps
   }
 }
 

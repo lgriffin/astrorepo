@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { makePrepareSirilWorkspace } from '@astro/application'
+import { makePrepareSirilWorkspace, WorkAreaOverlapsSourceError } from '@astro/application'
 import { InMemorySirilWorkspace } from '@astro/testkit'
 
 describe('PrepareSirilWorkspace', () => {
@@ -32,5 +32,24 @@ describe('PrepareSirilWorkspace', () => {
     await makePrepareSirilWorkspace({ workspace })('/data/M 81', '/work/M 81')
     expect(workspace.source.get('/data/M 81')).toEqual(before)
     expect([...workspace.placed.keys()].every(p => p.startsWith('/work/M 81/'))).toBe(true)
+  })
+
+  it('[ING-001] Given a work area inside the source or another indexed folder, When prepared, Then it is refused before anything is written', async () => {
+    const workspace = new InMemorySirilWorkspace().addSource('/data/M 81', { name: 'Light_001.fit' })
+    const prepare = makePrepareSirilWorkspace({ workspace })
+    await expect(prepare('/data/M 81', '/data/M 81/siril')).rejects.toBeInstanceOf(WorkAreaOverlapsSourceError)
+    await expect(prepare('/data/M 81', '/nas/library/work', ['/nas/library'])).rejects.toThrow(/overlaps \/nas\/library/)
+    await expect(prepare('/data/M 81', '/data')).rejects.toBeInstanceOf(WorkAreaOverlapsSourceError)
+    expect(workspace.folders.size).toBe(0)
+    expect(workspace.placed.size).toBe(0)
+  })
+
+  it('[ING-013] Given a source frame rewritten since the last prep, When prepared again, Then it is placed afresh and the rest stay', async () => {
+    const workspace = new InMemorySirilWorkspace().addSource('/data/M 81', { name: 'Light_001.fit' }, { name: 'Light_002.fit' })
+    const prepare = makePrepareSirilWorkspace({ workspace })
+    await prepare('/data/M 81', '/work/M 81')
+    workspace.rewrite('/data/M 81/Light_002.fit')
+    const again = await prepare('/data/M 81', '/work/M 81')
+    expect([again.linked, again.existing]).toEqual([1, 1])
   })
 })

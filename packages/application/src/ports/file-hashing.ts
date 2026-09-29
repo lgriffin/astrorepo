@@ -1,6 +1,6 @@
 import type { FileHash, FileStamp } from '@astro/domain'
 
-/** Driven port: the files the catalogue has indexed, as the walker last saw them. */
+/** Driven port: the indexed files that still exist, with their size and modified time as they are now. */
 export interface FileIndex {
   listIndexedFiles(): Promise<FileStamp[]>
 }

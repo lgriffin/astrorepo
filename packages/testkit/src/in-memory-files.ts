@@ -64,18 +64,31 @@ export class InMemoryFileHashStore implements FileHashStore {
 /** A Siril work area over plain maps; `source` is read-only by construction. */
 export class InMemorySirilWorkspace implements SirilWorkspace {
   readonly source = new Map<string, { name: string; imageType: string | null }[]>()
+  /** Work-area path to the source path it was placed from, and the source version it matched. */
   readonly placed = new Map<string, string>()
+  private readonly placedVersion = new Map<string, number>()
   readonly folders = new Set<string>()
   /** Paths the fake treats as living on another volume, so they must be copied. */
   readonly otherVolume = new Set<string>()
+  /** Source paths rewritten since they were placed, by how many times. */
+  private readonly versions = new Map<string, number>()
 
+  /** `name` may include subfolders, for example "night1/darks/d1.fit". */
   addSource(dir: string, ...frames: { name: string; imageType?: string | null }[]): this {
     this.source.set(dir, [...(this.source.get(dir) ?? []), ...frames.map(f => ({ name: f.name, imageType: f.imageType ?? null }))])
     return this
   }
 
+  /** Simulates the source file changing on disk. */
+  rewrite(path: string): this {
+    this.versions.set(path, (this.versions.get(path) ?? 0) + 1)
+    return this
+  }
+
   async listSourceFrames(sourceDir: string) {
-    return (this.source.get(sourceDir) ?? []).map(f => ({ path: `${sourceDir}/${f.name}`, name: f.name, imageType: f.imageType }))
+    return (this.source.get(sourceDir) ?? [])
+      .map(f => ({ path: `${sourceDir}/${f.name}`, name: f.name.split('/').pop() ?? f.name, imageType: f.imageType }))
+      .sort((a, b) => a.path.localeCompare(b.path))
   }
 
   async prepareFolders(workDir: string): Promise<void> {
@@ -84,8 +97,15 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
 
   async place(p: SirilPlacement, workDir: string): Promise<PlacementResult> {
     const dest = `${workDir}/${p.folder}/${p.name}`
-    if (this.placed.has(dest)) return 'existing'
+    const version = this.versions.get(p.from) ?? 0
+    if (this.placed.get(dest) === p.from && this.placedVersion.get(dest) === version) return 'existing'
     this.placed.set(dest, p.from)
+    this.placedVersion.set(dest, version)
     return this.otherVolume.has(p.from) ? 'copied' : 'linked'
+  }
+
+  async contains(dir: string, candidate: string): Promise<boolean> {
+    const d = dir.replace(/\/+$/, '')
+    return candidate === d || candidate.startsWith(`${d}/`)
   }
 }

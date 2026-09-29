@@ -85,6 +85,31 @@ describe('FITS scan ingest', () => {
     expect(sqlite.prepare("SELECT exposure_sec FROM fits_files").get()).toEqual({ exposure_sec: 20 })
   })
 
+  it('[ING-006] Given an unreadable file that has not changed, When rescanned, Then it stays quarantined without being read again', () => {
+    startFolderScan(root)
+    sqlite.prepare("UPDATE quarantined_files SET quarantined_at = '2000-01-01T00:00:00.000Z'").run()
+    startFolderScan(root)
+    expect(sqlite.prepare('SELECT quarantined_at FROM quarantined_files').all()).toEqual([{ quarantined_at: '2000-01-01T00:00:00.000Z' }])
+  })
+
+  it('[ING-008] Given a parent folder already scanned, When a child folder is scanned, Then its files keep their rows and move to the new scan', () => {
+    startFolderScan(root)
+    const before = rows()
+    const child = startFolderScan(path.join(root, 'M 81', 'night1'))
+    const after = sqlite.prepare('SELECT id, scan_id FROM fits_files ORDER BY file_name').all() as { id: string; scan_id: string }[]
+    expect(after.map(r => r.id)).toEqual(before.map(r => r.id))
+    expect(after.every(r => r.scan_id === child.id)).toBe(true)
+    expect(quarantined()).toHaveLength(1)
+  })
+
+  it('[ING-008] Given the same folder spelled with a trailing separator, When scanned, Then it is the same scan root and nothing is re-read', () => {
+    startFolderScan(root)
+    const before = rows()
+    startFolderScan(root + path.sep)
+    expect(rows().map(r => r.id)).toEqual(before.map(r => r.id))
+    expect(sqlite.prepare('SELECT folder_path FROM fits_scans').all()).toEqual([{ folder_path: root }])
+  })
+
   it('[ING-001] Given a source folder, When scanned twice, Then every file keeps its bytes, size and modified time', () => {
     const before = snapshot(root)
     startFolderScan(root)

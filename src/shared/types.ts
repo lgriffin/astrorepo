@@ -907,9 +907,10 @@ export interface HiddenDataItem {
 export interface DuplicateView {
   duplicateFiles: number
   reclaimableBytes: number
-  /** The biggest groups, up to 50. */
+  /** The biggest groups, up to 50; `totalGroups` counts them all. */
   groups: { sizeBytes: number; paths: string[] }[]
-  stats: { indexed: number; reused: number; sampled: number; fullyHashed: number }
+  totalGroups: number
+  stats: { indexed: number; reused: number; sampled: number; fullyHashed: number; unreadable: number }
   summary: string
 }
 

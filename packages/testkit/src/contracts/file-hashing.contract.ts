@@ -30,16 +30,37 @@ export function fileHashStoreContract(adapterName: string, make: () => Promise<F
   })
 }
 
-/** Every FileIndex adapter must pass this suite. `make` seeds the given files. */
-export function fileIndexContract(adapterName: string, make: (files: FileStamp[]) => Promise<FileIndex> | FileIndex): void {
+export interface FileIndexFixture {
+  index: FileIndex
+  /** The path the adapter reports for a seeded name. */
+  pathOf: (name: string) => string
+}
+
+/**
+ * Every FileIndex adapter must pass this suite. `make` indexes `files` (a name, and the size and
+ * modified time the file has on disk now), plus `stale` files the catalogue recorded with an older
+ * size, and `gone` files it indexed that are no longer on disk.
+ */
+export function fileIndexContract(
+  adapterName: string,
+  make: (seed: { files: { name: string; sizeBytes: number; modifiedAt: string }[]; gone: string[] }) => Promise<FileIndexFixture> | FileIndexFixture
+): void {
   describe(`FileIndex contract: ${adapterName}`, () => {
-    it('[NFR-006] Given indexed files, When listed, Then each comes back with size and modified time, ordered by path', async () => {
+    it('[NFR-006] Given indexed files, When listed, Then each comes back with its size and modified time as it is now, ordered by path', async () => {
       const files = [
-        { path: '/z/b.fit', sizeBytes: 20, modifiedAt: '2026-03-02T09:00:00.000Z' },
-        { path: '/z/a.fit', sizeBytes: 10, modifiedAt: '2026-03-01T09:00:00.000Z' }
+        { name: 'b.fit', sizeBytes: 20, modifiedAt: '2026-03-02T09:00:00.000Z' },
+        { name: 'a.fit', sizeBytes: 10, modifiedAt: '2026-03-01T09:00:00.000Z' }
       ]
-      const index = await make(files)
-      expect(await index.listIndexedFiles()).toEqual([files[1], files[0]])
+      const { index, pathOf } = await make({ files, gone: [] })
+      expect(await index.listIndexedFiles()).toEqual([
+        { path: pathOf('a.fit'), sizeBytes: 10, modifiedAt: '2026-03-01T09:00:00.000Z' },
+        { path: pathOf('b.fit'), sizeBytes: 20, modifiedAt: '2026-03-02T09:00:00.000Z' }
+      ])
+    })
+
+    it('[ING-003] Given an indexed file that is gone from disk, When listed, Then it is left out rather than failing the check', async () => {
+      const { index, pathOf } = await make({ files: [{ name: 'a.fit', sizeBytes: 10, modifiedAt: '2026-03-01T09:00:00.000Z' }], gone: ['moved.fit'] })
+      expect((await index.listIndexedFiles()).map(f => f.path)).toEqual([pathOf('a.fit')])
     })
   })
 }
