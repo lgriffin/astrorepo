@@ -52,7 +52,24 @@ button that opens the page where you can act on it.
   have moved or cannot be read (for example on a NAS share that is offline) are skipped and
   counted. Nothing is ever deleted.
 
-## Suggestions
+## Next actions
+
+One ranked list of what to do, captures first because a night does not wait:
+
+1. **Shoot tonight, season closing**: targets up tonight whose season ends within 30 days,
+   soonest first. These are marked high priority.
+2. **Shoot tonight**: your other targets with work left that are up for at least an hour above
+   30°, most hours first.
+3. **Stack**: the stacking suggestions below, most waiting data first.
+
+Each capture says how long the target is up above 30°, how close the moon comes, the days left in
+its season when it is closing, and how far it is from its integration goal. Under a bright moon only
+emission targets are suggested, and only with a dual-band or narrowband filter (see
+[Planning ahead](planning.md)). On a night with nothing to shoot, or before you have set your site,
+the list starts with stacking. Captures are worked out afresh each night, so they have no Dismiss
+button.
+
+## Stacking suggestions
 
 Stacking suggestions say how much data is waiting:
 
@@ -62,7 +79,7 @@ Stacking suggestions say how much data is waiting:
 Subs rejected by quality checks never count toward either amount, nor toward "Enough data" on
 the progress strip.
 
-Suggestions are ordered by unprocessed integration, largest first. **Dismiss** hides a suggestion
+Among themselves, stacking suggestions are ordered by unprocessed integration, largest first. **Dismiss** hides a suggestion
 until that target's data changes: a new sub, stack, processed or final file, or a sub re-read with
 a different filter, scope or quality verdict, brings it back.
 

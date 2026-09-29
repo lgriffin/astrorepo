@@ -151,7 +151,7 @@ export function Dashboard(): React.ReactElement {
 
       {recommendations.length > 0 && (
         <div className="mt-8 bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Recommendations</h2>
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Next actions</h2>
           <div className="space-y-3">
             {recommendations.slice(0, 8).map(rec => {
               const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'

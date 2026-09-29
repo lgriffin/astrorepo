@@ -210,6 +210,8 @@ export interface TonightChoice {
   usableHours: number
   /** Closest the moon comes to the target while it is usable, in degrees; null when the moon is down. */
   moonSeparationDeg: number | null
+  /** Integration still needed to reach the goal; null when no goal is set. */
+  shortOfGoalSec: number | null
 }
 
 export interface TonightPlan {
@@ -253,7 +255,13 @@ export function planTonight(
       const sep = separationDeg(t.raHours, t.decDeg, s.moonRaHours, s.moonDecDeg)
       closest = closest === null ? sep : Math.min(closest, sep)
     }
-    choices.push({ targetId: t.targetId, targetName: t.targetName, usableHours: hours, moonSeparationDeg: closest === null ? null : Math.round(closest) })
+    choices.push({
+      targetId: t.targetId,
+      targetName: t.targetName,
+      usableHours: hours,
+      moonSeparationDeg: closest === null ? null : Math.round(closest),
+      shortOfGoalSec: t.goalSec === null ? null : Math.max(0, t.goalSec - t.integrationSec)
+    })
   }
   choices.sort((a, b) => b.usableHours - a.usableHours || a.targetName.localeCompare(b.targetName))
   return {

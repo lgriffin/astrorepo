@@ -4,6 +4,7 @@ import {
   makeDiscoverTargets,
   makeDismissSuggestion,
   makeFindDuplicates,
+  makeListNextActions,
   makeListStackingSuggestions,
   makePlanForward,
   makePrepareSirilWorkspace,
@@ -26,21 +27,24 @@ export function composeCore(db: Database.Database) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
   const hashes = new SqliteFileHashStore(db, () => systemClock.now())
+  const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals })
+  const planForward = makePlanForward({
+    frames,
+    positions: new SqliteTargetPositions(db),
+    settings: new SqlitePlanningSettings(db),
+    ephemeris: new AstronomyEngineEphemeris(),
+    clock: systemClock
+  })
   return {
-    listStackingSuggestions: makeListStackingSuggestions({ frames, dismissals }),
+    listStackingSuggestions,
+    listNextActions: makeListNextActions({ listStackingSuggestions, planForward }),
     dismissSuggestion: makeDismissSuggestion({ frames, dismissals, clock: systemClock }),
     discoverTargets: makeDiscoverTargets({ frames }),
     discoverTarget: makeDiscoverTarget({ frames }),
     reportHiddenData: makeReportHiddenData({ frames, hashes }),
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
     prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db) }),
-    planForward: makePlanForward({
-      frames,
-      positions: new SqliteTargetPositions(db),
-      settings: new SqlitePlanningSettings(db),
-      ephemeris: new AstronomyEngineEphemeris(),
-      clock: systemClock
-    })
+    planForward
   }
 }
 
