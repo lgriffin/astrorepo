@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
+import { ipcMain, IpcMainInvokeEvent, dialog, shell, app } from 'electron'
+import path from 'path'
 import { z } from 'zod'
 import { schemas, type Channel, type SchemaMap } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
@@ -18,12 +19,12 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
-import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
 import { composeCore } from '../composition'
 import { toRecommendation } from '../adapters/stacking-suggestion-presenter'
-import { toCockpitOverview, toTargetDiscoveryView } from '../adapters/discovery-presenter'
+import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -33,6 +34,14 @@ import { exportTargetsCsv, exportSessionsCsv, exportFitsAggregatesCsv } from '..
 import { importNinaSequence } from '../services/nina-import'
 import { getRecommendations } from '../services/recommendations'
 import fs from 'fs'
+
+/** One work folder per source folder, named after it and made unique by a short path digest. */
+function sirilFolderName(sourceDir: string): string {
+  const base = path.basename(path.resolve(sourceDir)).replace(/[^\w .-]+/g, '_') || 'target'
+  let h = 0
+  for (const c of path.resolve(sourceDir)) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0
+  return `${base}-${h.toString(16)}`
+}
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
@@ -406,8 +415,19 @@ export function registerIpcHandlers(): void {
   })
 
   handle('home:prep-siril', validated('home:prep-siril', (args) => {
-    return prepForSiril(args.raw_path)
+    // Never rearranges the source folder (ING-001): Siril gets its own layout in the work area.
+    const workArea = getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
+    const workDir = path.join(workArea, 'siril', sirilFolderName(args.raw_path))
+    // A work area inside any folder the app reads would write into it, so those are refused.
+    const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
+    const protectedDirs = [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
+    return composeCore(getSqlite()).prepareSirilWorkspace(args.raw_path, workDir, protectedDirs)
   }))
+
+  handle('ingest:find-duplicates', async () => {
+    const report = await composeCore(getSqlite()).findDuplicates()
+    return toDuplicateView(report)
+  })
 
   handle('home:open-folder', validated('home:open-folder', async (args) => {
     const result = await shell.openPath(args.folder_path)

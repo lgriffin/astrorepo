@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
 import type { FrameCatalogue } from '@astro/application'
-import type { CalibrationFrame, CalibrationKind, LightSetting, TargetFrames, UnassignedLight } from '@astro/domain'
+import type { CalibrationFrame, CalibrationKind, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
 
 interface FrameRow {
   target_id: string
@@ -144,6 +144,11 @@ export class SqliteFrameCatalogue implements FrameCatalogue {
       filter: r.filter,
       count: r.count
     }))
+  }
+
+  async listQuarantinedFiles(): Promise<QuarantinedFile[]> {
+    const rows = this.db.prepare('SELECT file_path, error FROM quarantined_files ORDER BY file_path').all() as { file_path: string; error: string }[]
+    return rows.map(r => ({ path: r.file_path, error: r.error }))
   }
 }
 

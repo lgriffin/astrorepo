@@ -112,7 +112,9 @@ describe('reportHiddenData', () => {
       unstackedSec: 0,
       unassigned: { subCount: 0, integrationSec: 0, nights: 0, byFolder: [] },
       orphanCalibration: [],
-      rejected: { subCount: 0, integrationSec: 0, targets: 0, unassigned: 0 }
+      rejected: { subCount: 0, integrationSec: 0, targets: 0, unassigned: 0 },
+      quarantined: { count: 0, examples: [] },
+      duplicates: { files: 0, reclaimableBytes: 0, groups: 0 }
     })
   })
 })
@@ -151,5 +153,23 @@ describe('calibrates', () => {
     expect(findOrphanCalibration([dark({ gain: 5, sensorTempC: null })], [light()])).toEqual([
       { kind: 'dark', exposureSec: 300, gain: 5, sensorTempC: null, filter: null, count: 1 }
     ])
+  })
+})
+
+describe('reportHiddenData: unreadable and duplicate files', () => {
+  it('[DSC-015] Given quarantined files and a duplicate report, When reported, Then the count, first reasons and reclaimable bytes are stated', () => {
+    const report = reportHiddenData({
+      targets: [], unassigned: [], calibration: [], lightSettings: [],
+      quarantined: [
+        { path: '/d/4.fit', error: 'bad' }, { path: '/d/1.fit', error: 'SIMPLE != T' },
+        { path: '/d/3.fit', error: 'bad' }, { path: '/d/2.fit', error: 'truncated' }
+      ],
+      duplicates: { groups: [{ contentHash: 'h', sizeBytes: 50, paths: ['/a', '/b', '/c'] }], duplicateFiles: 2, reclaimableBytes: 100 }
+    })
+    expect(report.quarantined).toEqual({
+      count: 4,
+      examples: [{ path: '/d/1.fit', error: 'SIMPLE != T' }, { path: '/d/2.fit', error: 'truncated' }, { path: '/d/3.fit', error: 'bad' }]
+    })
+    expect(report.duplicates).toEqual({ files: 2, reclaimableBytes: 100, groups: 1 })
   })
 })

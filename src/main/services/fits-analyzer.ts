@@ -5,6 +5,7 @@ import { linkFitsFilesToTargets, normalizeCatalogName } from './fits-linker'
 import { isAstronomicalName } from './astro-names'
 import { advanceStage } from './workflow'
 import { ulid } from 'ulid'
+import { planRescan, type FileStamp } from '@astro/domain'
 import fs from 'fs'
 import path from 'path'
 import type {
@@ -72,7 +73,15 @@ function getHeaderNumber(headerMap: Map<string, { value: string | number | boole
   return null
 }
 
-export function startFolderScan(folderPath: string): FitsScan {
+/** One spelling per folder, so "D:\\Astro\\" and "D:\\Astro" are the same scan root. */
+export function normaliseScanRoot(folderPath: string): string {
+  const resolved = path.resolve(folderPath)
+  const root = path.parse(resolved).root
+  return resolved.length > root.length ? resolved.replace(/[\\/]+$/, '') : resolved
+}
+
+export function startFolderScan(requestedPath: string): FitsScan {
+  const folderPath = normaliseScanRoot(requestedPath)
   const sqlite = getSqlite()
   const now = new Date().toISOString()
   const scanId = ulid()
@@ -83,11 +92,66 @@ export function startFolderScan(folderPath: string): FitsScan {
   ).run(scanId, folderPath, now, now)
 
   try {
-    sqlite.prepare("DELETE FROM fits_files WHERE scan_id IN (SELECT id FROM fits_scans WHERE folder_path = ? AND id != ?)").run(folderPath, scanId)
-    sqlite.prepare("DELETE FROM fits_scans WHERE folder_path = ? AND id != ?").run(folderPath, scanId)
-
     const fitsFiles = walkFitsFiles(folderPath)
     let totalSize = 0
+
+    // Rescan fast path (ING-008): files whose size and modified time are unchanged keep their row,
+    // headers, quality metrics and target link; only new or changed files are read again.
+    const stamps = new Map<string, FileStamp>()
+    for (const { filePath } of fitsFiles) {
+      try {
+        const stat = fs.statSync(filePath)
+        stamps.set(filePath, { path: filePath, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() })
+        totalSize += stat.size
+      } catch {
+        // Vanished between the walk and the stat; treated as removed.
+      }
+    }
+    // Every indexed file under this folder counts, whichever scan found it: a scan of a parent
+    // folder, or an earlier spelling of this one, must not leave files behind or hide them.
+    const prefix = folderPath + path.sep
+    const under = `substr(file_path, 1, ?) = ?`
+    const indexed = sqlite.prepare(
+      `SELECT file_path, file_size_bytes, file_modified_at FROM fits_files WHERE ${under}`
+    ).all(prefix.length, prefix) as { file_path: string; file_size_bytes: number; file_modified_at: string | null }[]
+    const plan = planRescan(
+      indexed.map(r => ({ path: r.file_path, sizeBytes: r.file_size_bytes, modifiedAt: r.file_modified_at ?? '' })),
+      [...stamps.values()]
+    )
+    // An unreadable file that has not changed stays in quarantine without being read again.
+    const quarantined = sqlite.prepare(
+      `SELECT file_path, size_bytes, modified_at FROM quarantined_files WHERE ${under}`
+    ).all(prefix.length, prefix) as { file_path: string; size_bytes: number | null; modified_at: string | null }[]
+    const stillQuarantined = new Set(
+      quarantined
+        .filter(q => {
+          const now = stamps.get(q.file_path)
+          return now !== undefined && now.sizeBytes === q.size_bytes && now.modifiedAt === q.modified_at
+        })
+        .map(q => q.file_path)
+    )
+    const keep = sqlite.prepare('UPDATE fits_files SET scan_id = ? WHERE file_path = ?')
+    const drop = sqlite.prepare('DELETE FROM fits_files WHERE file_path = ?')
+    const keepQuarantine = sqlite.prepare('UPDATE quarantined_files SET folder_path = ? WHERE file_path = ?')
+    const release = sqlite.prepare('DELETE FROM quarantined_files WHERE file_path = ?')
+    sqlite.transaction(() => {
+      for (const p of plan.unchanged) keep.run(scanId, p)
+      for (const p of [...plan.changed, ...plan.removed]) drop.run(p)
+      sqlite.prepare("DELETE FROM fits_scans WHERE folder_path = ? AND id != ?").run(folderPath, scanId)
+      for (const q of quarantined) {
+        if (stillQuarantined.has(q.file_path)) keepQuarantine.run(folderPath, q.file_path)
+        else release.run(q.file_path)
+      }
+    })()
+    const toRead = new Set([...plan.added, ...plan.changed].filter(p => !stillQuarantined.has(p)))
+
+    // A file that cannot be parsed is set aside with the reason and the scan carries on (ING-006).
+    const quarantine = sqlite.prepare(
+      `INSERT INTO quarantined_files (file_path, folder_path, error, size_bytes, modified_at, quarantined_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(file_path) DO UPDATE SET folder_path = excluded.folder_path, error = excluded.error,
+         size_bytes = excluded.size_bytes, modified_at = excluded.modified_at, quarantined_at = excluded.quarantined_at`
+    )
 
     const insertFile = sqlite.prepare(
       `INSERT OR IGNORE INTO fits_files (
@@ -117,20 +181,18 @@ export function startFolderScan(folderPath: string): FitsScan {
       const batch = fitsFiles.slice(i, i + batchSize)
       const transaction = sqlite.transaction(() => {
         for (const { filePath, folderName, sessionFolder } of batch) {
+          const stamp = stamps.get(filePath)
+          if (!stamp || !toRead.has(filePath)) continue
           const fileId = ulid()
           const fileName = path.basename(filePath)
-          let stat: fs.Stats
-          try {
-            stat = fs.statSync(filePath)
-          } catch {
-            continue
-          }
-          const fileSizeBytes = stat.size
-          const fileModifiedAt = stat.mtime.toISOString()
-          totalSize += fileSizeBytes
+          const fileSizeBytes = stamp.sizeBytes
+          const fileModifiedAt = stamp.modifiedAt
 
           const result = parseFitsFile(filePath)
-          if (!result.isValid) continue
+          if (!result.isValid) {
+            quarantine.run(filePath, folderPath, result.error ?? 'Unreadable FITS file', fileSizeBytes, fileModifiedAt, now)
+            continue
+          }
 
           const hm = result.headerMap
           const stacking = detectStacking(hm)

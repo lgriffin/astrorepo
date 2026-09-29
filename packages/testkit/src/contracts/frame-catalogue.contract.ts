@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { FrameCatalogue } from '@astro/application'
-import type { CalibrationFrame, LightSetting, TargetFrames, UnassignedLight } from '@astro/domain'
+import type { CalibrationFrame, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
 
 export interface FrameCatalogueSeed {
   targets?: TargetFrames[]
@@ -8,6 +8,7 @@ export interface FrameCatalogueSeed {
   calibration?: CalibrationFrame[]
   /** Seeded as that many unassigned lights with those settings. */
   lightSettings?: LightSetting[]
+  quarantined?: QuarantinedFile[]
 }
 
 /**
@@ -103,6 +104,13 @@ export function frameCatalogueContract(
       const catalogue = await make({ lightSettings })
       const got = await catalogue.listLightSettings()
       expect([...got].sort((a, b) => b.count - a.count)).toEqual(lightSettings)
+    })
+
+    it('[NFR-006] Given files the scanner could not read, When quarantined files are listed, Then each comes back with its reason', async () => {
+      const quarantined = [{ path: '/d/b.fit', error: 'truncated' }, { path: '/d/a.fit', error: 'SIMPLE != T' }]
+      const catalogue = await make({ quarantined })
+      const got = await catalogue.listQuarantinedFiles()
+      expect([...got].sort((a, b) => a.path.localeCompare(b.path))).toEqual([quarantined[1], quarantined[0]])
     })
   })
 }

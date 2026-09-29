@@ -35,7 +35,16 @@ button that opens the page where you can act on it.
 - **Subs rejected by quality checks.** Subs the quality analysis flagged for rejection, including
   ones with no target yet, so you can leave them out of the next stack.
 
-Duplicate files are not listed yet; they need content hashes, which come with the ingest work.
+- **Files that could not be read.** Files with a FITS extension the scanner could not parse, with
+  the reason for the first few. They are kept aside rather than skipped silently, and leave the
+  list once a rescan can read them.
+- **Duplicate files.** Press **Check for duplicates** at the top of the card. The check samples
+  the start and end of every indexed FITS file and reads in full only files whose samples match,
+  so it is quick; a second check reads only files that changed on disk since it last looked. It
+  reports how many copies exist and how much space they take, and **Show where the copies are**
+  lists every path in each group (the 50 biggest groups, with a count of the rest). Files that
+  have moved or cannot be read (for example on a NAS share that is offline) are skipped and
+  counted. Nothing is ever deleted.
 
 ## Suggestions
 
@@ -59,3 +68,25 @@ and how close it is to its integration goal.
 
 An observing night is the date the evening began, so a session that runs past midnight counts as
 one night.
+
+## Preparing a target for Siril
+
+On a target's page, **Prep for Siril** builds the folders Siril expects (lights, darks, flats and
+biases) in the app's work area and opens it. Your target folder is not touched. Frames in session
+subfolders are included, and a frame in a folder named for its type (such as `darks`) goes to that
+Siril folder when its header does not say. Preparing again replaces any frame whose source has
+changed since. Frames are
+hard-linked when the work area is on the same disk (instant, no extra space) and copied when it is
+not, for example when the frames live on the NAS. The work area is under the app's data folder
+unless you set `work_area_path` in Settings. A work area inside the target folder, the home or
+master FITS folder, or any scanned folder is refused, since the app never writes there. Siril only
+reads these frames; do not edit them in place, because a hard link shares its bytes with the
+original.
+
+## Rescanning
+
+Scanning a folder again reads only files that are new or whose size or modified time changed.
+Everything else keeps its target link, headers and quality verdict, so a rescan of a big library
+is quick. Scanning a subfolder of one already scanned, or the same folder typed with a trailing
+slash, reuses those rows too. Unreadable files that have not changed stay in the "could not be
+read" list without being read again.

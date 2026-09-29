@@ -62,7 +62,10 @@ export function Dashboard(): React.ReactElement {
       {cockpit && (
         <div className="mb-8 space-y-4">
           <ProgressStrip progress={cockpit.progress} />
-          <HiddenDataCard items={cockpit.hidden} />
+          <HiddenDataCard
+            items={cockpit.hidden}
+            onChanged={() => invoke<CockpitOverview>('cockpit:overview').then(setCockpit).catch(() => undefined)}
+          />
         </div>
       )}
 

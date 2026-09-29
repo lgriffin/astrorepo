@@ -404,6 +404,32 @@ export function runMigrations(sqlite: Database.Database): void {
       dismissed_at TEXT NOT NULL
     );
   `)
+
+  // Migration: files a scan could not read, kept with the reason instead of skipped (ING-006)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS quarantined_files (
+      file_path TEXT PRIMARY KEY,
+      folder_path TEXT NOT NULL,
+      error TEXT NOT NULL,
+      size_bytes INTEGER,
+      modified_at TEXT,
+      quarantined_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_quarantined_folder ON quarantined_files(folder_path);
+  `)
+
+  // Migration: content hashes for duplicate finding, reused while size and mtime hold (ING-003, ING-008)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS file_hashes (
+      file_path TEXT PRIMARY KEY,
+      size_bytes INTEGER NOT NULL,
+      modified_at TEXT NOT NULL,
+      quick_key TEXT NOT NULL,
+      full_hash TEXT,
+      hashed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_file_hashes_full ON file_hashes(full_hash);
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

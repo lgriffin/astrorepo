@@ -32,6 +32,7 @@ TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 
 ## Recent Changes
 
+- 011-ingest-core: Siril work area (sources never renamed), fast rescans, quarantine, sampled SHA-256 duplicate check
 - 010-discovery-cockpit: hidden-data report, derived progress, per-target discovery, dismissible suggestions, one migration source, charter
 
 - 002-fits-metadata-analyzer: Added custom FITS parser, metadata analyzer, settings service, per-target/per-night aggregates

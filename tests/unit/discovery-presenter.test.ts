@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { discoverTarget, reportHiddenData, type HiddenDataReport } from '@astro/domain'
 import { subs, stackAt, target } from '@astro/testkit'
-import { toCockpitOverview, toHiddenDataItems, toTargetDiscoveryView } from '../../src/main/adapters/discovery-presenter'
+import { formatBytes, toCockpitOverview, toDuplicateView, toHiddenDataItems, toTargetDiscoveryView } from '../../src/main/adapters/discovery-presenter'
 
 const empty: HiddenDataReport = reportHiddenData({ targets: [], unassigned: [], calibration: [], lightSettings: [] })
 
@@ -70,5 +70,45 @@ describe('Discovery presenter', () => {
     expect(view.lastCapturedAt).toBe('2026-03-01T21:00:00.000Z')
     expect(view.lastStackedAt).toBe('2026-02-02T09:00:00.000Z')
     expect(toTargetDiscoveryView(discoverTarget(target('M 1', { goalSec: 60 }))).lastCapturedAt).toBeNull()
+  })
+})
+
+describe('Discovery presenter: unreadable and duplicate files', () => {
+  it('[DSC-015] Given quarantined files, When presented, Then one line names the first files and their reasons', () => {
+    const [item] = toHiddenDataItems({
+      ...empty,
+      quarantined: { count: 4, examples: [{ path: 'C:\\astro\\M 1\\bad.fit', error: 'SIMPLE != T' }, { path: '/nas/x.fit', error: 'truncated' }] }
+    })
+    expect(item.title).toBe('4 files could not be read')
+    expect(item.detail).toBe('Set aside instead of indexed: bad.fit (SIMPLE != T); x.fit (truncated), and more.')
+    const [one] = toHiddenDataItems({ ...empty, quarantined: { count: 1, examples: [{ path: '/a.fit', error: 'e' }] } })
+    expect(one.detail).toBe('Set aside instead of indexed: a.fit (e).')
+  })
+
+  it('[DSC-015] Given duplicates from the last check, When presented, Then the line states copies and reclaimable space and that nothing was deleted', () => {
+    const items = toHiddenDataItems({ ...empty, duplicates: { files: 3, reclaimableBytes: 3 * 1024 ** 3, groups: 2 } })
+    expect(items).toEqual([{
+      id: 'duplicates', kind: 'duplicates', link: null,
+      title: '3 duplicate files, 3.0 GB reclaimable',
+      detail: '2 files exist at more than one path. Nothing has been deleted.'
+    }])
+    expect(toHiddenDataItems({ ...empty, duplicates: { files: 1, reclaimableBytes: 10, groups: 1 } })[0].detail).toBe('1 file exists at more than one path. Nothing has been deleted.')
+  })
+
+  it('[ING-003] Given a duplicate check result, When presented, Then it summarises copies and space, or says there are none', () => {
+    const stats = { indexed: 10, reused: 8, sampled: 2, fullyHashed: 2, unreadable: 0 }
+    expect(toDuplicateView({ groups: [{ contentHash: 'h', sizeBytes: 2048, paths: ['/a', '/b'] }], duplicateFiles: 1, reclaimableBytes: 2048, stats }).summary)
+      .toBe('1 duplicate file, 2.0 KB reclaimable. Nothing was deleted.')
+    expect(toDuplicateView({ groups: [], duplicateFiles: 0, reclaimableBytes: 0, stats }).summary).toBe('No duplicates among 10 indexed files.')
+    expect(formatBytes(512)).toBe('512 B')
+    expect(formatBytes(5 * 1024 ** 5)).toBe('5120.0 TB')
+  })
+
+  it('[ING-003] Given more groups than the card shows and files that could not be read, When presented, Then it counts every group and says what was skipped', () => {
+    const groups = Array.from({ length: 60 }, (_, i) => ({ contentHash: `h${i}`, sizeBytes: 100, paths: [`/a${i}`, `/b${i}`] }))
+    const view = toDuplicateView({ groups, duplicateFiles: 60, reclaimableBytes: 6000, stats: { indexed: 130, reused: 0, sampled: 128, fullyHashed: 120, unreadable: 2 } })
+    expect(view.groups).toHaveLength(50)
+    expect(view.totalGroups).toBe(60)
+    expect(view.summary).toBe('60 duplicate files, 5.9 KB reclaimable. Nothing was deleted. 2 files could not be read and were skipped.')
   })
 })

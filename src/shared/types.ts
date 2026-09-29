@@ -897,11 +897,30 @@ export interface TargetDiscoveryView {
 /** One line of the "hidden in your files" card. */
 export interface HiddenDataItem {
   id: string
-  kind: 'never-stacked' | 'unassigned' | 'orphan-calibration' | 'rejected'
+  kind: 'never-stacked' | 'unassigned' | 'orphan-calibration' | 'rejected' | 'quarantined' | 'duplicates'
   title: string
   detail: string
   /** Where in the app to act on it. */
   link: string | null
+}
+
+export interface DuplicateView {
+  duplicateFiles: number
+  reclaimableBytes: number
+  /** The biggest groups, up to 50; `totalGroups` counts them all. */
+  groups: { sizeBytes: number; paths: string[] }[]
+  totalGroups: number
+  stats: { indexed: number; reused: number; sampled: number; fullyHashed: number; unreadable: number }
+  summary: string
+}
+
+/** Result of preparing a Siril work area; the source folder is only read. */
+export interface SirilWorkspaceView {
+  workDir: string
+  linked: number
+  copied: number
+  existing: number
+  byFolder: { lights: number; darks: number; flats: number; biases: number }
 }
 
 export interface CockpitOverview {

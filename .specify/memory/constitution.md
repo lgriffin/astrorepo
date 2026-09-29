@@ -15,10 +15,8 @@ same pull request as the code they describe.
 
 The app never moves, renames, modifies or deletes a file inside a folder it indexes. It writes only
 to its own database and to a work area it owns. Anything that needs files arranged differently
-(for example a Siril run) works on copies or links in the work area.
-
-Known gap: `prepForSiril` in `src/main/services/home-scanner.ts` still renames lights in place.
-It is removed by the ingest slice (`specs/011-ingest-core`, ING-001).
+(for example a Siril run) works on hard links or copies in the work area (ING-001, ING-013).
+Nothing the app finds, duplicates included, is deleted by the app; it reports and the user acts.
 
 ### II. Discovery and usability come first
 
@@ -86,4 +84,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-29
+**Version**: 1.0.1 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30

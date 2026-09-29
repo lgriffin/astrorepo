@@ -7,7 +7,7 @@ import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { formatExposure, formatSize } from '../utils/format'
 import { TargetDiscoveryPanel } from '../components/cockpit/TargetDiscoveryPanel'
-import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
+import type { SirilWorkspaceView, Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -335,17 +335,17 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
     if (!homeData.rawPath) return
     setSirilStatus('preparing')
     try {
-      const result = await invoke<{ moved: number; created: string[]; skipped: boolean }>('home:prep-siril', { raw_path: homeData.rawPath })
-      if (result.skipped) {
-        setSirilStatus('Skipped — lights/ already exists')
-        addToast('Siril prep skipped — lights/ already exists', 'info')
-      } else {
-        setSirilStatus(`Moved ${result.moved} files, created ${result.created.join(', ')}`)
-        addToast(`Siril prep complete — moved ${result.moved} files`, 'success')
-      }
+      const result = await invoke<SirilWorkspaceView>('home:prep-siril', { raw_path: homeData.rawPath })
+      const total = result.linked + result.copied + result.existing
+      const parts = [`${result.byFolder.lights} lights`, `${result.byFolder.darks} darks`, `${result.byFolder.flats} flats`, `${result.byFolder.biases} biases`]
+      setSirilStatus(`Siril folders ready in ${result.workDir}: ${parts.join(', ')}. Your source folder was not changed.`)
+      addToast(`Siril work area ready with ${total} frames`, 'success')
+      invoke('home:open-folder', { folder_path: result.workDir }).catch(() => undefined)
       onRefresh()
-    } catch {
-      setSirilStatus('Failed')
+    } catch (e) {
+      // Electron prefixes the main process's message; the user needs only the message itself.
+      const reason = e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '') : ''
+      setSirilStatus(reason ? `Failed: ${reason}` : 'Failed')
       addToast('Siril prep failed', 'error')
     }
   }
