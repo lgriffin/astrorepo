@@ -6,7 +6,8 @@ import { WorkflowStepper } from '../components/target/WorkflowStepper'
 import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { formatExposure, formatSize } from '../utils/format'
-import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData } from '@shared/types'
+import { TargetDiscoveryPanel } from '../components/cockpit/TargetDiscoveryPanel'
+import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -15,28 +16,38 @@ export function TargetDetail(): React.ReactElement {
   const [catalogueEntries, setCatalogueEntries] = useState<CatalogueEntry[]>([])
   const [homeData, setHomeData] = useState<TargetHomeData | null>(null)
   const [obsData, setObsData] = useState<TargetObservationData | null>(null)
+  const [discovery, setDiscovery] = useState<TargetDiscoveryView | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
+    // A response for a target the user has already navigated away from must not land on this page.
+    let current = true
     setLoading(true)
+    setDiscovery(null)
     invoke<Target>('targets:get', { id })
       .then((t) => {
+        if (!current) return null
         setTarget(t)
         return Promise.all([
           invoke<TargetAlias[]>('targets:aliases', { target_id: id }).catch(() => []),
           invoke<CatalogueEntry[]>('targets:catalogue-entries', { target_id: id }).catch(() => []),
           invoke<TargetHomeData | null>('home:target-data', { target_id: id }).catch(() => null),
-          invoke<TargetObservationData | null>('targets:observation-data', { target_id: id }).catch(() => null)
+          invoke<TargetObservationData | null>('targets:observation-data', { target_id: id }).catch(() => null),
+          invoke<TargetDiscoveryView | null>('discovery:target', { target_id: id }).catch(() => null)
         ])
       })
-      .then(([a, c, hd, od]) => {
+      .then((results) => {
+        if (!current || !results) return
+        const [a, c, hd, od, disc] = results
+        setDiscovery(disc)
         setAliases(a)
         setCatalogueEntries(c)
         setHomeData(hd)
         setObsData(od)
       })
-      .finally(() => setLoading(false))
+      .finally(() => { if (current) setLoading(false) })
+    return () => { current = false }
   }, [id])
 
   if (loading) {
@@ -74,6 +85,12 @@ export function TargetDetail(): React.ReactElement {
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {discovery && (
+            <Section title="What the files say">
+              <TargetDiscoveryPanel discovery={discovery} />
+            </Section>
+          )}
+
           <Section title="Workflow">
             <WorkflowStepper targetId={target.id} currentStage={target.workflowStage} onStageChanged={() => {
               invoke<Target>('targets:get', { id: target.id }).then((t) => { if (t) setTarget(t) })

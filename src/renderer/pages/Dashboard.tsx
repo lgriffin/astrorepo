@@ -4,28 +4,50 @@ import { PageContainer } from '../components/common/PageContainer'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
-import type { DashboardStats, CatalogueProgress, Recommendation } from '@shared/types'
+import { ProgressStrip } from '../components/cockpit/ProgressStrip'
+import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
+import { useToast } from '../contexts/ToastContext'
+import type { DashboardStats, CatalogueProgress, Recommendation, CockpitOverview } from '@shared/types'
 
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [catalogues, setCatalogues] = useState<CatalogueProgress[]>([])
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  const [cockpit, setCockpit] = useState<CockpitOverview | null>(null)
   const [loading, setLoading] = useState(true)
+  const { addToast } = useToast()
 
   useEffect(() => {
     Promise.all([
       invoke<DashboardStats>('dashboard:stats'),
       invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress'),
-      invoke<{ recommendations: Recommendation[] }>('recommendations:list')
+      invoke<{ recommendations: Recommendation[] }>('recommendations:list'),
+      invoke<CockpitOverview>('cockpit:overview').catch(() => null)
     ])
-      .then(([s, c, r]) => {
+      .then(([s, c, r, k]) => {
         setStats(s)
         setCatalogues(c.catalogues)
         setRecommendations(r.recommendations)
+        setCockpit(k)
       })
       .finally(() => setLoading(false))
   }, [])
+
+  const dismiss = (rec: Recommendation) => {
+    invoke<{ dismissed: boolean }>('cockpit:dismiss', { suggestion_id: rec.id })
+      .then(result => {
+        if (result.dismissed) {
+          setRecommendations(prev => prev.filter(r => r.id !== rec.id))
+          addToast(`Hidden until ${rec.targetName ?? 'the target'} gets new data`, 'success')
+          return
+        }
+        // The data moved on since the list was loaded, so the suggestion it showed no longer exists.
+        addToast('That suggestion has changed; the list is refreshed', 'info')
+        return invoke<{ recommendations: Recommendation[] }>('recommendations:list').then(r => setRecommendations(r.recommendations))
+      })
+      .catch(() => addToast('Could not dismiss that suggestion', 'error'))
+  }
 
   if (loading || !stats) {
     return (
@@ -37,6 +59,13 @@ export function Dashboard(): React.ReactElement {
 
   return (
     <PageContainer title="Observatory Dashboard" subtitle="Overview of your astrophotography observatory">
+      {cockpit && (
+        <div className="mb-8 space-y-4">
+          <ProgressStrip progress={cockpit.progress} />
+          <HiddenDataCard items={cockpit.hidden} />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Targets" value={stats.totalTargets} />
         <StatCard label="Completed" value={stats.completedTargets} accent />
@@ -132,6 +161,15 @@ export function Dashboard(): React.ReactElement {
                       className="shrink-0 text-xs text-astro-accent hover:underline"
                     >
                       {rec.actionLabel}
+                    </button>
+                  )}
+                  {rec.dismissible && (
+                    <button
+                      onClick={() => dismiss(rec)}
+                      className="shrink-0 text-xs text-astro-muted hover:text-astro-text"
+                      title="Hide until this target gets new data"
+                    >
+                      Dismiss
                     </button>
                   )}
                 </div>

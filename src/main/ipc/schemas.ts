@@ -285,6 +285,9 @@ export const schemas = {
   'timeline:year-summary': z.object({ year: z.number().int() }),
 
   'recommendations:list': z.object({}).optional(),
+  'cockpit:overview': z.object({}).optional(),
+  'cockpit:dismiss': z.object({ suggestion_id: id }),
+  'discovery:target': z.object({ target_id: id }),
 
   'db:reset': z.object({}).optional(),
 

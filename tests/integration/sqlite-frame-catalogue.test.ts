@@ -70,3 +70,50 @@ describe('parseUtc', () => {
     expect(parseUtc(null)).toBeNull()
   })
 })
+
+describe('Cockpit through the desktop database', () => {
+  it('[DSC-001] Given a sub with no TELESCOP but an INSTRUME, When listed, Then the instrument names the scope', async () => {
+    const t = seedTarget(sqlite, { canonicalName: 'M 27' })
+    seedFitsFile(sqlite, scanId, { targetId: t, exposureSec: 10, telescope: ' ', instrument: 'ZWO ASI585MC' })
+    const [frames] = await new SqliteFrameCatalogue(sqlite).listTargetFrames()
+    expect(frames.subs[0].scope).toBe('ZWO ASI585MC')
+  })
+
+  it('[DSC-008] Given a ready-to-stack target, When the composed core dismisses it, Then it stays hidden until a new sub is indexed', async () => {
+    const t = seedTarget(sqlite, { canonicalName: 'M 81' })
+    for (let i = 0; i < 3; i++) seedFitsFile(sqlite, scanId, { targetId: t, exposureSec: 3600, dateObs: `2026-03-01T2${i}:00:00` })
+    const core = composeCore(sqlite)
+    const [s] = await core.listStackingSuggestions()
+
+    expect(await core.dismissSuggestion(s.id)).toEqual({ dismissed: true })
+    expect(await core.listStackingSuggestions()).toEqual([])
+
+    seedFitsFile(sqlite, scanId, { targetId: t, exposureSec: 600, dateObs: '2026-03-05T21:00:00' })
+    expect((await core.listStackingSuggestions()).map(x => x.targetName)).toEqual(['M 81'])
+  })
+
+  it('[DSC-006] Given an unlinked light and a flat for an unused filter, When the composed core reports hidden data, Then both appear', async () => {
+    const t = seedTarget(sqlite, { canonicalName: 'M 81' })
+    seedFitsFile(sqlite, scanId, { targetId: t, exposureSec: 10, filter: 'IRCUT', dateObs: '2026-03-01T21:00:00' })
+    seedFitsFile(sqlite, scanId, { exposureSec: 10, filter: 'IRCUT', folderName: 'Unknown_sub', dateObs: '2026-03-02T21:00:00' })
+    seedFitsFile(sqlite, scanId, { imageType: 'Flat Field', exposureSec: 1, filter: 'Ha' })
+
+    const report = await composeCore(sqlite).reportHiddenData()
+
+    expect(report.unassigned.byFolder).toEqual([{ folder: 'Unknown_sub', subCount: 1, integrationSec: 10 }])
+    expect(report.orphanCalibration.map(g => [g.kind, g.filter])).toEqual([['flat', 'Ha']])
+    expect(report.neverStacked.map(x => x.targetName)).toEqual(['M 81'])
+  })
+
+  it('[DSC-009] Given targets at several stages, When the composed core discovers them, Then progress is counted from the data', async () => {
+    const planned = seedTarget(sqlite, { canonicalName: 'M 31' })
+    sqlite.prepare("INSERT INTO integration_goals (id, target_id, filter, goal_seconds, created_at, updated_at) VALUES ('g1', ?, 'Any', 3600, '', '')").run(planned)
+    const t = seedTarget(sqlite, { canonicalName: 'M 42' })
+    seedFitsFile(sqlite, scanId, { targetId: t, isStacked: true, imageType: null, dateObs: '2026-01-02T09:00:00' })
+
+    const { progress } = await composeCore(sqlite).discoverTargets()
+
+    expect(Object.fromEntries(progress.map(p => [p.state, p.count]))).toMatchObject({ planned: 1, stacked: 1 })
+    expect((await composeCore(sqlite).discoverTarget(t))?.progress).toBe('stacked')
+  })
+})

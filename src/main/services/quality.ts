@@ -151,7 +151,7 @@ export function analyzeScanQuality(scanId: string): { analyzed: number; failed: 
   const sqlite = getSqlite()
 
   const files = sqlite.prepare(
-    "SELECT id FROM fits_files WHERE scan_id = ? AND (image_type = 'Light Frame' OR image_type = 'light' OR image_type IS NULL)"
+    "SELECT id FROM fits_files WHERE scan_id = ? AND (image_type IS NULL OR LOWER(image_type) LIKE '%light%')"
   ).all(scanId) as { id: string }[]
 
   let analyzed = 0

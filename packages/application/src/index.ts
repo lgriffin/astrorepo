@@ -1,2 +1,7 @@
 export type { FrameCatalogue } from './ports/frame-catalogue'
+export type { DismissalStore } from './ports/dismissal-store'
+export type { Clock } from './ports/clock'
 export * from './use-cases/list-stacking-suggestions'
+export * from './use-cases/dismiss-suggestion'
+export * from './use-cases/discover-targets'
+export * from './use-cases/report-hidden-data'

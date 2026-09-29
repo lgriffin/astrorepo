@@ -5,6 +5,16 @@ import { subs, stackAt, target } from '@astro/testkit'
 const policy: StackingPolicy = { readyToStackSec: 2 * 3600, restackSec: 3600 }
 
 describe('assessStackingReadiness', () => {
+  it('[DSC-010] Given 3 h of subs of which 2 h were rejected by quality checks, When assessed, Then nothing is suggested', () => {
+    const t = target('M 1', { subs: [...subs(360, 10, '2026-03-01T21:00:00Z'), ...subs(720, 10, '2026-03-01T22:00:00Z', { rejected: true })] })
+    expect(assessStackingReadiness(t, policy)).toBeNull()
+  })
+
+  it('[DSC-004] Given only rejected subs since the last stack, When assessed, Then no restack is suggested', () => {
+    const t = target('M 1', { subs: subs(720, 10, '2026-03-05T21:00:00Z', { rejected: true }), stacks: [stackAt('2026-03-01T09:00:00Z')] })
+    expect(assessStackingReadiness(t, policy)).toBeNull()
+  })
+
   describe('ready to stack', () => {
     it('[DSC-010] Given 8 h of subs over two nights and no stack, When assessed, Then it is ready to stack with integration, subs and nights', () => {
       const m81 = target('M 81', {
@@ -13,6 +23,7 @@ describe('assessStackingReadiness', () => {
 
       expect(assessStackingReadiness(m81, policy)).toEqual({
         kind: 'ready-to-stack',
+        id: `ready-to-stack:${m81.targetId}`,
         targetId: m81.targetId,
         targetName: 'M 81',
         integrationSec: 28800,
@@ -46,6 +57,7 @@ describe('assessStackingReadiness', () => {
 
       expect(assessStackingReadiness(m101, policy)).toEqual({
         kind: 'restack',
+        id: `restack:${m101.targetId}`,
         targetId: m101.targetId,
         targetName: 'M 101',
         addedSec: 7800,

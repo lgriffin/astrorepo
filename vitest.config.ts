@@ -10,9 +10,9 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/main/services/**', 'src/main/fits/**', 'src/main/adapters/**', 'packages/domain/src/**', 'packages/application/src/**'],
       thresholds: {
-        // Legacy services: a ratchet at today's measured floor (55.9% lines). The old 60% never ran in CI
+        // Legacy services: a ratchet at the measured floor (60.2% lines after spec 010). The old 60% never ran in CI
         // because @vitest/coverage-v8 was missing. Raise it as services move into the core.
-        lines: 55,
+        lines: 58,
         functions: 60,
         branches: 50,
         // The hexagonal core and its adapters are held to the blueprint's bar.
