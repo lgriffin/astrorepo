@@ -1,5 +1,6 @@
 import { observingNightOf } from './observing-night'
 import { unstackedSubs } from './discovery'
+import type { DuplicateReport, QuarantinedFile } from './ingest'
 import { totalSec, type TargetFrames } from './stacking-readiness'
 
 /** A light sub that no target claims yet. */
@@ -63,7 +64,14 @@ export interface HiddenDataReport {
   orphanCalibration: OrphanCalibrationGroup[]
   /** Rejected subs across targets, plus rejected subs no target claims yet (`unassigned`). */
   rejected: { subCount: number; integrationSec: number; targets: number; unassigned: number }
+  /** Files the scanner could not read, with the first few reasons. */
+  quarantined: { count: number; examples: QuarantinedFile[] }
+  /** Identical files found at more than one path, from the last duplicate check. */
+  duplicates: { files: number; reclaimableBytes: number; groups: number }
 }
+
+/** How many quarantined files the report names individually. */
+export const QUARANTINE_EXAMPLES = 3
 
 /** Unknown on either side is not a mismatch: a missing header should not orphan a frame. */
 const near = (a: number | null, b: number | null, tolerance: number) => a === null || b === null || Math.abs(a - b) <= tolerance
@@ -115,13 +123,16 @@ export function findOrphanCalibration(
 
 /**
  * What is sitting in the files unnoticed: nights never stacked, subs with no target, calibration
- * frames that match no lights, and subs quality analysis rejected. Pure: no I/O, no clock.
+ * frames that match no lights, subs quality analysis rejected, files that could not be read and
+ * duplicate copies. Pure: no I/O, no clock.
  */
 export function reportHiddenData(input: {
   targets: TargetFrames[]
   unassigned: UnassignedLight[]
   calibration: CalibrationFrame[]
   lightSettings: LightSetting[]
+  quarantined?: QuarantinedFile[]
+  duplicates?: DuplicateReport
   policy?: CalibrationMatchPolicy
 }): HiddenDataReport {
   const neverStacked: HiddenDataReport['neverStacked'] = []
@@ -172,6 +183,15 @@ export function reportHiddenData(input: {
       byFolder: [...byFolder.values()].sort((a, b) => b.integrationSec - a.integrationSec || a.folder.localeCompare(b.folder))
     },
     orphanCalibration: findOrphanCalibration(input.calibration, input.lightSettings, input.policy),
-    rejected: { subCount: rejectedSubs, integrationSec: rejectedSec, targets: rejectedTargets, unassigned: rejectedUnassigned }
+    rejected: { subCount: rejectedSubs, integrationSec: rejectedSec, targets: rejectedTargets, unassigned: rejectedUnassigned },
+    quarantined: {
+      count: input.quarantined?.length ?? 0,
+      examples: [...(input.quarantined ?? [])].sort((a, b) => a.path.localeCompare(b.path)).slice(0, QUARANTINE_EXAMPLES)
+    },
+    duplicates: {
+      files: input.duplicates?.duplicateFiles ?? 0,
+      reclaimableBytes: input.duplicates?.reclaimableBytes ?? 0,
+      groups: input.duplicates?.groups.length ?? 0
+    }
   }
 }

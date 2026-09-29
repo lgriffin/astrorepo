@@ -1,4 +1,4 @@
-import type { CalibrationFrame, LightSetting, TargetFrames, UnassignedLight } from '@astro/domain'
+import type { CalibrationFrame, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
 
 /**
  * Driven port: read access to indexed frames.
@@ -13,4 +13,6 @@ export interface FrameCatalogue {
   listCalibrationFrames(): Promise<CalibrationFrame[]>
   /** Distinct acquisition settings across all light subs, with how many lights used each. */
   listLightSettings(): Promise<LightSetting[]>
+  /** Files the scanner found but could not read, with the reason. */
+  listQuarantinedFiles(): Promise<QuarantinedFile[]>
 }

@@ -30,6 +30,7 @@ It is becoming a local-first observatory cockpit: it shows what is hiding in you
 - **Tonight's Targets** -- Plan sessions with visibility windows, altitude profiles, transit times, and moon separation filtering.
 - **Collections & Progress** -- Group targets into collections with completion tracking and poster views.
 - **Target Relationships** -- Model spatial relationships: *contains*, *nearby*, *parent_region*, and more.
+- **Safe Ingest** -- Source folders are read-only: Siril prep builds its folders in a work area, rescans read only changed files, unreadable files are quarantined with the reason, and a duplicate check reports copies and reclaimable space without deleting anything.
 - **Project Folder Generation** -- Create imaging project directories from configurable templates (default Siril structure).
 - **Observatory Cockpit** -- What is hidden in your files (nights never stacked, subs with no target, orphan calibration, rejected subs), progress derived from your data, and dismissible "ready to stack" and "restack" suggestions.
 - **Observatory Dashboard** -- Aggregate statistics across sessions, targets, and equipment.

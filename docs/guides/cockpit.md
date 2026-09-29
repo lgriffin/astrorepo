@@ -35,7 +35,13 @@ button that opens the page where you can act on it.
 - **Subs rejected by quality checks.** Subs the quality analysis flagged for rejection, including
   ones with no target yet, so you can leave them out of the next stack.
 
-Duplicate files are not listed yet; they need content hashes, which come with the ingest work.
+- **Files that could not be read.** Files with a FITS extension the scanner could not parse, with
+  the reason for the first few. They are kept aside rather than skipped silently, and leave the
+  list once a rescan can read them.
+- **Duplicate files.** Press **Check for duplicates** at the top of the card. The check samples
+  the start and end of every indexed FITS file and reads in full only files whose samples match,
+  so it is quick; a second check reads only files that changed. It reports how many copies exist
+  and how much space they take. Nothing is ever deleted.
 
 ## Suggestions
 
@@ -59,3 +65,18 @@ and how close it is to its integration goal.
 
 An observing night is the date the evening began, so a session that runs past midnight counts as
 one night.
+
+## Preparing a target for Siril
+
+On a target's page, **Prep for Siril** builds the folders Siril expects (lights, darks, flats and
+biases) in the app's work area and opens it. Your target folder is not touched. Frames are
+hard-linked when the work area is on the same disk (instant, no extra space) and copied when it is
+not, for example when the frames live on the NAS. The work area is under the app's data folder
+unless you set `work_area_path` in Settings. Siril only reads these frames; do not edit them in
+place, because a hard link shares its bytes with the original.
+
+## Rescanning
+
+Scanning a folder again reads only files that are new or whose size or modified time changed.
+Everything else keeps its target link, headers and quality verdict, so a rescan of a big library
+is quick.

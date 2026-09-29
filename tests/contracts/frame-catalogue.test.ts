@@ -11,6 +11,7 @@ frameCatalogueContract('in-memory', seed => {
   catalogue.addUnassigned(...(seed.unassigned ?? []))
   catalogue.addCalibration(...(seed.calibration ?? []))
   catalogue.addLightSettings(...(seed.lightSettings ?? []))
+  catalogue.addQuarantined(...(seed.quarantined ?? []))
   return catalogue
 })
 
@@ -55,6 +56,11 @@ frameCatalogueContract('SQLite', seed => {
       const ccdTemp = l.sensorTempC === null ? null : l.sensorTempC + (i % 2 === 0 ? 0.2 : -0.2)
       seedFitsFile(sqlite, scanId, { exposureSec: l.exposureSec, gain: l.gain, ccdTemp, filter: l.filter })
     }
+  }
+  for (const q of seed.quarantined ?? []) {
+    sqlite.prepare(
+      'INSERT INTO quarantined_files (file_path, folder_path, error, quarantined_at) VALUES (?, ?, ?, ?)'
+    ).run(q.path, '/d', q.error, new Date().toISOString())
   }
   return new SqliteFrameCatalogue(sqlite)
 })

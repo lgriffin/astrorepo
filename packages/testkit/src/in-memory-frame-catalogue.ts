@@ -1,4 +1,4 @@
-import type { CalibrationFrame, LightSetting, TargetFrames, UnassignedLight } from '@astro/domain'
+import type { CalibrationFrame, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
 import type { FrameCatalogue } from '@astro/application'
 
 const hasAnything = (t: TargetFrames) =>
@@ -9,6 +9,7 @@ export class InMemoryFrameCatalogue implements FrameCatalogue {
   private unassigned: UnassignedLight[] = []
   private calibration: CalibrationFrame[] = []
   private lightSettings: LightSetting[] = []
+  private quarantined: QuarantinedFile[] = []
 
   add(target: TargetFrames): this {
     this.targets.set(target.targetId, structuredClone(target))
@@ -29,6 +30,15 @@ export class InMemoryFrameCatalogue implements FrameCatalogue {
   addLightSettings(...settings: LightSetting[]): this {
     this.lightSettings.push(...structuredClone(settings))
     return this
+  }
+
+  addQuarantined(...files: QuarantinedFile[]): this {
+    this.quarantined.push(...structuredClone(files))
+    return this
+  }
+
+  async listQuarantinedFiles(): Promise<QuarantinedFile[]> {
+    return structuredClone(this.quarantined)
   }
 
   async listTargetFrames(): Promise<TargetFrames[]> {

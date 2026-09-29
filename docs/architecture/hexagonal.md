@@ -27,6 +27,11 @@ flowchart LR
   UC -->|FrameCatalogue| A1[SqliteFrameCatalogue]
   UC -->|DismissalStore| A2[SqliteDismissalStore]
   UC -->|Clock| A3[systemClock]
+  UC -->|FileIndex, FileHashStore| A4[sqlite-file-hashing]
+  UC -->|ContentHasher| A5[NodeContentHasher]
+  UC -->|SirilWorkspace| A6[NodeSirilWorkspace]
+  A5 --> FS[(source files, read-only)]
+  A6 --> WA[(work area)]
   A1 --> DB[(SQLite)]
   A2 --> DB
   T[testkit in-memory adapters] -.same contract suites.-> A1 & A2
@@ -41,7 +46,13 @@ flowchart LR
 | `listStackingSuggestions` | `assessStackingReadiness`, `isDismissed` | FrameCatalogue, DismissalStore | `recommendations:list` | 009, 010 |
 | `dismissSuggestion` | `dataFingerprint` | FrameCatalogue, DismissalStore, Clock | `cockpit:dismiss` | 010 |
 | `discoverTargets`, `discoverTarget` | `discoverTarget`, `deriveProgress` | FrameCatalogue | `cockpit:overview`, `discovery:target` | 010 |
-| `reportHiddenData` | `reportHiddenData`, `calibrates` | FrameCatalogue | `cockpit:overview` | 010 |
+| `reportHiddenData` | `reportHiddenData`, `calibrates`, `groupDuplicates` | FrameCatalogue, FileHashStore | `cockpit:overview` | 010, 011 |
+| `findDuplicates` | `isHashCurrent`, `duplicateCandidates`, `groupDuplicates` | FileIndex, ContentHasher, FileHashStore | `ingest:find-duplicates` | 011 |
+| `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace | `home:prep-siril` | 011 |
+
+The legacy FITS scan (`services/fits-analyzer.ts`) uses the domain's `planRescan` for its fast
+path and writes unreadable files to `quarantined_files`; moving the scan itself into the core is
+the next step for ingest.
 
 Presenters in `src/main/adapters/*-presenter.ts` turn domain results into the plain shapes in
 `src/shared/types.ts` (ISO date strings, human sentences) that the renderer shows. Rules never

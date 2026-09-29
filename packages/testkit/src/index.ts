@@ -1,4 +1,5 @@
 export * from './in-memory-frame-catalogue'
 export * from './in-memory-dismissal-store'
+export * from './in-memory-files'
 export * from './fixed-clock'
 export * from './frames'
