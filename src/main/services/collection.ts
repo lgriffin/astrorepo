@@ -20,6 +20,7 @@ export function listCollections(): CollectionWithStats[] {
     .prepare(
       `SELECT c.id, c.name, c.description, c.is_auto, c.source_catalogue_id, c.created_at, c.updated_at,
               COUNT(cm.target_id) as total,
+              COUNT(CASE WHEN t.workflow_stage != 'not_observed' THEN 1 END) as observed,
               COUNT(CASE WHEN t.workflow_stage IN ('published','printed','archived') THEN 1 END) as completed
        FROM collections c
        LEFT JOIN collection_memberships cm ON cm.collection_id = c.id
@@ -37,6 +38,7 @@ export function listCollections(): CollectionWithStats[] {
     sourceCatalogueId: r.source_catalogue_id as string | null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
+    observed: r.observed as number,
     completed: r.completed as number,
     total: r.total as number
   }))
@@ -45,6 +47,7 @@ export function listCollections(): CollectionWithStats[] {
 export function getCollectionWithTargets(id: string, limit = 100, offset = 0): {
   collection: Collection
   targets: TargetSummary[]
+  observed: number
   completed: number
   total: number
 } | null {
@@ -55,12 +58,13 @@ export function getCollectionWithTargets(id: string, limit = 100, offset = 0): {
   const stats = sqlite
     .prepare(
       `SELECT COUNT(*) as total,
+              COUNT(CASE WHEN t.workflow_stage != 'not_observed' THEN 1 END) as observed,
               COUNT(CASE WHEN t.workflow_stage IN ('published','printed','archived') THEN 1 END) as completed
        FROM collection_memberships cm
        JOIN targets t ON t.id = cm.target_id
        WHERE cm.collection_id = ?`
     )
-    .get(id) as { total: number; completed: number }
+    .get(id) as { total: number; observed: number; completed: number }
 
   const rows = sqlite
     .prepare(
@@ -74,24 +78,32 @@ export function getCollectionWithTargets(id: string, limit = 100, offset = 0): {
     )
     .all(id, limit, offset) as Array<Record<string, unknown>>
 
-  const targets: TargetSummary[] = rows.map((r) => {
-    const aliases = sqlite
-      .prepare('SELECT alias FROM target_aliases WHERE target_id = ?')
-      .all(r.id as string) as { alias: string }[]
-
-    return {
-      id: r.id as string,
-      canonicalName: r.canonical_name as string,
-      objectType: r.object_type as TargetSummary['objectType'],
-      constellation: r.constellation as string | null,
-      magnitude: r.magnitude as number | null,
-      workflowStage: r.workflow_stage as string,
-      isCustom: (r.is_custom as number) === 1,
-      aliases: aliases.map((a) => a.alias)
+  const targetIds = rows.map(r => r.id as string)
+  const aliasMap = new Map<string, string[]>()
+  if (targetIds.length > 0) {
+    const placeholders = targetIds.map(() => '?').join(',')
+    const aliasRows = sqlite
+      .prepare(`SELECT target_id, alias FROM target_aliases WHERE target_id IN (${placeholders})`)
+      .all(...targetIds) as { target_id: string; alias: string }[]
+    for (const ar of aliasRows) {
+      const list = aliasMap.get(ar.target_id)
+      if (list) list.push(ar.alias)
+      else aliasMap.set(ar.target_id, [ar.alias])
     }
-  })
+  }
 
-  return { collection, targets, completed: stats.completed, total: stats.total }
+  const targets: TargetSummary[] = rows.map((r) => ({
+    id: r.id as string,
+    canonicalName: r.canonical_name as string,
+    objectType: r.object_type as TargetSummary['objectType'],
+    constellation: r.constellation as string | null,
+    magnitude: r.magnitude as number | null,
+    workflowStage: r.workflow_stage as string,
+    isCustom: (r.is_custom as number) === 1,
+    aliases: aliasMap.get(r.id as string) ?? []
+  }))
+
+  return { collection, targets, observed: stats.observed, completed: stats.completed, total: stats.total }
 }
 
 export function addTargetToCollection(collectionId: string, targetId: string): boolean {
@@ -148,6 +160,41 @@ export function autoGenerateCatalogueCollections(): void {
 
       for (const entry of entries) {
         insertMembership.run(collId, entry.target_id, now)
+      }
+    }
+  })
+
+  transaction()
+}
+
+export function syncTargetsToCollections(targetIds: string[]): void {
+  if (targetIds.length === 0) return
+  const sqlite = getSqlite()
+
+  const autoCollections = sqlite
+    .prepare('SELECT id, source_catalogue_id FROM collections WHERE is_auto = 1 AND source_catalogue_id IS NOT NULL')
+    .all() as { id: string; source_catalogue_id: string }[]
+
+  if (autoCollections.length === 0) return
+
+  const collectionByCatalogue = new Map<string, string>()
+  for (const ac of autoCollections) {
+    collectionByCatalogue.set(ac.source_catalogue_id, ac.id)
+  }
+
+  const getCatalogueEntries = sqlite.prepare('SELECT catalogue_id FROM catalogue_entries WHERE target_id = ?')
+  const insertMembership = sqlite.prepare(
+    'INSERT OR IGNORE INTO collection_memberships (collection_id, target_id, added_at) VALUES (?, ?, datetime(\'now\'))'
+  )
+
+  const transaction = sqlite.transaction(() => {
+    for (const targetId of targetIds) {
+      const entries = getCatalogueEntries.all(targetId) as { catalogue_id: string }[]
+      for (const entry of entries) {
+        const collectionId = collectionByCatalogue.get(entry.catalogue_id)
+        if (collectionId) {
+          insertMembership.run(collectionId, targetId)
+        }
       }
     }
   })

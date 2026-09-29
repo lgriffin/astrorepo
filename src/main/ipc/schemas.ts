@@ -18,13 +18,16 @@ const relationshipTypes = [
 ] as const
 
 const id = z.string().min(1)
-const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
 
 export const schemas = {
   'targets:search': z.object({
     query: z.string(),
     limit: z.number().int().positive().optional(),
-    offset: z.number().int().nonnegative().optional()
+    offset: z.number().int().nonnegative().optional(),
+    object_type: z.string().optional(),
+    workflow_stage: z.string().optional(),
+    sort_by: z.enum(['name', 'magnitude', 'constellation', 'workflow_stage']).optional(),
+    sort_dir: z.enum(['asc', 'desc']).optional()
   }),
 
   'targets:get': z.object({ id }),
@@ -55,12 +58,6 @@ export const schemas = {
     id,
     to_stage: z.string().min(1),
     notes: z.string().optional()
-  }),
-
-  'targets:visibility': z.object({
-    target_id: id,
-    observatory_id: id,
-    date: dateStr
   }),
 
   'sessions:list': z.object({
@@ -146,22 +143,8 @@ export const schemas = {
     structure: z.record(z.unknown())
   }),
 
-  'observatory:create': z.object({
-    name: z.string().min(1),
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180),
-    altitude_m: z.number().min(-500).max(9000),
-    timezone: z.string().optional()
-  }),
-
-  'observatory:set-primary': z.object({ id }),
-
-  'planning:tonight': z.object({
-    observatory_id: id,
-    date: dateStr,
-    min_altitude: z.number().min(0).max(90).optional(),
-    min_hours: z.number().nonnegative().optional()
-  }),
+  'images:scan': z.object({}).optional(),
+  'images:read': z.object({ file_path: z.string().min(1) }),
 
   'relationships:create': z.object({
     source_target_id: id,
@@ -256,7 +239,62 @@ export const schemas = {
   }),
   'calibration:summary': z.object({}).optional(),
 
-  'fits:compute-stats': z.object({ file_id: z.string().min(1) })
+  'fits:compute-stats': z.object({ file_id: z.string().min(1) }),
+
+  'home:scan-start': z.object({}).optional(),
+  'home:scan-progress': z.object({}).optional(),
+  'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
+  'home:open-folder': z.object({ folder_path: z.string().min(1) }),
+  'home:target-data': z.object({ target_id: z.string().min(1) }),
+  'targets:observation-data': z.object({ target_id: z.string().min(1) }),
+  'targets:get-thumbnail': z.object({ id: z.string().min(1) }),
+  'targets:images': z.object({ id: z.string().min(1) }),
+  'stacking:summary': z.object({}).optional(),
+  'stacking:sub-frames': z.object({ stacked_file_id: z.string().min(1) }),
+  'stacking:integration-progress': z.object({}).optional(),
+  'stacking:goals': z.object({ target_id: z.string().min(1) }),
+  'stacking:set-goal': z.object({
+    target_id: z.string().min(1),
+    filter: z.string().min(1),
+    goal_hours: z.number().positive()
+  }),
+  'stacking:delete-goal': z.object({ id: z.string().min(1) }),
+
+  'equipment:update': z.object({ id, fields: z.record(z.unknown()) }),
+  'equipment:delete': z.object({ id }),
+  'equipment:calculate-fov': z.object({ telescope_id: id, camera_id: id, reducer_id: z.string().optional() }),
+  'equipment:calculate-image-scale': z.object({ telescope_id: id, camera_id: id }),
+
+  'sky:altitude-curve': z.object({ target_id: id, date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:best-tonight': z.object({ lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:moon-info': z.object({ date: z.string() }),
+  'sky:twilight': z.object({ date: z.string(), lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+  'sky:target-visibility': z.object({ target_id: id, lat: z.number(), lon: z.number(), elevation: z.number().optional() }),
+
+  'targets:batch-advance-stage': z.object({ target_ids: z.array(z.string().min(1)), to_stage: z.string().min(1), notes: z.string().optional() }),
+  'targets:batch-add-collection': z.object({ target_ids: z.array(z.string().min(1)), collection_id: z.string().min(1) }),
+  'targets:batch-delete': z.object({ target_ids: z.array(z.string().min(1)) }),
+
+  'export:targets-csv': z.object({}).optional(),
+  'export:sessions-csv': z.object({}).optional(),
+  'export:fits-csv': z.object({}).optional(),
+  'import:nina-sequence': z.object({ file_path: z.string().min(1) }),
+  'import:pick-file': z.object({}).optional(),
+
+  'timeline:calendar': z.object({ year: z.number().int(), month: z.number().int().min(1).max(12).optional() }),
+  'timeline:year-summary': z.object({ year: z.number().int() }),
+
+  'recommendations:list': z.object({}).optional(),
+
+  'db:reset': z.object({}).optional(),
+
+  'insights:summary': z.object({}).optional(),
+  'insights:monthly-activity': z.object({ months: z.number().int().positive().optional() }),
+  'insights:best-nights': z.object({ limit: z.number().int().positive().optional() }),
+  'insights:equipment-effectiveness': z.object({}).optional(),
+  'insights:quality-trends': z.object({ months: z.number().int().positive().optional() }),
+  'insights:filter-usage': z.object({}).optional(),
+  'insights:target-progress': z.object({ limit: z.number().int().positive().optional() })
 } as const
 
 export type SchemaMap = typeof schemas

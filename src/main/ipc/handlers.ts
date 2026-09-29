@@ -1,17 +1,16 @@
-import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron'
-import { ZodError, type ZodType } from 'zod'
-import { schemas, type Channel } from './schemas'
-import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets } from '../services/target'
+import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
+import { z } from 'zod'
+import { schemas, type Channel, type SchemaMap } from './schemas'
+import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
 import { createSession, updateSession, listSessions, getSessionById } from '../services/session'
-import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection } from '../services/collection'
+import { createCollection, listCollections, getCollectionWithTargets, addTargetToCollection, removeTargetFromCollection, autoGenerateCatalogueCollections } from '../services/collection'
 import { advanceStage, getTransitionHistory, listStages } from '../services/workflow'
-import { createEquipment, listEquipment, getUsageHistory } from '../services/equipment'
+import { createEquipment, listEquipment, getUsageHistory, updateEquipment, deleteEquipment, calculateFOV, calculateImageScale } from '../services/equipment'
 import { generateFolders, listTemplates, createTemplate } from '../services/folder'
-import { createObservatory, listObservatories, setPrimaryObservatory } from '../services/observatory'
-import { getVisibility, getTonightTargets } from '../services/ephemeris'
+import { scanImages, readImageThumbnail } from '../services/image-scanner'
 import { getDashboardStats, getCatalogueProgressStats } from '../services/dashboard'
 import { createRelationship, listRelationships } from '../services/relationship'
-import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats } from '../services/fits-analyzer'
+import { startFolderScan, listScans, getScanById, deleteScan, listScanFiles, getFileDetail, getFileHeaders, getScanAggregates, getTargetSummaries, computeFileStats, getTargetObservationData } from '../services/fits-analyzer'
 import { linkFitsFilesToTargets, manualLinkFile, unlinkFile, getLinkingStatus, getUnlinkedFiles } from '../services/fits-linker'
 import { getOrCreateThumbnail } from '../services/thumbnail'
 import { previewAutoSessions, generateSessions, getAutoSessionStatus } from '../services/session-generator'
@@ -19,30 +18,45 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
+import { prepForSiril, startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
+import { getSqlite, resetDatabase } from '../db/connection'
+import { composeCore } from '../composition'
+import { toRecommendation } from '../adapters/stacking-suggestion-presenter'
+import { loadCatalogueSeedData } from '../services/catalogue'
+import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
+import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
+import { getCalendarData, getYearSummary } from '../services/timeline'
+import { batchAdvanceStage, batchAddToCollection, batchDeleteTargets } from '../services/batch'
+import { exportTargetsCsv, exportSessionsCsv, exportFitsAggregatesCsv } from '../services/export'
+import { importNinaSequence } from '../services/nina-import'
+import { getRecommendations } from '../services/recommendations'
+import fs from 'fs'
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
 
 const registeredChannels: string[] = []
-
-function validate<T>(schema: ZodType<T>, data: unknown): T {
-  return schema.parse(data)
-}
 
 export function handle(channel: string, handler: HandlerFn): void {
   ipcMain.handle(channel, handler)
   registeredChannels.push(channel)
 }
 
-function validated<T>(channel: Channel, handler: (args: T) => unknown): HandlerFn {
+function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): HandlerFn {
   return async (_e: IpcMainInvokeEvent, rawArgs: unknown) => {
-    const args = validate(schemas[channel] as ZodType, rawArgs)
-    return handler(args as T)
+    const args = schemas[channel].parse(rawArgs) as z.infer<SchemaMap[C]>
+    return handler(args)
   }
 }
 
 export function registerIpcHandlers(): void {
   handle('targets:search', validated('targets:search', (args) => {
-    return searchTargets(args.query, args.limit, args.offset)
+    return searchTargets(args.query, args.limit, args.offset, {
+      objectType: args.object_type,
+      workflowStage: args.workflow_stage,
+      sortBy: args.sort_by,
+      sortDir: args.sort_dir
+    })
   }))
 
   handle('targets:get', validated('targets:get', (args) => {
@@ -148,8 +162,8 @@ export function registerIpcHandlers(): void {
     return listStages()
   })
 
-  handle('equipment:list', async (_e, args?: { type?: string }) => {
-    if (args) validate(schemas['equipment:list']!, args)
+  handle('equipment:list', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['equipment:list']!.parse(rawArgs) as { type?: string } : undefined
     return { equipment: listEquipment(args?.type) }
   })
 
@@ -179,30 +193,12 @@ export function registerIpcHandlers(): void {
     return createTemplate(args.name, args.structure as Record<string, unknown>)
   }))
 
-  handle('observatory:list', async () => {
-    return { observatories: listObservatories() }
+  handle('images:scan', async () => {
+    return scanImages()
   })
 
-  handle('observatory:create', validated('observatory:create', (args) => {
-    return createObservatory({
-      name: args.name,
-      latitude: args.latitude,
-      longitude: args.longitude,
-      altitudeM: args.altitude_m,
-      timezone: args.timezone
-    })
-  }))
-
-  handle('observatory:set-primary', validated('observatory:set-primary', (args) => {
-    return setPrimaryObservatory(args.id)
-  }))
-
-  handle('targets:visibility', validated('targets:visibility', (args) => {
-    return getVisibility(args.target_id, args.observatory_id, args.date)
-  }))
-
-  handle('planning:tonight', validated('planning:tonight', (args) => {
-    return { targets: getTonightTargets(args.observatory_id, args.date, args.min_altitude, args.min_hours) }
+  handle('images:read', validated('images:read', (args) => {
+    return readImageThumbnail(args.file_path)
   }))
 
   handle('dashboard:stats', async () => {
@@ -234,8 +230,8 @@ export function registerIpcHandlers(): void {
     return startFolderScan(args.folder_path)
   }))
 
-  handle('fits:list-scans', async (_e, args?: { limit?: number; offset?: number }) => {
-    if (args) validate(schemas['fits:list-scans']!, args)
+  handle('fits:list-scans', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['fits:list-scans']!.parse(rawArgs) as { limit?: number; offset?: number } : undefined
     return listScans(args?.limit, args?.offset)
   })
 
@@ -355,8 +351,8 @@ export function registerIpcHandlers(): void {
     return getCurrentStorageStats()
   })
 
-  handle('storage:history', async (_e, args?: { limit?: number }) => {
-    if (args) validate(schemas['storage:history']!, args)
+  handle('storage:history', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['storage:history']!.parse(rawArgs) as { limit?: number } : undefined
     return { snapshots: getStorageHistory(args?.limit) }
   })
 
@@ -376,13 +372,13 @@ export function registerIpcHandlers(): void {
     return { filters: getStorageByFilter() }
   })
 
-  handle('calibration:library', async (_e, args?: { type?: string; gain?: number; temp?: number; binning?: string }) => {
-    if (args) validate(schemas['calibration:library']!, args)
+  handle('calibration:library', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['calibration:library']!.parse(rawArgs) as { type?: string; gain?: number; temp?: number; binning?: string } : undefined
     return { groups: getCalibrationLibrary(args ?? undefined) }
   })
 
-  handle('calibration:match-lights', async (_e, args?: { scan_id?: string }) => {
-    if (args) validate(schemas['calibration:match-lights']!, args)
+  handle('calibration:match-lights', async (_e, rawArgs) => {
+    const args = rawArgs ? schemas['calibration:match-lights']!.parse(rawArgs) as { scan_id?: string } : undefined
     return matchCalibrationToLights(args?.scan_id)
   })
 
@@ -397,6 +393,207 @@ export function registerIpcHandlers(): void {
   handle('fits:compute-stats', validated('fits:compute-stats', (args) => {
     return { stats: computeFileStats(args.file_id) }
   }))
+
+  handle('home:scan-start', async () => {
+    const homePath = getSetting('home_folder_path')
+    if (!homePath) return { started: false, reason: 'Home folder not configured' }
+    return startHomeScan(homePath)
+  })
+
+  handle('home:scan-progress', async () => {
+    return getHomeScanProgress()
+  })
+
+  handle('home:prep-siril', validated('home:prep-siril', (args) => {
+    return prepForSiril(args.raw_path)
+  }))
+
+  handle('home:open-folder', validated('home:open-folder', async (args) => {
+    const result = await shell.openPath(args.folder_path)
+    return { success: !result, error: result || undefined }
+  }))
+
+  handle('home:target-data', validated('home:target-data', (args) => {
+    return getTargetHomeData(args.target_id)
+  }))
+
+  handle('targets:observation-data', validated('targets:observation-data', (args) => {
+    return getTargetObservationData(args.target_id)
+  }))
+
+  handle('targets:get-thumbnail', validated('targets:get-thumbnail', (args) => {
+    return getTargetThumbnail(args.id)
+  }))
+
+  handle('targets:images', validated('targets:images', (args) => {
+    return { images: getTargetImages(args.id) }
+  }))
+
+  handle('stacking:summary', async () => {
+    return getStackingSummary()
+  })
+
+  handle('stacking:sub-frames', validated('stacking:sub-frames', (args) => {
+    return getSubFramesForStacked(args.stacked_file_id)
+  }))
+
+  handle('stacking:integration-progress', async () => {
+    return { targets: getIntegrationProgress() }
+  })
+
+  handle('stacking:goals', validated('stacking:goals', (args) => {
+    return { goals: getIntegrationGoals(args.target_id) }
+  }))
+
+  handle('stacking:set-goal', validated('stacking:set-goal', (args) => {
+    return setIntegrationGoal(args.target_id, args.filter, args.goal_hours * 3600)
+  }))
+
+  handle('stacking:delete-goal', validated('stacking:delete-goal', (args) => {
+    return { success: deleteIntegrationGoal(args.id) }
+  }))
+
+  handle('insights:summary', async () => {
+    return getInsightsSummary()
+  })
+
+  handle('insights:monthly-activity', validated('insights:monthly-activity', (args) => {
+    return getMonthlyActivity(args.months)
+  }))
+
+  handle('insights:best-nights', validated('insights:best-nights', (args) => {
+    return getBestNights(args.limit)
+  }))
+
+  handle('insights:equipment-effectiveness', async () => {
+    return getEquipmentEffectiveness()
+  })
+
+  handle('insights:quality-trends', validated('insights:quality-trends', (args) => {
+    return getQualityTrends(args.months)
+  }))
+
+  handle('insights:filter-usage', async () => {
+    return getFilterUsageBreakdown()
+  })
+
+  handle('insights:target-progress', validated('insights:target-progress', (args) => {
+    return getTargetProgress(args.limit)
+  }))
+
+  handle('equipment:update', validated('equipment:update', (args) => {
+    return updateEquipment(args.id, args.fields)
+  }))
+
+  handle('equipment:delete', validated('equipment:delete', (args) => {
+    return { success: deleteEquipment(args.id) }
+  }))
+
+  handle('equipment:calculate-fov', validated('equipment:calculate-fov', (args) => {
+    return calculateFOV(args.telescope_id, args.camera_id, args.reducer_id)
+  }))
+
+  handle('equipment:calculate-image-scale', validated('equipment:calculate-image-scale', (args) => {
+    return calculateImageScale(args.telescope_id, args.camera_id)
+  }))
+
+  handle('sky:altitude-curve', validated('sky:altitude-curve', (args) => {
+    return { points: getTargetAltitudeCurve(args.target_id, args.date, args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('sky:best-tonight', validated('sky:best-tonight', (args) => {
+    return { targets: getBestTargetsTonight(args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('sky:moon-info', validated('sky:moon-info', (args) => {
+    return getMoonInfo(args.date)
+  }))
+
+  handle('sky:twilight', validated('sky:twilight', (args) => {
+    return getTwilightTimes(args.date, args.lat, args.lon, args.elevation)
+  }))
+
+  handle('sky:target-visibility', validated('sky:target-visibility', (args) => {
+    return { months: getTargetVisibility(args.target_id, args.lat, args.lon, args.elevation) }
+  }))
+
+  handle('targets:batch-advance-stage', validated('targets:batch-advance-stage', (args) => {
+    return batchAdvanceStage(args.target_ids, args.to_stage, args.notes)
+  }))
+
+  handle('targets:batch-add-collection', validated('targets:batch-add-collection', (args) => {
+    return batchAddToCollection(args.target_ids, args.collection_id)
+  }))
+
+  handle('targets:batch-delete', validated('targets:batch-delete', (args) => {
+    return batchDeleteTargets(args.target_ids)
+  }))
+
+  handle('export:targets-csv', async () => {
+    const csv = exportTargetsCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'targets.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('export:sessions-csv', async () => {
+    const csv = exportSessionsCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'sessions.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('export:fits-csv', async () => {
+    const csv = exportFitsAggregatesCsv()
+    const result = await dialog.showSaveDialog({ defaultPath: 'fits-aggregates.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  })
+
+  handle('import:pick-file', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      title: 'Select NINA Sequence File',
+      filters: [
+        { name: 'NINA Sequence', extensions: ['xml', 'json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled || result.filePaths.length === 0) return { path: null }
+    return { path: result.filePaths[0] }
+  })
+
+  handle('import:nina-sequence', validated('import:nina-sequence', (args) => {
+    return importNinaSequence(args.file_path)
+  }))
+
+  handle('timeline:calendar', validated('timeline:calendar', (args) => {
+    return { months: getCalendarData(args.year, args.month) }
+  }))
+
+  handle('timeline:year-summary', validated('timeline:year-summary', (args) => {
+    return { months: getYearSummary(args.year) }
+  }))
+
+  handle('recommendations:list', async () => {
+    // Strangler seam: stacking suggestions come from the hexagonal core, the rest from the legacy service.
+    const stacking = await composeCore(getSqlite()).listStackingSuggestions()
+    return { recommendations: [...stacking.map(toRecommendation), ...getRecommendations()] }
+  })
+
+  handle('db:reset', async () => {
+    const result = resetDatabase()
+    try {
+      loadCatalogueSeedData()
+      autoGenerateCatalogueCollections()
+    } catch (err) {
+      console.error('Re-seed after reset failed:', err)
+    }
+    return result
+  })
 }
 
 export function getRegisteredChannels(): string[] {

@@ -11,15 +11,20 @@
     "isolatedModules": true,
     "declaration": true,
     "declarationMap": true,
+    "jsx": "react-jsx",
     "sourceMap": true,
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["src/shared/*"],
       "@main/*": ["src/main/*"],
-      "@renderer/*": ["src/renderer/*"]
+      "@renderer/*": ["src/renderer/*"],
+      "@astro/domain": ["packages/domain/src"],
+      "@astro/application": ["packages/application/src"],
+      "@astro/testkit": ["packages/testkit/src"],
+      "@astro/testkit/*": ["packages/testkit/src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src/**/*", "packages/*/src/**/*"],
+  "exclude": ["node_modules", "dist", "tests", "packages/testkit"]
 }

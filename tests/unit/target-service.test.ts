@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
-import { setupTestDb, teardownTestDb, seedTarget } from '../helpers/setup'
+import { setupTestDb, teardownTestDb } from '../helpers/setup'
 
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, addAlias, mergeTargets } = await import('../../src/main/services/target')
@@ -23,15 +22,15 @@ describe('TargetService', () => {
     // Event: User submits a new target with required fields
     // Action: System persists the target to the database
     // Response: Returns a fully populated Target object
-    // State: Database contains one new target row with 'planned' workflow stage
+    // State: Database contains one new target row with 'not_observed' workflow stage
 
-    it('Given no targets exist, When a target is created with name and type, Then it returns a Target with a ULID and planned stage', () => {
+    it('Given no targets exist, When a target is created with name and type, Then it returns a Target with a ULID and not_observed stage', () => {
       const result = createTarget({ canonicalName: 'Andromeda Galaxy', objectType: 'galaxy' })
 
       expect(result.id).toBeTruthy()
       expect(result.canonicalName).toBe('Andromeda Galaxy')
       expect(result.objectType).toBe('galaxy')
-      expect(result.workflowStage).toBe('planned')
+      expect(result.workflowStage).toBe('not_observed')
       expect(result.isCustom).toBe(true)
       expect(result.createdAt).toBeTruthy()
     })
@@ -107,6 +106,48 @@ describe('TargetService', () => {
       const page2 = searchTargets('', 1, 1)
       expect(page2.targets).toHaveLength(1)
       expect(page2.total).toBe(2)
+    })
+
+    it('Given mixed types, When filtering by object_type, Then only matching targets are returned', () => {
+      createTarget({ canonicalName: 'M31', objectType: 'galaxy' })
+      createTarget({ canonicalName: 'M42', objectType: 'emission_nebula' })
+      createTarget({ canonicalName: 'M51', objectType: 'galaxy' })
+
+      const result = searchTargets('', 50, 0, { objectType: 'galaxy' })
+      expect(result.total).toBe(2)
+      expect(result.targets.every(t => t.objectType === 'galaxy')).toBe(true)
+    })
+
+    it('Given targets at different stages, When filtering by workflow_stage, Then only matching targets are returned', () => {
+      const t1 = createTarget({ canonicalName: 'Staged1', objectType: 'star' })
+      createTarget({ canonicalName: 'Staged2', objectType: 'star' })
+
+      updateTarget(t1.id, { workflowStage: 'raw_captured' })
+
+      const result = searchTargets('', 50, 0, { workflowStage: 'raw_captured' })
+      expect(result.total).toBe(1)
+      expect(result.targets[0].canonicalName).toBe('Staged1')
+    })
+
+    it('Given targets with aliases, When searching by alias with filters, Then filters apply to alias fallback results', () => {
+      const t1 = createTarget({ canonicalName: 'Eagle Nebula', objectType: 'emission_nebula' })
+      const t2 = createTarget({ canonicalName: 'Andromeda Galaxy', objectType: 'galaxy' })
+      addAlias(t1.id, 'M16', 'messier')
+      addAlias(t2.id, 'M31', 'messier')
+
+      const result = searchTargets('M', 50, 0, { objectType: 'galaxy' })
+      expect(result.targets.every(t => t.objectType === 'galaxy')).toBe(true)
+      expect(result.targets.some(t => t.canonicalName === 'Andromeda Galaxy')).toBe(true)
+      expect(result.targets.some(t => t.canonicalName === 'Eagle Nebula')).toBe(false)
+    })
+
+    it('Given targets exist, When sorting by name desc, Then results are in reverse alphabetical order', () => {
+      createTarget({ canonicalName: 'Alpha', objectType: 'star' })
+      createTarget({ canonicalName: 'Zeta', objectType: 'star' })
+
+      const result = searchTargets('', 50, 0, { sortBy: 'name', sortDir: 'desc' })
+      expect(result.targets[0].canonicalName).toBe('Zeta')
+      expect(result.targets[1].canonicalName).toBe('Alpha')
     })
   })
 

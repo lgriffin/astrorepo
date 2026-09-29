@@ -1,11 +1,8 @@
 import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { app } from 'electron'
 import path from 'path'
-import * as schema from './schema'
 import { initFts } from './fts'
 
-let db: ReturnType<typeof drizzle> | null = null
 let sqlite: Database.Database | null = null
 
 export function getDbPath(): string {
@@ -18,18 +15,13 @@ export function initDatabase(): void {
   sqlite = new Database(dbPath)
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
-  db = drizzle(sqlite, { schema })
+  sqlite.pragma('busy_timeout = 5000')
   runMigrations(sqlite)
   try {
     initFts(sqlite)
   } catch {
     console.warn('FTS5 initialization skipped — search will use LIKE fallback')
   }
-}
-
-export function getDb(): ReturnType<typeof drizzle> {
-  if (!db) throw new Error('Database not initialized. Call initDatabase() first.')
-  return db
 }
 
 export function getSqlite(): Database.Database {
@@ -51,7 +43,7 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'planned',
+      workflow_stage TEXT NOT NULL DEFAULT 'not_observed',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
       notes TEXT,
@@ -105,7 +97,7 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE TABLE IF NOT EXISTS observation_sessions (
       id TEXT PRIMARY KEY,
       date TEXT NOT NULL,
-      observatory_id TEXT REFERENCES observatories(id),
+      observatory_id TEXT,
       location_freetext TEXT,
       sky_quality REAL,
       weather TEXT,
@@ -148,18 +140,6 @@ function runMigrations(sqlite: Database.Database): void {
       equipment_id TEXT NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
       role TEXT,
       PRIMARY KEY (session_id, equipment_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS observatories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL,
-      altitude_m REAL NOT NULL DEFAULT 0,
-      timezone TEXT,
-      is_primary INTEGER NOT NULL DEFAULT 0,
-      notes TEXT,
-      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS workflow_stages (
@@ -294,7 +274,6 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_designation ON catalogue_entries(designation);
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_target ON catalogue_entries(target_id);
     CREATE INDEX IF NOT EXISTS idx_session_date ON observation_sessions(date);
-    CREATE INDEX IF NOT EXISTS idx_session_observatory ON observation_sessions(observatory_id);
     CREATE INDEX IF NOT EXISTS idx_collection_membership_target ON collection_memberships(target_id);
     CREATE INDEX IF NOT EXISTS idx_workflow_transition_target ON workflow_transitions(target_id);
     CREATE INDEX IF NOT EXISTS idx_relationship_source ON target_relationships(source_target_id);
@@ -302,18 +281,16 @@ function runMigrations(sqlite: Database.Database): void {
 
     -- Default workflow stages
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
-      ('ws-01', 'planned', 1, 1),
-      ('ws-02', 'scheduled', 2, 1),
-      ('ws-03', 'observed', 3, 1),
-      ('ws-04', 'raw_captured', 4, 1),
-      ('ws-05', 'calibrated', 5, 1),
-      ('ws-06', 'registered', 6, 1),
-      ('ws-07', 'integrated', 7, 1),
-      ('ws-08', 'processing', 8, 1),
-      ('ws-09', 'edited', 9, 1),
-      ('ws-10', 'published', 10, 1),
-      ('ws-11', 'printed', 11, 1),
-      ('ws-12', 'archived', 12, 1);
+      ('ws-00', 'not_observed', 0, 1),
+      ('ws-04', 'raw_captured', 1, 1),
+      ('ws-05', 'calibrated', 2, 1),
+      ('ws-06', 'registered', 3, 1),
+      ('ws-07', 'integrated', 4, 1),
+      ('ws-08', 'processing', 5, 1),
+      ('ws-09', 'edited', 6, 1),
+      ('ws-10', 'published', 7, 1),
+      ('ws-11', 'printed', 8, 1),
+      ('ws-12', 'archived', 9, 1);
 
     -- Default Siril folder template
     CREATE TABLE IF NOT EXISTS storage_snapshots (
@@ -352,6 +329,84 @@ function runMigrations(sqlite: Database.Database): void {
     `)
   }
 
+  // Migration: add thumbnail_path to targets
+  const hasThumbnailPath = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('targets') WHERE name='thumbnail_path'").get() as { cnt: number }
+  if (hasThumbnailPath.cnt === 0) {
+    sqlite.exec(`ALTER TABLE targets ADD COLUMN thumbnail_path TEXT`)
+  }
+
+  // Versioned migrations — run once per schema version bump
+  const version = getSchemaVersion(sqlite)
+
+  if (version < 1) {
+    sqlite.exec(`
+      UPDATE targets SET workflow_stage = 'not_observed' WHERE workflow_stage IN ('planned', 'scheduled', 'observed');
+      DELETE FROM workflow_stages WHERE name IN ('planned', 'scheduled', 'observed');
+      UPDATE targets SET workflow_stage = 'not_observed'
+      WHERE workflow_stage = 'raw_captured'
+      AND id NOT IN (SELECT DISTINCT target_id FROM fits_files WHERE target_id IS NOT NULL);
+    `)
+    setSchemaVersion(sqlite, 1)
+  }
+
+  // Migration: add target_home_data table
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS target_home_data (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      raw_files INTEGER NOT NULL DEFAULT 0,
+      stacked_files INTEGER NOT NULL DEFAULT 0,
+      tif_files INTEGER NOT NULL DEFAULT 0,
+      image_files INTEGER NOT NULL DEFAULT 0,
+      raw_path TEXT,
+      stacked_path TEXT,
+      tif_path TEXT,
+      images_path TEXT,
+      suggested_stage TEXT,
+      scanned_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS target_home_folders (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      folder_type TEXT NOT NULL,
+      subfolder_name TEXT,
+      subfolder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      scanned_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_home_folders_target ON target_home_folders(target_id);
+  `)
+
+  // Migration: add integration_goals table
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS integration_goals (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      filter TEXT NOT NULL,
+      goal_seconds REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(target_id, filter)
+    );
+    CREATE INDEX IF NOT EXISTS idx_integration_goal_target ON integration_goals(target_id);
+  `)
+
+  // Migration: add equipment profile columns
+  const hasFocalLength = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('equipment') WHERE name='focal_length_mm'").get() as { cnt: number }
+  if (hasFocalLength.cnt === 0) {
+    sqlite.exec(`
+      ALTER TABLE equipment ADD COLUMN focal_length_mm REAL;
+      ALTER TABLE equipment ADD COLUMN aperture_mm REAL;
+      ALTER TABLE equipment ADD COLUMN sensor_width_mm REAL;
+      ALTER TABLE equipment ADD COLUMN sensor_height_mm REAL;
+      ALTER TABLE equipment ADD COLUMN pixel_size_um REAL;
+      ALTER TABLE equipment ADD COLUMN sensor_width_px INTEGER;
+      ALTER TABLE equipment ADD COLUMN sensor_height_px INTEGER;
+      ALTER TABLE equipment ADD COLUMN reducer_factor REAL;
+    `)
+  }
+
   // Migration: add quality columns to fits_files
   const hasFwhm = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='fwhm_estimate'").get() as { cnt: number }
   if (hasFwhm.cnt === 0) {
@@ -366,11 +421,39 @@ function runMigrations(sqlite: Database.Database): void {
   }
 }
 
-export function createTestDatabase(): { db: ReturnType<typeof drizzle>; sqlite: Database.Database } {
-  const testSqlite = new Database(':memory:')
-  testSqlite.pragma('journal_mode = WAL')
-  testSqlite.pragma('foreign_keys = ON')
-  const testDb = drizzle(testSqlite, { schema })
-  runMigrations(testSqlite)
-  return { db: testDb, sqlite: testSqlite }
+function getSchemaVersion(db: Database.Database): number {
+  const row = db.prepare("SELECT value FROM app_settings WHERE key = 'schema_version'").get() as { value: string } | undefined
+  return row ? parseInt(row.value, 10) : 0
 }
+
+function setSchemaVersion(db: Database.Database, version: number): void {
+  db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('schema_version', ?)").run(String(version))
+}
+
+export function resetDatabase(): { cleared: boolean } {
+  if (!sqlite) throw new Error('Database not initialized')
+  sqlite.exec(`
+    DELETE FROM fits_headers;
+    DELETE FROM fits_thumbnails;
+    DELETE FROM fits_files;
+    DELETE FROM fits_scans;
+    DELETE FROM target_home_folders;
+    DELETE FROM target_home_data;
+    DELETE FROM workflow_transitions;
+    DELETE FROM session_targets;
+    DELETE FROM session_equipment;
+    DELETE FROM observation_sessions;
+    DELETE FROM collection_memberships;
+    DELETE FROM collections;
+    DELETE FROM catalogue_entries;
+    DELETE FROM target_aliases;
+    DELETE FROM target_relationships;
+    DELETE FROM integration_goals;
+    DELETE FROM storage_snapshots;
+    DELETE FROM targets;
+    DELETE FROM catalogues;
+  `)
+  sqlite.exec('VACUUM')
+  return { cleared: true }
+}
+

@@ -5,8 +5,7 @@ import { setupTestDb, teardownTestDb, seedTarget, seedEquipment } from '../helpe
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { getDashboardStats, getCatalogueProgressStats } = await import('../../src/main/services/dashboard')
@@ -38,8 +37,8 @@ describe('DashboardService', () => {
     })
 
     it('Given targets at various stages, When stats are fetched, Then stage counts are accurate', () => {
-      seedTarget(sqlite, { canonicalName: 'Planned A', workflowStage: 'planned' })
-      seedTarget(sqlite, { canonicalName: 'Planned B', workflowStage: 'planned' })
+      seedTarget(sqlite, { canonicalName: 'Planned A', workflowStage: 'not_observed' })
+      seedTarget(sqlite, { canonicalName: 'Planned B', workflowStage: 'not_observed' })
       seedTarget(sqlite, { canonicalName: 'Processing C', workflowStage: 'processing' })
       seedTarget(sqlite, { canonicalName: 'Published D', workflowStage: 'published' })
       seedTarget(sqlite, { canonicalName: 'Archived E', workflowStage: 'archived' })
@@ -104,7 +103,7 @@ describe('DashboardService', () => {
       sqlite.prepare('INSERT INTO catalogues (id, name, abbreviation, description, total_objects, is_builtin, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)').run('cat-1', 'Messier', 'M', 'Messier catalogue', 110, now)
 
       const t1 = seedTarget(sqlite, { canonicalName: 'M1', workflowStage: 'published' })
-      const t2 = seedTarget(sqlite, { canonicalName: 'M2', workflowStage: 'planned' })
+      const t2 = seedTarget(sqlite, { canonicalName: 'M2', workflowStage: 'not_observed' })
 
       sqlite.prepare('INSERT INTO catalogue_entries (id, catalogue_id, target_id, designation) VALUES (?, ?, ?, ?)').run('ce-1', 'cat-1', t1, 'M1')
       sqlite.prepare('INSERT INTO catalogue_entries (id, catalogue_id, target_id, designation) VALUES (?, ?, ?, ?)').run('ce-2', 'cat-1', t2, 'M2')

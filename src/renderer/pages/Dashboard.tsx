@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
+import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
-import type { DashboardStats, CatalogueProgress } from '@shared/types'
+import { formatExposure } from '../utils/format'
+import type { DashboardStats, CatalogueProgress, Recommendation } from '@shared/types'
 
 export function Dashboard(): React.ReactElement {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [catalogues, setCatalogues] = useState<CatalogueProgress[]>([])
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       invoke<DashboardStats>('dashboard:stats'),
-      invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress')
+      invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress'),
+      invoke<{ recommendations: Recommendation[] }>('recommendations:list')
     ])
-      .then(([s, c]) => {
+      .then(([s, c, r]) => {
         setStats(s)
         setCatalogues(c.catalogues)
+        setRecommendations(r.recommendations)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -41,20 +48,30 @@ export function Dashboard(): React.ReactElement {
         <StatCard label="Catalogues" value={Object.keys(stats.objectsByCatalogue).length} />
       </div>
 
+      <div className="mb-8">
+        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Library Data</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="With Raw Data" value={stats.targetsWithRawData} />
+          <StatCard label="With Stacked Data" value={stats.targetsWithStackedData} />
+          <StatCard label="With TIF Data" value={stats.targetsWithTifData} />
+          <StatCard label="With Image Data" value={stats.targetsWithImageData} />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Catalogue Progress</h2>
           <div className="space-y-3">
             {catalogues.map((c) => {
-              const pct = c.total > 0 ? Math.round((c.completed / c.total) * 100) : 0
+              const obsPct = c.total > 0 ? Math.round((c.observed / c.total) * 100) : 0
               return (
                 <div key={c.catalogueId}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-astro-text">{c.catalogueName}</span>
-                    <span className="text-astro-muted">{c.completed}/{c.total} ({pct}%)</span>
+                    <span className="text-astro-muted">{c.observed}/{c.total} observed ({obsPct}%)</span>
                   </div>
                   <div className="w-full h-1.5 bg-astro-bg rounded-full overflow-hidden">
-                    <div className="h-full bg-astro-accent rounded-full" style={{ width: `${pct}%` }} />
+                    <div className="h-full bg-astro-accent rounded-full" style={{ width: `${obsPct}%` }} />
                   </div>
                 </div>
               )
@@ -92,21 +109,38 @@ export function Dashboard(): React.ReactElement {
           </div>
         )}
       </div>
+
+      {recommendations.length > 0 && (
+        <div className="mt-8 bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Recommendations</h2>
+          <div className="space-y-3">
+            {recommendations.slice(0, 8).map(rec => {
+              const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+              return (
+                <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">
+                  <div className="flex flex-col gap-1 shrink-0 pt-0.5">
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityColor}`}>{rec.priority}</span>
+                    <span className="text-[10px] text-astro-muted capitalize">{rec.category}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-astro-text font-medium">{rec.title}</p>
+                    <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>
+                  </div>
+                  {rec.actionLabel && rec.targetId && (
+                    <button
+                      onClick={() => navigate(`/targets/${rec.targetId}`)}
+                      className="shrink-0 text-xs text-astro-accent hover:underline"
+                    >
+                      {rec.actionLabel}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number | string; accent?: boolean }): React.ReactElement {
-  return (
-    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <p className="text-xs text-astro-muted uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accent ? 'text-astro-accent' : 'text-astro-text'}`}>{value}</p>
-    </div>
-  )
-}
-
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(0)}m`
-  return `${(sec / 3600).toFixed(1)}h`
-}

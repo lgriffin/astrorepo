@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
+import { formatExposure, formatSize } from '../../utils/format'
 import type { FitsTargetSummary } from '@shared/types'
 
 interface TargetSummariesProps {
   scanId: string
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
-function formatExposure(sec: number): string {
-  if (sec < 60) return `${sec.toFixed(0)}s`
-  if (sec < 3600) return `${(sec / 60).toFixed(1)}m`
-  return `${(sec / 3600).toFixed(1)}h`
 }
 
 export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactElement {
@@ -46,7 +36,17 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-astro-muted text-xs">{expandedTarget === t.folderName ? '▾' : '▸'}</span>
-                  <span className="text-sm font-medium text-astro-text">{t.folderName}</span>
+                  {t.targetId ? (
+                    <Link
+                      to={`/targets/${t.targetId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-sm font-medium text-astro-accent hover:underline"
+                    >
+                      {t.targetName ?? t.folderName}
+                    </Link>
+                  ) : (
+                    <span className="text-sm font-medium text-astro-text">{t.folderName}</span>
+                  )}
                 </div>
                 <div className="flex gap-4 text-xs text-astro-muted">
                   <span>{t.totalFiles} files</span>

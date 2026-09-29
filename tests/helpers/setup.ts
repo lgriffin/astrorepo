@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as schema from '../../src/main/db/schema'
+import { initFts } from '../../src/main/db/fts'
 
 let testSqlite: Database.Database | null = null
 
@@ -8,7 +7,9 @@ export function setupTestDb(): Database.Database {
   testSqlite = new Database(':memory:')
   testSqlite.pragma('journal_mode = WAL')
   testSqlite.pragma('foreign_keys = ON')
+  testSqlite.pragma('busy_timeout = 5000')
   runMigrations(testSqlite)
+  initFts(testSqlite)
   return testSqlite
 }
 
@@ -38,9 +39,10 @@ function runMigrations(sqlite: Database.Database): void {
       description TEXT,
       simbad_id TEXT,
       ned_id TEXT,
-      workflow_stage TEXT NOT NULL DEFAULT 'planned',
+      workflow_stage TEXT NOT NULL DEFAULT 'not_observed',
       is_custom INTEGER NOT NULL DEFAULT 0,
       folder_path TEXT,
+      thumbnail_path TEXT,
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -92,7 +94,7 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE TABLE IF NOT EXISTS observation_sessions (
       id TEXT PRIMARY KEY,
       date TEXT NOT NULL,
-      observatory_id TEXT REFERENCES observatories(id),
+      observatory_id TEXT,
       location_freetext TEXT,
       sky_quality REAL,
       weather TEXT,
@@ -129,6 +131,14 @@ function runMigrations(sqlite: Database.Database): void {
       serial_number TEXT,
       notes TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
+      focal_length_mm REAL,
+      aperture_mm REAL,
+      sensor_width_mm REAL,
+      sensor_height_mm REAL,
+      pixel_size_um REAL,
+      sensor_width_px INTEGER,
+      sensor_height_px INTEGER,
+      reducer_factor REAL,
       created_at TEXT NOT NULL
     );
 
@@ -137,18 +147,6 @@ function runMigrations(sqlite: Database.Database): void {
       equipment_id TEXT NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
       role TEXT,
       PRIMARY KEY (session_id, equipment_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS observatories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL,
-      altitude_m REAL NOT NULL DEFAULT 0,
-      timezone TEXT,
-      is_primary INTEGER NOT NULL DEFAULT 0,
-      notes TEXT,
-      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS workflow_stages (
@@ -270,6 +268,17 @@ function runMigrations(sqlite: Database.Database): void {
       ordinal INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS integration_goals (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      filter TEXT NOT NULL,
+      goal_seconds REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(target_id, filter)
+    );
+    CREATE INDEX IF NOT EXISTS idx_integration_goal_target ON integration_goals(target_id);
+
     CREATE TABLE IF NOT EXISTS storage_snapshots (
       id TEXT PRIMARY KEY,
       snapshot_date TEXT NOT NULL,
@@ -283,6 +292,32 @@ function runMigrations(sqlite: Database.Database): void {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_storage_snapshot_date ON storage_snapshots(snapshot_date);
+
+    CREATE TABLE IF NOT EXISTS target_home_data (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      raw_files INTEGER NOT NULL DEFAULT 0,
+      stacked_files INTEGER NOT NULL DEFAULT 0,
+      tif_files INTEGER NOT NULL DEFAULT 0,
+      image_files INTEGER NOT NULL DEFAULT 0,
+      raw_path TEXT,
+      stacked_path TEXT,
+      tif_path TEXT,
+      images_path TEXT,
+      suggested_stage TEXT,
+      scanned_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS target_home_folders (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      folder_type TEXT NOT NULL,
+      subfolder_name TEXT,
+      subfolder_path TEXT NOT NULL,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      total_size_bytes INTEGER NOT NULL DEFAULT 0,
+      scanned_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_home_folders_target ON target_home_folders(target_id);
 
     CREATE INDEX IF NOT EXISTS idx_target_alias_alias ON target_aliases(alias);
     CREATE INDEX IF NOT EXISTS idx_fits_scan_status ON fits_scans(status);
@@ -304,25 +339,22 @@ function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_designation ON catalogue_entries(designation);
     CREATE INDEX IF NOT EXISTS idx_catalogue_entry_target ON catalogue_entries(target_id);
     CREATE INDEX IF NOT EXISTS idx_session_date ON observation_sessions(date);
-    CREATE INDEX IF NOT EXISTS idx_session_observatory ON observation_sessions(observatory_id);
     CREATE INDEX IF NOT EXISTS idx_collection_membership_target ON collection_memberships(target_id);
     CREATE INDEX IF NOT EXISTS idx_workflow_transition_target ON workflow_transitions(target_id);
     CREATE INDEX IF NOT EXISTS idx_relationship_source ON target_relationships(source_target_id);
     CREATE INDEX IF NOT EXISTS idx_relationship_related ON target_relationships(related_target_id);
 
     INSERT OR IGNORE INTO workflow_stages (id, name, sort_order, is_default) VALUES
-      ('ws-01', 'planned', 1, 1),
-      ('ws-02', 'scheduled', 2, 1),
-      ('ws-03', 'observed', 3, 1),
-      ('ws-04', 'raw_captured', 4, 1),
-      ('ws-05', 'calibrated', 5, 1),
-      ('ws-06', 'registered', 6, 1),
-      ('ws-07', 'integrated', 7, 1),
-      ('ws-08', 'processing', 8, 1),
-      ('ws-09', 'edited', 9, 1),
-      ('ws-10', 'published', 10, 1),
-      ('ws-11', 'printed', 11, 1),
-      ('ws-12', 'archived', 12, 1);
+      ('ws-00', 'not_observed', 0, 1),
+      ('ws-04', 'raw_captured', 1, 1),
+      ('ws-05', 'calibrated', 2, 1),
+      ('ws-06', 'registered', 3, 1),
+      ('ws-07', 'integrated', 4, 1),
+      ('ws-08', 'processing', 5, 1),
+      ('ws-09', 'edited', 6, 1),
+      ('ws-10', 'published', 7, 1),
+      ('ws-11', 'printed', 8, 1),
+      ('ws-12', 'archived', 9, 1);
 
     INSERT OR IGNORE INTO folder_templates (id, name, structure, is_builtin, created_at) VALUES
       ('ft-siril', 'Siril Default', '{"lights":{},"darks":{},"biases":{},"flats":{}}', 1, datetime('now'));
@@ -354,30 +386,9 @@ export function seedTarget(sqlite: Database.Database, overrides: Partial<{
     overrides.decDegrees ?? null,
     overrides.magnitude ?? null,
     overrides.constellation ?? null,
-    overrides.workflowStage ?? 'planned',
+    overrides.workflowStage ?? 'not_observed',
     now,
     now
-  )
-  return id
-}
-
-export function seedObservatory(sqlite: Database.Database, overrides: Partial<{
-  id: string
-  name: string
-  latitude: number
-  longitude: number
-  altitudeM: number
-}> = {}): string {
-  const id = overrides.id ?? `obs-${Date.now()}`
-  sqlite.prepare(
-    'INSERT INTO observatories (id, name, latitude, longitude, altitude_m, timezone, is_primary, notes, created_at) VALUES (?, ?, ?, ?, ?, NULL, 1, NULL, ?)'
-  ).run(
-    id,
-    overrides.name ?? 'Test Observatory',
-    overrides.latitude ?? 51.4769,
-    overrides.longitude ?? -0.0005,
-    overrides.altitudeM ?? 0,
-    new Date().toISOString()
   )
   return id
 }
@@ -419,12 +430,20 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
   exposureSec: number | null
   dateObs: string | null
   isStacked: boolean
+  ncombine: number | null
+  totalExposure: number | null
+  software: string | null
   gain: number | null
   ccdTemp: number | null
   xbinning: number | null
   ybinning: number | null
   telescope: string | null
   instrument: string | null
+  targetId: string | null
+  qualityScore: number | null
+  qualityFlag: string | null
+  fwhmEstimate: number | null
+  noiseLevel: number | null
 }> = {}): string {
   const id = overrides.id ?? `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()
@@ -433,8 +452,10 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     `INSERT INTO fits_files (
       id, scan_id, file_path, file_name, file_size_bytes, folder_name, session_folder,
       object_name, image_type, filter, exposure_sec, date_obs, is_stacked,
-      gain, ccd_temp, xbinning, ybinning, telescope, instrument, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ncombine, total_exposure, software,
+      gain, ccd_temp, xbinning, ybinning, telescope, instrument, target_id,
+      quality_score, quality_flag, fwhm_estimate, noise_level, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     scanId,
@@ -449,14 +470,37 @@ export function seedFitsFile(sqlite: Database.Database, scanId: string, override
     overrides.exposureSec ?? null,
     overrides.dateObs ?? null,
     overrides.isStacked ? 1 : 0,
+    overrides.ncombine ?? null,
+    overrides.totalExposure ?? null,
+    overrides.software ?? null,
     overrides.gain ?? null,
     overrides.ccdTemp ?? null,
     overrides.xbinning ?? null,
     overrides.ybinning ?? null,
     overrides.telescope ?? null,
     overrides.instrument ?? null,
+    overrides.targetId ?? null,
+    overrides.qualityScore ?? null,
+    overrides.qualityFlag ?? null,
+    overrides.fwhmEstimate ?? null,
+    overrides.noiseLevel ?? null,
     now
   )
+  return id
+}
+
+export function seedIntegrationGoal(sqlite: Database.Database, overrides: Partial<{
+  id: string
+  targetId: string
+  filter: string
+  goalSeconds: number
+}> = {}): string {
+  const id = overrides.id ?? `goal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const now = new Date().toISOString()
+  sqlite.prepare(
+    `INSERT INTO integration_goals (id, target_id, filter, goal_seconds, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(id, overrides.targetId ?? 'target-1', overrides.filter ?? 'Ha', overrides.goalSeconds ?? 21600, now, now)
   return id
 }
 

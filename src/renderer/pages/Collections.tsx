@@ -26,7 +26,7 @@ export function Collections(): React.ReactElement {
     <PageContainer title="Collections" subtitle={`${collections.length} collections`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {collections.map((c) => {
-          const pct = c.total > 0 ? Math.round((c.completed / c.total) * 100) : 0
+          const obsPct = c.total > 0 ? Math.round((c.observed / c.total) * 100) : 0
           return (
             <Link
               key={c.id}
@@ -46,13 +46,13 @@ export function Collections(): React.ReactElement {
               )}
               <div className="space-y-2">
                 <div className="flex justify-between text-xs text-astro-muted">
-                  <span>{c.completed} / {c.total} completed</span>
-                  <span>{pct}%</span>
+                  <span>{c.observed} / {c.total} observed</span>
+                  <span>{obsPct}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-astro-bg rounded-full overflow-hidden">
                   <div
                     className="h-full bg-astro-accent rounded-full transition-all"
-                    style={{ width: `${pct}%` }}
+                    style={{ width: `${obsPct}%` }}
                   />
                 </div>
               </div>

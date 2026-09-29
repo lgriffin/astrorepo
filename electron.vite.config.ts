@@ -8,7 +8,9 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve('src/shared'),
-        '@main': resolve('src/main')
+        '@main': resolve('src/main'),
+        '@astro/domain': resolve('packages/domain/src'),
+        '@astro/application': resolve('packages/application/src')
       }
     }
   },

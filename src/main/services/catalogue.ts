@@ -49,7 +49,7 @@ export function loadCatalogueSeedData(): void {
     `INSERT OR IGNORE INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
      angular_size_arcmin, constellation, description, simbad_id, ned_id, workflow_stage, is_custom,
      folder_path, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'planned', 0, NULL, NULL, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 'not_observed', 0, NULL, NULL, ?, ?)`
   )
   const insertAlias = sqlite.prepare(
     'INSERT OR IGNORE INTO target_aliases (id, target_id, alias, source) VALUES (?, ?, ?, ?)'
@@ -166,6 +166,7 @@ export function getCatalogueProgress(): CatalogueProgress[] {
     .prepare(
       `SELECT c.id as catalogue_id, c.name as catalogue_name, c.abbreviation,
               COUNT(ce.id) as total,
+              COUNT(CASE WHEN t.workflow_stage != 'not_observed' THEN 1 END) as observed,
               COUNT(CASE WHEN t.workflow_stage IN ('published','printed','archived') THEN 1 END) as completed
        FROM catalogues c
        LEFT JOIN catalogue_entries ce ON ce.catalogue_id = c.id
@@ -178,6 +179,7 @@ export function getCatalogueProgress(): CatalogueProgress[] {
     catalogue_name: string
     abbreviation: string
     total: number
+    observed: number
     completed: number
   }>
 
@@ -185,6 +187,7 @@ export function getCatalogueProgress(): CatalogueProgress[] {
     catalogueId: r.catalogue_id,
     catalogueName: r.catalogue_name,
     abbreviation: r.abbreviation,
+    observed: r.observed,
     completed: r.completed,
     total: r.total
   }))

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { StatCard } from '../components/common/StatCard'
 import { StorageBreakdownChart } from '../components/analytics/StorageBreakdownChart'
 import { GrowthTrendChart } from '../components/analytics/GrowthTrendChart'
 import { invoke } from '../hooks/useIPC'
@@ -158,11 +159,3 @@ export function StorageAnalytics(): React.ReactElement {
   )
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number | string; accent?: boolean }): React.ReactElement {
-  return (
-    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <p className="text-xs text-astro-muted uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accent ? 'text-astro-accent' : 'text-astro-text'}`}>{value}</p>
-    </div>
-  )
-}

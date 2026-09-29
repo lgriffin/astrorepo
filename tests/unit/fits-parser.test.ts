@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { parseFitsFile, parseFitsHeaders, computeImageStats } from '../../src/main/fits/parser'
+import { parseFitsFile } from '../../src/main/fits/parser'
 
 const BLOCK_SIZE = 2880
 const RECORD_SIZE = 80

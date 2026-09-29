@@ -3,19 +3,24 @@ import { useParams, Link } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { TargetCard } from '../components/target/TargetCard'
 import { invoke } from '../hooks/useIPC'
-import type { Collection, TargetSummary } from '@shared/types'
+import type { Collection, TargetSummary, WorkflowStage } from '@shared/types'
 
 export function CollectionDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
   const [collection, setCollection] = useState<Collection | null>(null)
   const [targets, setTargets] = useState<TargetSummary[]>([])
-  const [completed, setCompleted] = useState(0)
+  const [observed, setObserved] = useState(0)
   const [total, setTotal] = useState(0)
+  const [stages, setStages] = useState<WorkflowStage[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    invoke<WorkflowStage[]>('workflow:stages').then(setStages)
+  }, [])
+
+  useEffect(() => {
     if (!id) return
-    invoke<{ collection: Collection; targets: TargetSummary[]; completed: number; total: number }>(
+    invoke<{ collection: Collection; targets: TargetSummary[]; observed: number; completed: number; total: number }>(
       'collections:get',
       { id }
     )
@@ -23,7 +28,7 @@ export function CollectionDetail(): React.ReactElement {
         if (r) {
           setCollection(r.collection)
           setTargets(r.targets)
-          setCompleted(r.completed)
+          setObserved(r.observed)
           setTotal(r.total)
         }
       })
@@ -48,7 +53,7 @@ export function CollectionDetail(): React.ReactElement {
     )
   }
 
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+  const obsPct = total > 0 ? Math.round((observed / total) * 100) : 0
 
   return (
     <PageContainer
@@ -65,13 +70,13 @@ export function CollectionDetail(): React.ReactElement {
     >
       <div className="mb-6 bg-astro-surface border border-astro-border rounded-lg p-4">
         <div className="flex justify-between text-sm text-astro-muted mb-2">
-          <span>{completed} / {total} completed</span>
-          <span>{pct}%</span>
+          <span>{observed} / {total} observed</span>
+          <span>{obsPct}%</span>
         </div>
         <div className="w-full h-2 bg-astro-bg rounded-full overflow-hidden">
           <div
             className="h-full bg-astro-accent rounded-full transition-all"
-            style={{ width: `${pct}%` }}
+            style={{ width: `${obsPct}%` }}
           />
         </div>
       </div>
@@ -79,7 +84,7 @@ export function CollectionDetail(): React.ReactElement {
       {targets.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {targets.map((t) => (
-            <TargetCard key={t.id} target={t} />
+            <TargetCard key={t.id} target={t} stages={stages} />
           ))}
         </div>
       ) : (

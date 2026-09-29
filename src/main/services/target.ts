@@ -1,3 +1,5 @@
+import fs from 'fs'
+import pathMod from 'path'
 import { ulid } from 'ulid'
 import { getSqlite } from '../db/connection'
 import type { Target, TargetSummary, TargetAlias, CatalogueEntry } from '@shared/types'
@@ -7,34 +9,77 @@ interface SearchResult {
   total: number
 }
 
-export function searchTargets(query: string, limit = 50, offset = 0): SearchResult {
+interface SearchOptions {
+  objectType?: string
+  workflowStage?: string
+  sortBy?: string
+  sortDir?: string
+}
+
+const SORT_COLUMNS: Record<string, string> = {
+  name: 't.canonical_name',
+  magnitude: 't.magnitude',
+  constellation: 't.constellation',
+  workflow_stage: 't.workflow_stage'
+}
+
+function buildOrderClause(sortBy?: string, sortDir?: string): string {
+  const col = SORT_COLUMNS[sortBy ?? ''] ?? 't.canonical_name'
+  const dir = sortDir === 'desc' ? 'DESC' : 'ASC'
+  if (sortBy === 'magnitude') return `${col} IS NULL, ${col} ${dir}`
+  return `${col} ${dir}`
+}
+
+function buildFilterClauses(opts: SearchOptions): { where: string; params: unknown[] } {
+  const clauses: string[] = []
+  const params: unknown[] = []
+  if (opts.objectType) {
+    clauses.push('t.object_type = ?')
+    params.push(opts.objectType)
+  }
+  if (opts.workflowStage) {
+    clauses.push('t.workflow_stage = ?')
+    params.push(opts.workflowStage)
+  }
+  return { where: clauses.length ? 'WHERE ' + clauses.join(' AND ') : '', params }
+}
+
+export function searchTargets(query: string, limit = 50, offset = 0, opts: SearchOptions = {}): SearchResult {
   const sqlite = getSqlite()
+  const order = buildOrderClause(opts.sortBy, opts.sortDir)
 
   if (!query.trim()) {
-    const total = (sqlite.prepare('SELECT COUNT(*) as cnt FROM targets').get() as { cnt: number }).cnt
+    const { where, params } = buildFilterClauses(opts)
+    const total = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM targets t ${where}`).get(...params) as { cnt: number }).cnt
     const rows = sqlite
       .prepare(
         `SELECT t.id, t.canonical_name, t.object_type, t.constellation, t.magnitude,
                 t.workflow_stage, t.is_custom
          FROM targets t
-         ORDER BY t.canonical_name
+         ${where}
+         ORDER BY ${order}
          LIMIT ? OFFSET ?`
       )
-      .all(limit, offset) as RawTarget[]
+      .all(...params, limit, offset) as RawTarget[]
 
+    const aliasMap = batchFetchAliases(sqlite, rows.map(r => r.id))
     return {
-      targets: rows.map((r) => toTargetSummary(r, sqlite)),
+      targets: rows.map((r) => toTargetSummary(r, aliasMap)),
       total
     }
   }
 
   const ftsQuery = buildFtsQuery(query)
+  const { where: filterWhere, params: filterParams } = buildFilterClauses(opts)
+  const ftsFilter = filterWhere ? 'AND ' + filterWhere.replace('WHERE ', '') : ''
 
   const countRow = sqlite
     .prepare(
-      `SELECT COUNT(*) as cnt FROM targets_fts WHERE targets_fts MATCH ?`
+      `SELECT COUNT(*) as cnt FROM targets_fts fts
+       JOIN targets t ON t.rowid = fts.rowid
+       WHERE targets_fts MATCH ? ${ftsFilter}`
     )
-    .get(ftsQuery) as { cnt: number } | undefined
+    .get(ftsQuery, ...filterParams) as { cnt: number } | undefined
 
   const total = countRow?.cnt ?? 0
 
@@ -44,33 +89,37 @@ export function searchTargets(query: string, limit = 50, offset = 0): SearchResu
               t.workflow_stage, t.is_custom
        FROM targets_fts fts
        JOIN targets t ON t.rowid = fts.rowid
-       WHERE targets_fts MATCH ?
-       ORDER BY rank
+       WHERE targets_fts MATCH ? ${ftsFilter}
+       ORDER BY ${order}
        LIMIT ? OFFSET ?`
     )
-    .all(ftsQuery, limit, offset) as RawTarget[]
+    .all(ftsQuery, ...filterParams, limit, offset) as RawTarget[]
 
   if (rows.length === 0 && total === 0) {
-    return searchByAlias(query, limit, offset, sqlite)
+    return searchByAlias(query, limit, offset, sqlite, opts)
   }
 
+  const aliasMap = batchFetchAliases(sqlite, rows.map(r => r.id))
   return {
-    targets: rows.map((r) => toTargetSummary(r, sqlite)),
+    targets: rows.map((r) => toTargetSummary(r, aliasMap)),
     total
   }
 }
 
-function searchByAlias(query: string, limit: number, offset: number, sqlite: ReturnType<typeof getSqlite>): SearchResult {
+function searchByAlias(query: string, limit: number, offset: number, sqlite: ReturnType<typeof getSqlite>, opts: SearchOptions = {}): SearchResult {
   const pattern = `%${query}%`
+  const { where: filterWhere, params: filterParams } = buildFilterClauses(opts)
+  const extraFilter = filterWhere ? 'AND ' + filterWhere.replace('WHERE ', '') : ''
+  const order = buildOrderClause(opts.sortBy, opts.sortDir)
 
   const countRow = sqlite
     .prepare(
       `SELECT COUNT(DISTINCT t.id) as cnt
        FROM targets t
        LEFT JOIN target_aliases ta ON ta.target_id = t.id
-       WHERE t.canonical_name LIKE ? OR ta.alias LIKE ?`
+       WHERE (t.canonical_name LIKE ? OR ta.alias LIKE ?) ${extraFilter}`
     )
-    .get(pattern, pattern) as { cnt: number }
+    .get(pattern, pattern, ...filterParams) as { cnt: number }
 
   const rows = sqlite
     .prepare(
@@ -78,14 +127,15 @@ function searchByAlias(query: string, limit: number, offset: number, sqlite: Ret
               t.workflow_stage, t.is_custom
        FROM targets t
        LEFT JOIN target_aliases ta ON ta.target_id = t.id
-       WHERE t.canonical_name LIKE ? OR ta.alias LIKE ?
-       ORDER BY t.canonical_name
+       WHERE (t.canonical_name LIKE ? OR ta.alias LIKE ?) ${extraFilter}
+       ORDER BY ${order}
        LIMIT ? OFFSET ?`
     )
-    .all(pattern, pattern, limit, offset) as RawTarget[]
+    .all(pattern, pattern, ...filterParams, limit, offset) as RawTarget[]
 
+  const aliasMap = batchFetchAliases(sqlite, rows.map(r => r.id))
   return {
-    targets: rows.map((r) => toTargetSummary(r, sqlite)),
+    targets: rows.map((r) => toTargetSummary(r, aliasMap)),
     total: countRow.cnt
   }
 }
@@ -96,7 +146,7 @@ export function getTargetById(id: string): Target | null {
     .prepare(
       `SELECT id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
               angular_size_arcmin, constellation, description, simbad_id, ned_id,
-              workflow_stage, is_custom, folder_path, notes, created_at, updated_at
+              workflow_stage, is_custom, folder_path, thumbnail_path, notes, created_at, updated_at
        FROM targets WHERE id = ?`
     )
     .get(id) as RawTargetFull | undefined
@@ -126,7 +176,7 @@ export function createTarget(input: {
       `INSERT INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
         angular_size_arcmin, constellation, description, simbad_id, ned_id,
         workflow_stage, is_custom, folder_path, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', 1, NULL, NULL, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_observed', 1, NULL, NULL, ?, ?)`
     )
     .run(
       id,
@@ -296,16 +346,13 @@ interface RawTargetFull extends RawTarget {
   simbad_id: string | null
   ned_id: string | null
   folder_path: string | null
+  thumbnail_path: string | null
   notes: string | null
   created_at: string
   updated_at: string
 }
 
-function toTargetSummary(row: RawTarget, sqlite: ReturnType<typeof getSqlite>): TargetSummary {
-  const aliases = sqlite
-    .prepare('SELECT alias FROM target_aliases WHERE target_id = ?')
-    .all(row.id) as { alias: string }[]
-
+function toTargetSummary(row: RawTarget, aliasMap: Map<string, string[]>): TargetSummary {
   return {
     id: row.id,
     canonicalName: row.canonical_name,
@@ -314,8 +361,23 @@ function toTargetSummary(row: RawTarget, sqlite: ReturnType<typeof getSqlite>): 
     magnitude: row.magnitude,
     workflowStage: row.workflow_stage,
     isCustom: row.is_custom === 1,
-    aliases: aliases.map((a) => a.alias)
+    aliases: aliasMap.get(row.id) ?? []
   }
+}
+
+function batchFetchAliases(sqlite: ReturnType<typeof getSqlite>, ids: string[]): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+  if (ids.length === 0) return map
+  const placeholders = ids.map(() => '?').join(',')
+  const rows = sqlite
+    .prepare(`SELECT target_id, alias FROM target_aliases WHERE target_id IN (${placeholders})`)
+    .all(...ids) as { target_id: string; alias: string }[]
+  for (const row of rows) {
+    const list = map.get(row.target_id)
+    if (list) list.push(row.alias)
+    else map.set(row.target_id, [row.alias])
+  }
+  return map
 }
 
 function toTarget(row: RawTargetFull): Target {
@@ -334,8 +396,23 @@ function toTarget(row: RawTargetFull): Target {
     workflowStage: row.workflow_stage,
     isCustom: row.is_custom === 1,
     folderPath: row.folder_path,
+    thumbnailPath: row.thumbnail_path,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  }
+}
+
+export function getTargetThumbnail(targetId: string): { data: string | null; mime?: string } {
+  const sqlite = getSqlite()
+  const row = sqlite.prepare('SELECT thumbnail_path FROM targets WHERE id = ?').get(targetId) as { thumbnail_path: string | null } | undefined
+  if (!row?.thumbnail_path) return { data: null }
+  try {
+    const buf = fs.readFileSync(row.thumbnail_path)
+    const ext = pathMod.extname(row.thumbnail_path).toLowerCase()
+    const mime = ext === '.png' ? 'image/png' : ext === '.tif' || ext === '.tiff' ? 'image/tiff' : 'image/jpeg'
+    return { data: buf.toString('base64'), mime }
+  } catch {
+    return { data: null }
   }
 }

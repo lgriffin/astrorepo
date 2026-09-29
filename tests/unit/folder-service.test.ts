@@ -8,8 +8,7 @@ import { setupTestDb, teardownTestDb, seedTarget } from '../helpers/setup'
 let sqlite: Database.Database
 
 vi.mock('../../src/main/db/connection', () => ({
-  getSqlite: () => sqlite,
-  getDb: () => null
+  getSqlite: () => sqlite
 }))
 
 const { generateFolders, listTemplates, createTemplate } = await import('../../src/main/services/folder')
@@ -52,8 +51,9 @@ describe('FolderService', () => {
 
       const result = generateFolders(targetId)
 
-      expect(result.path).not.toContain(':')
-      expect(result.path).not.toContain('/')
+      const folderName = path.basename(result.path)
+      expect(folderName).not.toContain(':')
+      expect(folderName).not.toContain('/')
       expect(fs.existsSync(result.path)).toBe(true)
     })
 

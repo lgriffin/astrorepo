@@ -63,6 +63,7 @@ export interface Target {
   workflowStage: string
   isCustom: boolean
   folderPath: string | null
+  thumbnailPath: string | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -114,6 +115,7 @@ export interface Collection {
 }
 
 export interface CollectionWithStats extends Collection {
+  observed: number
   completed: number
   total: number
 }
@@ -172,6 +174,14 @@ export interface Equipment {
   serialNumber: string | null
   notes: string | null
   isActive: boolean
+  focalLengthMm: number | null
+  apertureMm: number | null
+  sensorWidthMm: number | null
+  sensorHeightMm: number | null
+  pixelSizeUm: number | null
+  sensorWidthPx: number | null
+  sensorHeightPx: number | null
+  reducerFactor: number | null
   createdAt: string
 }
 
@@ -179,18 +189,6 @@ export interface SessionEquipment {
   sessionId: string
   equipmentId: string
   role: string | null
-}
-
-export interface Observatory {
-  id: string
-  name: string
-  latitude: number
-  longitude: number
-  altitudeM: number
-  timezone: string | null
-  isPrimary: boolean
-  notes: string | null
-  createdAt: string
 }
 
 export interface WorkflowStage {
@@ -235,25 +233,6 @@ export interface AppSetting {
   value: string
 }
 
-export interface VisibilityData {
-  rise: string | null
-  set: string | null
-  transit: string | null
-  transitAltitude: number | null
-  currentAltitude: number
-  currentAzimuth: number
-  bestWindowStart: string | null
-  bestWindowEnd: string | null
-  hoursAboveHorizon: number
-  moonSeparation: number
-  available: boolean
-}
-
-export interface PlannedTarget {
-  target: TargetSummary
-  visibility: VisibilityData
-}
-
 export interface DashboardStats {
   totalTargets: number
   completedTargets: number
@@ -271,12 +250,17 @@ export interface DashboardStats {
   deepestIntegration: { targetName: string; exposureSec: number } | null
   longestProject: { targetName: string; days: number } | null
   oldestUnfinished: { targetName: string; createdAt: string } | null
+  targetsWithRawData: number
+  targetsWithStackedData: number
+  targetsWithTifData: number
+  targetsWithImageData: number
 }
 
 export interface CatalogueProgress {
   catalogueId: string
   catalogueName: string
   abbreviation: string
+  observed: number
   completed: number
   total: number
 }
@@ -416,6 +400,8 @@ export interface FitsScanAggregates {
 
 export interface FitsTargetSummary {
   folderName: string
+  targetId: string | null
+  targetName: string | null
   totalFiles: number
   totalSizeBytes: number
   totalExposureSec: number
@@ -497,6 +483,126 @@ export interface StorageGrowthProjection {
   dataPoints: number
 }
 
+export interface TargetSubfolderDetail {
+  name: string | null
+  path: string
+  fileCount: number
+  totalSizeBytes: number
+}
+
+export interface TargetFolderBreakdown {
+  folderType: 'raw' | 'stacked' | 'tif' | 'images'
+  folderPath: string
+  totalFiles: number
+  totalSizeBytes: number
+  subfolders: TargetSubfolderDetail[]
+}
+
+export interface HomeFolderTarget {
+  targetName: string
+  targetId: string | null
+  rawFiles: number
+  stackedFiles: number
+  tifFiles: number
+  imageFiles: number
+  rawSubfolders: TargetSubfolderDetail[]
+  stackedSubfolders: TargetSubfolderDetail[]
+  tifSubfolders: TargetSubfolderDetail[]
+  imageSubfolders: TargetSubfolderDetail[]
+  rawPath: string | null
+  stackedPath: string | null
+  tifPath: string | null
+  imagesPath: string | null
+  currentStage: string
+  suggestedStage: string
+  thumbnailPath: string | null
+}
+
+export interface HomeScanResult {
+  homePath: string
+  targets: HomeFolderTarget[]
+  rawScanned: boolean
+  created: number
+  advanced: number
+}
+
+export interface TargetHomeData {
+  targetId: string
+  rawFiles: number
+  stackedFiles: number
+  tifFiles: number
+  imageFiles: number
+  rawPath: string | null
+  stackedPath: string | null
+  tifPath: string | null
+  imagesPath: string | null
+  suggestedStage: string
+  scannedAt: string
+  folderBreakdowns: TargetFolderBreakdown[]
+}
+
+export interface StackedFileDetail {
+  fileName: string
+  filter: string | null
+  totalExposureSec: number | null
+  ncombine: number | null
+  software: string | null
+  dateObs: string | null
+  fileSizeBytes: number
+  sessionFolder: string | null
+}
+
+export interface TargetObservationData {
+  totalFiles: number
+  totalExposureSec: number
+  totalSizeBytes: number
+  filters: string[]
+  sessions: string[]
+  stackedCount: number
+  individualCount: number
+  exposureByFilter: Record<string, number>
+  filesBySession: Record<string, number>
+  filesByImageType: Record<string, number>
+  filesByFolder: Record<string, number>
+  stackedDetails: StackedFileDetail[]
+  firstObserved: string | null
+  lastObserved: string | null
+}
+
+export interface HomeScanPhaseProgress {
+  name: 'raw' | 'stacked' | 'tif' | 'images'
+  status: 'pending' | 'discovering' | 'scanning_fits' | 'complete'
+  foldersFound: number
+}
+
+export interface HomeScanProgress {
+  status: 'idle' | 'scanning' | 'done' | 'error'
+  phases: HomeScanPhaseProgress[]
+  currentPhaseIndex: number
+  totalTargetsFound: number
+  result: HomeScanResult | null
+  error: string | null
+}
+
+export interface ImageFileInfo {
+  path: string
+  filename: string
+  folder: string
+}
+
+export interface ImageTargetGroup {
+  name: string
+  normalizedName: string
+  folderPath: string
+  images: ImageFileInfo[]
+}
+
+export interface ImageScanResult {
+  targets: ImageTargetGroup[]
+  unmatched: ImageFileInfo[]
+  totalImages: number
+}
+
 export interface CalibrationGroup {
   type: 'dark' | 'flat' | 'bias'
   exposureSec: number | null
@@ -507,6 +613,82 @@ export interface CalibrationGroup {
   fileCount: number
   totalSizeBytes: number
   dateRange: { earliest: string | null; latest: string | null }
+}
+
+// Stacking Analysis types
+
+export interface StackingSummaryRow {
+  fileId: string
+  fileName: string
+  targetId: string | null
+  targetName: string | null
+  filter: string | null
+  ncombine: number | null
+  totalExposureSec: number | null
+  software: string | null
+  calstat: string | null
+  sessionFolder: string | null
+  dateObs: string | null
+  fileSizeBytes: number
+}
+
+export interface StackingSummary {
+  totalStacked: number
+  totalNcombine: number
+  totalIntegrationSec: number
+  softwareUsed: string[]
+  filtersUsed: string[]
+  rows: StackingSummaryRow[]
+}
+
+export interface SubFrameInfo {
+  fileId: string
+  fileName: string
+  exposureSec: number | null
+  dateObs: string | null
+  qualityScore: number | null
+  qualityFlag: string | null
+  fwhmEstimate: number | null
+  noiseLevel: number | null
+}
+
+export interface StackedWithSubFrames {
+  stackedFileId: string
+  stackedFileName: string
+  targetId: string | null
+  targetName: string | null
+  filter: string | null
+  sessionFolder: string | null
+  ncombine: number | null
+  totalExposureSec: number | null
+  subFrames: SubFrameInfo[]
+  matchedCount: number
+}
+
+export interface FilterProgress {
+  filter: string
+  integrationSec: number
+  goalSec: number | null
+  frameCount: number
+  stackedCount: number
+  percentComplete: number | null
+}
+
+export interface TargetIntegrationProgress {
+  targetId: string
+  targetName: string
+  totalIntegrationSec: number
+  filters: FilterProgress[]
+  sessionCount: number
+}
+
+export interface IntegrationGoal {
+  id: string
+  targetId: string
+  filter: string
+  goalSeconds: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CalibrationMatch {
@@ -523,4 +705,159 @@ export interface CalibrationCoverage {
   darksCoverage: number
   flatsCoverage: number
   biasCoverage: number
+}
+
+export interface MonthlyActivity {
+  month: string
+  totalFiles: number
+  totalExposureSec: number
+  uniqueTargets: number
+  sessions: number
+}
+
+export interface BestNight {
+  date: string
+  totalExposureSec: number
+  fileCount: number
+  targets: string[]
+  filters: string[]
+  avgQuality: number | null
+}
+
+export interface EquipmentEffectiveness {
+  equipmentName: string
+  equipmentType: string
+  sessionCount: number
+  totalExposureSec: number
+  avgFwhm: number | null
+  avgQuality: number | null
+}
+
+export interface QualityTrendPoint {
+  month: string
+  medianFwhm: number | null
+  medianNoise: number | null
+  avgStarCount: number | null
+  totalFiles: number
+}
+
+export interface FilterUsage {
+  filter: string
+  fileCount: number
+  totalExposureSec: number
+  avgExposureSec: number
+  targets: number
+}
+
+export interface TargetProgress {
+  targetId: string
+  targetName: string
+  workflowStage: string
+  totalExposureSec: number
+  fileCount: number
+  filterBreakdown: Record<string, number>
+  firstImaged: string | null
+  lastImaged: string | null
+}
+
+export interface InsightsSummary {
+  totalImagingHours: number
+  totalFiles: number
+  totalTargets: number
+  totalSessions: number
+  activeSinceDate: string | null
+  mostImagedTarget: string | null
+  mostUsedFilter: string | null
+  bestNightDate: string | null
+}
+
+// Sky Planning types
+
+export interface AltitudePoint {
+  time: string
+  altitude: number
+  azimuth: number
+}
+
+export interface BestTargetTonight {
+  targetId: string
+  targetName: string
+  objectType: string
+  maxAltitude: number
+  transitTime: string | null
+  hoursAbove30: number
+}
+
+export interface MoonInfo {
+  phase: number
+  illumination: number
+  phaseName: string
+}
+
+export interface TwilightTimes {
+  sunset: string | null
+  sunrise: string | null
+  civilDusk: string | null
+  civilDawn: string | null
+  nauticalDusk: string | null
+  nauticalDawn: string | null
+  astronomicalDusk: string | null
+  astronomicalDawn: string | null
+}
+
+export interface MonthlyVisibility {
+  month: string
+  maxAltitude: number
+  isVisible: boolean
+}
+
+// Equipment calculation types
+
+export interface FOVResult {
+  widthArcmin: number
+  heightArcmin: number
+  widthDeg: number
+  heightDeg: number
+  effectiveFocalLength: number
+  focalRatio: number | null
+}
+
+export interface ImageScaleResult {
+  arcsecondsPerPixel: number
+  effectiveFocalLength: number
+}
+
+// Timeline/Calendar types
+
+export interface CalendarDay {
+  date: string
+  totalExposureSec: number
+  fileCount: number
+  targets: string[]
+  filters: string[]
+  sessionIds: string[]
+}
+
+export interface CalendarMonth {
+  month: string
+  days: CalendarDay[]
+  totalExposureSec: number
+  activeDays: number
+}
+
+export interface YearSummaryMonth {
+  month: string
+  activeDays: number
+  totalExposureSec: number
+}
+
+export interface Recommendation {
+  id: string
+  category: 'calibration' | 'integration' | 'equipment' | 'quality' | 'workflow' | 'stacking'
+  priority: 'high' | 'medium' | 'low'
+  title: string
+  description: string
+  targetId: string | null
+  targetName: string | null
+  actionLabel: string | null
 }
