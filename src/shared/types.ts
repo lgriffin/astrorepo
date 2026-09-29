@@ -942,6 +942,8 @@ export interface TonightView {
   darkEnd: string
   darkness: 'astronomical' | 'nautical'
   moonPercent: number
+  /** The moon's phase and whether it rises in the dark window, as a phrase: "moon 20% lit". */
+  moonSummary: string
   /** Why the list is short or empty because of the moon, when it is. */
   moonNote: string | null
   darknessNote: string | null

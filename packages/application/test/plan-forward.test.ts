@@ -13,7 +13,7 @@ import {
 const london = { latitudeDeg: 51.5, longitudeDeg: -0.13, elevationM: 20 }
 const NEW_MOONS = ['2026-10-10T15:50:36Z', '2026-11-09T07:02:42Z', '2026-12-09T00:52:31Z', '2027-01-07T20:25:05Z', '2027-02-06T15:56:47Z']
 
-function setup() {
+function setup(now = '2026-09-29T15:00:00Z') {
   const frames = new InMemoryFrameCatalogue()
     .add(target('M 31', { subs: subs(12, 300, '2026-09-20T21:00:00Z'), goalSec: 36000 }))
     .add(target('NGC 7000', { subs: subs(12, 300, '2026-09-21T21:00:00Z') }))
@@ -29,10 +29,12 @@ function setup() {
     .add({ targetId: 'target-m-101', raHours: 14.05, decDeg: 54.35, objectType: 'galaxy' })
   const settings = new InMemoryPlanningSettings(london, true)
   const ephemeris = new FakeEphemeris().setNewMoons(NEW_MOONS)
-  const clock = new FixedClock(new Date('2026-09-29T15:00:00Z'))
+  const clock = new FixedClock(new Date(now))
   const plan = makePlanForward({ frames, positions, settings, ephemeris, clock })
-  return { frames, positions, settings, ephemeris, plan }
+  return { frames, positions, settings, ephemeris, clock, plan }
 }
+
+
 
 async function okPlan(run: () => ReturnType<ReturnType<typeof makePlanForward>>) {
   const p = await run()
@@ -90,8 +92,9 @@ describe('PlanForward', () => {
     const p = await okPlan(plan)
     expect(p.windows.map(w => [w.newMoon, w.start, w.end])).toEqual([
       ['2026-10-10', '2026-10-07', '2026-10-13'],
-      ['2026-11-09', '2026-11-06', '2026-11-12'],
-      ['2026-12-09', '2026-12-06', '2026-12-12']
+      // 07:02 UTC on 9 Nov and 00:52 UTC on 9 Dec fall in London's nights of the 8th.
+      ['2026-11-08', '2026-11-05', '2026-11-11'],
+      ['2026-12-08', '2026-12-05', '2026-12-11']
     ])
     for (const w of p.windows) {
       expect(w.bestTargets.length).toBeLessThanOrEqual(3)
@@ -128,6 +131,25 @@ describe('PlanForward', () => {
     const m13 = p.seasons.find(s => s.targetName === 'M 13')
     expect(['2027-05', '2027-06', '2027-07']).toContain(m13?.bestMonth)
     expect(m31?.months.find(m => m.month === '2026-10')?.newMoons).toEqual(['2026-10-10'])
+  })
+
+  it('[FWD-006] Given a morning after the night’s darkness has ended, When the plan is made, Then tonight is the coming evening, not the night just gone', async () => {
+    const { plan } = setup('2026-09-30T06:00:00Z')
+    const p = await okPlan(plan)
+    expect(p.tonight?.night).toBe('2026-09-30')
+  })
+
+  it('[FWD-006] Given the small hours while it is still dark, When the plan is made, Then tonight is the night in progress', async () => {
+    const { plan } = setup('2026-09-30T01:00:00Z')
+    expect((await okPlan(plan)).tonight?.night).toBe('2026-09-29')
+  })
+
+  it('[FWD-001] Given a new moon earlier in the current month, When the plan is made, Then the current month is still marked with it', async () => {
+    const { plan } = setup('2026-10-20T15:00:00Z')
+    const p = await okPlan(plan)
+    const m31 = p.seasons.find(s => s.targetName === 'M 31')
+    expect(m31?.months[0]).toMatchObject({ month: '2026-10', newMoons: ['2026-10-10'] })
+    expect(p.windows[0].newMoon).toBe('2026-11-08')
   })
 
   it('[FWD-008] Given a night with no dark window, When tonight is planned, Then there is no tonight plan but the rest of the plan stands', async () => {

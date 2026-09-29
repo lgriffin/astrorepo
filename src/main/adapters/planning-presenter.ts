@@ -29,6 +29,7 @@ function toTonightView(t: TonightPlan): TonightView {
     darkEnd: t.darkEnd.toISOString(),
     darkness: t.darkness,
     moonPercent,
+    moonSummary: t.moonUp ? `moon ${moonPercent}% lit` : `moon ${moonPercent}% lit, below the horizon all night`,
     moonNote,
     darknessNote:
       t.darkness === 'nautical' ? 'The sun does not get 18° below the horizon tonight, so this plan uses nautical darkness.' : null,

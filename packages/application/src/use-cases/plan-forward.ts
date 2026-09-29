@@ -100,13 +100,30 @@ export function makePlanForward(
     if (!site) return { status: 'no-site' }
 
     const now = deps.clock.now()
-    const tonightDate = siteNightOf(now, site.longitudeDeg)
+    const cache = new Map<string, Promise<NightSky | null>>()
+    const skyOn = (night: string) => {
+      let sky = cache.get(night)
+      if (!sky) {
+        sky = deps.ephemeris.nightSky(site, night)
+        cache.set(night, sky)
+      }
+      return sky
+    }
+
+    // Before noon the site is still in last night; once its darkness has ended, plan the coming one.
+    let tonightDate = siteNightOf(now, site.longitudeDeg)
+    const current = await skyOn(tonightDate)
+    if (current && now.getTime() >= current.darkEnd.getTime()) tonightDate = nightsFrom(tonightDate, 2, 1)[1]
+
+    // From the start of tonight's month, so the season table marks a new moon earlier this month.
+    const monthStart = new Date(`${tonightDate.slice(0, 7)}-01T00:00:00Z`)
     const [frames, positions, hasNarrowbandFilter, newMoons] = await Promise.all([
       deps.frames.listTargetFrames(),
       deps.positions.listPositions(),
       deps.settings.hasNarrowbandFilter(),
-      deps.ephemeris.newMoons(now, new Date(now.getTime() + horizon.seasonWeeks * 7 * DAY_MS))
+      deps.ephemeris.newMoons(monthStart, new Date(now.getTime() + horizon.seasonWeeks * 7 * DAY_MS))
     ])
+    const newMoonNights = newMoons.map(d => siteNightOf(d, site.longitudeDeg))
 
     const positionOf = new Map(positions.map(p => [p.targetId, p]))
     const targets: SkyTarget[] = []
@@ -126,22 +143,13 @@ export function makePlanForward(
     }
     const open = targets.filter(hasWorkLeft).sort((a, b) => a.targetName.localeCompare(b.targetName))
 
-    const cache = new Map<string, Promise<NightSky | null>>()
-    const skyOn = (night: string) => {
-      let sky = cache.get(night)
-      if (!sky) {
-        sky = deps.ephemeris.nightSky(site, night)
-        cache.set(night, sky)
-      }
-      return sky
-    }
     const hoursOn = (sky: NightSky | null, t: SkyTarget) => (sky ? usableHours(sky, site, t, policy) : 0)
 
     const closingNights = nightsFrom(tonightDate, horizon.closingDays, 1)
     const seasonNights = nightsFrom(tonightDate, horizon.seasonWeeks, 7)
-    const windowEnd = now.getTime() + horizon.windowDays * DAY_MS
-    const soonMoons = newMoons.filter(d => d.getTime() <= windowEnd)
-    const windowNights = soonMoons.map(d => siteNightOf(d, site.longitudeDeg))
+    const lastWindowNight = nightsFrom(tonightDate, horizon.windowDays + 1, 1)[horizon.windowDays]
+    const soonWindows = newMoonWindows(newMoonNights, policy).filter(w => w.end >= tonightDate && w.newMoon <= lastWindowNight)
+    const windowNights = soonWindows.map(w => w.newMoon)
     const skies = new Map<string, NightSky | null>()
     for (const night of new Set([...closingNights, ...seasonNights, ...windowNights])) skies.set(night, await skyOn(night))
 
@@ -155,8 +163,8 @@ export function makePlanForward(
     }
     closing.sort((a, b) => a.daysLeft - b.daysLeft || a.targetName.localeCompare(b.targetName))
 
-    const windows: DarkWindowPlan[] = newMoonWindows(soonMoons, policy).map((w, i) => {
-      const sky = skies.get(windowNights[i]) ?? null
+    const windows: DarkWindowPlan[] = soonWindows.map(w => {
+      const sky = skies.get(w.newMoon) ?? null
       const bestTargets = open
         .map(t => ({ targetId: t.targetId, targetName: t.targetName, usableHours: hoursOn(sky, t) }))
         .filter(t => t.usableHours >= policy.minUsableHours)
@@ -169,7 +177,7 @@ export function makePlanForward(
       // 52 weekly nights touch 13 calendar months; the view shows the first 12.
       const months = monthlySeason(
         seasonNights.map(n => ({ night: n, hours: hoursOn(skies.get(n) ?? null, t) })),
-        newMoons
+        newMoonNights
       ).slice(0, 12)
       const best = months.reduce<MonthSeason | null>((b, m) => (m.hoursPerNight > (b?.hoursPerNight ?? 0) ? m : b), null)
       return { targetId: t.targetId, targetName: t.targetName, months, bestMonth: best?.month ?? null }

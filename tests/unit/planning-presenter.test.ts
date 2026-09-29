@@ -11,6 +11,7 @@ const tonight = (over: Partial<TonightPlan> = {}): TonightPlan => ({
   darkEnd: new Date('2026-09-30T04:07:17Z'),
   darkness: 'astronomical',
   moonIllumination: 0.2,
+  moonUp: true,
   brightMoon: false,
   noFilterForBrightMoon: false,
   choices: [
@@ -41,8 +42,16 @@ describe('planning presenter', () => {
     if (view.status !== 'ok' || !view.tonight) throw new Error('expected tonight')
     expect(view.tonight.darkStart).toBe('2026-09-29T19:34:48.000Z')
     expect(view.tonight.moonPercent).toBe(20)
+    expect(view.tonight.moonSummary).toBe('moon 20% lit')
     expect(view.tonight.moonNote).toBeNull()
     expect(view.tonight.choices.map(c => c.detail)).toEqual(['8 h 30 m above 30°, moon down', '6 h above 30°, moon 41° away'])
+  })
+
+  it('[FWD-005] Given a nearly full moon that never rises in the dark window, When presented, Then its phase shows and it says the moon stays down', () => {
+    const view = toForwardPlanView(plan({ tonight: tonight({ moonIllumination: 0.97, moonUp: false }) }))
+    if (view.status !== 'ok') throw new Error('expected plan')
+    expect(view.tonight?.moonSummary).toBe('moon 97% lit, below the horizon all night')
+    expect(view.tonight?.moonNote).toBeNull()
   })
 
   it('[FWD-005] Given a bright moon, When presented, Then the note says why the list is short or empty', () => {

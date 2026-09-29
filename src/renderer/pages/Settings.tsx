@@ -146,11 +146,8 @@ export function Settings(): React.ReactElement {
             onClick={async () => {
               setObserverSaving(true)
               await Promise.all(
-                OBSERVER_SETTINGS.map(s =>
-                  observer[s.key]
-                    ? invoke('settings:set', { key: s.key, value: observer[s.key] })
-                    : Promise.resolve()
-                )
+                // A cleared field is saved blank, which clears the site rather than keeping the old value.
+                OBSERVER_SETTINGS.map(s => invoke('settings:set', { key: s.key, value: (observer[s.key] ?? '').trim() }))
               )
               setObserverSaving(false)
             }}

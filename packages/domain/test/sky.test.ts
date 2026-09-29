@@ -71,6 +71,12 @@ describe('sky geometry', () => {
     expect(usableHours(n, london, { raHours: 4.5, decDeg: 0 })).toBe(2.5)
     expect(usableHours(n, london, { raHours: 16, decDeg: 0 })).toBe(0)
   })
+
+  it('[FWD-006] Given darkness that ends ten minutes after the last sample, When usable hours are counted, Then that sample counts for ten minutes, not a whole step', () => {
+    const n = night([4, 4.5])
+    const short = { ...n, darkEnd: new Date(n.samples[1].at.getTime() + 10 * 60 * 1000) }
+    expect(usableHours(short, london, { raHours: 4.25, decDeg: 0 })).toBe(Math.round((0.5 + 10 / 60) * 100) / 100)
+  })
 })
 
 describe('seasons', () => {
@@ -81,11 +87,11 @@ describe('seasons', () => {
         { night: '2026-10-06', hours: 2 },
         { night: '2026-10-13', hours: 3 }
       ],
-      [new Date('2026-10-10T15:50:00Z'), new Date('2026-11-09T07:02:00Z')]
+      ['2026-10-10', '2026-11-08']
     )
     expect(months).toEqual([
       { month: '2026-10', hoursPerNight: 2.5, newMoons: ['2026-10-10'] },
-      { month: '2026-11', hoursPerNight: 4, newMoons: ['2026-11-09'] }
+      { month: '2026-11', hoursPerNight: 4, newMoons: ['2026-11-08'] }
     ])
   })
 
@@ -102,9 +108,10 @@ describe('seasons', () => {
     expect(seasonClosing(nightsFrom('2026-09-29', 35, 1).map(n => ({ night: n, hours: 3 })))).toBeNull()
   })
 
-  it('[FWD-004] Given new moons, When dark windows are made, Then each spans three nights either side', () => {
-    expect(newMoonWindows([new Date('2026-10-10T15:50:00Z')])).toEqual([
-      { newMoon: '2026-10-10', start: '2026-10-07', end: '2026-10-13' }
+  it('[FWD-004] Given new-moon site nights, When dark windows are made, Then each spans three nights either side, across month ends', () => {
+    expect(newMoonWindows(['2026-10-10', '2026-12-30'])).toEqual([
+      { newMoon: '2026-10-10', start: '2026-10-07', end: '2026-10-13' },
+      { newMoon: '2026-12-30', start: '2026-12-27', end: '2027-01-02' }
     ])
   })
 
@@ -152,10 +159,18 @@ describe('tonight', () => {
     expect(plan.noFilterForBrightMoon).toBe(true)
   })
 
-  it('[FWD-005] Given a full moon that stays below the horizon, When tonight is planned, Then the moon does not count as bright', () => {
+  it('[FWD-005] Given a full moon that stays below the horizon, When tonight is planned, Then it does not count as bright but its phase is still reported', () => {
     const n = night(lsts, { alt: -5, illum: 1, ra: 12, dec: 0 })
     expect(peakMoonIllumination(n)).toBe(0)
-    expect(planTonight(n, london, [m31], { hasNarrowbandFilter: false }).choices).toHaveLength(1)
+    const plan = planTonight(n, london, [m31], { hasNarrowbandFilter: false })
+    expect(plan.choices).toHaveLength(1)
+    expect(plan).toMatchObject({ brightMoon: false, moonUp: false, moonIllumination: 1 })
+  })
+
+  it('[FWD-005] Given a moon just over 60% lit, When tonight is planned, Then it is bright even though it rounds to 60%', () => {
+    const plan = planTonight(night(lsts, { alt: 40, illum: 0.604, ra: 2, dec: 10 }), london, [m31], { hasNarrowbandFilter: false })
+    expect(plan).toMatchObject({ brightMoon: true, moonUp: true, moonIllumination: 0.6 })
+    expect(plan.choices).toEqual([])
   })
 
   it('[FWD-005] Given object types, When their filter suitability is judged, Then emission, planetary, supernova remnant and molecular cloud suit narrowband', () => {

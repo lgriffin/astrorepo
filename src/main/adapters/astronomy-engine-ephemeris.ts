@@ -48,15 +48,28 @@ export class AstronomyEngineEphemeris implements Ephemeris {
   }
 }
 
+function sunAltitude(observer: Astronomy.Observer, at: Date): number {
+  const time = Astronomy.MakeTime(at)
+  const sun = Astronomy.Equator(Astronomy.Body.Sun, time, observer, true, true)
+  return Astronomy.Horizon(time, observer, sun.ra, sun.dec).altitude
+}
+
+/**
+ * The stretch from local noon to the next local noon when the sun is below `sunAltitudeDeg`. With
+ * no crossing (polar night, or the sun already down at noon), the night is dark from noon to noon
+ * when the sun is below the threshold at local midnight, and never dark otherwise.
+ */
 function darkWindow(
   observer: Astronomy.Observer,
   localNoon: Date,
   sunAltitudeDeg: number,
   darkness: NightSky['darkness']
 ): { start: Date; end: Date; darkness: NightSky['darkness'] } | null {
+  const nextNoon = new Date(localNoon.getTime() + DAY_MS)
+  const midnight = new Date(localNoon.getTime() + DAY_MS / 2)
   const dusk = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, -1, Astronomy.MakeTime(localNoon), 1, sunAltitudeDeg)
-  if (!dusk) return null
+  if (!dusk) return sunAltitude(observer, midnight) < sunAltitudeDeg ? { start: localNoon, end: nextNoon, darkness } : null
   const dawn = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, +1, dusk, 1, sunAltitudeDeg)
-  if (!dawn) return null
-  return { start: dusk.date, end: dawn.date, darkness }
+  const end = dawn && dawn.date.getTime() < nextNoon.getTime() ? dawn.date : nextNoon
+  return { start: dusk.date, end, darkness }
 }

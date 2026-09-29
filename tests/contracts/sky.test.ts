@@ -71,6 +71,22 @@ describe('astronomy-engine ephemeris', () => {
     expect(await eph.nightSky({ latitudeDeg: 65, longitudeDeg: 20, elevationM: 0 }, '2026-06-21')).toBeNull()
   })
 
+  it('[FWD-008] Given polar night at 88°N, When the night is read, Then it is astronomically dark from local noon to noon', async () => {
+    const sky = await eph.nightSky({ latitudeDeg: 88, longitudeDeg: 0, elevationM: 0 }, '2026-12-21')
+    expect(sky?.darkness).toBe('astronomical')
+    expect(sky?.darkStart.toISOString()).toBe('2026-12-21T12:00:00.000Z')
+    expect(sky?.darkEnd.toISOString()).toBe('2026-12-22T12:00:00.000Z')
+    expect(sky?.samples).toHaveLength(48)
+  })
+
+  it('[FWD-008] Given a winter night at 80°N where the sun reaches -12° but not -18° at noon, When the night is read, Then darkness runs to dawn, never past the next noon', async () => {
+    const sky = await eph.nightSky({ latitudeDeg: 80, longitudeDeg: 15, elevationM: 0 }, '2026-12-01')
+    expect(sky).not.toBeNull()
+    if (!sky) return
+    expect(sky.darkEnd.getTime() - sky.darkStart.getTime()).toBeLessThanOrEqual(24 * 3600 * 1000)
+    expect(sky.darkEnd.getTime()).toBeGreaterThan(sky.darkStart.getTime())
+  })
+
   it('[FWD-006] Given a southern site east of Greenwich, When a night is read, Then the window starts that local evening', async () => {
     const sky = await eph.nightSky({ latitudeDeg: -33.9, longitudeDeg: 151.2, elevationM: 0 }, '2026-06-21')
     // Sydney is UTC+10: astronomical dusk about 18:20 local on 21 June, dawn about 05:30 on the 22nd.

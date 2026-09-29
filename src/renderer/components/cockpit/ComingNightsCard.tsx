@@ -50,7 +50,7 @@ export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.Rea
         {tonight ? (
           <>
             <p className="text-sm text-astro-text mb-1">
-              Tonight: {tonight.darkness} dark {time(tonight.darkStart)} to {time(tonight.darkEnd)}, moon {tonight.moonPercent}% lit
+              Tonight: {tonight.darkness} dark {time(tonight.darkStart)} to {time(tonight.darkEnd)}, {tonight.moonSummary}
             </p>
             {tonight.darknessNote && <p className="text-xs text-astro-muted mb-1">{tonight.darknessNote}</p>}
             {tonight.moonNote && <p className="text-xs text-astro-muted mb-1">{tonight.moonNote}</p>}

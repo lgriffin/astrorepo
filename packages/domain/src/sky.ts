@@ -86,13 +86,20 @@ export function separationDeg(ra1Hours: number, dec1Deg: number, ra2Hours: numbe
   return Math.acos(Math.max(-1, Math.min(1, cos))) / RAD
 }
 
-/** Hours the target spends above the minimum altitude during the night's dark window. */
+/**
+ * Hours the target spends above the minimum altitude during the night's dark window. Each sample
+ * stands for the step after it, cut off at the end of darkness, so a window that is not a whole
+ * number of steps is not overcounted.
+ */
 export function usableHours(night: NightSky, site: Site, target: Pick<SkyTarget, 'raHours' | 'decDeg'>, policy = DEFAULT_PLANNING_POLICY): number {
-  let n = 0
+  const stepMs = night.stepHours * 3600 * 1000
+  const endMs = night.darkEnd.getTime()
+  let ms = 0
   for (const s of night.samples) {
-    if (altitudeDeg(site.latitudeDeg, s.lstHours, target.raHours, target.decDeg) >= policy.minAltitudeDeg) n++
+    if (altitudeDeg(site.latitudeDeg, s.lstHours, target.raHours, target.decDeg) < policy.minAltitudeDeg) continue
+    ms += Math.max(0, Math.min(stepMs, endMs - s.at.getTime()))
   }
-  return Math.round(n * night.stepHours * 100) / 100
+  return Math.round((ms / (3600 * 1000)) * 100) / 100
 }
 
 export interface MonthSeason {
@@ -100,12 +107,16 @@ export interface MonthSeason {
   month: string
   /** Average usable dark hours per night over the nights sampled in the month. */
   hoursPerNight: number
-  /** Dates of new moons that fall in the month. */
+  /** Site nights of the new moons that fall in the month. */
   newMoons: string[]
 }
 
-/** Averages sampled nights into months, in calendar order, marking each month's new moons. */
-export function monthlySeason(nights: { night: string; hours: number }[], newMoons: Date[]): MonthSeason[] {
+/**
+ * Averages sampled nights into months, in calendar order, marking each month's new moons.
+ * `newMoonNights` are site nights (see `siteNightOf`), so a new moon shortly after midnight counts
+ * for the evening before.
+ */
+export function monthlySeason(nights: { night: string; hours: number }[], newMoonNights: string[]): MonthSeason[] {
   const byMonth = new Map<string, number[]>()
   for (const n of nights) {
     const m = n.night.slice(0, 7)
@@ -116,7 +127,7 @@ export function monthlySeason(nights: { night: string; hours: number }[], newMoo
     .map(([month, hours]) => ({
       month,
       hoursPerNight: Math.round((hours.reduce((a, b) => a + b, 0) / hours.length) * 10) / 10,
-      newMoons: newMoons.map(d => d.toISOString().slice(0, 10)).filter(d => d.startsWith(month))
+      newMoons: newMoonNights.filter(d => d.startsWith(month))
     }))
 }
 
@@ -159,12 +170,16 @@ export interface DarkWindow {
   end: string
 }
 
-/** The dark window around each new moon: a few nights either side of it. */
-export function newMoonWindows(newMoons: Date[], policy = DEFAULT_PLANNING_POLICY): DarkWindow[] {
-  return newMoons.map(d => ({
-    newMoon: d.toISOString().slice(0, 10),
-    start: new Date(d.getTime() - policy.newMoonHalfWidthDays * DAY_MS).toISOString().slice(0, 10),
-    end: new Date(d.getTime() + policy.newMoonHalfWidthDays * DAY_MS).toISOString().slice(0, 10)
+/**
+ * The dark window around each new moon: a few nights either side of it. `newMoonNights` are site
+ * nights (see `siteNightOf`), so the window's dates are the evenings the user would go out.
+ */
+export function newMoonWindows(newMoonNights: string[], policy = DEFAULT_PLANNING_POLICY): DarkWindow[] {
+  const shift = (night: string, days: number) => new Date(Date.parse(`${night}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10)
+  return newMoonNights.map(night => ({
+    newMoon: night,
+    start: shift(night, -policy.newMoonHalfWidthDays),
+    end: shift(night, policy.newMoonHalfWidthDays)
   }))
 }
 
@@ -175,11 +190,18 @@ export function suitsNarrowband(objectType: string): boolean {
   return EMISSION_TYPES.has(objectType)
 }
 
-/** The brightest moon over the night's dark window. */
+/** The brightest the moon gets while it is above the horizon in the night's dark window; 0 when it stays down. */
 export function peakMoonIllumination(night: NightSky): number {
   let peak = 0
   for (const s of night.samples) if (s.moonAltitudeDeg > 0) peak = Math.max(peak, s.moonIllumination)
   return peak
+}
+
+/** The moon's phase over the night, whether or not it is up: the fraction of its disc lit. */
+export function moonPhase(night: NightSky): number {
+  let phase = 0
+  for (const s of night.samples) phase = Math.max(phase, s.moonIllumination)
+  return phase
 }
 
 export interface TonightChoice {
@@ -195,7 +217,11 @@ export interface TonightPlan {
   darkStart: Date
   darkEnd: Date
   darkness: NightSky['darkness']
+  /** The moon's phase, rounded to two places, whether or not it is up. */
   moonIllumination: number
+  /** The moon rises above the horizon during the dark window. */
+  moonUp: boolean
+  /** The moon is up and brighter than the policy allows for broadband targets. */
   brightMoon: boolean
   /** When the moon is bright and no dual-band or narrowband filter is available. */
   noFilterForBrightMoon: boolean
@@ -213,8 +239,7 @@ export function planTonight(
   options: { hasNarrowbandFilter: boolean },
   policy = DEFAULT_PLANNING_POLICY
 ): TonightPlan {
-  const moonIllumination = Math.round(peakMoonIllumination(night) * 100) / 100
-  const brightMoon = moonIllumination > policy.brightMoonIllumination
+  const brightMoon = peakMoonIllumination(night) > policy.brightMoonIllumination
   const choices: TonightChoice[] = []
   for (const t of targets) {
     if (!hasWorkLeft(t)) continue
@@ -236,7 +261,8 @@ export function planTonight(
     darkStart: night.darkStart,
     darkEnd: night.darkEnd,
     darkness: night.darkness,
-    moonIllumination,
+    moonIllumination: Math.round(moonPhase(night) * 100) / 100,
+    moonUp: night.samples.some(s => s.moonAltitudeDeg > 0),
     brightMoon,
     noFilterForBrightMoon: brightMoon && !options.hasNarrowbandFilter,
     choices
