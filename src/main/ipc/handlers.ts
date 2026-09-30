@@ -684,9 +684,9 @@ export function registerIpcHandlers(): void {
     const [actions, queue] = await Promise.all([
       composeCore(getSqlite()).listNextActions(),
       // Without the job runner the list still loads; it just cannot say what is queued.
+      // list() reads the store only, so Home never samples the machine the runner's idle check relies on.
       Promise.resolve()
-        .then(() => jobs().snapshot())
-        .then(s => s.jobs)
+        .then(() => jobs().list())
         .catch(() => [])
     ])
     return { recommendations: withQueuedJobs([...actions.map(toNextActionRecommendation), ...getRecommendations()], queue) }

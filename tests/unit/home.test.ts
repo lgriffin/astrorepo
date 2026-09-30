@@ -45,6 +45,23 @@ describe('Home', () => {
     expect(read('components/insights/ObservatoryTotals.tsx')).toContain("'dashboard:stats'")
   })
 
+  it('[UX-006] Given a part of Home or the Insights trends that cannot be read, When the page is drawn, Then it says so with a retry and the other parts still show', () => {
+    const home = read('pages/Dashboard.tsx')
+    expect(home).toContain('Could not work out the next actions.')
+    expect(home).toContain('Could not work out the coming nights.')
+    expect(home).toContain('Could not look through your files.')
+    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(3)
+    const insights = read('pages/Insights.tsx')
+    // The totals sit before the loading and failure branch, so a trends failure never hides them.
+    expect(insights.indexOf('<ObservatoryTotals />')).toBeLessThan(insights.indexOf('Could not read the seeing, filter and activity trends.'))
+  })
+
+  it('[UX-007] Given Home left open, When a queued stack starts, finishes or is cancelled, Then the suggestions are read again so the line follows the job', () => {
+    const home = read('pages/Dashboard.tsx')
+    expect(home).toMatch(/setInterval\(\(\) => void loadRecommendations\(\), REFRESH_MS\)/)
+    expect(home).toContain('clearInterval(timer)')
+  })
+
   it('[UX-007] Given a target with a stack queued for the run window, When Home lists it, Then the suggestion says so and opens Jobs', () => {
     const [marked] = withQueuedJobs([rec({})], [job({})])
     expect(marked).toMatchObject({ queued: 'Queued in Jobs for the run window.', actionLabel: 'Open Jobs', actionTo: '/jobs' })

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { ObservatoryTotals } from '../components/insights/ObservatoryTotals'
+import { Card, EmptyState, LinkButton } from '../components/common/Card'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
@@ -125,9 +126,11 @@ export function Insights(): React.ReactElement {
   const [filterUsage, setFilterUsage] = useState<FilterUsage[]>([])
   const [targetProgress, setTargetProgress] = useState<TargetProgress[]>([])
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setFailed(false)
     try {
       const [s, m, bn, qt, fu, tp] = await Promise.all([
         invoke<InsightsSummary>('insights:summary'),
@@ -144,7 +147,7 @@ export function Insights(): React.ReactElement {
       setFilterUsage(fu)
       setTargetProgress(tp)
     } catch {
-      // handle silently
+      setFailed(true)
     }
     setLoading(false)
   }, [])
@@ -153,10 +156,22 @@ export function Insights(): React.ReactElement {
     loadData()
   }, [loadData])
 
+  // The totals load on their own, so they show even when the trends below cannot be read.
   if (loading || !summary) {
     return (
       <PageContainer>
-        <p className="text-astro-muted text-sm">Loading insights...</p>
+        <div className="space-y-6">
+          <ObservatoryTotals />
+          {loading ? (
+            <p className="text-astro-muted text-sm">Loading the trends…</p>
+          ) : (
+            <Card title="Trends">
+              <EmptyState action={<LinkButton onClick={() => void loadData()}>Try again</LinkButton>}>
+                {failed ? 'Could not read the seeing, filter and activity trends.' : 'No trends yet.'}
+              </EmptyState>
+            </Card>
+          )}
+        </div>
       </PageContainer>
     )
   }
