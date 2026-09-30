@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { describe, it, expect } from 'vitest'
-import { titleCaseWords, uiTexts } from '../helpers/ui-text'
+import { titleCaseWords, uiTexts, uiTextsOf } from '../helpers/ui-text'
 
 const root = path.resolve(__dirname, '../..')
 
@@ -40,6 +40,16 @@ describe('Consistent wording (specs/017-unified-ux, U5)', () => {
     expect(titleCaseWords('Pixel size X')).toEqual([])
     expect(titleCaseWords('Save Location')).toEqual(['Location'])
     expect(titleCaseWords('Most Imaged Target')).toEqual(['Imaged', 'Target'])
+  })
+
+  it('[UX-016] Given a LinkButton, a Link or a button with a title-case label, When the renderer is read, Then the checker catches each', () => {
+    const code = `export const A = () => (<div>
+      <LinkButton onClick={go}>Open The Plan</LinkButton>
+      <Link to="/x">Go Somewhere</Link>
+      <button onClick={go}>{busy ? 'Saving' : 'Save Changes'}</button>
+    </div>)`
+    const caught = uiTextsOf('probe.tsx', code).filter(t => titleCaseWords(t.text).length > 0).map(t => t.text)
+    expect(caught).toEqual(['Open The Plan', 'Go Somewhere', 'Save Changes'])
   })
 
   it('[UX-017] Given every suggestion the main process builds, When its action is labelled, Then the label is in sentence case', () => {

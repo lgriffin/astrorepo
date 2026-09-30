@@ -50,35 +50,42 @@ export function uiTexts(rendererDir: string): UiText[] {
   }
   walk(rendererDir)
 
+  return files.flatMap(file =>
+    uiTextsOf(path.relative(rendererDir, file).split(path.sep).join('/'), fs.readFileSync(file, 'utf8'))
+  )
+}
+
+/** Components whose children are the text of a button they render. */
+const BUTTON_TAGS = new Set(['button', 'LinkButton', 'Link'])
+
+/** The UI texts of one TSX source. */
+export function uiTextsOf(rel: string, code: string): UiText[] {
+  const source = ts.createSourceFile(rel, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const out: UiText[] = []
-  for (const file of files) {
-    const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-    const rel = path.relative(rendererDir, file).split(path.sep).join('/')
-    const add = (node: ts.Node, text: string) => {
-      const clean = text.replace(/\s+/g, ' ').trim()
-      if (/[A-Za-z]/.test(clean)) out.push({ file: rel, line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1, text: clean })
-    }
-    // Strings a button can show: its text, and the literals of a {cond ? 'A' : 'B'} inside it.
-    const collectShown = (node: ts.Node): void => {
-      if (ts.isJsxText(node)) add(node, node.getText(source))
-      else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-        if (!ts.isCallExpression(node.parent) && !ts.isBinaryExpression(node.parent) && !ts.isElementAccessExpression(node.parent)) add(node, node.text)
-      } else if (ts.isJsxAttributes(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return
-      ts.forEachChild(node, collectShown)
-    }
-    const visit = (node: ts.Node): void => {
-      if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === 'button') {
-        for (const child of node.children) collectShown(child)
-      }
-      if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && /^[A-Z]/.test(node.tagName.getText(source))) {
-        for (const p of node.attributes.properties) {
-          if (!ts.isJsxAttribute(p) || !LABEL_PROPS.has(p.name.getText(source)) || !p.initializer) continue
-          if (ts.isStringLiteral(p.initializer)) add(p, p.initializer.text)
-        }
-      }
-      ts.forEachChild(node, visit)
-    }
-    visit(source)
+  const add = (node: ts.Node, text: string) => {
+    const clean = text.replace(/\s+/g, ' ').trim()
+    if (/[A-Za-z]/.test(clean)) out.push({ file: rel, line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1, text: clean })
   }
+  // Strings a button can show: its text, and the literals of a {cond ? 'A' : 'B'} inside it.
+  const collectShown = (node: ts.Node): void => {
+    if (ts.isJsxText(node)) add(node, node.getText(source))
+    else if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      if (!ts.isCallExpression(node.parent) && !ts.isBinaryExpression(node.parent) && !ts.isElementAccessExpression(node.parent)) add(node, node.text)
+    } else if (ts.isJsxAttributes(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)) return
+    ts.forEachChild(node, collectShown)
+  }
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxElement(node) && BUTTON_TAGS.has(node.openingElement.tagName.getText(source))) {
+      for (const child of node.children) collectShown(child)
+    }
+    if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && /^[A-Z]/.test(node.tagName.getText(source))) {
+      for (const p of node.attributes.properties) {
+        if (!ts.isJsxAttribute(p) || !LABEL_PROPS.has(p.name.getText(source)) || !p.initializer) continue
+        if (ts.isStringLiteral(p.initializer)) add(p, p.initializer.text)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
   return out
 }
