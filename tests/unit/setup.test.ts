@@ -6,8 +6,8 @@ import { setupSteps, showSetup, type SetupState } from '../../src/shared/setup'
 const renderer = path.resolve(__dirname, '../../src/renderer')
 const read = (rel: string) => fs.readFileSync(path.join(renderer, rel), 'utf8')
 
-const fresh: SetupState = { latitude: null, longitude: null, homeFolder: null, lastLibraryScan: null, sirilFound: false }
-const ready: SetupState = { latitude: '51.5', longitude: '-0.12', homeFolder: 'D:/Astro', lastLibraryScan: '2026-09-30 07:00:00', sirilFound: true }
+const fresh: SetupState = { latitude: null, longitude: null, homeFolder: null, lastLibraryScan: null, lastLibraryScanFolder: null, sirilFound: false }
+const ready: SetupState = { latitude: '51.5', longitude: '-0.12', homeFolder: 'D:/Astro', lastLibraryScan: '2026-09-30 07:00:00', lastLibraryScanFolder: 'D:/Astro', sirilFound: true }
 
 describe('Setting up', () => {
   it('[UX-013] Given the site, When a page needs it, Then it is set only in Settings > Your site and the pages link there', () => {
@@ -36,9 +36,25 @@ describe('Setting up', () => {
     expect(showSetup(setupSteps(fresh), true)).toBe(false)
   })
 
+  it('[UX-014] Given a site the planner would reject, When the steps are worked out, Then the site step is left to do', () => {
+    const site = (latitude: string, longitude: string) => setupSteps({ ...ready, latitude, longitude })[0].done
+    expect(site('91', '0')).toBe(false)
+    expect(site('-90', '180')).toBe(true)
+    expect(site('45', '-180.5')).toBe(false)
+    expect(site('abc', '0')).toBe(false)
+  })
+
+  it('[UX-014] Given a scan of another folder, When the home folder changes, Then the scan step is left to do; a scan from before folders were recorded still counts', () => {
+    const scan = (lastLibraryScanFolder: string | null) => setupSteps({ ...ready, homeFolder: 'E:/NewAstro', lastLibraryScanFolder })[2].done
+    expect(scan('D:/Astro')).toBe(false)
+    expect(scan('E:/NewAstro')).toBe(true)
+    expect(scan(null)).toBe(true)
+    expect(fs.readFileSync(path.resolve(__dirname, '../../src/main/db/connection.ts'), 'utf8')).toContain("DELETE FROM app_settings WHERE key IN ('last_library_scan', 'last_library_scan_folder')")
+  })
+
   it('[UX-014] Given half-set values, When the steps are worked out, Then only complete ones count, and an unknown Siril is not a step left', () => {
     const steps = setupSteps({ ...ready, longitude: '  ', homeFolder: '', sirilFound: null })
-    expect(steps.filter(s => !s.done).map(s => s.id)).toEqual(['site', 'folder'])
+    expect(steps.filter(s => !s.done).map(s => s.id)).toEqual(['site', 'folder', 'scan'])
     expect(setupSteps({ ...ready, latitude: 'north' }).find(s => s.id === 'site')?.done).toBe(false)
   })
 

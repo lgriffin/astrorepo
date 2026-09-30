@@ -6,6 +6,8 @@ export interface SetupState {
   longitude: string | null
   homeFolder: string | null
   lastLibraryScan: string | null
+  /** The folder the last scan was of; null for scans made before this was recorded. */
+  lastLibraryScanFolder: string | null
   /** Siril was found by the tool hub; null when the hub could not be asked. */
   sirilFound: boolean | null
 }
@@ -22,6 +24,8 @@ export interface SetupStep {
 }
 
 const set = (v: string | null) => v !== null && v.trim() !== ''
+/** A coordinate the planner accepts: a number within ±limit degrees. */
+const within = (v: string | null, limit: number) => set(v) && Number.isFinite(Number(v)) && Math.abs(Number(v)) <= limit
 
 /** The first-run steps, in the order they are best done. */
 export function setupSteps(s: SetupState): SetupStep[] {
@@ -30,7 +34,7 @@ export function setupSteps(s: SetupState): SetupStep[] {
       id: 'site',
       label: 'Set your site',
       why: 'Tonight, seasons and moon windows are worked out from where your scopes stand.',
-      done: set(s.latitude) && set(s.longitude) && Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude)),
+      done: within(s.latitude, 90) && within(s.longitude, 180),
       link: settingsLink('location'),
       linkLabel: 'Open Your site'
     },
@@ -46,7 +50,8 @@ export function setupSteps(s: SetupState): SetupStep[] {
       id: 'scan',
       label: 'Scan your library',
       why: 'Finds your targets and what is hiding in your files.',
-      done: set(s.lastLibraryScan),
+      // A scan of another folder does not count; a scan from before the folder was recorded does.
+      done: set(s.lastLibraryScan) && (s.lastLibraryScanFolder === null || s.lastLibraryScanFolder === s.homeFolder),
       link: '/library',
       linkLabel: 'Open Library'
     },

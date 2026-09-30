@@ -437,6 +437,8 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
       syncTargetsToCollections(processedTargetIds)
 
       sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan', datetime('now'))").run()
+      // Which folder the scan was of, so a new home folder reads as not yet scanned.
+      sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan_folder', ?)").run(homePath)
 
       scanState.status = 'done'
       scanState.result = result
