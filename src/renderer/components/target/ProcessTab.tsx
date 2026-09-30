@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
@@ -18,9 +18,9 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
   // Only the newest poll may update the runs, so a slow old one never brings back a stale queue.
   const request = useRef(0)
 
-  const loadRuns = (): void => {
+  const loadRuns = useCallback((): void => {
     const id = ++request.current
-    invoke<JobsView>('jobs:list')
+    invoke<JobsView>('jobs:list', { target_id: targetId })
       .then(v => {
         if (id !== request.current) return
         setView(v)
@@ -28,12 +28,12 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
       })
       // A failed poll keeps the runs already shown, so a queued step never offers to queue again.
       .catch(() => id === request.current && setUnreadable(true))
-  }
+  }, [targetId])
   useEffect(() => {
     loadRuns()
     const timer = setInterval(loadRuns, 10000)
     return () => clearInterval(timer)
-  }, [targetId])
+  }, [loadRuns])
 
   const runs = runsForTarget(view, targetId)
 
@@ -44,7 +44,7 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         {rawPath ? (
           <>
             <PrepForSiril rawPath={rawPath} onPrepared={setPrepKey} />
-            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey} onQueued={loadRuns} queued={runs.stack !== null} />
+            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey} onQueued={loadRuns} queued={runs.stack !== null || view === null} />
           </>
         ) : (
           <EmptyState>
@@ -56,7 +56,7 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
 
       <Card title="2 · Post-process">
         {runs.postProcess && <RunBanner job={runs.postProcess} />}
-        <PostProcessing targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.postProcess !== null} />
+        <PostProcessing targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.postProcess !== null || view === null} />
       </Card>
 
       <TargetRunsCard runs={runs} unreadable={unreadable && view === null} />

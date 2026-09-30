@@ -82,7 +82,7 @@ export function TargetDetail(): React.ReactElement {
   }
 
   const typeLabel = target.objectType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-  const open = (t: TargetTab) => navigate(targetLink(target.id, t), { replace: true })
+  const open = (t: TargetTab) => navigate(targetLink(target.id, t))
 
   return (
     <PageContainer title={target.canonicalName} subtitle={[typeLabel, target.constellation].filter(Boolean).join(' in ')}>
@@ -159,8 +159,12 @@ function nextStep(d: TargetDiscoveryView | null): string {
     case 'stacked':
       return d.unstackedNights.length > 0 ? 'Restack it to include the nights captured since the last stack, or post-process the stack.' : 'Post-process the stack.'
     case 'processed':
-      return 'Finish it: pick the processed image to keep as final.'
+      return d.unstackedNights.length > 0
+        ? 'Restack it to include the nights captured since the last stack, or pick the processed image to keep as final.'
+        : 'Finish it: pick the processed image to keep as final.'
     case 'final':
-      return 'Done. Capture more only if you want to go deeper.'
+      return d.unstackedNights.length > 0
+        ? 'Done, with new nights since the last stack: restack it to go deeper.'
+        : 'Done. Capture more only if you want to go deeper.'
   }
 }

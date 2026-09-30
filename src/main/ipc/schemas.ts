@@ -252,7 +252,7 @@ export const schemas = {
     profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']).optional(),
     quality: z.enum(['light', 'normal', 'strong']).optional()
   }),
-  'jobs:list': z.object({}).optional(),
+  'jobs:list': z.object({ target_id: id.optional() }).optional(),
   'jobs:queue-stack': z.object({
     target_id: id,
     script: z.enum(['OSC_Preprocessing', 'OSC_Preprocessing_WithoutFlat', 'OSC_Preprocessing_WithoutDBF', 'OSC_Preprocessing_BayerDrizzle', 'OSC_Extract_Ha', 'OSC_Extract_HaOIII', 'Mono_Preprocessing']),

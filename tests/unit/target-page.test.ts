@@ -62,8 +62,8 @@ describe("A target's page", () => {
 
   it('[UX-011] Given a step whose job is already on its way, When the step is drawn, Then it does not offer to queue that step again', () => {
     const tab = read('components/target/ProcessTab.tsx')
-    expect(tab).toContain('queued={runs.stack !== null}')
-    expect(tab).toContain('queued={runs.postProcess !== null}')
+    expect(tab).toContain('queued={runs.stack !== null ||')
+    expect(tab).toContain('queued={runs.postProcess !== null ||')
     expect(tab).toContain('{chosen?.canQueue && !queued && (')
     expect(tab).toContain('{view.canQueue && view.stackPath && !queued && (')
   })
@@ -73,6 +73,17 @@ describe("A target's page", () => {
     expect(tab).not.toMatch(/catch\(\(\) => setView\(null\)\)/)
     expect(tab).toContain('id === request.current && setUnreadable(true)')
     expect(tab).toContain('Could not read the job queue.')
+  })
+
+  it('[UX-011] Given a target page whose queue has not been read yet, When the steps are drawn, Then neither offers Queue until the queue is known', () => {
+    const tab = read('components/target/ProcessTab.tsx')
+    expect(tab).toContain('queued={runs.stack !== null || view === null}')
+    expect(tab).toContain('queued={runs.postProcess !== null || view === null}')
+    expect(tab).toContain("invoke<JobsView>('jobs:list', { target_id: targetId })")
+  })
+
+  it('[UX-009] Given a user moving between tabs, When they press Back, Then they return to the tab before', () => {
+    expect(read('pages/TargetDetail.tsx')).not.toContain('replace: true')
   })
 
   it("[UX-011] Given the whole queue, When a target's runs are picked out, Then only its jobs appear, running first, with each step's job found", () => {
