@@ -243,7 +243,7 @@ export function SkyPlanner(): React.ReactElement {
             {moonInfo && (
               <>
                 <StatCard
-                  label="Moon Phase"
+                  label="Moon phase"
                   value={`${moonIcon(moonInfo.phaseName)} ${moonInfo.phaseName}`}
                   compact
                 />
@@ -257,10 +257,10 @@ export function SkyPlanner(): React.ReactElement {
             {twilight && (
               <>
                 {twilight.astronomicalDusk && (
-                  <StatCard label="Astro Dusk" value={twilight.astronomicalDusk.slice(11, 16)} compact />
+                  <StatCard label="Astro dusk" value={twilight.astronomicalDusk.slice(11, 16)} compact />
                 )}
                 {twilight.astronomicalDawn && (
-                  <StatCard label="Astro Dawn" value={twilight.astronomicalDawn.slice(11, 16)} compact />
+                  <StatCard label="Astro dawn" value={twilight.astronomicalDawn.slice(11, 16)} compact />
                 )}
               </>
             )}

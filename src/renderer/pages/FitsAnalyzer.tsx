@@ -98,7 +98,7 @@ export function FitsAnalyzer(): React.ReactElement {
                 onClick={() => setShowSessionGenerator(!showSessionGenerator)}
                 className="px-4 py-2 border border-astro-border text-astro-text text-sm rounded hover:bg-astro-bg transition-colors"
               >
-                {showSessionGenerator ? 'Hide Session Generator' : 'Generate Sessions'}
+                {showSessionGenerator ? 'Hide session generator' : 'Generate sessions'}
               </button>
               {linkingStatus && (
                 <span className="text-sm text-astro-muted">

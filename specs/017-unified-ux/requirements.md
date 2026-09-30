@@ -100,3 +100,10 @@ The slices, each its own pull request:
 | UX-013 | Ubiquitous | The system shall take the site only in Settings > Your site, with the Sky planner and Home linking there rather than asking for it themselves. |
 | UX-014 | State | While the site, the home folder, a library scan or Siril is missing, the system shall show a Get set up checklist on Home that links each missing step to where it is done, until every step is done or the user hides it. |
 | UX-015 | Ubiquitous | The system shall say on each empty Library, FITS files and Images page what would appear there and link to the step that fills it. |
+
+## U5 · Consistent words
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| UX-016 | Ubiquitous | The system shall write every button, labelled figure, tab and card title in sentence case, keeping capitals only for names, acronyms and the places the sidebar lists. |
+| UX-017 | Ubiquitous | The system shall offer each suggestion's action in sentence case ("Open target") and, in any message that sends the user elsewhere, name the place as the sidebar and Settings sections name it. |

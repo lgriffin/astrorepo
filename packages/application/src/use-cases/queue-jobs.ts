@@ -47,7 +47,7 @@ export function makeQueueStack(deps: QueueStackDeps): QueueStack {
     if (estimate.freeBytes === null) throw new JobRefusedError("The work area's disk does not report its free space, so the run could fill it.")
     if (!script.fits) throw new JobRefusedError(`The work area's disk is short of the space ${request.script} needs.`)
     const siril = (await deps.tools.locate()).find(t => t.id === 'siril')?.path ?? null
-    if (!siril) throw new JobRefusedError('Siril was not found. Set where siril-cli is in Settings > Tools.')
+    if (!siril) throw new JobRefusedError('Siril was not found. Set where siril-cli is in Settings → Tools.')
     const scriptPath = await deps.tools.stockScript(`${request.script}.ssf`)
     if (!scriptPath) throw new JobRefusedError(`Siril's stock script ${request.script}.ssf was not found beside siril-cli.`)
 

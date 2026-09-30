@@ -53,9 +53,10 @@ and export** and **Start again**. The buttons at the top jump to each. Links els
 section they name: "Change the run window in Settings" on Jobs opens **Run window**, and "Set your
 site in Settings" on Home's Coming nights card opens **Your site**.
 
-## What is changing next
+## Words
 
-The overhaul lands in slices ([spec 017](../../specs/017-unified-ux/requirements.md)). Home now
-opens on Next actions, and a target's page runs from plan to stack to post-processing to its
-jobs on **Stack and process** (see [Using the cockpit](cockpit.md)), and the site is set in one
-place with **Get set up** on Home until you are ready. Next, the wording is made consistent.
+Buttons, labels and titles are written the way you would say them ("Open target", "Save
+location"), with capitals only for names such as Siril or Messier, acronyms such as FITS, and the
+places in the sidebar. When a message sends you somewhere, it uses the sidebar's name for it, so
+"Settings → Tools" is the Tools section of Settings. The overhaul that brought this in is
+[spec 017](../../specs/017-unified-ux/requirements.md).

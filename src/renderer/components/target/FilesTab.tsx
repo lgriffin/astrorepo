@@ -106,7 +106,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
   const folders = data.filesByFolder ?? {}
 
   return (
-    <Card title="Observation Data">
+    <Card title="Observation data">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="bg-astro-bg border border-astro-border rounded p-2">
           <p className="text-xs text-astro-muted">FITS Files</p>

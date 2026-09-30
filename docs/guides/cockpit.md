@@ -251,7 +251,7 @@ under `jobs/`.
 
 ## Tools
 
-**Settings > Tools** lists the programs the app hands work to: Siril, Siril_Scripts v2, the RC
+**Settings → Tools** lists the programs the app hands work to: Siril, Siril_Scripts v2, the RC
 Astro CLI and, on Windows, Git Bash (which Siril_Scripts' `.bat` needs). Each is looked for in
 the path you save there, then on PATH, then in its usual install folder; for Siril_Scripts, the
 repo folder, its `v2` folder or `postprocess.bat` itself will do, as long as `postprocess.sh`

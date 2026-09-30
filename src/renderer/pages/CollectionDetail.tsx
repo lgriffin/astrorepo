@@ -45,7 +45,7 @@ export function CollectionDetail(): React.ReactElement {
 
   if (!collection) {
     return (
-      <PageContainer title="Not Found">
+      <PageContainer title="Not found">
         <div className="text-astro-muted">
           Collection not found. <Link to="/collections" className="text-astro-accent hover:underline">Back</Link>
         </div>

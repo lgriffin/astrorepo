@@ -123,16 +123,16 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
             <Field label="Filter" value={file.filter} />
             <Field label="Gain" value={file.gain} />
             <Field label="Offset" value={file.offsetVal} />
-            <Field label="Image Type" value={file.imageType} />
+            <Field label="Image type" value={file.imageType} />
           </dl>
         </div>
 
         <div>
           <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Camera</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Field label="CCD Temp" value={file.ccdTemp != null ? `${file.ccdTemp}°C` : null} />
-            <Field label="Pixel Size X" value={file.xpixsz != null ? `${file.xpixsz}µm` : null} />
-            <Field label="Pixel Size Y" value={file.ypixsz != null ? `${file.ypixsz}µm` : null} />
+            <Field label="CCD temp" value={file.ccdTemp != null ? `${file.ccdTemp}°C` : null} />
+            <Field label="Pixel size X" value={file.xpixsz != null ? `${file.xpixsz}µm` : null} />
+            <Field label="Pixel size Y" value={file.ypixsz != null ? `${file.ypixsz}µm` : null} />
             <Field label="Binning" value={file.xbinning != null ? `${file.xbinning}x${file.ybinning ?? file.xbinning}` : null} />
           </dl>
         </div>
@@ -162,7 +162,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
             <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Stacking</h4>
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Field label="NCOMBINE" value={file.ncombine} />
-              <Field label="Total Exposure" value={file.totalExposure != null ? `${file.totalExposure}s` : null} />
+              <Field label="Total exposure" value={file.totalExposure != null ? `${file.totalExposure}s` : null} />
               <Field label="CALSTAT" value={file.calstat} />
             </dl>
           </div>
@@ -205,7 +205,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               disabled={computingStats}
               className="text-sm px-3 py-1.5 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
             >
-              {computingStats ? 'Computing...' : 'Compute Stats'}
+              {computingStats ? 'Computing...' : 'Compute stats'}
             </button>
           )}
         </div>
@@ -250,7 +250,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               disabled={analyzing}
               className="text-sm px-3 py-1.5 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
             >
-              {analyzing ? 'Analyzing...' : 'Analyze Quality'}
+              {analyzing ? 'Analyzing...' : 'Analyze quality'}
             </button>
           )}
         </div>
@@ -260,7 +260,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
             onClick={() => setShowHeaders(!showHeaders)}
             className="text-sm text-astro-accent hover:text-astro-accent/80 transition-colors"
           >
-            {showHeaders ? 'Hide' : 'Show'} Raw Headers ({headers.length})
+            {showHeaders ? 'Hide' : 'Show'} Raw headers ({headers.length})
           </button>
 
           {showHeaders && (

@@ -15,7 +15,7 @@ const rec = (over: Partial<Recommendation>): Recommendation => ({
   description: '',
   targetId: 't-m31',
   targetName: 'M 31',
-  actionLabel: 'View Target',
+  actionLabel: 'Open target',
   dismissible: true,
   ...over
 })
