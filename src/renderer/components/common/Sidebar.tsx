@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { to: '/images', label: 'Images', icon: '▢' },
   { to: '/fits-analyzer', label: 'FITS Analyzer', icon: '◈' },
   { to: '/stacking', label: 'Stacking', icon: '⊞' },
+  { to: '/jobs', label: 'Jobs', icon: '▶' },
   { to: '/calibration', label: 'Calibration', icon: '◇' },
   { to: '/insights', label: 'Insights', icon: '◎' },
   { to: '/sky-planner', label: 'Sky Planner', icon: '☽' },

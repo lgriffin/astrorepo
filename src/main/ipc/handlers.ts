@@ -28,6 +28,9 @@ import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../ad
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
+import { toJobsView } from '../adapters/job-presenter'
+import { JobRefusedError, JobStateError } from '@astro/application'
+import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -48,7 +51,7 @@ function sirilFolderName(sourceDir: string): string {
 
 /** Where Prep for Siril lays out a source folder: the work area setting, else the app's data folder. */
 /** Folders the app only reads: the home and FITS master folders and every scanned folder. */
-function readOnlyDirs(): string[] {
+export function readOnlyDirs(): string[] {
   const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
   return [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
 }
@@ -454,6 +457,45 @@ export function registerIpcHandlers(): void {
     })
     return toPostProcessView(plan)
   }))
+
+  handle('jobs:list', async () => toJobsView(await jobs().snapshot(), new Date()))
+
+  /** A refusal the user can act on comes back as a message; anything else is a bug and throws. */
+  const refusable = async (work: () => Promise<{ title: string }>) => {
+    try {
+      const job = await work()
+      kickJobs()
+      return { ok: true, title: job.title }
+    } catch (error) {
+      if (error instanceof JobRefusedError || error instanceof JobStateError) return { ok: false, error: error.message }
+      throw error
+    }
+  }
+
+  handle('jobs:queue-stack', validated('jobs:queue-stack', args =>
+    // The plan is worked out again here, from the index and the disk (JOB-001).
+    refusable(() => composeCore(getSqlite()).queueStack({
+      targetId: args.target_id,
+      sourceDir: args.raw_path,
+      workDir: sirilWorkDir(args.raw_path),
+      script: args.script,
+      timing: args.timing
+    }))
+  ))
+
+  handle('jobs:queue-post-process', validated('jobs:queue-post-process', args =>
+    refusable(() => composeCore(getSqlite()).queuePostProcess(args.target_id, {
+      workDir: args.raw_path ? sirilWorkDir(args.raw_path) : undefined,
+      readOnlyDirs: readOnlyDirs(),
+      stackPath: args.stack_path,
+      profile: args.profile,
+      quality: args.quality
+    }, args.timing))
+  ))
+
+  handle('jobs:cancel', validated('jobs:cancel', args => refusable(() => jobs().cancel(args.job_id))))
+  handle('jobs:run-now', validated('jobs:run-now', args => refusable(() => jobs().runNow(args.job_id))))
+  handle('jobs:log', validated('jobs:log', async args => ({ text: await jobs().log(args.job_id) })))
 
   handle('ingest:find-duplicates', async () => {
     const report = await composeCore(getSqlite()).findDuplicates()

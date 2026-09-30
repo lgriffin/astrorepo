@@ -40,6 +40,7 @@ disk space the run needs.
 | HUB-002 | Event | When the user saves a tool's path in Settings, the system shall look there before PATH and the standard folders, and say when that path no longer exists. |
 | HUB-003 | Unwanted | If Siril or the RC Astro CLI is found somewhere other than where Siril_Scripts v2 runs it from, then the system shall say so. |
 | HUB-004 | Unwanted | If a tool is not found, then the system shall list every place it looked. |
+| HUB-005 | Ubiquitous | The system shall find Siril's stock preprocessing scripts where Siril installs them beside siril-cli (added with spec 016, so a queued stack runs the installed script). |
 
 ## Post-processing recipe
 

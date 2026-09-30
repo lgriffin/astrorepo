@@ -52,6 +52,8 @@ flowchart LR
 | `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`) | `siril:estimate` | 014 |
 | `listTools` | `toolWarnings` | ToolHub | `tools:list` | 015 |
 | `planPostProcessing` | `buildPostProcessRecipe`, `profileForObjectType`, `formatCoords`, `postProcessingSpace` | StackCatalogue, ToolHub, SirilWorkspace (`stackResults`, `workAreaSpace`, `contains`) | `recipe:post-process` | 015 |
+| `queueStack`, `queuePostProcess` | `sirilStackCommand`, `postProcessCommand` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun` and `planPostProcessing`) | `jobs:queue-stack`, `jobs:queue-post-process` | 016 |
+| `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`), Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 
@@ -64,6 +66,11 @@ window, so altitude, separation and every planning rule are plain trigonometry i
 astronomy-engine adapter is the only code that knows about the sun and moon, and the testkit's
 `FakeEphemeris` uses real sidereal time with a scripted sun and moon. The legacy Sky Planner
 service still answers its own channels; it moves behind the same port next.
+
+The job runner is the one use case that lives for the whole session: `src/main/jobs-host.ts`
+creates it once, checks the queue every minute and whenever a job is queued or ends, keeps the PC
+awake while a job runs, and stops the running job when the app quits. Every other use case is
+composed per request in `composeCore`.
 
 Presenters in `src/main/adapters/*-presenter.ts` turn domain results into the plain shapes in
 `src/shared/types.ts` (ISO date strings, human sentences) that the renderer shows. Rules never

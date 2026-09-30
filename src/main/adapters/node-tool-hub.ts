@@ -45,6 +45,23 @@ export class NodeToolHub implements ToolHub {
     return TOOLS.map(spec => this.find(spec))
   }
 
+  /**
+   * Siril installs its stock scripts under share/siril/scripts beside its bin folder (older
+   * Windows builds put them in a scripts folder), or system-wide on Linux.
+   */
+  async stockScript(fileName: string): Promise<string | null> {
+    const siril = this.find(TOOLS.find(t => t.id === 'siril') as ToolSpec).path
+    if (!siril) return null
+    const root = this.p.dirname(this.p.dirname(siril))
+    const candidates = [
+      this.p.join(root, 'share', 'siril', 'scripts', fileName),
+      this.p.join(root, 'scripts', fileName),
+      this.p.join(this.p.dirname(siril), 'scripts', fileName),
+      ...(this.windows ? [] : [`/usr/share/siril/scripts/${fileName}`, `/usr/local/share/siril/scripts/${fileName}`])
+    ]
+    return candidates.find(c => this.exists(c)) ?? null
+  }
+
   private find(spec: ToolSpec): ToolStatus {
     const looked: string[] = []
     const tryAt = (candidates: string[]): string | null => {

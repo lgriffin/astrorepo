@@ -203,7 +203,7 @@ export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
 
   const hazards = shellHazards([found('siril-scripts') ?? '', ...args], windows)
   if (hazards.length > 0) {
-    warnings.push(`The path holds ${hazards.map(h => (h === '\r' || h === '\n' ? 'a line break' : h)).join(' ')}, which Command Prompt would act on, so no command is offered. Rename the file or folder without ${hazards.length === 1 ? 'it' : 'them'}.`)
+    warnings.push(`The path holds ${hazards.map(h => (h === '\r' || h === '\n' ? 'a line break' : h)).join(' ')}, which Command Prompt would act on, so no command is offered to copy. Queue it instead (the app runs it without Command Prompt), or rename the file or folder without ${hazards.length === 1 ? 'it' : 'them'}.`)
   }
 
   const channels = stack.colour ? 3 : 1

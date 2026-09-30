@@ -7,6 +7,7 @@ import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { formatExposure, formatSize } from '../utils/format'
 import { TargetDiscoveryPanel } from '../components/cockpit/TargetDiscoveryPanel'
+import { QueueJob, type QueueResult } from '../components/jobs/QueueJob'
 import type { PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
@@ -419,7 +420,7 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
           {sirilStatus && sirilStatus !== 'preparing' && (
             <p className="text-xs text-astro-muted mt-1.5">{sirilStatus}</p>
           )}
-          <StackingPlan rawPath={homeData.rawPath} refreshKey={sirilStatus} />
+          <StackingPlan targetId={homeData.targetId} rawPath={homeData.rawPath} refreshKey={sirilStatus} />
         </div>
       )}
 
@@ -437,7 +438,7 @@ const VERDICT_TONE: Record<SirilScriptView['verdict'], string> = {
 }
 
 /** Which stock Siril script fits the frames and whether the disk has room, before anything is written. */
-function StackingPlan({ rawPath, refreshKey }: { rawPath: string; refreshKey: string | null }): React.ReactElement | null {
+function StackingPlan({ targetId, rawPath, refreshKey }: { targetId: string; rawPath: string; refreshKey: string | null }): React.ReactElement | null {
   const [plan, setPlan] = useState<SirilPlanView | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -475,6 +476,18 @@ function StackingPlan({ rawPath, refreshKey }: { rawPath: string; refreshKey: st
         </p>
       )}
       <p className="text-xs text-astro-muted">{plan.prepNote}</p>
+      {chosen?.canQueue && (
+        <QueueJob
+          label="Queue this stack"
+          confirm={[
+            `Siril runs ${chosen.file} (${chosen.label.toLowerCase()}).`,
+            plan.frames,
+            `Needs ${chosen.needed}: ${chosen.verdictText.toLowerCase()}.`,
+            'Prep for Siril lays the frames out in the work area first; the source folder is never written to.'
+          ]}
+          onQueue={timing => invoke<QueueResult>('jobs:queue-stack', { target_id: targetId, raw_path: rawPath, script: chosen.script, timing })}
+        />
+      )}
       {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
       {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
       {plan.scripts.length > 0 && (
@@ -580,7 +593,28 @@ function PostProcessing({ targetId, rawPath }: { targetId: string; rawPath: stri
       {view.outputDir && <p className="text-xs text-astro-muted">Writes to <span className="font-mono">{view.outputDir}</span>.</p>}
       {view.skipped.map(s => <p key={s} className="text-xs text-astro-muted">Skips {s}</p>)}
       {view.warnings.map(w => <p key={w} className="text-xs text-yellow-400">{w}</p>)}
-      <p className="text-[10px] text-astro-muted">Run it in Command Prompt on the PC for now; running it from here comes with the job runner.</p>
+      {view.canQueue && view.stackPath && (
+        <QueueJob
+          label="Queue post-processing"
+          confirm={[
+            `Siril_Scripts v2 processes ${view.stacks.find(s => s.path === view.stackPath)?.label ?? view.stackPath} with the ${view.profile} profile at ${view.quality} quality.`,
+            ...(view.space ? [`${view.space}${view.verdictText ? ` ${view.verdictText}.` : ''}`] : []),
+            ...(view.outputDir ? [`Writes to ${view.outputDir}.`] : []),
+            ...view.skipped.map(s => `Skips ${s}`)
+          ]}
+          onQueue={timing =>
+            invoke<QueueResult>('jobs:queue-post-process', {
+              target_id: targetId,
+              ...(rawPath ? { raw_path: rawPath } : {}),
+              stack_path: view.stackPath ?? undefined,
+              profile: view.profile,
+              quality: view.quality,
+              timing
+            })
+          }
+        />
+      )}
+      <p className="text-[10px] text-astro-muted">Queue it to run on this PC in the run window (see Jobs), or copy the command into Command Prompt.</p>
     </div>
   )
 }

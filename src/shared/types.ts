@@ -927,6 +927,10 @@ export interface SirilWorkspaceView {
 export interface SirilScriptView {
   /** The script's file name, as Siril lists it, for example "OSC_Preprocessing.ssf". */
   file: string
+  /** The script's id, for queueing it. */
+  script: string
+  /** The job runner can queue it: lights to stack, its calibration present and room on the disk. */
+  canQueue: boolean
   label: string
   recommended: boolean
   /** Space the run needs, including what Prep must copy, less what an earlier run left. */
@@ -1044,6 +1048,8 @@ export interface PostProcessView {
   qualities: string[]
   /** The command to run; null while a required tool is missing. */
   command: string | null
+  /** The job runner can queue it: every tool found and room on the disk. */
+  canQueue: boolean
   missing: string | null
   skipped: string[]
   warnings: string[]
@@ -1051,4 +1057,44 @@ export interface PostProcessView {
   space: string | null
   verdict: 'fits' | 'short' | 'unknown'
   verdictText: string | null
+}
+
+/** One job as the Jobs page shows it. */
+export interface JobView {
+  id: string
+  title: string
+  kind: 'stack' | 'post-process'
+  state: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+  stateLabel: string
+  timing: 'window' | 'now'
+  /** ISO instants; the renderer shows them in local time. */
+  queuedAt: string
+  startedAt: string | null
+  finishedAt: string | null
+  /** How long it ran, or has run so far. */
+  duration: string | null
+  /** How long it should take, and on what basis; null once it has finished. */
+  estimate: string | null
+  /** Why a queued job is not starting yet; null when it is about to. */
+  waiting: string | null
+  note: string | null
+  /** The program and arguments it runs, as run (no shell). */
+  command: string
+  needed: string
+  canCancel: boolean
+  canRunNow: boolean
+}
+
+export interface JobsView {
+  /** The rules, in one sentence. */
+  rules: string
+  /** Whether the window is open now, or when it next opens. */
+  windowStatus: string
+  /** What the PC is doing, as the idle rule sees it; null when unknown. */
+  load: string | null
+  running: JobView | null
+  queue: JobView[]
+  /** Finished jobs, newest first. */
+  history: JobView[]
+  settings: { windowStart: string; windowEnd: string; idleMinutes: number; maxCpuPercent: number }
 }

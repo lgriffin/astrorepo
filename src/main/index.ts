@@ -1,7 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { initDatabase } from './db/connection'
-import { registerIpcHandlers } from './ipc/handlers'
+import { readOnlyDirs, registerIpcHandlers } from './ipc/handlers'
+import { startJobs } from './jobs-host'
 import { loadCatalogueSeedData } from './services/catalogue'
 import { autoGenerateCatalogueCollections } from './services/collection'
 
@@ -41,6 +42,7 @@ app.whenReady().then(() => {
     console.error('Seed data loading failed (non-fatal):', err)
   }
   registerIpcHandlers()
+  startJobs(readOnlyDirs).catch(err => console.error('The job runner did not start:', err))
   createWindow()
 
   app.on('activate', () => {

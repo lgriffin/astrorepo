@@ -91,6 +91,30 @@ describe('NodeToolHub', () => {
     expect(hub.windows).toBe(false)
     expect(statuses.find(s => s.id === 'siril')).toMatchObject({ path: '/usr/bin/siril-cli', source: 'path' })
     expect(statuses.find(s => s.id === 'siril-scripts')?.path).toBe('/home/leigh/Siril_Scripts/v2/postprocess.sh')
+    expect(await hub.stockScript('OSC_Preprocessing.ssf')).toBeNull()
+  })
+
+  it('[HUB-005] Given Siril installed on Windows, When a stock script is asked for, Then it is found under share/siril/scripts or an older scripts folder', async () => {
+    const siril = 'C:/Program Files/Siril/bin/siril-cli.exe'
+    expect(await windowsHub([siril, 'C:/Program Files/Siril/share/siril/scripts/OSC_Preprocessing.ssf']).stockScript('OSC_Preprocessing.ssf')).toBe(
+      win('C:/Program Files/Siril/share/siril/scripts/OSC_Preprocessing.ssf')
+    )
+    expect(await windowsHub([siril, 'C:/Program Files/Siril/scripts/Mono_Preprocessing.ssf']).stockScript('Mono_Preprocessing.ssf')).toBe(
+      win('C:/Program Files/Siril/scripts/Mono_Preprocessing.ssf')
+    )
+    expect(await windowsHub([siril]).stockScript('OSC_Preprocessing.ssf')).toBeNull()
+    expect(await windowsHub([]).stockScript('OSC_Preprocessing.ssf')).toBeNull()
+  })
+
+  it('[HUB-005] Given Siril from a Linux package, When a stock script is asked for, Then the system scripts folder is used', async () => {
+    const hub = new NodeToolHub({
+      platform: 'linux',
+      env: { PATH: '/usr/bin' },
+      home: '/home/leigh',
+      setting: () => null,
+      exists: p => ['/usr/bin/siril-cli', '/usr/share/siril/scripts/OSC_Preprocessing.ssf'].includes(p)
+    })
+    expect(await hub.stockScript('OSC_Preprocessing.ssf')).toBe('/usr/share/siril/scripts/OSC_Preprocessing.ssf')
   })
 })
 

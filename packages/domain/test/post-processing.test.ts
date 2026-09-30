@@ -147,7 +147,7 @@ describe('pasting the command', () => {
     const r = buildPostProcessRecipe(input({ stack: { ...input().stack, path: 'D:/work/M31 & %TEMP%/result.fit' } }))
     expect(r.command).toBeNull()
     expect(r.program).not.toBeNull()
-    expect(r.warnings.at(-1)).toBe('The path holds & %, which Command Prompt would act on, so no command is offered. Rename the file or folder without them.')
+    expect(r.warnings.at(-1)).toBe('The path holds & %, which Command Prompt would act on, so no command is offered to copy. Queue it instead (the app runs it without Command Prompt), or rename the file or folder without them.')
   })
 
   it('[PPR-001] Given a stack at the root of a disk, When its folder is found, Then the root is kept', () => {

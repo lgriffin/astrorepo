@@ -63,7 +63,10 @@ tools are called, never bundled, and so are scripts under a copyleft licence (Si
 scripts, Leigh's GPL-3.0 Siril_Scripts): the app names them and runs them where they are
 installed, and may reimplement their arithmetic with credit. External programs are reached only
 through the tool hub (the `ToolHub` port): it finds them, the domain builds their commands, and
-no use case knows where a program lives. Dependencies are OSI licensed.
+no use case knows where a program lives. Heavy runs go through the job runner: queued only after
+the user confirms them, started inside the run window the user sets while the PC is idle, one at
+a time at low priority, with no shell between the app and the program. Dependencies are OSI
+licensed.
 
 ### VII. Docs move with the code
 
@@ -90,4 +93,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.0.4 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
+**Version**: 1.0.5 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
