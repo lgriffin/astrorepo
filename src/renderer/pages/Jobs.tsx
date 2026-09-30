@@ -4,6 +4,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { JobsView, JobView } from '@shared/types'
 import { settingsLink } from '@shared/navigation'
+import { Card, EmptyState, LinkButton } from '../components/common/Card'
 
 const time = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
 
@@ -96,35 +97,25 @@ export function Jobs(): React.ReactElement {
   return (
     <PageContainer>
       <div className="space-y-4">
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+        <Card title="Run window" action={<LinkButton onClick={() => navigate(settingsLink('run-window'))}>Change the run window in Settings</LinkButton>}>
           <p className="text-sm text-astro-text">{view?.windowStatus ?? 'Loading the queue…'}</p>
           {view && <p className="text-xs text-astro-muted mt-1">{view.rules} {view.load}</p>}
-          <button onClick={() => navigate(settingsLink('run-window'))} className="mt-2 text-xs text-astro-accent hover:underline">
-            Change the run window in Settings
-          </button>
           {message && <p className="text-xs text-red-400 mt-2">{message}</p>}
-        </div>
+        </Card>
 
-        <section className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Running</h2>
-          {view?.running ? row(view.running) : <p className="text-xs text-astro-muted">Nothing is running.</p>}
-        </section>
+        <Card title="Running">{view?.running ? row(view.running) : <EmptyState>Nothing is running.</EmptyState>}</Card>
 
-        <section className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Queued</h2>
+        <Card title="Queued">
           {view && view.queue.length > 0 ? (
             view.queue.map(row)
           ) : (
-            <p className="text-xs text-astro-muted">Nothing is queued. Queue a stack or post-processing run from a target's page.</p>
+            <EmptyState action={<LinkButton onClick={() => navigate('/targets')}>Open Targets</LinkButton>}>
+              Nothing is queued. Queue a stack or post-processing run from a target's page.
+            </EmptyState>
           )}
-        </section>
+        </Card>
 
-        {view && view.history.length > 0 && (
-          <section className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Finished</h2>
-            {view.history.map(row)}
-          </section>
-        )}
+        {view && view.history.length > 0 && <Card title="Finished">{view.history.map(row)}</Card>}
       </div>
     </PageContainer>
   )

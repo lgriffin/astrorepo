@@ -860,8 +860,12 @@ export interface Recommendation {
   targetId: string | null
   targetName: string | null
   actionLabel: string | null
+  /** Where the action goes, when not the target's page. */
+  actionTo?: string
   /** Core suggestions can be set aside until the target's data changes. */
   dismissible?: boolean
+  /** A job already doing what the suggestion asks, in words, so Home never asks twice. */
+  queued?: string
 }
 
 // Cockpit discovery (specs/010-discovery-cockpit)

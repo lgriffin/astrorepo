@@ -26,7 +26,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: null,
     items: [
-      { id: 'home', to: '/dashboard', label: 'Home', icon: '◉', hint: 'What is hiding in your files, and what to do next' },
+      { id: 'home', to: '/dashboard', label: 'Home', icon: '◉', hint: 'What to do next, the coming nights, and what is hiding in your files' },
       { id: 'targets', to: '/targets', label: 'Targets', icon: '★', hint: 'Every object you have captured or plan to' },
       { id: 'sky', to: '/sky-planner', label: 'Sky planner', icon: '☽', hint: 'Tonight, the moon and the seasons from your site' },
       { id: 'jobs', to: '/jobs', label: 'Jobs', icon: '▶', hint: 'Stacking and post-processing runs, queued for the run window' }
@@ -46,7 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'nights', to: '/timeline', label: 'Nights', icon: '▥', hint: 'Every night you imaged, month by month', also: ['/sessions'] },
       { id: 'stacks', to: '/stacking', label: 'Stacks', icon: '⊞', hint: "Integration so far against each target's goal" },
-      { id: 'insights', to: '/insights', label: 'Insights', icon: '◎', hint: 'Seeing, filters and activity over time' },
+      { id: 'insights', to: '/insights', label: 'Insights', icon: '◎', hint: 'Totals, catalogue progress, and seeing, filters and activity over time' },
       { id: 'storage', to: '/analytics', label: 'Storage', icon: '▤', hint: 'How much space your data takes, and how fast it grows' }
     ]
   },

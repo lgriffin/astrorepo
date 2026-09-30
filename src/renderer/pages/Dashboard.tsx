@@ -1,42 +1,36 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
-import { StatCard } from '../components/common/StatCard'
+import { Card, EmptyState, LinkButton } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
-import { formatExposure } from '../utils/format'
 import { ProgressStrip } from '../components/cockpit/ProgressStrip'
 import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
 import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
 import { useToast } from '../contexts/ToastContext'
-import type { DashboardStats, CatalogueProgress, Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
+import type { Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
 
+/**
+ * Home (specs/017-unified-ux, UX-006): what to do next first, then the coming nights and what is
+ * hiding in the files, then how far the targets have got. Totals live on Insights.
+ */
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [catalogues, setCatalogues] = useState<CatalogueProgress[]>([])
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  // null while loading; each part loads on its own so a slow one never holds up the others.
+  const [recommendations, setRecommendations] = useState<Recommendation[] | null>(null)
   const [cockpit, setCockpit] = useState<CockpitOverview | null>(null)
-  const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState<ForwardPlanView | null>(null)
   const { addToast } = useToast()
 
-  useEffect(() => {
-    Promise.all([
-      invoke<DashboardStats>('dashboard:stats'),
-      invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress'),
-      invoke<CockpitOverview>('cockpit:overview').catch(() => null)
-    ])
-      .then(([s, c, k]) => {
-        setStats(s)
-        setCatalogues(c.catalogues)
-        setCockpit(k)
-      })
-      .finally(() => setLoading(false))
-    // Next actions look at tonight's sky, so they load on their own too.
+  const loadRecommendations = () =>
     invoke<{ recommendations: Recommendation[] }>('recommendations:list')
       .then(r => setRecommendations(r.recommendations))
       .catch(() => setRecommendations([]))
+  const loadCockpit = () => invoke<CockpitOverview>('cockpit:overview').then(setCockpit).catch(() => undefined)
+
+  useEffect(() => {
+    void loadRecommendations()
+    void loadCockpit()
     // Planning computes a year of nights, so it loads on its own and never holds up the page.
     invoke<ForwardPlanView>('planning:forward').then(setPlan).catch(() => setPlan(null))
   }, [])
@@ -45,21 +39,22 @@ export function Dashboard(): React.ReactElement {
     invoke<{ dismissed: boolean }>('cockpit:dismiss', { suggestion_id: rec.id })
       .then(result => {
         if (result.dismissed) {
-          setRecommendations(prev => prev.filter(r => r.id !== rec.id))
+          setRecommendations(prev => (prev ?? []).filter(r => r.id !== rec.id))
           addToast(`Hidden until ${rec.targetName ?? 'the target'} gets new data`, 'success')
           return
         }
         // The data moved on since the list was loaded, so the suggestion it showed no longer exists.
         addToast('That suggestion has changed; the list is refreshed', 'info')
-        return invoke<{ recommendations: Recommendation[] }>('recommendations:list').then(r => setRecommendations(r.recommendations))
+        return loadRecommendations()
       })
       .catch(() => addToast('Could not dismiss that suggestion', 'error'))
   }
 
-  const { nextActions, otherChecks } = splitRecommendations(recommendations)
+  const { nextActions, otherChecks } = splitRecommendations(recommendations ?? [])
 
   const recommendationRow = (rec: Recommendation) => {
     const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+    const to = rec.actionTo ?? (rec.targetId ? `/targets/${rec.targetId}` : null)
     return (
       <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">
         <div className="flex flex-col gap-1 shrink-0 pt-0.5">
@@ -69,16 +64,14 @@ export function Dashboard(): React.ReactElement {
         <div className="flex-1 min-w-0">
           <p className="text-sm text-astro-text font-medium">{rec.title}</p>
           <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>
+          {rec.queued && <p className="text-xs text-astro-accent mt-0.5">{rec.queued}</p>}
         </div>
-        {rec.actionLabel && rec.targetId && (
-          <button
-            onClick={() => navigate(`/targets/${rec.targetId}`)}
-            className="shrink-0 text-xs text-astro-accent hover:underline"
-          >
+        {rec.actionLabel && to && (
+          <button onClick={() => navigate(to)} className="shrink-0 text-xs text-astro-accent hover:underline">
             {rec.actionLabel}
           </button>
         )}
-        {rec.dismissible && (
+        {rec.dismissible && !rec.queued && (
           <button
             onClick={() => dismiss(rec)}
             className="shrink-0 text-xs text-astro-muted hover:text-astro-text"
@@ -91,14 +84,6 @@ export function Dashboard(): React.ReactElement {
     )
   }
 
-  if (loading || !stats) {
-    return (
-      <PageContainer>
-        <div className="text-astro-muted">Loading statistics...</div>
-      </PageContainer>
-    )
-  }
-
   return (
     <PageContainer
       actions={
@@ -107,106 +92,48 @@ export function Dashboard(): React.ReactElement {
         </button>
       }
     >
-      {cockpit && (
-        <div className="mb-8 space-y-4">
-          <ProgressStrip progress={cockpit.progress} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <HiddenDataCard
-              items={cockpit.hidden}
-              onChanged={() => invoke<CockpitOverview>('cockpit:overview').then(setCockpit).catch(() => undefined)}
-            />
-            {plan && <ComingNightsCard plan={plan} />}
-          </div>
-        </div>
-      )}
+      <div className="space-y-4">
+        <Card title="Next actions">
+          {recommendations === null ? (
+            <EmptyState>Working out tonight's sky and what your data is ready for…</EmptyState>
+          ) : nextActions.length === 0 ? (
+            <EmptyState action={<LinkButton onClick={() => navigate('/library')}>Scan your library</LinkButton>}>
+              Nothing to do right now. Targets to shoot tonight and data ready to stack appear here as you capture.
+            </EmptyState>
+          ) : (
+            <div className="space-y-3">{nextActions.slice(0, 8).map(recommendationRow)}</div>
+          )}
+        </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Targets" value={stats.totalTargets} />
-        <StatCard label="Completed" value={stats.completedTargets} accent />
-        <StatCard label="In Progress" value={stats.inProgressTargets} />
-        <StatCard label="Planned" value={stats.plannedTargets} />
-        <StatCard label="Observation Nights" value={stats.observationNights} />
-        <StatCard label="Total Exposure" value={formatExposure(stats.totalExposureSec)} />
-        <StatCard label="Object Types" value={Object.keys(stats.objectsByType).length} />
-        <StatCard label="Catalogues" value={Object.keys(stats.objectsByCatalogue).length} />
-      </div>
-
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Library Data</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="With Raw Data" value={stats.targetsWithRawData} />
-          <StatCard label="With Stacked Data" value={stats.targetsWithStackedData} />
-          <StatCard label="With TIF Data" value={stats.targetsWithTifData} />
-          <StatCard label="With Image Data" value={stats.targetsWithImageData} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Catalogue Progress</h2>
-          <div className="space-y-3">
-            {catalogues.map((c) => {
-              const obsPct = c.total > 0 ? Math.round((c.observed / c.total) * 100) : 0
-              return (
-                <div key={c.catalogueId}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-astro-text">{c.catalogueName}</span>
-                    <span className="text-astro-muted">{c.observed}/{c.total} observed ({obsPct}%)</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-astro-bg rounded-full overflow-hidden">
-                    <div className="h-full bg-astro-accent rounded-full" style={{ width: `${obsPct}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-            {catalogues.length === 0 && <p className="text-sm text-astro-muted">No catalogues loaded yet.</p>}
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          {plan ? <ComingNightsCard plan={plan} /> : <Card title="Coming nights"><EmptyState>Working out the coming nights…</EmptyState></Card>}
+          {cockpit ? (
+            <HiddenDataCard items={cockpit.hidden} onChanged={() => void loadCockpit()} />
+          ) : (
+            <Card title="Hidden in your files"><EmptyState>Looking through your files…</EmptyState></Card>
+          )}
         </div>
 
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Objects by Type</h2>
-          <div className="space-y-2">
-            {Object.entries(stats.objectsByType)
-              .sort(([, a], [, b]) => b - a)
-              .slice(0, 10)
-              .map(([type, count]) => (
-                <div key={type} className="flex justify-between text-sm">
-                  <span className="text-astro-text capitalize">{type.replace(/_/g, ' ')}</span>
-                  <span className="text-astro-muted">{count}</span>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {stats.mostUsedEquipment.length > 0 && (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Most Used Equipment</h2>
-            <div className="space-y-2">
-              {stats.mostUsedEquipment.map((eq) => (
-                <div key={eq.name} className="flex justify-between text-sm">
-                  <span className="text-astro-text">{eq.name}</span>
-                  <span className="text-astro-muted">{eq.sessionCount} sessions</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {cockpit && (
+          <Card title="Where your targets are" action={<LinkButton onClick={() => navigate('/targets')}>Open Targets</LinkButton>}>
+            <ProgressStrip progress={cockpit.progress} />
+          </Card>
         )}
+
+        {otherChecks.length > 0 && (
+          <Card title="Other checks">
+            <div className="space-y-3">{otherChecks.slice(0, 6).map(recommendationRow)}</div>
+          </Card>
+        )}
+
+        <p className="text-xs text-astro-muted">
+          Totals, catalogue progress and trends are on{' '}
+          <button onClick={() => navigate('/insights')} className="text-astro-accent hover:underline">
+            Insights
+          </button>
+          .
+        </p>
       </div>
-
-      {nextActions.length > 0 && (
-        <div className="mt-8 bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Next actions</h2>
-          <div className="space-y-3">{nextActions.slice(0, 8).map(recommendationRow)}</div>
-        </div>
-      )}
-
-      {otherChecks.length > 0 && (
-        <div className="mt-4 bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Other checks</h2>
-          <div className="space-y-3">{otherChecks.slice(0, 6).map(recommendationRow)}</div>
-        </div>
-      )}
     </PageContainer>
   )
 }
-

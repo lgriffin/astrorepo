@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
+import { Card, EmptyState } from '../common/Card'
 import { formatSize } from '../../utils/format'
 import type { DuplicateView, HiddenDataItem } from '@shared/types'
 
@@ -27,9 +28,9 @@ export function HiddenDataCard({ items, onChanged }: { items: HiddenDataItem[]; 
   }
 
   return (
-    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">Hidden in your files</h2>
+    <Card
+      title="Hidden in your files"
+      action={
         <button
           onClick={checkDuplicates}
           disabled={checking}
@@ -38,7 +39,8 @@ export function HiddenDataCard({ items, onChanged }: { items: HiddenDataItem[]; 
         >
           {checking ? 'Checking for duplicates...' : 'Check for duplicates'}
         </button>
-      </div>
+      }
+    >
       {duplicateSummary && <p className="text-xs text-astro-muted mb-3">{duplicateSummary}</p>}
       {duplicates && duplicates.groups.length > 0 && (
         <details className="mb-3 text-xs">
@@ -61,7 +63,7 @@ export function HiddenDataCard({ items, onChanged }: { items: HiddenDataItem[]; 
         </details>
       )}
       {items.length === 0 ? (
-        <p className="text-sm text-astro-muted">Nothing hiding: every night is stacked and every sub has a target.</p>
+        <EmptyState>Nothing hiding: every night is stacked and every sub has a target.</EmptyState>
       ) : (
         <ul className="space-y-3">
           {items.map(item => (
@@ -79,6 +81,6 @@ export function HiddenDataCard({ items, onChanged }: { items: HiddenDataItem[]; 
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   )
 }

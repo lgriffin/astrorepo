@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { ObservatoryTotals } from '../components/insights/ObservatoryTotals'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
@@ -163,6 +164,8 @@ export function Insights(): React.ReactElement {
   return (
     <PageContainer>
       <div className="space-y-6">
+        <ObservatoryTotals />
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Total Imaging Hours" value={summary.totalImagingHours.toFixed(1)} accent />

@@ -1,8 +1,14 @@
 # Using the cockpit
 
-Home opens on the cockpit: what is hiding in your files, how far each target has got,
-and what is worth doing next. Everything on it is worked out from the files the app has indexed
-(the Library and FITS files scans), so it changes as you capture, stack and process.
+Home is the cockpit. From the top it shows:
+1. **Next actions**: what is worth doing next.
+2. **Coming nights** and **Hidden in your files**, side by side.
+3. **Where your targets are**: how many targets are at each stage.
+4. **Other checks**.
+
+Everything on it is worked out from the files the app has indexed (the Library and FITS files
+scans), so it changes as you capture, stack and process. Totals, catalogue progress and
+breakdowns by object type and equipment are on **Insights**, under **Your observatory**.
 
 ## Coming nights
 
@@ -69,6 +75,10 @@ emission targets are suggested, and only with a dual-band or narrowband filter (
 [Planning ahead](planning.md)). On a night with nothing to shoot, or before you have set your site,
 the list starts with stacking. Captures are worked out afresh each night, so they have no Dismiss
 button.
+
+When a target already has a stack queued or running in Jobs, its stacking suggestion says so
+("Queued in Jobs for the run window", or "Stacking now") and its button opens Jobs instead of
+the target, so Home never asks you to stack something that is already on its way.
 
 Below the list, **Other checks** keeps the calibration, integration-goal and quality warnings (such
 as lights with no matching darks) in a section of their own, so a long to-do list never hides them.
