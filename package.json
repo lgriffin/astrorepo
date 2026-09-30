@@ -1,6 +1,6 @@
 {
   "name": "astrorepo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Universal Astrophotography Observatory Management System",
   "main": "out/main/index.js",
   "scripts": {

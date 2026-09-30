@@ -21,8 +21,18 @@ when the code says otherwise, and the reasons are recorded here.
 | U2 · Home first (UX overhaul) | Home opens on Next actions, then Coming nights and hidden data, then progress; totals move to Insights; a stacking suggestion already queued in Jobs says so; one shared card and empty state | [017](../specs/017-unified-ux/requirements.md) | Done (PR #27) |
 | U3 · A target in one flow (UX overhaul) | A target's page in four parts (Overview, Stack and process, Files, Notes and nights); stack, post-process and runs as numbered steps that say when a job is already queued; suggestions and jobs open the target at Stack and process | [017](../specs/017-unified-ux/requirements.md) | Done (PR #28) |
 | U4 · Setup once (UX overhaul) | The site set only in Settings; a Get set up checklist on Home until the site, home folder, a scan and Siril are there; empty pages link to the step that fills them | [017](../specs/017-unified-ux/requirements.md) | Done (PR #29) |
-| U5 · Consistent words (UX overhaul) | Every button, figure label, card title and suggestion action in sentence case; messages name places as the sidebar does; a test fails on new title-case labels | [017](../specs/017-unified-ux/requirements.md) | Done |
-| D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
+| U5 · Consistent words (UX overhaul) | Every button, figure label, card title and suggestion action in sentence case; messages name places as the sidebar does; a test fails on new title-case labels | [017](../specs/017-unified-ux/requirements.md) | Done (PR #30) |
+| D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture. Proposed order: H, D, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
+
+## Releases
+
+| Version | Date | What it holds |
+|---|---|---|
+| [0.2.0](../CHANGELOG.md#020---2026-09-30) | 2026-09-30 | Slices A, B, C1 to C3b, L, G and the UX overhaul U1 to U5 |
+| [0.1.0](../CHANGELOG.md#010---2026-08-22) | 2026-08-22 | The app before the blueprint |
+
+Until 1.0.0, a minor version marks a set of slices that works end to end. 1.0.0 comes once the
+app has run on real data on the Windows PC and the licence is settled.
 
 ## Changes to the blueprint
 
@@ -69,6 +79,12 @@ when the code says otherwise, and the reasons are recorded here.
 
 ## Open questions for Leigh
 
+Each is a GitHub issue labelled [needs-leigh](https://github.com/lgriffin/astrorepo/issues?q=is%3Aopen+label%3Aneeds-leigh),
+with what is needed and the default used until it is answered.
+
+- ([#31](https://github.com/lgriffin/astrorepo/issues/31)) Try v0.2.0 on the Windows PC with real data.
+- ([#32](https://github.com/lgriffin/astrorepo/issues/32)) Choose the licence. README says ISC and the blueprint picked Apache-2.0.
+- ([#33](https://github.com/lgriffin/astrorepo/issues/33)) Confirm the order of the next slices.
 - ([#23](https://github.com/lgriffin/astrorepo/issues/23)) One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
   the scope adapters can be built from real files.
 - ([#24](https://github.com/lgriffin/astrorepo/issues/24)) The Synology model, which decides the container image targets.
@@ -76,3 +92,8 @@ when the code says otherwise, and the reasons are recorded here.
   jobs only start while it is open.
 - ([#26](https://github.com/lgriffin/astrorepo/issues/26)) Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
   checks (it can also be set in Settings → Tools).
+- ([#34](https://github.com/lgriffin/astrorepo/issues/34)) Which RC Astro tools are installed, and whether overnight jobs may run them.
+- ([#35](https://github.com/lgriffin/astrorepo/issues/35)) How the Windows app is installed and updated (from source, an unsigned installer, or signed with auto-update).
+- ([#36](https://github.com/lgriffin/astrorepo/issues/36)) Whether to protect `main` with required checks.
+- ([#37](https://github.com/lgriffin/astrorepo/issues/37)) The DGX Spark's Ollama address and preferred model, for slice M.
+- ([#38](https://github.com/lgriffin/astrorepo/issues/38)) Where the raw, stacked, TIFF and finished files live today, for the import and gallery slices.
