@@ -5,10 +5,12 @@ import { Card, LinkButton } from '../common/Card'
 import { SETUP_HIDDEN_KEY, setupSteps, showSetup, type SetupStep } from '@shared/setup'
 import type { ToolsView } from '@shared/types'
 
-const setting = (key: string) =>
+/** A setting's value, or UNREAD when it could not be read (which is not the same as unset). */
+const UNREAD = Symbol('unread')
+const setting = (key: string): Promise<string | null | typeof UNREAD> =>
   invoke<{ value: string | null }>('settings:get', { key })
     .then(r => r.value)
-    .catch(() => null)
+    .catch(() => UNREAD)
 
 /** "Get set up": the first-run steps on Home until each is done (UX-014). */
 export function SetupCard(): React.ReactElement | null {
@@ -29,6 +31,8 @@ export function SetupCard(): React.ReactElement | null {
       setting(SETUP_HIDDEN_KEY)
     ]).then(([latitude, longitude, homeFolder, lastLibraryScan, sirilFound, hide]) => {
       if (!current) return
+      // A step the app could not read is not a step left to do, so the checklist stays away rather than nag.
+      if (latitude === UNREAD || longitude === UNREAD || homeFolder === UNREAD || lastLibraryScan === UNREAD || hide === UNREAD) return
       setSteps(setupSteps({ latitude, longitude, homeFolder, lastLibraryScan, sirilFound }))
       setHidden(hide === '1')
     })

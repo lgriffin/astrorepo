@@ -50,4 +50,10 @@ describe('Setting up', () => {
       expect(source, page).toContain('href="#/library"')
     }
   })
+
+  it('[UX-014] Given a setting that cannot be read, When Home is drawn, Then the checklist stays away rather than list the step as left', () => {
+    const card = fs.readFileSync(path.resolve(__dirname, '../../src/renderer/components/cockpit/SetupCard.tsx'), 'utf8')
+    expect(card).toContain('.catch(() => UNREAD)')
+    expect(card).toContain('hide === UNREAD) return')
+  })
 })
