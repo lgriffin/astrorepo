@@ -471,6 +471,7 @@ function StackingPlan({ rawPath, refreshKey }: { rawPath: string; refreshKey: st
         </p>
       )}
       <p className="text-xs text-astro-muted">{plan.prepNote}</p>
+      {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
       {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
       {plan.scripts.length > 0 && (
         <details className="text-xs">

@@ -194,19 +194,21 @@ export function recommendSirilScript(counts: FrameCounts, sensor: Sensor): Scrip
 }
 
 export interface SpaceVerdict {
-  /** What the run still needs once what its folders already hold is counted. */
-  netBytes: number
+  /** Everything the run writes: Siril's files plus any frames Prep for Siril must copy. */
+  neededBytes: number
   fits: boolean
   /** Free space left after the run, or how much is missing; null when free space is unknown. */
   headroomBytes: number | null
   shortBytes: number | null
 }
 
-/** Whether a run fits in the free space, crediting what is already in its process and masters folders. */
-export function spaceVerdict(neededBytes: number, alreadyUsedBytes: number, freeBytes: number | null): SpaceVerdict {
-  const netBytes = Math.max(0, neededBytes - alreadyUsedBytes)
-  if (freeBytes === null) return { netBytes, fits: true, headroomBytes: null, shortBytes: null }
-  return netBytes <= freeBytes
-    ? { netBytes, fits: true, headroomBytes: freeBytes - netBytes, shortBytes: null }
-    : { netBytes, fits: false, headroomBytes: null, shortBytes: netBytes - freeBytes }
+/**
+ * Whether a run fits in the free space. What an earlier run left in the work folder is not credited:
+ * its files may belong to another script or frame set, so the plan never counts on reusing them.
+ */
+export function spaceVerdict(neededBytes: number, freeBytes: number | null): SpaceVerdict {
+  if (freeBytes === null) return { neededBytes, fits: true, headroomBytes: null, shortBytes: null }
+  return neededBytes <= freeBytes
+    ? { neededBytes, fits: true, headroomBytes: freeBytes - neededBytes, shortBytes: null }
+    : { neededBytes, fits: false, headroomBytes: null, shortBytes: neededBytes - freeBytes }
 }

@@ -15,8 +15,10 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
   const guessed: string[] = []
   if (e.geometryApproximate) guessed.push('frame size is guessed from file size')
   if (!e.sensorKnown && e.counts.lights > 0) guessed.push('the lights are taken as colour')
-  const approximateNote =
-    guessed.length > 0 ? `Scan this folder in the FITS Analyzer for exact figures: ${LIST(guessed)}, so sizes are approximate.` : null
+  const approximate = [
+    guessed.length > 0 ? `Scan this folder in the FITS Analyzer for exact figures: ${LIST(guessed)}, so sizes are approximate.` : null,
+    e.geometryMixed ? 'The lights are not all one size, so every light is counted at the largest.' : null
+  ].filter(Boolean)
 
   return {
     recommended: e.recommended.script ? `${e.recommended.script}.ssf` : null,
@@ -24,15 +26,19 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
     frames,
     prepNote:
       e.prepBytes === 0
-        ? 'Prep for Siril hard-links the frames, so it takes no extra space.'
-        : `Prep for Siril copies ${formatBytes(e.prepBytes)} of frames, because the work area is on another disk.`,
+        ? 'Prep for Siril copies nothing: the frames are hard-linked or already in the work area.'
+        : `Prep for Siril copies ${formatBytes(e.prepBytes)} of frames, because they are on another disk from the work area.`,
     freeSpace: e.freeBytes === null ? null : `${formatBytes(e.freeBytes)} free on the work area's disk`,
-    approximateNote,
+    approximateNote: approximate.length > 0 ? approximate.join(' ') : null,
+    leftoverNote:
+      e.usedBytes > 0
+        ? `An earlier run left ${formatBytes(e.usedBytes)} in the work folder's process and masters. It is not counted as free; delete it before running to get the space back.`
+        : null,
     scripts: e.scripts.map(s => ({
       file: `${s.script}.ssf`,
       label: s.label,
       recommended: s.script === e.recommended.script,
-      needed: formatBytes(s.netBytes),
+      needed: formatBytes(s.neededBytes),
       verdict: e.freeBytes === null ? 'unknown' : s.fits ? 'fits' : 'short',
       verdictText:
         e.freeBytes === null

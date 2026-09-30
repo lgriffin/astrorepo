@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { makeEstimateSirilRun } from '@astro/application'
+import { makeEstimateSirilRun, makePrepareSirilWorkspace } from '@astro/application'
 import { InMemorySirilWorkspace } from '@astro/testkit'
 
 /** A Seestar-like night: lights plus darks, flats and biases in typed folders. */
@@ -28,33 +28,51 @@ describe('EstimateSirilRun', () => {
     expect(plan.scripts.every(s => s.script.startsWith('OSC_'))).toBe(true)
   })
 
-  it('[RCP-002] Given the work area on another disk, When the plan is made, Then every script also counts the bytes Prep must copy', async () => {
+  it('[RCP-002] Given frames on another disk from the work area, When the plan is made, Then every script also counts the bytes Prep must copy', async () => {
     const ws = seestar(4, { darks: 2 })
     for (let i = 1; i <= 4; i++) ws.describe(light(i), { width: 1000, height: 1000, colour: true, sizeBytes: 2_000_000 })
-    ws.space = { freeBytes: 10_000_000_000, sameVolume: false, usedBytes: 0 }
+    ws.space = { freeBytes: 10_000_000_000, usedBytes: 0 }
+    for (let i = 1; i <= 4; i++) ws.otherVolume.add(light(i))
+    ws.otherVolume.add('/data/M 31/darks/darks_1.fit')
     const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/work/M 31')
-    // Four 2 MB lights and two darks of the fake's default 50 MB.
-    expect(plan.prepBytes).toBe(4 * 2_000_000 + 2 * 50_000_000)
+    // Four 2 MB lights and one dark of the fake's default 50 MB; the other dark is hard-linked.
+    expect(plan.prepBytes).toBe(4 * 2_000_000 + 50_000_000)
     const chosen = plan.scripts[0]
-    expect(chosen.netBytes).toBe(chosen.scriptBytes + plan.prepBytes)
-
-    ws.space = { ...ws.space, sameVolume: true }
-    expect((await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/work/M 31')).prepBytes).toBe(0)
+    expect(chosen.neededBytes).toBe(chosen.scriptBytes + plan.prepBytes)
   })
 
-  it('[RCP-003] Given a small disk and a leftover earlier run, When the plan is made, Then each script says whether it fits or how short it is', async () => {
+  it('[RCP-002] Given frames Prep already copied, When the plan is made again, Then they are not charged a second time', async () => {
+    const ws = seestar(3)
+    for (let i = 1; i <= 3; i++) ws.otherVolume.add(light(i))
+    const estimate = makeEstimateSirilRun({ workspace: ws })
+    expect((await estimate('/data/M 31', '/work/M 31')).prepBytes).toBe(3 * 50_000_000)
+    await makePrepareSirilWorkspace({ workspace: ws })('/data/M 31', '/work/M 31')
+    expect((await estimate('/data/M 31', '/work/M 31')).prepBytes).toBe(0)
+  })
+
+  it('[RCP-003] Given a small disk and a leftover earlier run, When the plan is made, Then each script says how short it is without counting on the leftovers', async () => {
     const ws = seestar(100)
     for (let i = 1; i <= 100; i++) ws.describe(light(i), { width: 1000, height: 1000, colour: true })
-    ws.space = { freeBytes: 1_000_000_000, sameVolume: true, usedBytes: 500_000_000 }
+    ws.space = { freeBytes: 1_000_000_000, usedBytes: 500_000_000 }
     const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/work/M 31')
     const lightsOnly = plan.scripts.find(s => s.script === 'OSC_Preprocessing_WithoutDBF')
-    // 100 × (2 + 12 + 12) MB + 12 MB = 2.612 GB, less 0.5 GB already there.
-    expect(lightsOnly).toMatchObject({ scriptBytes: 2_612_000_000, netBytes: 2_112_000_000, fits: false, shortBytes: 1_112_000_000 })
+    // 100 × (2 + 12 + 12) MB + 12 MB = 2.612 GB; the 0.5 GB an earlier run left may not be reusable.
+    expect(lightsOnly).toMatchObject({ scriptBytes: 2_612_000_000, neededBytes: 2_612_000_000, fits: false, shortBytes: 1_612_000_000 })
+    expect(plan.usedBytes).toBe(500_000_000)
+  })
+
+  it('[RCP-004] Given lights of different sizes, When the plan is made, Then every light is sized as the largest and the plan says they differ', async () => {
+    const ws = seestar(3)
+    ws.describe(light(1), { width: 1000, height: 1000, colour: true })
+    ws.describe(light(2), { width: 2000, height: 1000, colour: true })
+    ws.describe(light(3), { width: 1000, height: 1000, colour: true })
+    const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/work/M 31')
+    expect(plan).toMatchObject({ geometry: { width: 2000, height: 1000 }, geometryMixed: true, geometryApproximate: false })
   })
 
   it('[RCP-004] Given lights never indexed, When the plan is made, Then dimensions come from file size, marked approximate, and the sensor is taken as colour', async () => {
     const plan = await makeEstimateSirilRun({ workspace: seestar(3) })('/data/M 31', '/work/M 31')
-    expect(plan).toMatchObject({ geometry: { width: 5000, height: 5000 }, geometryApproximate: true, sensor: 'colour', sensorKnown: false })
+    expect(plan).toMatchObject({ geometry: { width: 5000, height: 5000 }, geometryApproximate: true, geometryMixed: false, sensor: 'colour', sensorKnown: false })
   })
 
   it('[RCP-005] Given mono lights with darks only, When the plan is made, Then no script is recommended and the mono script names what is missing', async () => {

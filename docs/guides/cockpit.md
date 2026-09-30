@@ -125,16 +125,19 @@ to run on the prepared folders, and whether your disk has room, before anything 
 - **How much space.** Siril's stock scripts keep every intermediate file (converted, calibrated
   and registered copies of every light), so a stack needs many times the size of the lights. The
   plan adds up each stage the way Leigh's Siril space estimator does, plus what Prep for Siril
-  must copy (nothing when the work area is on the same disk, since frames are hard-linked), less
-  what an earlier run already left in the work folder's `process` and `masters` folders. It then
-  says whether that fits in the free space on the work area's disk, or by how much it is short.
+  must copy: each frame on another disk from the work area, unless an up-to-date copy is already
+  there (frames on the same disk are hard-linked for free). It then says whether that fits in the
+  free space on the work area's disk, or by how much it is short. Files an earlier run left in the
+  work folder's `process` and `masters` folders are reported but not counted as free, since they
+  may belong to another script; delete them to get the space back.
 - **Every script and its stages** lists the other stock scripts for your sensor (Bayer drizzle,
   Ha or Ha+OIII extraction for dual-band data) with their size, whether they fit, what
   calibration they would need, and a stage-by-stage breakdown.
 
 Sizes come from each light's header (width and height). For a folder not yet scanned in the FITS
 Analyzer, the plan guesses the frame size from the file size and says the figures are
-approximate. Making the plan writes nothing, anywhere.
+approximate. When the lights are not all one size, every light is counted at the largest, so the
+plan never comes out too small. Making the plan writes nothing, anywhere.
 
 ## Rescanning
 

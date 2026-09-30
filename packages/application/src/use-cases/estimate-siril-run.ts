@@ -24,7 +24,7 @@ export interface ScriptEstimate extends SpaceVerdict {
   label: string
   /** Calibration folders the script needs that this target lacks; the script fails without them. */
   missing: string[]
-  /** Siril's own space for the run; the verdict adds what Prep for Siril must copy. */
+  /** Siril's own space for the run; the verdict's neededBytes adds what Prep for Siril must copy. */
   scriptBytes: number
   stages: SpaceStage[]
 }
@@ -34,11 +34,16 @@ export interface SirilRunEstimate {
   sensor: Sensor
   /** Read from the lights' headers, else guessed from file size (and then approximate). */
   sensorKnown: boolean
+  /** The largest lights' size, so a target with mixed frame sizes is never under-budgeted. */
   geometry: FrameGeometry | null
+  /** Some lights' size is guessed from file size. */
   geometryApproximate: boolean
-  /** Bytes Prep for Siril must copy: nothing when frames can be hard-linked on the same volume. */
+  /** The lights are not all one size. */
+  geometryMixed: boolean
+  /** Bytes Prep for Siril must copy: frames already in the work area or hard-linkable cost nothing. */
   prepBytes: number
   freeBytes: number | null
+  /** What an earlier run left in the work folder's process and masters; not counted as free. */
   usedBytes: number
   recommended: { script: SirilScriptId | null; reason: string }
   /** Scripts for this sensor, recommended first, with what each needs and whether it fits. */
@@ -59,25 +64,24 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
     const counts: FrameCounts = { lights: 0, darks: 0, flats: 0, biases: 0 }
     for (const p of placements) counts[p.folder]++
 
-    const [details, space] = await Promise.all([
+    const [details, space, prepBytes] = await Promise.all([
       deps.workspace.frameDetails(frames.map(f => f.path)),
-      deps.workspace.workAreaSpace(sourceDir, workDir)
+      deps.workspace.workAreaSpace(workDir),
+      deps.workspace.copyBytes(placements, workDir)
     ])
     const lightPaths = new Set(placements.filter(p => p.folder === 'lights').map(p => p.from))
     const lights = details.filter(d => lightPaths.has(d.path))
 
-    const measured = lights.find(d => d.width !== null && d.height !== null)
-    const geometry: FrameGeometry | null = measured
-      ? { width: measured.width ?? 0, height: measured.height ?? 0 }
-      : lights.length > 0
-        ? geometryFromFileSize(lights[0].sizeBytes)
-        : null
+    const sizes = lights.map(d =>
+      d.width !== null && d.height !== null ? { width: d.width, height: d.height } : geometryFromFileSize(d.sizeBytes)
+    )
+    const geometry: FrameGeometry | null =
+      sizes.length > 0 ? sizes.reduce((big, g) => (g.width * g.height > big.width * big.height ? g : big)) : null
 
     // Seestar and Vespera are colour cameras, so a frame never indexed is taken as colour.
     const known = lights.filter(d => d.colour !== null)
     const sensor: Sensor = known.length > 0 && known.every(d => d.colour === false) ? 'mono' : 'colour'
 
-    const prepBytes = space.sameVolume ? 0 : details.reduce((n, d) => n + d.sizeBytes, 0)
     const recommended = recommendSirilScript(counts, sensor)
 
     const scripts: ScriptEstimate[] = SIRIL_SCRIPTS.filter(s => s.sensor === sensor)
@@ -89,7 +93,7 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
           missing: missingCalibration(s, counts),
           scriptBytes: estimate.totalBytes,
           stages: estimate.stages,
-          ...spaceVerdict(estimate.totalBytes + prepBytes, space.usedBytes, space.freeBytes)
+          ...spaceVerdict(estimate.totalBytes + prepBytes, space.freeBytes)
         }
       })
       .sort((a, b) => Number(b.script === recommended.script) - Number(a.script === recommended.script))
@@ -99,7 +103,8 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
       sensor,
       sensorKnown: known.length > 0,
       geometry,
-      geometryApproximate: !measured && geometry !== null,
+      geometryApproximate: lights.some(d => d.width === null || d.height === null),
+      geometryMixed: new Set(sizes.map(g => `${g.width}x${g.height}`)).size > 1,
       prepBytes,
       freeBytes: space.freeBytes,
       usedBytes: space.usedBytes,

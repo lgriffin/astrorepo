@@ -33,9 +33,9 @@ stage by stage, and whether the work area's disk has room.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | RCP-001 | Ubiquitous | The system shall recommend, for a target's frames, the stock Siril preprocessing script for its sensor that uses the most of its calibration frames, saying why and which frames it leaves out. |
-| RCP-002 | Ubiquitous | The system shall estimate, stage by stage, the disk space each stock Siril preprocessing script for the target's sensor needs with every intermediate file kept, plus what Prep for Siril must copy. |
-| RCP-003 | Unwanted | If a script needs more than the free space on the work area's disk, less what an earlier run left in its process and masters folders, then the system shall say by how much it is short. |
-| RCP-004 | Unwanted | If the lights' dimensions are not in the index, then the system shall estimate them from file size and mark the figures as approximate. |
+| RCP-002 | Ubiquitous | The system shall estimate, stage by stage, the disk space each stock Siril preprocessing script for the target's sensor needs with every intermediate file kept, plus what Prep for Siril must copy (frames on another disk from the work area and not already current there). |
+| RCP-003 | Unwanted | If a script needs more than the free space on the work area's disk, then the system shall say by how much it is short, without counting on what an earlier run left in the work folder, which it shall report separately. |
+| RCP-004 | Unwanted | If the lights' dimensions are not in the index, or the lights differ in size, then the system shall estimate from file size or the largest light and say why the figures are approximate. |
 | RCP-005 | Unwanted | If a script needs calibration frames the target does not have, then the system shall name the missing folders. |
 
 ## Non-functional

@@ -16,8 +16,6 @@ export interface FrameDetail {
 export interface WorkAreaSpace {
   /** Free bytes on the work area's disk; null when the system will not say. */
   freeBytes: number | null
-  /** Whether the source and the work area share a volume, so frames can be hard-linked for free. */
-  sameVolume: boolean
   /** Bytes already in the work folder's process and masters folders from an earlier run. */
   usedBytes: number
 }
@@ -44,5 +42,10 @@ export interface SirilWorkspace {
   /** Size, dimensions and sensor type of each frame, in the order given. Reads nothing but headers the index holds. */
   frameDetails(paths: string[]): Promise<FrameDetail[]>
   /** Free space where `workDir` lives (or will), and what an earlier run left there. Writes nothing. */
-  workAreaSpace(sourceDir: string, workDir: string): Promise<WorkAreaSpace>
+  workAreaSpace(workDir: string): Promise<WorkAreaSpace>
+  /**
+   * Bytes `place` would copy for these placements: nothing for a frame already current in the work
+   * area or one it can hard-link (on the same volume as the work area). Writes nothing.
+   */
+  copyBytes(placements: SirilPlacement[], workDir: string): Promise<number>
 }

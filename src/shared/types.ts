@@ -945,8 +945,10 @@ export interface SirilPlanView {
   frames: string
   prepNote: string
   freeSpace: string | null
-  /** Set when dimensions or sensor type were guessed rather than read from headers. */
+  /** Set when dimensions or sensor type were guessed, or the lights differ in size. */
   approximateNote: string | null
+  /** Set when an earlier run left files in the work folder, which the plan does not count as free. */
+  leftoverNote: string | null
   scripts: SirilScriptView[]
 }
 

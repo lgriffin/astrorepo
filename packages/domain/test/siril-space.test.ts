@@ -75,13 +75,13 @@ describe('Siril script choice', () => {
 })
 
 describe('space verdict', () => {
-  it('[RCP-003] Given a run bigger than the free space, When judged, Then it is short by the difference, crediting what an earlier run left', () => {
-    expect(spaceVerdict(100, 30, 50)).toEqual({ netBytes: 70, fits: false, headroomBytes: null, shortBytes: 20 })
-    expect(spaceVerdict(100, 0, 150)).toEqual({ netBytes: 100, fits: true, headroomBytes: 50, shortBytes: null })
-    expect(spaceVerdict(100, 200, 0)).toEqual({ netBytes: 0, fits: true, headroomBytes: 0, shortBytes: null })
+  it('[RCP-003] Given a run bigger than the free space, When judged, Then it is short by the difference', () => {
+    expect(spaceVerdict(100, 50)).toEqual({ neededBytes: 100, fits: false, headroomBytes: null, shortBytes: 50 })
+    expect(spaceVerdict(100, 150)).toEqual({ neededBytes: 100, fits: true, headroomBytes: 50, shortBytes: null })
+    expect(spaceVerdict(100, 100)).toEqual({ neededBytes: 100, fits: true, headroomBytes: 0, shortBytes: null })
   })
 
   it('[RCP-003] Given free space the system will not report, When judged, Then no verdict of short is made', () => {
-    expect(spaceVerdict(100, 0, null)).toEqual({ netBytes: 100, fits: true, headroomBytes: null, shortBytes: null })
+    expect(spaceVerdict(100, null)).toEqual({ neededBytes: 100, fits: true, headroomBytes: null, shortBytes: null })
   })
 })

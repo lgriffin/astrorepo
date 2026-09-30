@@ -49,7 +49,7 @@ flowchart LR
 | `reportHiddenData` | `reportHiddenData`, `calibrates`, `groupDuplicates` | FrameCatalogue, FileHashStore | `cockpit:overview` | 010, 011 |
 | `findDuplicates` | `isHashCurrent`, `duplicateCandidates`, `groupDuplicates` | FileIndex, ContentHasher, FileHashStore | `ingest:find-duplicates` | 011 |
 | `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace | `home:prep-siril` | 011 |
-| `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict` | SirilWorkspace | `siril:estimate` | 014 |
+| `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`) | `siril:estimate` | 014 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 

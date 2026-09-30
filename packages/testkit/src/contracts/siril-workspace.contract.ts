@@ -84,11 +84,22 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
     it('[NFR-010] Given a work folder not made yet, When its space is read, Then nothing is used there and nothing is created', async () => {
       const f = await setup(['Light_001.fit'])
       const before = await f.sourceListing()
-      const space = await f.workspace.workAreaSpace(f.sourceDir, f.workDir)
+      const space = await f.workspace.workAreaSpace(f.workDir)
       expect(space.usedBytes).toBe(0)
       expect(space.freeBytes === null || space.freeBytes > 0).toBe(true)
       expect(await f.workHas('lights')).toBe(false)
       expect(await f.sourceListing()).toEqual(before)
+    })
+
+    it('[RCP-002] Given frames already placed, When the copy is estimated, Then they cost nothing and nothing is written', async () => {
+      const f = await setup(['Light_001.fit'])
+      const [frame] = await f.workspace.listSourceFrames(f.sourceDir)
+      const placement = { from: frame.path, folder: 'lights' as const, name: frame.name }
+      expect(await f.workspace.copyBytes([placement], f.workDir)).toBeGreaterThanOrEqual(0)
+      expect(await f.workHas('lights')).toBe(false)
+      await f.workspace.prepareFolders(f.workDir)
+      await f.workspace.place(placement, f.workDir)
+      expect(await f.workspace.copyBytes([placement], f.workDir)).toBe(0)
     })
   })
 }

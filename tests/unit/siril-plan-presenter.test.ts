@@ -10,6 +10,7 @@ const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
   sensorKnown: true,
   geometry: { width: 1920, height: 1080 },
   geometryApproximate: false,
+  geometryMixed: false,
   prepBytes: 0,
   freeBytes: 100 * GB,
   usedBytes: 0,
@@ -21,7 +22,7 @@ const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
       missing: [],
       scriptBytes: 20 * GB,
       stages: [{ name: 'Convert lights', bytes: 2 * GB, cumulativeBytes: 2 * GB, files: 120 }],
-      netBytes: 20 * GB,
+      neededBytes: 20 * GB,
       fits: true,
       headroomBytes: 80 * GB,
       shortBytes: null
@@ -32,7 +33,7 @@ const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
       missing: ['flats'],
       scriptBytes: 150 * GB,
       stages: [],
-      netBytes: 150 * GB,
+      neededBytes: 150 * GB,
       fits: false,
       headroomBytes: null,
       shortBytes: 50 * GB
@@ -61,8 +62,8 @@ describe('Siril plan presenter', () => {
   })
 
   it('[RCP-002] Given the work area on another disk, When presented, Then the copy Prep makes is stated; on the same disk, it costs nothing', () => {
-    expect(toSirilPlanView(estimate({ prepBytes: 12 * GB })).prepNote).toBe('Prep for Siril copies 12.0 GB of frames, because the work area is on another disk.')
-    expect(toSirilPlanView(estimate()).prepNote).toMatch(/hard-links the frames, so it takes no extra space/)
+    expect(toSirilPlanView(estimate({ prepBytes: 12 * GB })).prepNote).toBe('Prep for Siril copies 12.0 GB of frames, because they are on another disk from the work area.')
+    expect(toSirilPlanView(estimate()).prepNote).toBe('Prep for Siril copies nothing: the frames are hard-linked or already in the work area.')
     expect(toSirilPlanView(estimate()).scripts[0].stages).toEqual([{ name: 'Convert lights', size: '2.0 GB', cumulative: '2.0 GB', files: 120 }])
   })
 
@@ -72,6 +73,14 @@ describe('Siril plan presenter', () => {
       'Scan this folder in the FITS Analyzer for exact figures: frame size is guessed from file size and the lights are taken as colour, so sizes are approximate.'
     )
     expect(toSirilPlanView(estimate()).approximateNote).toBeNull()
+    expect(toSirilPlanView(estimate({ geometryMixed: true })).approximateNote).toBe('The lights are not all one size, so every light is counted at the largest.')
+  })
+
+  it('[RCP-003] Given files an earlier run left, When presented, Then the plan says they are not counted as free', () => {
+    expect(toSirilPlanView(estimate({ usedBytes: 3 * GB })).leftoverNote).toBe(
+      "An earlier run left 3.0 GB in the work folder's process and masters. It is not counted as free; delete it before running to get the space back."
+    )
+    expect(toSirilPlanView(estimate()).leftoverNote).toBeNull()
   })
 
   it('[RCP-003] Given free space the system will not report, When presented, Then no script is called short', () => {

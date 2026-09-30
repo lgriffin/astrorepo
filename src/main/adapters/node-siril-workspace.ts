@@ -47,9 +47,7 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     const source = await fs.promises.stat(p.from)
     const existing = await fs.promises.stat(dest).catch(() => null)
     if (existing) {
-      const sameFile = existing.ino !== 0 && existing.ino === source.ino && existing.dev === source.dev
-      const sameCopy = existing.size === source.size && Math.abs(existing.mtimeMs - source.mtimeMs) < MTIME_TOLERANCE_MS
-      if (sameFile || sameCopy) return 'existing'
+      if (isCurrent(existing, source)) return 'existing'
       // Stale: the source was rewritten or replaced since. Only the work-area entry is removed.
       await fs.promises.unlink(dest)
     }
@@ -92,13 +90,8 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     )
   }
 
-  async workAreaSpace(sourceDir: string, workDir: string): Promise<WorkAreaSpace> {
-    const existing = await nearestExisting(workDir)
-    const [fsStats, work, source] = await Promise.all([
-      fs.promises.statfs(existing).catch(() => null),
-      fs.promises.stat(existing).catch(() => null),
-      fs.promises.stat(sourceDir).catch(() => null)
-    ])
+  async workAreaSpace(workDir: string): Promise<WorkAreaSpace> {
+    const fsStats = await fs.promises.statfs(await nearestExisting(workDir)).catch(() => null)
     let usedBytes = 0
     for (const folder of ['process', 'masters']) {
       const entries = await fs.promises.readdir(path.join(workDir, folder), { withFileTypes: true }).catch(() => [])
@@ -106,12 +99,30 @@ export class NodeSirilWorkspace implements SirilWorkspace {
         if (e.isFile()) usedBytes += (await fs.promises.stat(path.join(workDir, folder, e.name)).catch(() => null))?.size ?? 0
       }
     }
-    return {
-      freeBytes: fsStats ? Number(fsStats.bavail) * Number(fsStats.bsize) : null,
-      sameVolume: !!work && !!source && work.dev === source.dev,
-      usedBytes
-    }
+    return { freeBytes: fsStats ? Number(fsStats.bavail) * Number(fsStats.bsize) : null, usedBytes }
   }
+
+  async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {
+    // The work folder need not exist yet; its nearest existing ancestor is on the volume it will be.
+    const work = await fs.promises.stat(await nearestExisting(workDir)).catch(() => null)
+    let bytes = 0
+    for (const p of placements) {
+      const source = await fs.promises.stat(p.from).catch(() => null)
+      if (!source) continue
+      const existing = await fs.promises.stat(path.join(workDir, p.folder, p.name)).catch(() => null)
+      if (existing && isCurrent(existing, source)) continue
+      // Each frame is checked on its own: a subfolder of the source may be mounted from another disk.
+      if (!work || source.dev !== work.dev) bytes += source.size
+    }
+    return bytes
+  }
+}
+
+/** A work-area entry still matches its source: the same file (a hard link) or a copy of this version. */
+function isCurrent(existing: fs.Stats, source: fs.Stats): boolean {
+  const sameFile = existing.ino !== 0 && existing.ino === source.ino && existing.dev === source.dev
+  const sameCopy = existing.size === source.size && Math.abs(existing.mtimeMs - source.mtimeMs) < MTIME_TOLERANCE_MS
+  return sameFile || sameCopy
 }
 
 /** The path itself or its closest ancestor that exists, so space can be read before a folder is made. */

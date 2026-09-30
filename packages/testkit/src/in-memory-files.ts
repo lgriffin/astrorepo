@@ -111,7 +111,7 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
 
   /** Size, dimensions and sensor per source path; unset frames are 50 MB and never indexed. */
   readonly details = new Map<string, Omit<FrameDetail, 'path'>>()
-  space: WorkAreaSpace = { freeBytes: null, sameVolume: true, usedBytes: 0 }
+  space: WorkAreaSpace = { freeBytes: null, usedBytes: 0 }
 
   describe(path: string, detail: Partial<Omit<FrameDetail, 'path'>>): this {
     this.details.set(path, { sizeBytes: 50_000_000, width: null, height: null, colour: null, ...this.details.get(path), ...detail })
@@ -124,5 +124,15 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
 
   async workAreaSpace(): Promise<WorkAreaSpace> {
     return { ...this.space }
+  }
+
+  async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {
+    let bytes = 0
+    for (const p of placements) {
+      const dest = `${workDir}/${p.folder}/${p.name}`
+      const current = this.placed.get(dest) === p.from && this.placedVersion.get(dest) === (this.versions.get(p.from) ?? 0)
+      if (!current && this.otherVolume.has(p.from)) bytes += this.details.get(p.from)?.sizeBytes ?? 50_000_000
+    }
+    return bytes
   }
 }
