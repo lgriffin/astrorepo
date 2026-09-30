@@ -54,6 +54,7 @@ export function toPostProcessView(plan: PostProcessingPlan): PostProcessView {
       profileReason: '',
       quality: 'normal',
       command: null,
+      canQueue: false,
       missing: null,
       skipped: [],
       warnings: [],
@@ -72,6 +73,7 @@ export function toPostProcessView(plan: PostProcessingPlan): PostProcessView {
     profileReason: r.profileReason,
     quality: r.quality,
     command: r.command,
+    canQueue: r.missing.length === 0 && r.misplaced.length === 0 && !r.inReadOnlyFolder && r.space.fits && (r.space.headroomBytes !== null || r.space.shortBytes !== null),
     missing:
       r.missing.length > 0
         ? `Needs ${LIST(r.missing.map(id => toolSpec(id).label))}, which the tool hub did not find. Set ${r.missing.length === 1 ? 'its path' : 'their paths'} in Settings, under Tools.`

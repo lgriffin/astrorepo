@@ -28,6 +28,9 @@ import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../ad
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
+import { toJobsView } from '../adapters/job-presenter'
+import { JobRefusedError, JobStateError } from '@astro/application'
+import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -48,7 +51,7 @@ function sirilFolderName(sourceDir: string): string {
 
 /** Where Prep for Siril lays out a source folder: the work area setting, else the app's data folder. */
 /** Folders the app only reads: the home and FITS master folders and every scanned folder. */
-function readOnlyDirs(): string[] {
+export function readOnlyDirs(): string[] {
   const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
   return [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
 }
@@ -455,6 +458,52 @@ export function registerIpcHandlers(): void {
     return toPostProcessView(plan)
   }))
 
+  handle('jobs:list', async () => toJobsView(await jobs().snapshot(), new Date()))
+
+  /** A refusal the user can act on comes back as a message; anything else is a bug and throws. */
+  const refusable = async (work: () => Promise<{ title: string }>) => {
+    try {
+      const job = await work()
+      kickJobs()
+      return { ok: true, title: job.title }
+    } catch (error) {
+      if (error instanceof JobRefusedError || error instanceof JobStateError) return { ok: false, error: error.message }
+      throw error
+    }
+  }
+
+  // The folders come from the target's own home data, never from the page, so a job always works on
+  // that target's frames and stacks (JOB-001).
+  const targetRawPath = (targetId: string) => getTargetHomeData(targetId)?.rawPath ?? null
+
+  handle('jobs:queue-stack', validated('jobs:queue-stack', args => {
+    const rawPath = targetRawPath(args.target_id)
+    if (!rawPath) return { ok: false, error: 'This target has no raw folder to stack from.' }
+    // The plan is worked out again here, from the index and the disk.
+    return refusable(() => composeCore(getSqlite()).queueStack({
+      targetId: args.target_id,
+      sourceDir: rawPath,
+      workDir: sirilWorkDir(rawPath),
+      script: args.script,
+      timing: args.timing
+    }))
+  }))
+
+  handle('jobs:queue-post-process', validated('jobs:queue-post-process', args => {
+    const rawPath = targetRawPath(args.target_id)
+    return refusable(() => composeCore(getSqlite()).queuePostProcess(args.target_id, {
+      workDir: rawPath ? sirilWorkDir(rawPath) : undefined,
+      readOnlyDirs: readOnlyDirs(),
+      stackPath: args.stack_path,
+      profile: args.profile,
+      quality: args.quality
+    }, args.timing))
+  }))
+
+  handle('jobs:cancel', validated('jobs:cancel', args => refusable(() => jobs().cancel(args.job_id))))
+  handle('jobs:run-now', validated('jobs:run-now', args => refusable(() => jobs().runNow(args.job_id))))
+  handle('jobs:log', validated('jobs:log', async args => ({ text: await jobs().log(args.job_id) })))
+
   handle('ingest:find-duplicates', async () => {
     const report = await composeCore(getSqlite()).findDuplicates()
     return toDuplicateView(report)
@@ -654,6 +703,8 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('db:reset', async () => {
+    // Queued and running jobs refer to the targets and folders being cleared, so they go too.
+    await jobs().clear()
     const result = resetDatabase()
     try {
       loadCatalogueSeedData()

@@ -430,6 +430,29 @@ export function runMigrations(sqlite: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_file_hashes_full ON file_hashes(full_hash);
   `)
+
+  // Migration: confirmed Siril and Siril_Scripts runs, queued for the run window (JOB-001)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS jobs (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      timing TEXT NOT NULL,
+      state TEXT NOT NULL,
+      command TEXT NOT NULL,
+      prepare TEXT,
+      space_dir TEXT NOT NULL,
+      needed_bytes INTEGER NOT NULL,
+      queued_at TEXT NOT NULL,
+      started_at TEXT,
+      finished_at TEXT,
+      exit_code INTEGER,
+      note TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_jobs_state ON jobs(state);
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { ToolsView } from '@shared/types'
+import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 
 interface FolderSetting {
   key: string
@@ -124,6 +125,7 @@ export function Settings(): React.ReactElement {
         </div>
 
         <ToolsSection />
+        <RunWindowSettings />
 
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>

@@ -252,6 +252,22 @@ export const schemas = {
     profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']).optional(),
     quality: z.enum(['light', 'normal', 'strong']).optional()
   }),
+  'jobs:list': z.object({}).optional(),
+  'jobs:queue-stack': z.object({
+    target_id: id,
+    script: z.enum(['OSC_Preprocessing', 'OSC_Preprocessing_WithoutFlat', 'OSC_Preprocessing_WithoutDBF', 'OSC_Preprocessing_BayerDrizzle', 'OSC_Extract_Ha', 'OSC_Extract_HaOIII', 'Mono_Preprocessing']),
+    timing: z.enum(['window', 'now'])
+  }),
+  'jobs:queue-post-process': z.object({
+    target_id: id,
+    stack_path: z.string().min(1).optional(),
+    profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']).optional(),
+    quality: z.enum(['light', 'normal', 'strong']).optional(),
+    timing: z.enum(['window', 'now'])
+  }),
+  'jobs:cancel': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),
+  'jobs:run-now': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),
+  'jobs:log': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),
   'home:open-folder': z.object({ folder_path: z.string().min(1) }),
   'home:target-data': z.object({ target_id: z.string().min(1) }),
   'targets:observation-data': z.object({ target_id: z.string().min(1) }),

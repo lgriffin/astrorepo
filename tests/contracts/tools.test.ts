@@ -65,12 +65,17 @@ describe('NodeToolHub', () => {
 
   it('[HUB-001] Given Siril_Scripts cloned in Documents, When tools are located, Then its v2 entry script is found; a setting may name the repo, v2 or the script', async () => {
     const entry = 'C:\\Users\\leigh\\Documents\\Siril_Scripts\\v2\\postprocess.bat'
-    const found = (await windowsHub([entry]).locate()).find(s => s.id === 'siril-scripts')
+    const found = (await windowsHub([entry, entry.replace('.bat', '.sh')]).locate()).find(s => s.id === 'siril-scripts')
     expect(found).toMatchObject({ path: win(entry), source: 'standard' })
     for (const setting of ['D:\\Siril_Scripts', 'D:\\Siril_Scripts\\v2', 'D:\\Siril_Scripts\\v2\\postprocess.bat']) {
-      const s = (await windowsHub(['D:\\Siril_Scripts\\v2\\postprocess.bat'], { tool_path_siril_scripts: setting }).locate()).find(x => x.id === 'siril-scripts')
+      const s = (await windowsHub(['D:\\Siril_Scripts\\v2\\postprocess.bat', 'D:\\Siril_Scripts\\v2\\postprocess.sh'], { tool_path_siril_scripts: setting }).locate()).find(x => x.id === 'siril-scripts')
       expect(s).toMatchObject({ path: win('D:\\Siril_Scripts\\v2\\postprocess.bat'), source: 'setting' })
     }
+  })
+
+  it('[HUB-001] Given a Siril_Scripts folder with postprocess.bat but no postprocess.sh, When tools are located, Then it is not taken, since the runner starts the .sh', async () => {
+    const found = (await windowsHub(['C:\\Users\\leigh\\Siril_Scripts\\v2\\postprocess.bat']).locate()).find(s => s.id === 'siril-scripts')
+    expect(found).toMatchObject({ path: null })
   })
 
   it('[HUB-004] Given nothing installed, When tools are located, Then each lists every place it looked, in order', async () => {
@@ -91,6 +96,30 @@ describe('NodeToolHub', () => {
     expect(hub.windows).toBe(false)
     expect(statuses.find(s => s.id === 'siril')).toMatchObject({ path: '/usr/bin/siril-cli', source: 'path' })
     expect(statuses.find(s => s.id === 'siril-scripts')?.path).toBe('/home/leigh/Siril_Scripts/v2/postprocess.sh')
+    expect(await hub.stockScript('OSC_Preprocessing.ssf')).toBeNull()
+  })
+
+  it('[HUB-005] Given Siril installed on Windows, When a stock script is asked for, Then it is found under share/siril/scripts or an older scripts folder', async () => {
+    const siril = 'C:/Program Files/Siril/bin/siril-cli.exe'
+    expect(await windowsHub([siril, 'C:/Program Files/Siril/share/siril/scripts/OSC_Preprocessing.ssf']).stockScript('OSC_Preprocessing.ssf')).toBe(
+      win('C:/Program Files/Siril/share/siril/scripts/OSC_Preprocessing.ssf')
+    )
+    expect(await windowsHub([siril, 'C:/Program Files/Siril/scripts/Mono_Preprocessing.ssf']).stockScript('Mono_Preprocessing.ssf')).toBe(
+      win('C:/Program Files/Siril/scripts/Mono_Preprocessing.ssf')
+    )
+    expect(await windowsHub([siril]).stockScript('OSC_Preprocessing.ssf')).toBeNull()
+    expect(await windowsHub([]).stockScript('OSC_Preprocessing.ssf')).toBeNull()
+  })
+
+  it('[HUB-005] Given Siril from a Linux package, When a stock script is asked for, Then the system scripts folder is used', async () => {
+    const hub = new NodeToolHub({
+      platform: 'linux',
+      env: { PATH: '/usr/bin' },
+      home: '/home/leigh',
+      setting: () => null,
+      exists: p => ['/usr/bin/siril-cli', '/usr/share/siril/scripts/OSC_Preprocessing.ssf'].includes(p)
+    })
+    expect(await hub.stockScript('OSC_Preprocessing.ssf')).toBe('/usr/share/siril/scripts/OSC_Preprocessing.ssf')
   })
 })
 

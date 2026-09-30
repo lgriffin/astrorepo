@@ -4,6 +4,8 @@ import { TOOLS, type RecipeTarget, type ToolId, type ToolStatus } from '@astro/d
 /** A tool hub that finds what it is told to; every other tool is missing. */
 export class FakeToolHub implements ToolHub {
   readonly found = new Map<ToolId, string>()
+  /** Stock Siril scripts present beside siril-cli, by file name. */
+  readonly scripts = new Set<string>(['OSC_Preprocessing.ssf', 'OSC_Preprocessing_WithoutDBF.ssf', 'OSC_Preprocessing_WithoutFlat.ssf', 'Mono_Preprocessing.ssf'])
   constructor(readonly windows = true) {}
 
   install(id: ToolId, path: string): this {
@@ -24,6 +26,11 @@ export class FakeToolHub implements ToolHub {
       const path = this.found.get(t.id) ?? null
       return { id: t.id, path, source: path ? 'standard' : null, settingMissing: false, looked: path ? [] : t.standard.windows }
     })
+  }
+
+  async stockScript(fileName: string): Promise<string | null> {
+    const siril = this.found.get('siril')
+    return siril && this.scripts.has(fileName) ? `${siril.replace(/\/bin\/[^/]*$/, '')}/share/siril/scripts/${fileName}` : null
   }
 }
 

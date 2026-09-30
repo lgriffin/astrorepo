@@ -16,7 +16,7 @@ when the code says otherwise, and the reasons are recorded here.
 | C2 · Ranked cockpit | Next actions: tonight's captures (closing seasons first) ranked ahead of stacking; other checks in their own section | [013](../specs/013-ranked-cockpit/requirements.md) | Done |
 | C3a · Stacking plan | Which stock Siril script fits a target's frames, the disk space it needs stage by stage, and whether the work area has room | [014](../specs/014-siril-space/requirements.md) | Done |
 | C3b · Tool hub and post-processing recipes | Settings > Tools finds Siril, Siril_Scripts, RC Astro and Git Bash; each target's page gives the Siril_Scripts v2 command for its stack (profile, coordinates and optics filled in) and the disk it needs | [015](../specs/015-tool-hub/requirements.md) | Done |
-| G · Jobs and Siril runner | A recipe runs on the Windows PC through the tool hub, confirmed first, with a live log | later | Next |
+| G · Job runner | A small CI-like queue on the Windows PC: stack and post-processing runs start in a nightly run window while the PC is idle, one at a time at low priority, with predicted length, live logs, Run now and Cancel | [016](../specs/016-job-runner/requirements.md) | Done |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
 
 ## Changes to the blueprint
@@ -48,6 +48,11 @@ when the code says otherwise, and the reasons are recorded here.
   its command is built in the domain. Recipes are shown and copied for now; slice G runs them
   through the same port. The app passes the profile, coordinates and optics it already knows, so
   Siril_Scripts needs no SIMBAD lookup and Seestar stacks plate-solve with the right pixel size.
+- **The job runner is scheduled, not run-immediately** (spec 016). Siril can tie the PC up, so
+  Leigh asked for "a small CI like system": jobs wait for a run window he sets (02:00 to 03:00 by
+  default) and an idle PC, run one at a time at low priority, and a job predicted to overrun the
+  window waits for the next night while a shorter one goes first. The queue is a SQLite table on
+  the PC rather than pg-boss on the NAS until the NAS core-api exists.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
   packages. Until then the core runs inside the Electron main process over SQLite, which keeps the
   app shippable at every step.
@@ -57,5 +62,7 @@ when the code says otherwise, and the reasons are recorded here.
 - One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
   the scope adapters can be built from real files.
 - The Synology model, which decides the container image targets.
+- Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
+  jobs only start while it is open.
 - Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
   checks (it can also be set in Settings > Tools).

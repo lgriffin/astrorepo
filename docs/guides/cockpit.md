@@ -161,19 +161,64 @@ Pick another from the list if there are several.
   what it keeps, against the free space on that disk. A stack in a folder the app only reads
   gets a warning, since the script would write there.
 
-Copy the command and run it in Command Prompt on the PC (on Linux or macOS, any shell; every
-argument is quoted so paths stay literal). A path holding characters Command Prompt acts on
-(`% ! ^ & | < > "`) gets no command, and the panel says which to rename. Running it from the app
-comes with the job runner. Working the recipe out runs nothing and writes nothing.
+Press **Queue post-processing** to have the app run it (see Jobs below), or copy the command and
+run it in Command Prompt on the PC (on Linux or macOS, any shell; every argument is quoted so
+paths stay literal). A path holding characters Command Prompt acts on (`% ! ^ & | < > "`) gets
+no command to copy, and the panel says which to rename; queueing it still works, because the app
+runs the script without Command Prompt. Working the recipe out runs nothing and writes nothing.
+
+## Jobs
+
+Stacking and post-processing can tie the PC up for an hour or more, so the app runs them like a
+small CI runner rather than straight away.
+
+- **Queueing.** Under a target's stacking plan, **Queue this stack** runs the recommended stock
+  script; under its post-processing recipe, **Queue post-processing** runs Siril_Scripts v2.
+  Either first shows what will run: the script, the frames, the disk it needs and whether it
+  fits, and where it writes. Then choose **Queue for the run window** or **Run as soon as
+  possible**. The app works the plan out again from the target's own folders before queueing,
+  and refuses it if the tools, calibration frames or disk space are no longer there, or the
+  confirmed stack has gone. Post-processing is refused for a stack in a folder the app only
+  reads (Siril_Scripts writes beside it), and on Windows when Siril or RC Astro is installed
+  anywhere but where Siril_Scripts runs it from. A stack Siril made in the work area is fine. A stack job lays the frames out in the
+  work area (Prep for Siril) before Siril starts.
+- **When jobs start.** A window job starts only inside the run window (02:00 to 03:00 unless you
+  change it in **Settings > Run window**), once nobody has used the keyboard or mouse for 10
+  minutes and CPU use is below 30%. Set the same time for both ends to allow any time of day.
+  One job runs at a time, at below-normal priority, and a job still running when the window
+  closes is left to finish. A Run now job ignores the window and the idle check.
+- **Predicted length.** Each job's length is predicted from this PC's last five successful runs
+  of the same kind, per GB it writes; until there are any, from a first-run guess (a minute and
+  a half per GB for stacking, fifteen for post-processing), and the Jobs page says which. A job
+  that would run past the window's close lets a shorter one go first and waits for the next
+  night; a job longer than the whole window starts anyway, since it would never fit.
+- **Disk space.** Free space is checked again just before a job starts. A job whose disk is
+  short, or will not report its free space, waits and says so, and the next job may go instead.
+- **The Jobs page** shows whether the window is open, how busy the PC was at the last check, the
+  running job with its time so far, the queue in the order it will run with why each waits, and
+  the last 20 finished jobs. **Log** shows a job's output (live while it runs), the exact program
+  and arguments it ran, and its exit code. **Cancel** stops a running job and everything it
+  started (Siril, RC Astro), or takes a queued one off the queue; **Run now** moves a queued job
+  ahead of the window.
+- **Keep the app open.** Jobs start from the app's own timer, so it must be running at the
+  window's time; it keeps the PC awake while a job runs. If the app closes mid-job, the job is
+  stopped and queued again at the next start, and marked failed after the second time.
+
+The runner starts programs directly (Siril's `siril-cli -d <work folder> -s <script>`, or Git
+Bash running `postprocess.sh`), never through a shell. Logs are kept in the app's data folder
+under `jobs/`.
 
 ## Tools
 
 **Settings > Tools** lists the programs the app hands work to: Siril, Siril_Scripts v2, the RC
 Astro CLI and, on Windows, Git Bash (which Siril_Scripts' `.bat` needs). Each is looked for in
 the path you save there, then on PATH, then in its usual install folder; for Siril_Scripts, the
-repo folder, its `v2` folder or `postprocess.bat` itself will do. A tool that is not found lists
+repo folder, its `v2` folder or `postprocess.bat` itself will do, as long as `postprocess.sh`
+sits beside it. A tool that is not found lists
 every place the hub looked. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...`
-without searching, so a tool found anywhere else is flagged. Nothing is run to check.
+without searching, so a tool found anywhere else is flagged. Siril's stock scripts are found
+where Siril installs them, under `share/siril/scripts` beside its `bin` folder. Nothing is run to
+check.
 
 ## Rescanning
 
