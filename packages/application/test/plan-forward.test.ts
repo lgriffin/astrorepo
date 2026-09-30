@@ -152,6 +152,23 @@ describe('PlanForward', () => {
     expect(p.windows[0].newMoon).toBe('2026-11-08')
   })
 
+  it('[DSC-016] Given goals per filter with Ha past its goal and OIII not started, When tonight is planned, Then the target is still short by the whole OIII goal', async () => {
+    const { frames, positions, plan } = setup()
+    frames.add(
+      target('NGC 6960', {
+        subs: subs(24, 300, '2026-09-20T21:00:00Z', { filter: 'Ha' }),
+        goalSec: 7200,
+        filterGoals: [
+          { filter: 'ha', goalSec: 3600 },
+          { filter: 'OIII', goalSec: 3600 }
+        ]
+      })
+    )
+    positions.add({ targetId: 'target-ngc-6960', raHours: 20.76, decDeg: 30.7, objectType: 'supernova_remnant' })
+    const p = await okPlan(plan)
+    expect(p.tonight?.choices.find(c => c.targetName === 'NGC 6960')?.shortOfGoalSec).toBe(3600)
+  })
+
   it('[FWD-008] Given a night with no dark window, When tonight is planned, Then there is no tonight plan but the rest of the plan stands', async () => {
     const { ephemeris, plan } = setup()
     ephemeris.noDarkness('2026-09-29')
@@ -164,6 +181,16 @@ describe('PlanForward', () => {
     const { ephemeris, plan } = setup()
     ephemeris.nauticalOnly('2026-09-29')
     expect((await okPlan(plan)).tonight?.darkness).toBe('nautical')
+  })
+
+  it('[NFR-009] Given the tonight scope, When the plan is made, Then only tonight and the closing nights are computed and windows and seasons are empty', async () => {
+    const { ephemeris, plan } = setup()
+    const p = await okPlan(() => plan({ scope: 'tonight' }))
+    expect(p.tonight?.night).toBe('2026-09-29')
+    expect(p.closing.map(c => c.targetName)).toContain('M 13')
+    expect(p.windows).toEqual([])
+    expect(p.seasons).toEqual([])
+    expect(ephemeris.nightsRequested.length).toBe(35)
   })
 
   it('[NFR-009] Given many targets, When the plan is made, Then each night is computed once, and adding targets computes no more nights', async () => {

@@ -41,14 +41,30 @@ describe('ListNextActions', () => {
     expect(m31.kind === 'capture' && m31.shortOfGoalSec).toBe(36000 - 3600)
   })
 
-  it('[DSC-017] Given no site, When next actions are listed, Then the stacking suggestions still come back', async () => {
-    const actions = await makeListNextActions(setup(null))()
+  it('[DSC-017] Given no site, When next actions are listed, Then the stacking suggestions still come back and nothing is reported as failing', async () => {
+    const errors: unknown[] = []
+    const actions = await makeListNextActions({ ...setup(null), onPlanError: e => errors.push(e) })()
     expect(actions.map(a => a.kind)).toEqual(['stack'])
+    expect(errors).toEqual([])
   })
 
-  it('[DSC-017] Given planning that fails, When next actions are listed, Then the stacking suggestions still come back', async () => {
+  it('[DSC-017] Given planning that fails, When next actions are listed, Then the stacking suggestions still come back and the failure is reported', async () => {
     const { listStackingSuggestions } = setup(null)
-    const actions = await makeListNextActions({ listStackingSuggestions, planForward: () => Promise.reject(new Error('ephemeris down')) })()
+    const failure = new Error('ephemeris down')
+    const errors: unknown[] = []
+    const actions = await makeListNextActions({
+      listStackingSuggestions,
+      planForward: () => Promise.reject(failure),
+      onPlanError: e => errors.push(e)
+    })()
     expect(actions.map(a => a.kind)).toEqual(['stack'])
+    expect(errors).toEqual([failure])
+  })
+
+  it('[NFR-009] Given next actions, When they are listed, Then only tonight and the closing-season nights are computed', async () => {
+    const deps = setup({ latitudeDeg: 51.5, longitudeDeg: -0.13, elevationM: 0 })
+    const scopes: unknown[] = []
+    await makeListNextActions({ ...deps, planForward: options => (scopes.push(options), deps.planForward(options)) })()
+    expect(scopes).toEqual([{ scope: 'tonight' }])
   })
 })

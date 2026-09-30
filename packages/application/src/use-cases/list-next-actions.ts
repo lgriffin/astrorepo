@@ -5,6 +5,8 @@ import type { PlanForward } from './plan-forward'
 export interface ListNextActionsDeps {
   listStackingSuggestions: ListStackingSuggestions
   planForward: PlanForward
+  /** Told when planning fails, so the failure is recorded even though stacking still shows. */
+  onPlanError?: (error: unknown) => void
 }
 
 export type ListNextActions = () => Promise<NextAction[]>
@@ -15,12 +17,16 @@ export type ListNextActions = () => Promise<NextAction[]>
  */
 export function makeListNextActions(deps: ListNextActionsDeps): ListNextActions {
   return async () => {
-    // A planning failure (say, a corrupt site setting) must never hide the stacking suggestions.
+    // A planning failure must never hide the stacking suggestions, but it is reported, unlike an
+    // unset site, which is an expected state. Only tonight and closing seasons are needed here.
     const [stacking, plan] = await Promise.all([
       deps.listStackingSuggestions(),
-      deps.planForward().catch(() => ({ status: 'no-site' }) as const)
+      deps.planForward({ scope: 'tonight' }).catch((error: unknown) => {
+        deps.onPlanError?.(error)
+        return null
+      })
     ])
-    if (plan.status !== 'ok') return rankNextActions(stacking, null, [])
+    if (!plan || plan.status !== 'ok') return rankNextActions(stacking, null, [])
     return rankNextActions(stacking, plan.tonight, plan.closing)
   }
 }

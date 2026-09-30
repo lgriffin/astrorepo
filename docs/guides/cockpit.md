@@ -63,11 +63,15 @@ One ranked list of what to do, captures first because a night does not wait:
 3. **Stack**: the stacking suggestions below, most waiting data first.
 
 Each capture says how long the target is up above 30°, how close the moon comes, the days left in
-its season when it is closing, and how far it is from its integration goal. Under a bright moon only
+its season when it is closing, and how far it is from its integration goals. Goals count per filter:
+2 hours of Ha past its goal does not make up for OIII you have not started. Under a bright moon only
 emission targets are suggested, and only with a dual-band or narrowband filter (see
 [Planning ahead](planning.md)). On a night with nothing to shoot, or before you have set your site,
 the list starts with stacking. Captures are worked out afresh each night, so they have no Dismiss
 button.
+
+Below the list, **Other checks** keeps the calibration, integration-goal and quality warnings (such
+as lights with no matching darks) in a section of their own, so a long to-do list never hides them.
 
 ## Stacking suggestions
 

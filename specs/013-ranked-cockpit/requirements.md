@@ -22,6 +22,13 @@ stack (spec 009 and 010), in the order it is worth doing.
   order among themselves (spec 009, unchanged).
 - **Capture actions are not dismissible.** They are recomputed every night, so there is nothing
   lasting to dismiss; stacking suggestions stay dismissible (DSC-009).
+- **Other checks keep their own section.** Calibration, integration-goal and quality warnings from
+  the older recommendation service sit under their own heading, so eight to-do items never push
+  a missing-darks warning out of sight.
+- **Goal shortfall is per filter.** Goals are set per filter, so a filter past its goal never
+  makes up for one that is short (this also decides whether a target has work left for planning).
+- **Next actions compute only tonight and the next month of nights**, not the year-ahead season
+  table, and load separately so they never hold up the rest of the dashboard.
 - **Weather is not a ranking input yet** (FWD-003 stays out, as in spec 012).
 
 ## Discovery
@@ -29,5 +36,6 @@ stack (spec 009 and 010), in the order it is worth doing.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | DSC-007 | Ubiquitous | The system shall rank next actions with captures whose season is closing first, soonest first, then tonight's other captures, most usable hours first, then stacking suggestions, most unprocessed integration first. |
-| DSC-016 | Ubiquitous | The system shall state for each capture action its usable hours above 30° tonight, how close the moon comes, the days left in its season when it is closing, and the integration still short of its goal. |
-| DSC-017 | Unwanted | If no site is set or the forward plan cannot be made, then the system shall still list the stacking suggestions, in their own order. |
+| DSC-016 | Ubiquitous | The system shall state for each capture action its usable hours above 30° tonight, how close the moon comes, the days left in its season when it is closing, and the integration still short of its goals, counted per filter. |
+| DSC-017 | Unwanted | If no site is set or the forward plan cannot be made, then the system shall still list the stacking suggestions, in their own order, and record the planning failure when there is one. |
+| DSC-018 | Ubiquitous | The system shall show calibration, integration-goal and quality checks in a section of their own beside next actions. |

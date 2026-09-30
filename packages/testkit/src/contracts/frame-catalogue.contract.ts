@@ -62,6 +62,15 @@ export function frameCatalogueContract(
       expect(t).toMatchObject({ targetId: 'target-m31', goalSec: 21600, processedCount: 2, finalCount: 1 })
     })
 
+    it('[DSC-016] Given goals for two filters, When frames are listed, Then the target carries each filter goal and their sum', async () => {
+      const m27: TargetFrames = {
+        targetId: 'target-m27', targetName: 'M 27', subs: [], stacks: [], goalSec: 10800, processedCount: 0, finalCount: 0,
+        filterGoals: [{ filter: 'Ha', goalSec: 3600 }, { filter: 'OIII', goalSec: 7200 }]
+      }
+      const [t] = await (await make({ targets: [m27] })).listTargetFrames()
+      expect(t).toMatchObject({ goalSec: 10800, filterGoals: [{ filter: 'Ha', goalSec: 3600 }, { filter: 'OIII', goalSec: 7200 }] })
+    })
+
     it('[NFR-006] Given a target with no frames, outputs or goal, When frames are listed, Then it is left out', async () => {
       const bare: TargetFrames = { targetId: 'target-m1', targetName: 'M 1', subs: [], stacks: [], ...empty }
       const catalogue = await make({ targets: [m81, bare] })

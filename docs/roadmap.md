@@ -13,7 +13,7 @@ when the code says otherwise, and the reasons are recorded here.
 | C1 · Discovery cockpit | Hidden-data card, progress strip, "What the files say" on each target, dismissible suggestions, one migration source | [010](../specs/010-discovery-cockpit/requirements.md) | Done |
 | B · Ingest core | Siril prep in a work area (sources untouched), fast rescans, quarantine of unreadable files, duplicate check | [011](../specs/011-ingest-core/requirements.md) | Done |
 | L · Seasons, moon and tonight | Coming-nights card, 12-month season table, closing-season warnings, new-moon windows, bright-moon filtering | [012](../specs/012-seasons-moon/requirements.md) | Done |
-| C2 · Ranked cockpit | Next actions: tonight's captures (closing seasons first) ranked ahead of stacking | [013](../specs/013-ranked-cockpit/requirements.md) | Done |
+| C2 · Ranked cockpit | Next actions: tonight's captures (closing seasons first) ranked ahead of stacking; other checks in their own section | [013](../specs/013-ranked-cockpit/requirements.md) | Done |
 | C3 · Recipes | Siril recipe library, "what could I build", confirm before run | later | Next (needs your Siril scripts) |
 | G · Jobs and Siril runner | A recipe runs on the Windows PC with a live log | later | Planned |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |

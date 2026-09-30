@@ -47,7 +47,7 @@ const target = (name: string, raHours: number, decDeg: number, extra: Partial<Sk
   decDeg,
   objectType: 'galaxy',
   integrationSec: 3600,
-  goalSec: null,
+  shortOfGoalSec: null,
   hasFinal: false,
   ...extra
 })
@@ -116,11 +116,11 @@ describe('seasons', () => {
   })
 
   it('[FWD-001] Given a target with a goal, no goal, or a finished image, When work left is judged, Then only unfinished targets have work left', () => {
-    expect(hasWorkLeft({ integrationSec: 3600, goalSec: 7200, hasFinal: true })).toBe(true)
-    expect(hasWorkLeft({ integrationSec: 7200, goalSec: 7200, hasFinal: false })).toBe(false)
-    expect(hasWorkLeft({ integrationSec: 3600, goalSec: null, hasFinal: false })).toBe(true)
-    expect(hasWorkLeft({ integrationSec: 3600, goalSec: null, hasFinal: true })).toBe(false)
-    expect(hasWorkLeft({ integrationSec: 0, goalSec: null, hasFinal: false })).toBe(false)
+    expect(hasWorkLeft({ integrationSec: 3600, shortOfGoalSec: 3600, hasFinal: true })).toBe(true)
+    expect(hasWorkLeft({ integrationSec: 7200, shortOfGoalSec: 0, hasFinal: false })).toBe(false)
+    expect(hasWorkLeft({ integrationSec: 3600, shortOfGoalSec: null, hasFinal: false })).toBe(true)
+    expect(hasWorkLeft({ integrationSec: 3600, shortOfGoalSec: null, hasFinal: true })).toBe(false)
+    expect(hasWorkLeft({ integrationSec: 0, shortOfGoalSec: null, hasFinal: false })).toBe(false)
   })
 })
 
@@ -129,7 +129,7 @@ describe('tonight', () => {
   const m31 = target('M 31', 0.71, 41.27)
   const m33 = target('M 33', 1.56, 30.66)
   const ngc7000 = target('NGC 7000', 20.98, 44.33, { objectType: 'emission_nebula' })
-  const done = target('M 45', 3.79, 24.12, { goalSec: 3600, integrationSec: 3600 })
+  const done = target('M 45', 3.79, 24.12, { shortOfGoalSec: 0, integrationSec: 3600 })
   const low = target('M 83', 13.62, -29.87)
 
   it('[FWD-006] Given a dark moonless night, When tonight is planned, Then targets with work left that are up an hour are listed, most hours first', () => {

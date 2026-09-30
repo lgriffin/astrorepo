@@ -18,7 +18,8 @@ export interface SkyTarget {
   objectType: string
   /** Usable (not rejected) integration captured so far. */
   integrationSec: number
-  goalSec: number | null
+  /** Integration still needed to reach the target's goals (per filter where set); null with no goal. */
+  shortOfGoalSec: number | null
   /** A finished image (JPEG or PNG) exists for the target. */
   hasFinal: boolean
 }
@@ -157,11 +158,11 @@ export function seasonClosing(nights: { night: string; hours: number }[], policy
 }
 
 /**
- * Whether there is still work to do on a target: below its integration goal, or, with no goal
+ * Whether there is still work to do on a target: short of its integration goal, or, with no goal
  * set, started but without a finished image yet.
  */
-export function hasWorkLeft(t: Pick<SkyTarget, 'integrationSec' | 'goalSec' | 'hasFinal'>): boolean {
-  return t.goalSec !== null ? t.integrationSec < t.goalSec : t.integrationSec > 0 && !t.hasFinal
+export function hasWorkLeft(t: Pick<SkyTarget, 'integrationSec' | 'shortOfGoalSec' | 'hasFinal'>): boolean {
+  return t.shortOfGoalSec !== null ? t.shortOfGoalSec > 0 : t.integrationSec > 0 && !t.hasFinal
 }
 
 export interface DarkWindow {
@@ -260,7 +261,7 @@ export function planTonight(
       targetName: t.targetName,
       usableHours: hours,
       moonSeparationDeg: closest === null ? null : Math.round(closest),
-      shortOfGoalSec: t.goalSec === null ? null : Math.max(0, t.goalSec - t.integrationSec)
+      shortOfGoalSec: t.shortOfGoalSec
     })
   }
   choices.sort((a, b) => b.usableHours - a.usableHours || a.targetName.localeCompare(b.targetName))

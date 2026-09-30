@@ -37,7 +37,11 @@ export function composeCore(db: Database.Database) {
   })
   return {
     listStackingSuggestions,
-    listNextActions: makeListNextActions({ listStackingSuggestions, planForward }),
+    listNextActions: makeListNextActions({
+      listStackingSuggestions,
+      planForward,
+      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error)
+    }),
     dismissSuggestion: makeDismissSuggestion({ frames, dismissals, clock: systemClock }),
     discoverTargets: makeDiscoverTargets({ frames }),
     discoverTarget: makeDiscoverTarget({ frames }),

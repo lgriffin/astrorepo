@@ -9,6 +9,7 @@ import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
 import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
 import { useToast } from '../contexts/ToastContext'
 import type { DashboardStats, CatalogueProgress, Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
+import { splitRecommendations } from '@shared/recommendations'
 
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
@@ -24,16 +25,18 @@ export function Dashboard(): React.ReactElement {
     Promise.all([
       invoke<DashboardStats>('dashboard:stats'),
       invoke<{ catalogues: CatalogueProgress[] }>('dashboard:catalogue-progress'),
-      invoke<{ recommendations: Recommendation[] }>('recommendations:list'),
       invoke<CockpitOverview>('cockpit:overview').catch(() => null)
     ])
-      .then(([s, c, r, k]) => {
+      .then(([s, c, k]) => {
         setStats(s)
         setCatalogues(c.catalogues)
-        setRecommendations(r.recommendations)
         setCockpit(k)
       })
       .finally(() => setLoading(false))
+    // Next actions look at tonight's sky, so they load on their own too.
+    invoke<{ recommendations: Recommendation[] }>('recommendations:list')
+      .then(r => setRecommendations(r.recommendations))
+      .catch(() => setRecommendations([]))
     // Planning computes a year of nights, so it loads on its own and never holds up the page.
     invoke<ForwardPlanView>('planning:forward').then(setPlan).catch(() => setPlan(null))
   }, [])
@@ -51,6 +54,41 @@ export function Dashboard(): React.ReactElement {
         return invoke<{ recommendations: Recommendation[] }>('recommendations:list').then(r => setRecommendations(r.recommendations))
       })
       .catch(() => addToast('Could not dismiss that suggestion', 'error'))
+  }
+
+  const { nextActions, otherChecks } = splitRecommendations(recommendations)
+
+  const recommendationRow = (rec: Recommendation) => {
+    const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+    return (
+      <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">
+        <div className="flex flex-col gap-1 shrink-0 pt-0.5">
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityColor}`}>{rec.priority}</span>
+          <span className="text-[10px] text-astro-muted capitalize">{rec.category}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-astro-text font-medium">{rec.title}</p>
+          <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>
+        </div>
+        {rec.actionLabel && rec.targetId && (
+          <button
+            onClick={() => navigate(`/targets/${rec.targetId}`)}
+            className="shrink-0 text-xs text-astro-accent hover:underline"
+          >
+            {rec.actionLabel}
+          </button>
+        )}
+        {rec.dismissible && (
+          <button
+            onClick={() => dismiss(rec)}
+            className="shrink-0 text-xs text-astro-muted hover:text-astro-text"
+            title="Hide until this target gets new data"
+          >
+            Dismiss
+          </button>
+        )}
+      </div>
+    )
   }
 
   if (loading || !stats) {
@@ -149,43 +187,17 @@ export function Dashboard(): React.ReactElement {
         )}
       </div>
 
-      {recommendations.length > 0 && (
+      {nextActions.length > 0 && (
         <div className="mt-8 bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Next actions</h2>
-          <div className="space-y-3">
-            {recommendations.slice(0, 8).map(rec => {
-              const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
-              return (
-                <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">
-                  <div className="flex flex-col gap-1 shrink-0 pt-0.5">
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityColor}`}>{rec.priority}</span>
-                    <span className="text-[10px] text-astro-muted capitalize">{rec.category}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-astro-text font-medium">{rec.title}</p>
-                    <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>
-                  </div>
-                  {rec.actionLabel && rec.targetId && (
-                    <button
-                      onClick={() => navigate(`/targets/${rec.targetId}`)}
-                      className="shrink-0 text-xs text-astro-accent hover:underline"
-                    >
-                      {rec.actionLabel}
-                    </button>
-                  )}
-                  {rec.dismissible && (
-                    <button
-                      onClick={() => dismiss(rec)}
-                      className="shrink-0 text-xs text-astro-muted hover:text-astro-text"
-                      title="Hide until this target gets new data"
-                    >
-                      Dismiss
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <div className="space-y-3">{nextActions.slice(0, 8).map(recommendationRow)}</div>
+        </div>
+      )}
+
+      {otherChecks.length > 0 && (
+        <div className="mt-4 bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Other checks</h2>
+          <div className="space-y-3">{otherChecks.slice(0, 6).map(recommendationRow)}</div>
         </div>
       )}
     </PageContainer>
