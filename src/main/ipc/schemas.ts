@@ -244,6 +244,7 @@ export const schemas = {
   'home:scan-start': z.object({}).optional(),
   'home:scan-progress': z.object({}).optional(),
   'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
+  'siril:estimate': z.object({ raw_path: z.string().min(1) }),
   'home:open-folder': z.object({ folder_path: z.string().min(1) }),
   'home:target-data': z.object({ target_id: z.string().min(1) }),
   'targets:observation-data': z.object({ target_id: z.string().min(1) }),

@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
-import type { PlacementResult, SirilWorkspace } from '@astro/application'
+import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
 import type { SirilPlacement } from '@astro/domain'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
@@ -68,6 +68,60 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     const [d, c] = await Promise.all([realpathOfNearest(dir), realpathOfNearest(candidate)])
     const rel = path.relative(process.platform === 'win32' ? d.toLowerCase() : d, process.platform === 'win32' ? c.toLowerCase() : c)
     return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
+  }
+
+  async frameDetails(paths: string[]): Promise<FrameDetail[]> {
+    const indexed = this.db?.prepare(
+      `SELECT f.naxis1, f.naxis2,
+              EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = 'BAYERPAT' AND TRIM(REPLACE(COALESCE(h.value, ''), '''', '')) <> '') AS bayer,
+              EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id) AS has_headers
+       FROM fits_files f WHERE f.file_path = ?`
+    )
+    return Promise.all(
+      paths.map(async p => {
+        const stat = await fs.promises.stat(p).catch(() => null)
+        const row = indexed?.get(p) as { naxis1: number | null; naxis2: number | null; bayer: number; has_headers: number } | undefined
+        return {
+          path: p,
+          sizeBytes: stat?.size ?? 0,
+          width: row?.naxis1 ?? null,
+          height: row?.naxis2 ?? null,
+          colour: row && row.has_headers ? row.bayer === 1 : null
+        }
+      })
+    )
+  }
+
+  async workAreaSpace(sourceDir: string, workDir: string): Promise<WorkAreaSpace> {
+    const existing = await nearestExisting(workDir)
+    const [fsStats, work, source] = await Promise.all([
+      fs.promises.statfs(existing).catch(() => null),
+      fs.promises.stat(existing).catch(() => null),
+      fs.promises.stat(sourceDir).catch(() => null)
+    ])
+    let usedBytes = 0
+    for (const folder of ['process', 'masters']) {
+      const entries = await fs.promises.readdir(path.join(workDir, folder), { withFileTypes: true }).catch(() => [])
+      for (const e of entries) {
+        if (e.isFile()) usedBytes += (await fs.promises.stat(path.join(workDir, folder, e.name)).catch(() => null))?.size ?? 0
+      }
+    }
+    return {
+      freeBytes: fsStats ? Number(fsStats.bavail) * Number(fsStats.bsize) : null,
+      sameVolume: !!work && !!source && work.dev === source.dev,
+      usedBytes
+    }
+  }
+}
+
+/** The path itself or its closest ancestor that exists, so space can be read before a folder is made. */
+async function nearestExisting(p: string): Promise<string> {
+  let current = path.resolve(p)
+  for (;;) {
+    if (await fs.promises.stat(current).then(() => true, () => false)) return current
+    const parent = path.dirname(current)
+    if (parent === current) return current
+    current = parent
   }
 }
 

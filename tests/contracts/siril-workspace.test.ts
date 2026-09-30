@@ -102,3 +102,43 @@ describe('NodeSirilWorkspace with the catalogue', () => {
     expect(frame.imageType).toBe('Dark Frame')
   })
 })
+
+describe('NodeSirilWorkspace space', () => {
+  afterEach(() => teardownTestDb())
+
+  it('[RCP-004] Given lights indexed with and without a Bayer pattern and one never indexed, When details are read, Then dimensions and sensor come from the index', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
+    tempDirs.push(root)
+    const [colour, mono, unknown] = ['colour.fit', 'mono.fit', 'new.fit'].map(n => path.join(root, n))
+    for (const p of [colour, mono, unknown]) fs.writeFileSync(p, 'x'.repeat(100))
+    const db = setupTestDb()
+    const scan = seedFitsScan(db)
+    const header = db.prepare('INSERT INTO fits_headers (id, file_id, keyword, value, comment, ordinal) VALUES (?, ?, ?, ?, NULL, ?)')
+    const colourId = seedFitsFile(db, scan, { filePath: colour })
+    const monoId = seedFitsFile(db, scan, { filePath: mono })
+    db.prepare('UPDATE fits_files SET naxis1 = 3840, naxis2 = 2160 WHERE id = ?').run(colourId)
+    header.run('h1', colourId, 'BAYERPAT', "'GRBG'", 1)
+    header.run('h2', monoId, 'NAXIS', '2', 1)
+
+    const details = await new NodeSirilWorkspace(db).frameDetails([colour, mono, unknown])
+    expect(details).toEqual([
+      { path: colour, sizeBytes: 100, width: 3840, height: 2160, colour: true },
+      { path: mono, sizeBytes: 100, width: null, height: null, colour: false },
+      { path: unknown, sizeBytes: 100, width: null, height: null, colour: null }
+    ])
+  })
+
+  it('[RCP-003] Given an earlier run left files in process and masters, When the space is read, Then they count as used and the disk reports free space', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
+    tempDirs.push(root)
+    const source = path.join(root, 'source')
+    const work = path.join(root, 'work')
+    for (const d of [source, path.join(work, 'process'), path.join(work, 'masters')]) fs.mkdirSync(d, { recursive: true })
+    fs.writeFileSync(path.join(work, 'process', 'pp_light_00001.fit'), 'x'.repeat(300))
+    fs.writeFileSync(path.join(work, 'masters', 'master_dark.fit'), 'x'.repeat(200))
+    const space = await new NodeSirilWorkspace().workAreaSpace(source, work)
+    expect(space.usedBytes).toBe(500)
+    expect(space.sameVolume).toBe(true)
+    expect(space.freeBytes).toBeGreaterThan(0)
+  })
+})

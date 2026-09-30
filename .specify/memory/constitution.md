@@ -59,7 +59,9 @@ and will host the catalogue and API. The DGX Spark is an enabler that runs local
 Ollama; everything works when it is off, and no image or prompt leaves the network. Sky planning is
 computed on the machine from the ephemeris; online services such as weather are optional adapters,
 never required. Proprietary
-tools are called, never bundled. Dependencies are OSI licensed.
+tools are called, never bundled, and so are scripts under a copyleft licence (Siril's stock
+scripts, Leigh's GPL-3.0 Siril_Scripts): the app names them and runs them where they are
+installed, and may reimplement their arithmetic with credit. Dependencies are OSI licensed.
 
 ### VII. Docs move with the code
 
@@ -86,4 +88,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.0.2 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
+**Version**: 1.0.3 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30

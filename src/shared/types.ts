@@ -923,6 +923,33 @@ export interface SirilWorkspaceView {
   byFolder: { lights: number; darks: number; flats: number; biases: number }
 }
 
+/** One stock Siril script in a target's stacking plan (specs/014-siril-space). */
+export interface SirilScriptView {
+  /** The script's file name, as Siril lists it, for example "OSC_Preprocessing.ssf". */
+  file: string
+  label: string
+  recommended: boolean
+  /** Space the run needs, including what Prep must copy, less what an earlier run left. */
+  needed: string
+  verdict: 'fits' | 'short' | 'unknown'
+  verdictText: string
+  /** The calibration folders it needs that the target lacks, as a sentence; null when none. */
+  missing: string | null
+  stages: { name: string; size: string; cumulative: string; files: number }[]
+}
+
+export interface SirilPlanView {
+  /** The recommended script's file name, or null when none of Siril's stock scripts fits. */
+  recommended: string | null
+  reason: string
+  frames: string
+  prepNote: string
+  freeSpace: string | null
+  /** Set when dimensions or sensor type were guessed rather than read from headers. */
+  approximateNote: string | null
+  scripts: SirilScriptView[]
+}
+
 export interface CockpitOverview {
   progress: { state: ProgressState; label: string; count: number }[]
   hidden: HiddenDataItem[]

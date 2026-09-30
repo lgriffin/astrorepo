@@ -7,7 +7,7 @@ import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { formatExposure, formatSize } from '../utils/format'
 import { TargetDiscoveryPanel } from '../components/cockpit/TargetDiscoveryPanel'
-import type { SirilWorkspaceView, Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
+import type { SirilPlanView, SirilScriptView, SirilWorkspaceView, Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -415,6 +415,7 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
           {sirilStatus && sirilStatus !== 'preparing' && (
             <p className="text-xs text-astro-muted mt-1.5">{sirilStatus}</p>
           )}
+          <StackingPlan rawPath={homeData.rawPath} refreshKey={sirilStatus} />
         </div>
       )}
 
@@ -422,6 +423,86 @@ function HomeFolderSection({ homeData, onRefresh }: { homeData: TargetHomeData; 
         Last scanned: {new Date(homeData.scannedAt).toLocaleString()}
       </p>
     </Section>
+  )
+}
+
+const VERDICT_TONE: Record<SirilScriptView['verdict'], string> = {
+  fits: 'text-green-400',
+  short: 'text-red-400',
+  unknown: 'text-astro-muted'
+}
+
+/** Which stock Siril script fits the frames and whether the disk has room, before anything is written. */
+function StackingPlan({ rawPath, refreshKey }: { rawPath: string; refreshKey: string | null }): React.ReactElement | null {
+  const [plan, setPlan] = useState<SirilPlanView | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    if (refreshKey === 'preparing') return
+    setFailed(false)
+    invoke<SirilPlanView>('siril:estimate', { raw_path: rawPath })
+      .then(setPlan)
+      .catch(() => setFailed(true))
+  }, [rawPath, refreshKey])
+
+  if (failed) return <p className="text-xs text-astro-muted mt-3">The stacking plan could not be worked out for this folder.</p>
+  if (!plan) return null
+  const chosen = plan.scripts.find(s => s.recommended)
+
+  return (
+    <div className="mt-3 pt-3 border-t border-astro-border space-y-1.5">
+      <p className="text-xs text-astro-muted font-semibold uppercase tracking-wider">Stacking plan</p>
+      <p className="text-sm text-astro-text">
+        {plan.recommended ? (
+          <>
+            Run <span className="font-mono">{plan.recommended}</span> in Siril. {plan.reason}
+          </>
+        ) : (
+          plan.reason
+        )}
+      </p>
+      <p className="text-xs text-astro-muted">{plan.frames}</p>
+      {chosen && (
+        <p className="text-xs">
+          <span className="text-astro-text">Needs {chosen.needed}</span>
+          {plan.freeSpace && <span className="text-astro-muted">; {plan.freeSpace}</span>}
+          {'. '}
+          <span className={VERDICT_TONE[chosen.verdict]}>{chosen.verdictText}.</span>
+        </p>
+      )}
+      <p className="text-xs text-astro-muted">{plan.prepNote}</p>
+      {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
+      {plan.scripts.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-astro-accent">Every script and its stages</summary>
+          <div className="mt-2 space-y-2">
+            {plan.scripts.map(script => (
+              <details key={script.file} className="pl-2">
+                <summary className="cursor-pointer">
+                  <span className="font-mono text-astro-text">{script.file}</span>
+                  <span className="text-astro-muted"> ({script.label}): {script.needed}, </span>
+                  <span className={VERDICT_TONE[script.verdict]}>{script.verdictText}</span>
+                  {script.missing && <span className="text-yellow-400"> · {script.missing}</span>}
+                </summary>
+                <table className="mt-1 ml-2 text-astro-muted">
+                  <tbody>
+                    {script.stages.map(stage => (
+                      <tr key={stage.name}>
+                        <td className="pr-3 text-astro-text">{stage.name}</td>
+                        <td className="pr-3 text-right tabular-nums">{stage.size}</td>
+                        <td className="pr-3 text-right tabular-nums">{stage.files} files</td>
+                        <td className="text-right tabular-nums">{stage.cumulative} so far</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            ))}
+          </div>
+          <p className="mt-2 text-astro-muted">Sizes assume Siril keeps every intermediate file, as its stock scripts do.</p>
+        </details>
+      )}
+    </div>
   )
 }
 

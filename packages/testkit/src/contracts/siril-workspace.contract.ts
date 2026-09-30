@@ -72,5 +72,23 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
       }
       expect(await f.sourceListing()).toEqual(before)
     })
+
+    it('[RCP-002] Given source frames, When their details are read, Then one comes back per path, in order, with a size', async () => {
+      const f = await setup(['Light_002.fit', 'Light_001.fit'])
+      const frames = await f.workspace.listSourceFrames(f.sourceDir)
+      const details = await f.workspace.frameDetails(frames.map(x => x.path).reverse())
+      expect(details.map(d => d.path)).toEqual(frames.map(x => x.path).reverse())
+      expect(details.every(d => d.sizeBytes >= 0)).toBe(true)
+    })
+
+    it('[NFR-010] Given a work folder not made yet, When its space is read, Then nothing is used there and nothing is created', async () => {
+      const f = await setup(['Light_001.fit'])
+      const before = await f.sourceListing()
+      const space = await f.workspace.workAreaSpace(f.sourceDir, f.workDir)
+      expect(space.usedBytes).toBe(0)
+      expect(space.freeBytes === null || space.freeBytes > 0).toBe(true)
+      expect(await f.workHas('lights')).toBe(false)
+      expect(await f.sourceListing()).toEqual(before)
+    })
   })
 }
