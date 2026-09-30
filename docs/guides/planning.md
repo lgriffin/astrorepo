@@ -6,7 +6,7 @@ windows** list at the bottom of the Sky planner.
 
 ## Before you start
 
-Set your latitude and longitude (and elevation, if you like) in **Settings → Observer Location**
+Set your latitude and longitude (and elevation, if you like) in **Settings → Your site**
 or on the Sky planner. Until then, the card says what to set and links there.
 
 Tick **I have a dual-band or narrowband filter** if you do. It is on by default, because the

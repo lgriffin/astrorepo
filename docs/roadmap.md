@@ -66,10 +66,10 @@ when the code says otherwise, and the reasons are recorded here.
 
 ## Open questions for Leigh
 
-- One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
+- ([#23](https://github.com/lgriffin/astrorepo/issues/23)) One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
   the scope adapters can be built from real files.
-- The Synology model, which decides the container image targets.
-- Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
+- ([#24](https://github.com/lgriffin/astrorepo/issues/24)) The Synology model, which decides the container image targets.
+- ([#25](https://github.com/lgriffin/astrorepo/issues/25)) Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
   jobs only start while it is open.
-- Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
+- ([#26](https://github.com/lgriffin/astrorepo/issues/26)) Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
   checks (it can also be set in Settings > Tools).

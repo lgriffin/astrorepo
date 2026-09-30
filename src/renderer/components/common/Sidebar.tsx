@@ -11,8 +11,13 @@ function JobsFooter(): React.ReactElement | null {
 
   useEffect(() => {
     let current = true
+    // Polls can overlap; only the answer to the latest one is shown, so an older snapshot never
+    // replaces a newer one.
+    let latest = 0
     const load = (): void => {
-      invoke<JobsView>('jobs:list').then(v => current && setView(v)).catch(() => current && setView(null))
+      const request = ++latest
+      const apply = (v: JobsView | null) => current && request === latest && setView(v)
+      invoke<JobsView>('jobs:list').then(apply).catch(() => apply(null))
     }
     load()
     const timer = setInterval(load, 15000)

@@ -114,13 +114,15 @@ export function settingsSectionFrom(search: string): SettingsSection | null {
 
 /**
  * The line under the sidebar that says what the job runner is doing, wherever the user is:
- * the running job, else how many wait and when the window opens, else nothing.
+ * the running job, else how many wait and why the next one (the head of the queue, in the order
+ * it will run) has not started, in the scheduler's own words; else nothing.
  */
-export function jobsStatus(view: Pick<JobsView, 'running' | 'queue' | 'windowStatus'> | null): { text: string; busy: boolean } | null {
+export function jobsStatus(view: Pick<JobsView, 'running' | 'queue'> | null): { text: string; busy: boolean } | null {
   if (!view) return null
   if (view.running) return { text: `Running: ${view.running.title}`, busy: true }
   if (view.queue.length === 0) return null
   const count = view.queue.length === 1 ? '1 job queued' : `${view.queue.length} jobs queued`
-  const next = view.queue.some(j => j.timing === 'now') ? 'Starting as soon as it can' : view.windowStatus.replace(/\.$/, '')
-  return { text: `${count}. ${next}.`, busy: false }
+  const waiting = view.queue[0].waiting
+  const next = waiting ? `Next ${waiting.charAt(0).toLowerCase()}${waiting.slice(1)}` : 'Next starts in a moment.'
+  return { text: `${count}. ${next}`, busy: false }
 }

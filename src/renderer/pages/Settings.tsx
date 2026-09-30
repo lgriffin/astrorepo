@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { ToolsView } from '@shared/types'
@@ -7,8 +7,11 @@ import { useLocation } from 'react-router-dom'
 import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
 
 const scrollTo = (section: string): void => {
-  document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById(`settings-${section}`)?.scrollIntoView({ block: 'start' })
 }
+
+/** Anything the user does to move the page ends the follow-the-section scroll. */
+const USER_SCROLL = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const
 
 interface FolderSetting {
   key: string
@@ -78,9 +81,24 @@ export function Settings(): React.ReactElement {
   // A link such as "Change the run window in Settings" opens the page at that section.
   const { search } = useLocation()
   const section = settingsSectionFrom(search)
+  // The sections above it (folders, tools, run window) load on their own and grow, so the page
+  // follows the section while the content settles, and stops as soon as the user scrolls.
+  const page = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (section && folders.length > 0) scrollTo(section)
-  }, [section, folders.length])
+    const content = page.current
+    if (!section || !content) return
+    scrollTo(section)
+    const follow = new ResizeObserver(() => scrollTo(section))
+    follow.observe(content)
+    const stop = (): void => {
+      follow.disconnect()
+      for (const e of USER_SCROLL) window.removeEventListener(e, stop)
+      clearTimeout(timer)
+    }
+    const timer = setTimeout(stop, 5000)
+    for (const e of USER_SCROLL) window.addEventListener(e, stop, { passive: true })
+    return stop
+  }, [section])
 
   async function handleBrowse(key: string): Promise<void> {
     const result = await invoke<{ path: string | null }>('settings:pick-folder')
@@ -101,7 +119,7 @@ export function Settings(): React.ReactElement {
 
   return (
     <PageContainer>
-      <div className="space-y-6 max-w-2xl">
+      <div ref={page} className="space-y-6 max-w-2xl">
         <nav className="flex flex-wrap gap-2 text-xs">
           {SETTINGS_SECTIONS.map(s => (
             <button key={s.id} onClick={() => scrollTo(s.id)} className="px-2 py-1 border border-astro-border rounded text-astro-muted hover:text-astro-text hover:border-astro-accent">

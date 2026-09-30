@@ -2,7 +2,8 @@
 
 The sidebar lists every place in the app once. The four you use most sit at the top; the rest are
 grouped by what you go there to do. A page's title is always its name in the sidebar, and the line
-under the title says what the page answers.
+under the title says what the page answers. Live detail, such as how many targets there are,
+sits on a smaller line below that.
 
 ## The daily places
 
@@ -34,7 +35,8 @@ stays lit in the sidebar and a link above the title (for example **← Targets**
 ## The jobs line
 
 While a job runs or waits, a line under the sidebar says so on every page: the running job's name,
-or how many jobs are queued and when the run window opens. Click it to open Jobs. When nothing is
+or how many jobs are queued and why the next one has not started (the run window, disk space, a
+busy PC), in the same words as the Jobs page. Click it to open Jobs. When nothing is
 queued the line is not shown.
 
 ## Settings
