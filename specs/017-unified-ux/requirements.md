@@ -75,3 +75,11 @@ The slices, each its own pull request:
 | UX-003 | State | While the user is on a page below a place, such as a target, a collection or the night form, the system shall keep that place lit in the sidebar and link back to it above the page title. |
 | UX-004 | State | While a job runs or waits in the queue, the system shall say so under the sidebar on every page, naming the running job, or saying how many wait and, in the job runner's own words, why the next one has not started. |
 | UX-005 | Event | When the user follows a link to Settings from another page, the system shall open Settings at the section the link names. |
+
+## U2 · Home first
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| UX-006 | Ubiquitous | The system shall open Home on Next actions, followed by Coming nights and what is hiding in the files, then how far the targets have got, each part loading on its own and saying, with a way to try again, when it could not be read, and shall show the totals and breakdowns on Insights instead. |
+| UX-007 | State | While a target has a stack job queued or running, the system shall say so on that target's stacking suggestion on Home, keeping that line current while Home stays open, and link it to Jobs rather than to the target. |
+| UX-008 | Ubiquitous | The system shall draw the cards on Home and Jobs, and what each says when it is empty, with one shared card and empty-state component. |

@@ -23,7 +23,7 @@ import { startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages 
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
 import { composeCore } from '../composition'
-import { toNextActionRecommendation } from '../adapters/stacking-suggestion-presenter'
+import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
@@ -681,8 +681,15 @@ export function registerIpcHandlers(): void {
 
   handle('recommendations:list', async () => {
     // Strangler seam: ranked captures and stacking come from the hexagonal core, the rest from the legacy service.
-    const actions = await composeCore(getSqlite()).listNextActions()
-    return { recommendations: [...actions.map(toNextActionRecommendation), ...getRecommendations()] }
+    const [actions, queue] = await Promise.all([
+      composeCore(getSqlite()).listNextActions(),
+      // Without the job runner the list still loads; it just cannot say what is queued.
+      // list() reads the store only, so Home never samples the machine the runner's idle check relies on.
+      Promise.resolve()
+        .then(() => jobs().list())
+        .catch(() => [])
+    ])
+    return { recommendations: withQueuedJobs([...actions.map(toNextActionRecommendation), ...getRecommendations()], queue) }
   })
 
   handle('cockpit:overview', async () => {

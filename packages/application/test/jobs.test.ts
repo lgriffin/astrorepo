@@ -221,6 +221,19 @@ function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWo
 }
 
 describe('the job runner', () => {
+  it('[UX-007] Given a page that only shows the jobs, When it lists them, Then the machine is not sampled and nothing starts', async () => {
+    const t = scheduler()
+    const job = await t.add()
+    let sampled = 0
+    t.machine.sample = async () => {
+      sampled++
+      return t.machine.load
+    }
+    expect((await t.s.list()).map(j => j.id)).toEqual([job.id])
+    expect(sampled).toBe(0)
+    expect(t.runner.runs).toHaveLength(0)
+  })
+
   it('[JOB-004] Given a window job and an idle PC in the window, When ticked, Then it lays out the frames, runs Siril and succeeds on exit code 0', async () => {
     const t = scheduler()
     const job = await t.add()

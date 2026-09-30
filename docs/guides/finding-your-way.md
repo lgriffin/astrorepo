@@ -48,6 +48,6 @@ site in Settings" on Home's Coming nights card opens **Your site**.
 
 ## What is changing next
 
-The overhaul lands in slices ([spec 017](../../specs/017-unified-ux/requirements.md)). Next, Home
-opens on Next actions and Coming nights, and a target's page becomes one flow from plan to stack
-to post-processing to jobs.
+The overhaul lands in slices ([spec 017](../../specs/017-unified-ux/requirements.md)). Home now
+opens on Next actions (see [Using the cockpit](cockpit.md)). Next, a target's page becomes one
+flow from plan to stack to post-processing to jobs.

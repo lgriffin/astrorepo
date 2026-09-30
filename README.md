@@ -40,7 +40,7 @@ It is becoming a local-first observatory cockpit: it shows what is hiding in you
 - **Observatory Cockpit** -- What is hidden in your files (nights never stacked, subs with no target, orphan calibration, rejected subs), progress derived from your data, and dismissible "ready to stack" and "restack" suggestions.
 - **Next Actions** -- One ranked to-do list on Home: tonight's captures (closing seasons first, with hours up, moon distance and goal shortfall) ahead of stacking suggestions.
 - **Seasons and Moon Planning** -- From your site: tonight's targets with work left and how close the moon comes, bright-moon filtering for dual-band or narrowband filters, targets whose season closes within 30 days, new-moon windows with the best targets, and a 12-month season table.
-- **Home** -- The cockpit, plus aggregate statistics across sessions, targets, and equipment.
+- **Home** -- The cockpit: next actions first, then coming nights, hidden data and progress. Totals across sessions, targets and equipment are on Insights.
 - **Dark Astronomy UI** -- Tailwind CSS custom palette designed for nighttime use.
 
 ## Tech Stack

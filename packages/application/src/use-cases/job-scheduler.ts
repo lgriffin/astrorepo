@@ -33,6 +33,8 @@ export interface JobScheduler {
   tick(): Promise<JobsSnapshot>
   /** The queue as it stands, without starting anything. */
   snapshot(): Promise<JobsSnapshot>
+  /** The jobs alone, without sampling the machine or checking disk space (for pages that only show them). */
+  list(): Promise<Job[]>
   /** Stops a job, or takes it off the queue before it starts. */
   cancel(jobId: string): Promise<Job>
   /** Moves a queued job ahead of the window and idle rules. */
@@ -145,6 +147,8 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
 
   return {
     snapshot,
+
+    list: () => deps.store.list(),
 
     async tick() {
       const snap = await snapshot()

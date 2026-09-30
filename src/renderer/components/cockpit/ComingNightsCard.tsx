@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ForwardPlanView, PlanTargetView } from '@shared/types'
 import { settingsLink } from '@shared/navigation'
+import { Card, EmptyState, LinkButton } from '../common/Card'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -26,26 +27,17 @@ export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.Rea
   const navigate = useNavigate()
   if (plan.status === 'no-site') {
     return (
-      <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Coming nights</h2>
-        <p className="text-sm text-astro-muted">{plan.message}</p>
-        <button onClick={() => navigate(settingsLink('location'))} className="mt-2 text-xs text-astro-accent hover:underline">
-          Set your site in Settings
-        </button>
-      </div>
+      <Card title="Coming nights">
+        <EmptyState action={<LinkButton onClick={() => navigate(settingsLink('location'))}>Set your site in Settings</LinkButton>}>{plan.message}</EmptyState>
+      </Card>
     )
   }
 
   const { tonight, closing, windows } = plan
   const next = windows[0]
   return (
-    <div className="bg-astro-surface border border-astro-border rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">Coming nights</h2>
-        <button onClick={() => navigate('/sky-planner')} className="text-xs text-astro-accent hover:underline">
-          Seasons
-        </button>
-      </div>
+    <Card title="Coming nights" action={<LinkButton onClick={() => navigate('/sky-planner')}>Open the Sky planner</LinkButton>}>
+      <div className="space-y-4">
 
       <section>
         {tonight ? (
@@ -83,6 +75,7 @@ export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.Rea
           )}
         </section>
       )}
-    </div>
+      </div>
+    </Card>
   )
 }
