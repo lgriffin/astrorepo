@@ -12,8 +12,8 @@ when the code says otherwise, and the reasons are recorded here.
 | A · Walking skeleton | Hexagonal core, EARS gate, "ready to stack" and "restack" suggestions on the dashboard | [009](../specs/009-baseline-architecture/requirements.md) | Done (PR #14) |
 | C1 · Discovery cockpit | Hidden-data card, progress strip, "What the files say" on each target, dismissible suggestions, one migration source | [010](../specs/010-discovery-cockpit/requirements.md) | Done |
 | B · Ingest core | Siril prep in a work area (sources untouched), fast rescans, quarantine of unreadable files, duplicate check | [011](../specs/011-ingest-core/requirements.md) | Done |
-| L · Seasons, moon and tonight | Sites, 12-month season view, closing-season warnings, new-moon windows, bright-moon filtering | 012 | Next |
-| C2 · Ranked cockpit | Suggestions ranked by unprocessed hours, season left and coming nights | 013 | Planned |
+| L · Seasons, moon and tonight | Coming-nights card, 12-month season table, closing-season warnings, new-moon windows, bright-moon filtering | [012](../specs/012-seasons-moon/requirements.md) | Done |
+| C2 · Ranked cockpit | Suggestions ranked by unprocessed hours, season left and coming nights | 013 | Next |
 | C3 · Recipes | Siril recipe library, "what could I build", confirm before run | later | Planned |
 | G · Jobs and Siril runner | A recipe runs on the Windows PC with a live log | later | Planned |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
@@ -31,6 +31,9 @@ when the code says otherwise, and the reasons are recorded here.
   in Node, so faster), sampled hashing so only likely duplicates are read in full, and no
   asset/location tables until the Postgres store. Indexing TIFF/PNG/JPEG and live import progress
   (ING-002, ING-007) move to the NAS core-api.
+- **Seasons use the one site in Settings** (spec 012). Several sites wait for slice D, weather
+  (FWD-003) waits for an optional forecast adapter, and nautical darkness stands in on summer
+  nights when astronomical darkness never comes.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
   packages. Until then the core runs inside the Electron main process over SQLite, which keeps the
   app shippable at every step.

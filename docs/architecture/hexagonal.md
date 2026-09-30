@@ -49,10 +49,17 @@ flowchart LR
 | `reportHiddenData` | `reportHiddenData`, `calibrates`, `groupDuplicates` | FrameCatalogue, FileHashStore | `cockpit:overview` | 010, 011 |
 | `findDuplicates` | `isHashCurrent`, `duplicateCandidates`, `groupDuplicates` | FileIndex, ContentHasher, FileHashStore | `ingest:find-duplicates` | 011 |
 | `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace | `home:prep-siril` | 011 |
+| `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 
 The legacy FITS scan (`services/fits-analyzer.ts`) uses the domain's `planRescan` for its fast
 path and writes unreadable files to `quarantined_files`; moving the scan itself into the core is
 the next step for ingest.
+
+The Ephemeris port hands the domain sidereal time and the moon for each half hour of a night's dark
+window, so altitude, separation and every planning rule are plain trigonometry in the domain. The
+astronomy-engine adapter is the only code that knows about the sun and moon, and the testkit's
+`FakeEphemeris` uses real sidereal time with a scripted sun and moon. The legacy Sky Planner
+service still answers its own channels; it moves behind the same port next.
 
 Presenters in `src/main/adapters/*-presenter.ts` turn domain results into the plain shapes in
 `src/shared/types.ts` (ISO date strings, human sentences) that the renderer shows. Rules never

@@ -25,6 +25,7 @@ import { getSqlite, resetDatabase } from '../db/connection'
 import { composeCore } from '../composition'
 import { toRecommendation } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
+import { toForwardPlanView } from '../adapters/planning-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -614,6 +615,8 @@ export function registerIpcHandlers(): void {
   handle('cockpit:dismiss', validated('cockpit:dismiss', (args) => {
     return composeCore(getSqlite()).dismissSuggestion(args.suggestion_id)
   }))
+
+  handle('planning:forward', async () => toForwardPlanView(await composeCore(getSqlite()).planForward()))
 
   handle('discovery:target', validated('discovery:target', async (args) => {
     const d = await composeCore(getSqlite()).discoverTarget(args.target_id)

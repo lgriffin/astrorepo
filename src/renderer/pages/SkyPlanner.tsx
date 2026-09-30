@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
-import type { AltitudePoint, BestTargetTonight, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
+import { SeasonsTable } from '../components/cockpit/SeasonsTable'
+import type { AltitudePoint, BestTargetTonight, ForwardPlanView, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
 
 function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement {
   if (data.length < 2) return <p className="text-astro-muted text-sm">No altitude data available</p>
@@ -130,6 +131,7 @@ export function SkyPlanner(): React.ReactElement {
   const [altitudeCurve, setAltitudeCurve] = useState<AltitudePoint[]>([])
   const [visibility, setVisibility] = useState<MonthlyVisibility[]>([])
   const [loading, setLoading] = useState(false)
+  const [plan, setPlan] = useState<ForwardPlanView | null>(null)
 
   const loadLocation = useCallback(async () => {
     const [latResult, lonResult, elevResult] = await Promise.all([
@@ -169,6 +171,15 @@ export function SkyPlanner(): React.ReactElement {
     }
   }, [locationLoaded, loadSkyData, lat, lon])
 
+  // The season plan reads the saved site, so it reloads on load and after each save, not on every edit.
+  const loadPlan = useCallback(() => {
+    invoke<ForwardPlanView>('planning:forward').then(setPlan).catch(() => setPlan(null))
+  }, [])
+
+  useEffect(() => {
+    if (locationLoaded) loadPlan()
+  }, [locationLoaded, loadPlan])
+
   const loadTargetDetail = useCallback(async (targetId: string) => {
     if (lat === null || lon === null) return
     setSelectedTarget(targetId)
@@ -190,7 +201,8 @@ export function SkyPlanner(): React.ReactElement {
       invoke('settings:set', { key: 'observer_elevation', value: String(elevation) })
     ])
     loadSkyData()
-  }, [lat, lon, elevation, loadSkyData])
+    loadPlan()
+  }, [lat, lon, elevation, loadSkyData, loadPlan])
 
   if (!locationLoaded) {
     return (
@@ -400,6 +412,29 @@ export function SkyPlanner(): React.ReactElement {
           </div>
         </div>
       </div>
+
+      {plan?.status === 'ok' && (
+        <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 bg-astro-surface border border-astro-border rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Seasons for targets with work left</h2>
+            <SeasonsTable plan={plan} />
+          </div>
+          <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">New-moon windows</h2>
+            {plan.windows.length === 0 && <p className="text-sm text-astro-muted">No new moon in the next 90 days.</p>}
+            <ul className="space-y-3">
+              {plan.windows.map(w => (
+                <li key={w.newMoon}>
+                  <p className="text-sm text-astro-text">{w.label}</p>
+                  <p className="text-xs text-astro-muted">
+                    {w.targets.length > 0 ? w.targets.map(t => `${t.targetName} (${t.detail})`).join(', ') : 'No target with work left is well placed.'}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }
