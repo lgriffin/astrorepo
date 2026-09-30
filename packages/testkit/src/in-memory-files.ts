@@ -126,6 +126,13 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
     return { ...this.space }
   }
 
+  /** Stack results per work folder, as a Siril run would leave them. */
+  readonly results = new Map<string, { path: string; sizeBytes: number; modifiedAt: Date | null }[]>()
+
+  async stackResults(workDir: string) {
+    return [...(this.results.get(workDir) ?? [])].sort((a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0))
+  }
+
   async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {
     let bytes = 0
     for (const p of placements) {

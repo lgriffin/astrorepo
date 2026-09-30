@@ -102,6 +102,20 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     return { freeBytes: fsStats ? Number(fsStats.bavail) * Number(fsStats.bsize) : null, usedBytes }
   }
 
+  async stackResults(workDir: string): Promise<{ path: string; sizeBytes: number; modifiedAt: Date | null }[]> {
+    const entries = await fs.promises.readdir(workDir, { withFileTypes: true }).catch(() => [])
+    const results = await Promise.all(
+      entries
+        .filter(e => e.isFile() && STACK_RESULT.test(e.name))
+        .map(async e => {
+          const full = path.join(workDir, e.name)
+          const stat = await fs.promises.stat(full)
+          return { path: full, sizeBytes: stat.size, modifiedAt: stat.mtime }
+        })
+    )
+    return results.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
+  }
+
   async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {
     // The work folder need not exist yet; its nearest existing ancestor is on the volume it will be.
     const work = await fs.promises.stat(await nearestExisting(workDir)).catch(() => null)
@@ -117,6 +131,9 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     return bytes
   }
 }
+
+/** Siril's stock scripts save the stack as result_<livetime>s.fit in the work folder. */
+const STACK_RESULT = /^result.*\.(fit|fits|fts)$/i
 
 /** A work-area entry still matches its source: the same file (a hard link) or a copy of this version. */
 function isCurrent(existing: fs.Stats, source: fs.Stats): boolean {

@@ -7,7 +7,7 @@ import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { formatExposure, formatSize } from '../utils/format'
 import { TargetDiscoveryPanel } from '../components/cockpit/TargetDiscoveryPanel'
-import type { SirilPlanView, SirilScriptView, SirilWorkspaceView, Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
+import type { PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
 
 export function TargetDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -100,6 +100,10 @@ export function TargetDetail(): React.ReactElement {
           {homeData && <HomeFolderSection homeData={homeData} onRefresh={() => {
             if (id) invoke<TargetHomeData | null>('home:target-data', { target_id: id }).then(setHomeData).catch(() => {})
           }} />}
+
+          <Section title="Post-processing">
+            <PostProcessing targetId={target.id} rawPath={homeData?.rawPath ?? null} />
+          </Section>
 
           {obsData && <ObservationDataSection data={obsData} />}
 
@@ -503,6 +507,69 @@ function StackingPlan({ rawPath, refreshKey }: { rawPath: string; refreshKey: st
           <p className="mt-2 text-astro-muted">Sizes assume Siril keeps every intermediate file, as its stock scripts do.</p>
         </details>
       )}
+    </div>
+  )
+}
+
+/** The Siril_Scripts v2 command for this target's stack, with the profile from its object type (specs/015). */
+function PostProcessing({ targetId, rawPath }: { targetId: string; rawPath: string | null }): React.ReactElement {
+  const [view, setView] = useState<PostProcessView | null>(null)
+  const [choice, setChoice] = useState<{ stack_path?: string; profile?: string; quality?: string }>({})
+  const [copied, setCopied] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setFailed(false)
+    invoke<PostProcessView>('recipe:post-process', { target_id: targetId, ...(rawPath ? { raw_path: rawPath } : {}), ...choice })
+      .then(setView)
+      .catch(() => setFailed(true))
+  }, [targetId, rawPath, choice])
+
+  if (failed) return <p className="text-xs text-astro-muted">The post-processing recipe could not be worked out.</p>
+  if (!view) return <p className="text-xs text-astro-muted">Looking for a stack and the tools…</p>
+  if (view.message) return <p className="text-sm text-astro-muted">{view.message}</p>
+
+  const select = 'bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs text-astro-text'
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 items-center text-xs">
+        {view.stacks.length > 1 && (
+          <select className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value }))}>
+            {view.stacks.map(s => <option key={s.path} value={s.path}>{s.label}</option>)}
+          </select>
+        )}
+        <select className={select} value={view.profile} onChange={e => setChoice(c => ({ ...c, profile: e.target.value }))}>
+          {view.profiles.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select className={select} value={view.quality} onChange={e => setChoice(c => ({ ...c, quality: e.target.value }))}>
+          {view.qualities.map(q => <option key={q} value={q}>{q}</option>)}
+        </select>
+      </div>
+      <p className="text-xs text-astro-muted">{view.profileReason}</p>
+      {view.missing && <p className="text-xs text-yellow-400">{view.missing}</p>}
+      {view.command && (
+        <div className="flex gap-2 items-start">
+          <code className="flex-1 block bg-astro-bg border border-astro-border rounded px-2 py-1.5 text-[11px] text-astro-text break-all">{view.command}</code>
+          <button
+            onClick={() => {
+              void navigator.clipboard.writeText(view.command ?? '').then(() => setCopied(true))
+            }}
+            className="px-2 py-1 text-xs border border-astro-border rounded text-astro-muted hover:text-astro-text"
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      )}
+      {view.space && (
+        <p className="text-xs">
+          <span className="text-astro-text">{view.space}</span>{' '}
+          {view.verdictText && <span className={VERDICT_TONE[view.verdict]}>{view.verdictText}.</span>}
+        </p>
+      )}
+      {view.outputDir && <p className="text-xs text-astro-muted">Writes to <span className="font-mono">{view.outputDir}</span>.</p>}
+      {view.skipped.map(s => <p key={s} className="text-xs text-astro-muted">Skips {s}</p>)}
+      {view.warnings.map(w => <p key={w} className="text-xs text-yellow-400">{w}</p>)}
+      <p className="text-[10px] text-astro-muted">Run it in a terminal on the PC for now; running it from here comes with the job runner.</p>
     </div>
   )
 }

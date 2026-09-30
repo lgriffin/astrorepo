@@ -13,3 +13,7 @@ export type { Ephemeris, PlanningSettings, TargetPosition, TargetPositions } fro
 export * from './use-cases/plan-forward'
 export * from './use-cases/list-next-actions'
 export * from './use-cases/estimate-siril-run'
+export type { ToolHub } from './ports/tool-hub'
+export type { StackCatalogue, StackFile } from './ports/stack-catalogue'
+export * from './use-cases/list-tools'
+export * from './use-cases/plan-post-processing'

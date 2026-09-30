@@ -1005,3 +1005,50 @@ export type ForwardPlanView =
       windows: DarkWindowView[]
       seasons: TargetSeasonView[]
     }
+
+/** One external tool in Settings > Tools (specs/015-tool-hub). */
+export interface ToolView {
+  id: string
+  label: string
+  purpose: string
+  settingKey: string
+  found: boolean
+  path: string | null
+  /** How it was found: "Your setting", "On PATH" or "Standard install folder". */
+  how: string | null
+  /** Set when the user's saved path does not exist. */
+  settingNote: string | null
+  /** Places looked when not found. */
+  looked: string[]
+  /** Set when Siril_Scripts v2 will not run it from where it was found. */
+  warning: string | null
+  notNeeded: boolean
+}
+
+export interface ToolsView {
+  windows: boolean
+  summary: string
+  tools: ToolView[]
+}
+
+/** A target's Siril_Scripts v2 recipe (specs/015-tool-hub). */
+export interface PostProcessView {
+  /** Set when there is nothing to process yet, saying why. */
+  message: string | null
+  stacks: { path: string; label: string }[]
+  stackPath: string | null
+  profile: string
+  profiles: string[]
+  profileReason: string
+  quality: string
+  qualities: string[]
+  /** The command to run; null while a required tool is missing. */
+  command: string | null
+  missing: string | null
+  skipped: string[]
+  warnings: string[]
+  outputDir: string | null
+  space: string | null
+  verdict: 'fits' | 'short' | 'unknown'
+  verdictText: string | null
+}

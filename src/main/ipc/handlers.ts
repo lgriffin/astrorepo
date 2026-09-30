@@ -26,6 +26,7 @@ import { composeCore } from '../composition'
 import { toNextActionRecommendation } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
+import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
@@ -46,6 +47,12 @@ function sirilFolderName(sourceDir: string): string {
 }
 
 /** Where Prep for Siril lays out a source folder: the work area setting, else the app's data folder. */
+/** Folders the app only reads: the home and FITS master folders and every scanned folder. */
+function readOnlyDirs(): string[] {
+  const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
+  return [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
+}
+
 function sirilWorkDir(sourceDir: string): string {
   const workArea = getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
   return path.join(workArea, 'siril', sirilFolderName(sourceDir))
@@ -426,14 +433,26 @@ export function registerIpcHandlers(): void {
     // Never rearranges the source folder (ING-001): Siril gets its own layout in the work area.
     const workDir = sirilWorkDir(args.raw_path)
     // A work area inside any folder the app reads would write into it, so those are refused.
-    const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
-    const protectedDirs = [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
-    return composeCore(getSqlite()).prepareSirilWorkspace(args.raw_path, workDir, protectedDirs)
+    return composeCore(getSqlite()).prepareSirilWorkspace(args.raw_path, workDir, readOnlyDirs())
   }))
 
   handle('siril:estimate', validated('siril:estimate', async (args) => {
     // Reads the index and the disk only (NFR-010): the work folder may not exist yet.
     return toSirilPlanView(await composeCore(getSqlite()).estimateSirilRun(args.raw_path, sirilWorkDir(args.raw_path)))
+  }))
+
+  handle('tools:list', async () => toToolsView(await composeCore(getSqlite()).listTools()))
+
+  handle('recipe:post-process', validated('recipe:post-process', async (args) => {
+    // Finds tools and reads the index only (NFR-011): nothing is run or written.
+    const plan = await composeCore(getSqlite()).planPostProcessing(args.target_id, {
+      workDir: args.raw_path ? sirilWorkDir(args.raw_path) : undefined,
+      readOnlyDirs: readOnlyDirs(),
+      stackPath: args.stack_path,
+      profile: args.profile,
+      quality: args.quality
+    })
+    return toPostProcessView(plan)
   }))
 
   handle('ingest:find-duplicates', async () => {

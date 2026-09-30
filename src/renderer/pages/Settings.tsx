@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
+import type { ToolsView } from '@shared/types'
 
 interface FolderSetting {
   key: string
@@ -121,6 +122,8 @@ export function Settings(): React.ReactElement {
             ))}
           </div>
         </div>
+
+        <ToolsSection />
 
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>
@@ -276,5 +279,71 @@ export function Settings(): React.ReactElement {
         </div>
       </div>
     </PageContainer>
+  )
+}
+
+/** Settings > Tools: the tool hub (specs/015-tool-hub). Saving a path re-checks every tool. */
+function ToolsSection(): React.ReactElement {
+  const [view, setView] = useState<ToolsView | null>(null)
+  const [editing, setEditing] = useState<Record<string, string>>({})
+
+  const load = (): void => {
+    invoke<ToolsView>('tools:list').then(setView).catch(() => setView(null))
+  }
+  useEffect(load, [])
+
+  async function save(key: string, value: string): Promise<void> {
+    await invoke('settings:set', { key, value: value.trim() })
+    setEditing(e => {
+      const next = { ...e }
+      delete next[key]
+      return next
+    })
+    load()
+  }
+
+  return (
+    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
+      <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Tools</h2>
+      <p className="text-xs text-astro-muted mb-4">
+        Programs the app hands work to. Each is looked for in the path you give here, then on PATH, then in its usual install folder. Nothing is run to check.
+        {view && <span className="text-astro-text"> {view.summary}</span>}
+      </p>
+      <div className="space-y-4">
+        {view?.tools.filter(t => !t.notNeeded).map(t => (
+          <div key={t.id}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium text-astro-text">{t.label}</span>
+              <span className={`text-xs ${t.found ? 'text-green-400' : 'text-yellow-400'}`}>{t.found ? t.how : 'Not found'}</span>
+            </div>
+            <p className="text-xs text-astro-muted">{t.purpose}</p>
+            {t.path && <p className="text-xs font-mono text-astro-text break-all">{t.path}</p>}
+            {t.settingNote && <p className="text-xs text-yellow-400">{t.settingNote}</p>}
+            {t.warning && <p className="text-xs text-yellow-400">{t.warning}</p>}
+            {!t.found && t.looked.length > 0 && (
+              <details className="text-xs text-astro-muted">
+                <summary className="cursor-pointer">Where it looked</summary>
+                <ul className="font-mono pl-3">{t.looked.map(l => <li key={l} className="break-all">{l}</li>)}</ul>
+              </details>
+            )}
+            <div className="flex gap-2 mt-1">
+              <input
+                className="flex-1 bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs text-astro-text"
+                placeholder={t.id === 'siril-scripts' ? 'Folder of your Siril_Scripts clone' : 'Full path to the program'}
+                value={editing[t.settingKey] ?? ''}
+                onChange={e => setEditing(prev => ({ ...prev, [t.settingKey]: e.target.value }))}
+              />
+              <button
+                onClick={() => void save(t.settingKey, editing[t.settingKey] ?? '')}
+                disabled={editing[t.settingKey] === undefined}
+                className="px-3 py-1 text-xs bg-astro-accent text-white rounded disabled:opacity-50"
+              >
+                {editing[t.settingKey]?.trim() ? 'Save' : 'Use default'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
