@@ -16,7 +16,7 @@ export function Images(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="Images" subtitle="Browse your astrophotography images">
+      <PageContainer>
         <div className="text-astro-muted">Loading images...</div>
       </PageContainer>
     )
@@ -24,7 +24,7 @@ export function Images(): React.ReactElement {
 
   if (!result || (result.targets.length === 0 && result.unmatched.length === 0)) {
     return (
-      <PageContainer title="Images" subtitle="Browse your astrophotography images">
+      <PageContainer>
         <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
           <p className="text-sm text-astro-muted">
             No images found. Run a library scan from the{' '}
@@ -37,7 +37,7 @@ export function Images(): React.ReactElement {
   }
 
   return (
-    <PageContainer title="Images" subtitle="Browse your astrophotography images">
+    <PageContainer>
       <div className="space-y-6">
         <div className="text-sm text-astro-muted">
           {result.totalImages} images across {result.targets.length} targets

@@ -17,6 +17,8 @@ when the code says otherwise, and the reasons are recorded here.
 | C3a · Stacking plan | Which stock Siril script fits a target's frames, the disk space it needs stage by stage, and whether the work area has room | [014](../specs/014-siril-space/requirements.md) | Done |
 | C3b · Tool hub and post-processing recipes | Settings > Tools finds Siril, Siril_Scripts, RC Astro and Git Bash; each target's page gives the Siril_Scripts v2 command for its stack (profile, coordinates and optics filled in) and the disk it needs | [015](../specs/015-tool-hub/requirements.md) | Done |
 | G · Job runner | A small CI-like queue on the Windows PC: stack and post-processing runs start in a nightly run window while the PC is idle, one at a time at low priority, with predicted length, live logs, Run now and Cancel | [016](../specs/016-job-runner/requirements.md) | Done |
+| U1 · One map (UX overhaul) | Sidebar grouped into the four daily places plus Files, Review, Collections and Setup; one name per place; back links on detail pages; jobs status on every page; links open the Settings section they name | [017](../specs/017-unified-ux/requirements.md) | Done |
+| U2 to U5 · UX overhaul | Home opens on Next actions; a target's page as one flow from plan to jobs; the site set once with a setup checklist; consistent wording | [017](../specs/017-unified-ux/requirements.md) | Next |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
 
 ## Changes to the blueprint
@@ -53,16 +55,21 @@ when the code says otherwise, and the reasons are recorded here.
   default) and an idle PC, run one at a time at low priority, and a job predicted to overrun the
   window waits for the next night while a shorter one goes first. The queue is a SQLite table on
   the PC rather than pg-boss on the NAS until the NAS core-api exists.
+- **A UX overhaul joins wave 2** (spec 017). Leigh asked for "a simple and unified experience".
+  The audit found 17 flat sidebar entries, pages named differently from their sidebar entry, the
+  first screen's to-do list at the bottom of the page and a target's page built as eleven stacked
+  panels, so slices U1 to U5 unify the shell, Home, the target page, setup and wording before the
+  remaining adapters add more pages.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
   packages. Until then the core runs inside the Electron main process over SQLite, which keeps the
   app shippable at every step.
 
 ## Open questions for Leigh
 
-- One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
+- ([#23](https://github.com/lgriffin/astrorepo/issues/23)) One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
   the scope adapters can be built from real files.
-- The Synology model, which decides the container image targets.
-- Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
+- ([#24](https://github.com/lgriffin/astrorepo/issues/24)) The Synology model, which decides the container image targets.
+- ([#25](https://github.com/lgriffin/astrorepo/issues/25)) Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
   jobs only start while it is open.
-- Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
+- ([#26](https://github.com/lgriffin/astrorepo/issues/26)) Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
   checks (it can also be set in Settings > Tools).

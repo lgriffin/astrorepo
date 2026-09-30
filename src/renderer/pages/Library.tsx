@@ -87,7 +87,7 @@ export function Library(): React.ReactElement {
 
   if (homeFolderSet === null) {
     return (
-      <PageContainer title="Library">
+      <PageContainer>
         <div className="text-astro-muted">Loading...</div>
       </PageContainer>
     )
@@ -95,7 +95,7 @@ export function Library(): React.ReactElement {
 
   if (!homeFolderSet) {
     return (
-      <PageContainer title="Library" subtitle="Scan and organize your astrophotography data">
+      <PageContainer>
         <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
           <p className="text-sm text-astro-muted">
             No home folder configured. Set your home folder path in{' '}
@@ -108,7 +108,7 @@ export function Library(): React.ReactElement {
   }
 
   return (
-    <PageContainer title="Library" subtitle="Scan and organize your astrophotography data">
+    <PageContainer>
       <div className="space-y-6 max-w-4xl">
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">

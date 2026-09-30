@@ -14,7 +14,8 @@ It is becoming a local-first observatory cockpit: it shows what is hiding in you
 
 - [Charter](.specify/memory/constitution.md): the principles every change is checked against.
 - [Roadmap](docs/roadmap.md): which slices have landed and what comes next.
-- [Using the cockpit](docs/guides/cockpit.md): what the dashboard's progress strip, hidden-data card and suggestions mean.
+- [Finding your way around](docs/guides/finding-your-way.md): the sidebar's places and groups, the jobs line under it, and where each task lives.
+- [Using the cockpit](docs/guides/cockpit.md): what Home's progress strip, hidden-data card and suggestions mean.
 - [Planning ahead](docs/guides/planning.md): seasons, closing windows, new-moon windows and bright-moon choices from your site.
 - [Hexagonal core](docs/architecture/hexagonal.md): how code is laid out and how a service moves into the core.
 
@@ -37,9 +38,9 @@ It is becoming a local-first observatory cockpit: it shows what is hiding in you
 - **Stacking Plan** -- Before Prep for Siril writes anything: which stock Siril script fits a target's frames and calibration, the disk space it needs stage by stage (after Leigh's Siril space estimator), and whether the work area's disk has room.
 - **Project Folder Generation** -- Create imaging project directories from configurable templates (default Siril structure).
 - **Observatory Cockpit** -- What is hidden in your files (nights never stacked, subs with no target, orphan calibration, rejected subs), progress derived from your data, and dismissible "ready to stack" and "restack" suggestions.
-- **Next Actions** -- One ranked to-do list on the dashboard: tonight's captures (closing seasons first, with hours up, moon distance and goal shortfall) ahead of stacking suggestions.
+- **Next Actions** -- One ranked to-do list on Home: tonight's captures (closing seasons first, with hours up, moon distance and goal shortfall) ahead of stacking suggestions.
 - **Seasons and Moon Planning** -- From your site: tonight's targets with work left and how close the moon comes, bright-moon filtering for dual-band or narrowband filters, targets whose season closes within 30 days, new-moon windows with the best targets, and a 12-month season table.
-- **Observatory Dashboard** -- Aggregate statistics across sessions, targets, and equipment.
+- **Home** -- The cockpit, plus aggregate statistics across sessions, targets, and equipment.
 - **Dark Astronomy UI** -- Tailwind CSS custom palette designed for nighttime use.
 
 ## Tech Stack

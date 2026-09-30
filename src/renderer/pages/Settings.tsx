@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
+import { useLocation } from 'react-router-dom'
+import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
+
+const scrollTo = (section: string): void => {
+  document.getElementById(`settings-${section}`)?.scrollIntoView({ block: 'start' })
+}
+
+/** Anything the user does to move the page ends the follow-the-section scroll. */
+const USER_SCROLL = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const
 
 interface FolderSetting {
   key: string
@@ -20,7 +29,7 @@ const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }
   {
     key: 'fits_master_folder',
     label: 'Master FITS Folder',
-    description: 'Root folder containing your astrophotography FITS files. Used as the default path in the FITS Analyzer.'
+    description: 'Root folder containing your astrophotography FITS files. Used as the default path on the FITS files page.'
   },
   {
     key: 'base_folder_path',
@@ -69,6 +78,28 @@ export function Settings(): React.ReactElement {
     loadSettings()
   }, [])
 
+  // A link such as "Change the run window in Settings" opens the page at that section.
+  const { search } = useLocation()
+  const section = settingsSectionFrom(search)
+  // The sections above it (folders, tools, run window) load on their own and grow, so the page
+  // follows the section while the content settles, and stops as soon as the user scrolls.
+  const page = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const content = page.current
+    if (!section || !content) return
+    scrollTo(section)
+    const follow = new ResizeObserver(() => scrollTo(section))
+    follow.observe(content)
+    const stop = (): void => {
+      follow.disconnect()
+      for (const e of USER_SCROLL) window.removeEventListener(e, stop)
+      clearTimeout(timer)
+    }
+    const timer = setTimeout(stop, 5000)
+    for (const e of USER_SCROLL) window.addEventListener(e, stop, { passive: true })
+    return stop
+  }, [section])
+
   async function handleBrowse(key: string): Promise<void> {
     const result = await invoke<{ path: string | null }>('settings:pick-folder')
     if (!result.path) return
@@ -86,50 +117,20 @@ export function Settings(): React.ReactElement {
     setSaving(null)
   }
 
-  const homeFolderPath = folders.find(f => f.key === 'home_folder_path')?.value
-
   return (
-    <PageContainer title="Settings" subtitle="Configure your observatory application">
-      <div className="space-y-6 max-w-2xl">
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Folder Paths</h2>
-          <div className="space-y-5">
-            {folders.map((folder) => (
-              <div key={folder.key}>
-                <label className="block text-sm font-medium text-astro-text mb-1">{folder.label}</label>
-                <p className="text-xs text-astro-muted mb-2">{folder.description}</p>
-                <div className="flex gap-2">
-                  <div className="flex-1 bg-astro-bg border border-astro-border rounded px-3 py-2 text-sm text-astro-text truncate min-h-[38px] flex items-center">
-                    {folder.value || <span className="text-astro-muted italic">Not set</span>}
-                  </div>
-                  <button
-                    onClick={() => handleBrowse(folder.key)}
-                    disabled={saving === folder.key}
-                    className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
-                  >
-                    Browse
-                  </button>
-                  {folder.value && (
-                    <button
-                      onClick={() => handleClear(folder.key)}
-                      disabled={saving === folder.key}
-                      className="px-3 py-2 border border-astro-border text-astro-muted text-sm rounded hover:text-astro-danger hover:border-astro-danger transition-colors disabled:opacity-50"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+    <PageContainer>
+      <div ref={page} className="space-y-6 max-w-2xl">
+        <nav className="flex flex-wrap gap-2 text-xs">
+          {SETTINGS_SECTIONS.map(s => (
+            <button key={s.id} onClick={() => scrollTo(s.id)} className="px-2 py-1 border border-astro-border rounded text-astro-muted hover:text-astro-text hover:border-astro-accent">
+              {s.label}
+            </button>
+          ))}
+        </nav>
 
-        <ToolsSection />
-        <RunWindowSettings />
-
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>
-          <p className="text-xs text-astro-muted mb-4">Used by the Sky Planner and the dashboard's coming-nights card for seasons, moon windows, twilight times and altitude curves.</p>
+        <div id="settings-location" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Your site</h2>
+          <p className="text-xs text-astro-muted mb-4">Used by the Sky planner and Home's coming-nights card for seasons, moon windows, twilight times and altitude curves.</p>
           <div className="grid grid-cols-3 gap-3 mb-3">
             {OBSERVER_SETTINGS.map(s => (
               <label key={s.key} className="block">
@@ -181,19 +182,48 @@ export function Settings(): React.ReactElement {
           </label>
         </div>
 
-        {homeFolderPath && (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Library Scanning</h2>
-            <p className="text-sm text-astro-muted">
-              Use the{' '}
-              <a href="#/library" className="text-astro-accent hover:underline">Library</a>{' '}
-              page to scan your home folder and discover targets.
-            </p>
+        <div id="settings-folders" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Folders</h2>
+          <div className="space-y-5">
+            {folders.map((folder) => (
+              <div key={folder.key}>
+                <label className="block text-sm font-medium text-astro-text mb-1">{folder.label}</label>
+                <p className="text-xs text-astro-muted mb-2">{folder.description}</p>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-astro-bg border border-astro-border rounded px-3 py-2 text-sm text-astro-text truncate min-h-[38px] flex items-center">
+                    {folder.value || <span className="text-astro-muted italic">Not set</span>}
+                  </div>
+                  <button
+                    onClick={() => handleBrowse(folder.key)}
+                    disabled={saving === folder.key}
+                    className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
+                  >
+                    Browse
+                  </button>
+                  {folder.value && (
+                    <button
+                      onClick={() => handleClear(folder.key)}
+                      disabled={saving === folder.key}
+                      className="px-3 py-2 border border-astro-border text-astro-muted text-sm rounded hover:text-astro-danger hover:border-astro-danger transition-colors disabled:opacity-50"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Import / Export</h2>
+        <div id="settings-tools" className="scroll-mt-6">
+          <ToolsSection />
+        </div>
+        <div id="settings-run-window" className="scroll-mt-6">
+          <RunWindowSettings />
+        </div>
+
+        <div id="settings-import" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Import and export</h2>
           <div className="space-y-4">
             <div>
               <h3 className="text-sm text-astro-text mb-2">Export Data</h3>
@@ -236,8 +266,8 @@ export function Settings(): React.ReactElement {
           </div>
         </div>
 
-        <div className="bg-astro-surface border border-red-500/30 rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Danger Zone</h2>
+        <div id="settings-reset" className="scroll-mt-6 bg-astro-surface border border-red-500/30 rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Start again</h2>
           <p className="text-xs text-astro-muted mb-4">
             Clear all targets, FITS scans, sessions, and scan data from the local database. Folder settings are preserved. Your actual files on disk are not affected.
           </p>

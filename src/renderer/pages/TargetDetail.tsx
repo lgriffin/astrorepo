@@ -75,14 +75,6 @@ export function TargetDetail(): React.ReactElement {
     <PageContainer
       title={target.canonicalName}
       subtitle={typeLabel}
-      actions={
-        <Link
-          to="/targets"
-          className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text"
-        >
-          Back
-        </Link>
-      }
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

@@ -1,8 +1,8 @@
 # Using the cockpit
 
-The dashboard opens on the cockpit: what is hiding in your files, how far each target has got,
+Home opens on the cockpit: what is hiding in your files, how far each target has got,
 and what is worth doing next. Everything on it is worked out from the files the app has indexed
-(the Library and FITS Analyzer scans), so it changes as you capture, stack and process.
+(the Library and FITS files scans), so it changes as you capture, stack and process.
 
 ## Coming nights
 
@@ -34,7 +34,7 @@ button that opens the page where you can act on it.
 - **Nights of subs never stacked.** Nights whose subs are newer than the target's latest stack
   (or every night, if it was never stacked). The biggest targets are named.
 - **Subs with no target.** Light frames the scanner could not link to a target, grouped by the
-  folder they are in. Link them in the FITS Analyzer and they start counting.
+  folder they are in. Link them on the FITS files page and they start counting.
 - **Calibration frames that match no lights.** Darks at a gain, exposure and temperature (within
   2 °C and 1 s) no lights use, flats for a filter no lights use, and biases at a gain no lights
   use. A setting missing from a header never counts as a mismatch.
@@ -142,7 +142,7 @@ plan never comes out too small. Making the plan writes nothing, anywhere.
 ## Post-processing
 
 Once a target has a stack, its page shows the Siril_Scripts v2 command to finish it. The recipe
-uses the newest stack still on disk: an integration the FITS Analyzer indexed (not a calibrated
+uses the newest stack still on disk: an integration the FITS files scan indexed (not a calibrated
 sub or a master calibration frame), or the `result*.fit` Siril left in the target's work folder.
 Pick another from the list if there are several.
 

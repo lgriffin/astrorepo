@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { JobsView, JobView } from '@shared/types'
+import { settingsLink } from '@shared/navigation'
 
 const time = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
 
@@ -93,12 +94,12 @@ export function Jobs(): React.ReactElement {
   )
 
   return (
-    <PageContainer title="Jobs">
+    <PageContainer>
       <div className="space-y-4">
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <p className="text-sm text-astro-text">{view?.windowStatus ?? 'Loading the queue…'}</p>
           {view && <p className="text-xs text-astro-muted mt-1">{view.rules} {view.load}</p>}
-          <button onClick={() => navigate('/settings')} className="mt-2 text-xs text-astro-accent hover:underline">
+          <button onClick={() => navigate(settingsLink('run-window'))} className="mt-2 text-xs text-astro-accent hover:underline">
             Change the run window in Settings
           </button>
           {message && <p className="text-xs text-red-400 mt-2">{message}</p>}

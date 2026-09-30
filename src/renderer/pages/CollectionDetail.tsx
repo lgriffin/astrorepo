@@ -59,14 +59,6 @@ export function CollectionDetail(): React.ReactElement {
     <PageContainer
       title={collection.name}
       subtitle={collection.description ?? undefined}
-      actions={
-        <Link
-          to="/collections"
-          className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text"
-        >
-          Back
-        </Link>
-      }
     >
       <div className="mb-6 bg-astro-surface border border-astro-border rounded-lg p-4">
         <div className="flex justify-between text-sm text-astro-muted mb-2">

@@ -52,7 +52,7 @@ export function Calibration(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="Calibration Library">
+      <PageContainer>
         <div className="text-astro-muted">Loading...</div>
       </PageContainer>
     )
@@ -66,8 +66,6 @@ export function Calibration(): React.ReactElement {
 
   return (
     <PageContainer
-      title="Calibration Library"
-      subtitle="Track darks, flats, and biases. Match calibration frames to your light frames."
       actions={
         <button
           onClick={handleAnalyzeCoverage}

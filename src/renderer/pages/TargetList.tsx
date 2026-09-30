@@ -135,7 +135,7 @@ export function TargetList(): React.ReactElement {
   const selectClass = 'px-3 py-2.5 bg-astro-surface border border-astro-border rounded-lg text-astro-text text-sm focus:outline-none focus:border-astro-accent'
 
   return (
-    <PageContainer title="Targets" subtitle={`${total} targets found`}>
+    <PageContainer subtitle={`${total} targets found`}>
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3 items-start">
           <div className="flex-1 min-w-[200px]">

@@ -93,14 +93,20 @@ export function Dashboard(): React.ReactElement {
 
   if (loading || !stats) {
     return (
-      <PageContainer title="Dashboard">
+      <PageContainer>
         <div className="text-astro-muted">Loading statistics...</div>
       </PageContainer>
     )
   }
 
   return (
-    <PageContainer title="Observatory Dashboard" subtitle="Overview of your astrophotography observatory">
+    <PageContainer
+      actions={
+        <button onClick={() => navigate('/sessions/new')} className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text">
+          Log a night
+        </button>
+      }
+    >
       {cockpit && (
         <div className="mb-8 space-y-4">
           <ProgressStrip progress={cockpit.progress} />

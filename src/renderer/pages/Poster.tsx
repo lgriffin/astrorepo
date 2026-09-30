@@ -25,7 +25,7 @@ export function Poster(): React.ReactElement {
   }, [selectedCollection])
 
   return (
-    <PageContainer title="Collection Poster" subtitle="Visual grid of collection targets">
+    <PageContainer>
       <div className="mb-6">
         <select
           value={selectedCollection}
