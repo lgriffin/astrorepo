@@ -30,7 +30,8 @@ The app is one place, not a set of tools. Every page has one name, the one the s
 `src/shared/navigation.ts`, and a new page takes its place in that map's groups rather than a new
 line in the sidebar. An action (log a night, queue a run) is a button where the work is, not a
 place. A link says where it goes and lands there, down to the section. Work the app does unseen,
-such as a queued job, stays visible on every page until it is done.
+such as a queued job, stays visible on every page until it is done. Buttons, labels and titles
+are in sentence case, and text that sends the user somewhere names the place as the sidebar does.
 
 ### III. Requirements are EARS, and every one is tested (non-negotiable)
 
@@ -99,4 +100,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
+**Version**: 1.1.1 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30

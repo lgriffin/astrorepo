@@ -58,7 +58,7 @@ export function toNextActionRecommendation(a: NextAction): Recommendation {
     description: parts.join(' '),
     targetId: a.targetId,
     targetName: a.targetName,
-    actionLabel: 'View Target',
+    actionLabel: 'Open target',
     dismissible: false
   }
 }

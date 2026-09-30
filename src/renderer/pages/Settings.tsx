@@ -161,7 +161,7 @@ export function Settings(): React.ReactElement {
             disabled={observerSaving}
             className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50"
           >
-            {observerSaving ? 'Saving...' : 'Save Location'}
+            {observerSaving ? 'Saving...' : 'Save location'}
           </button>
           <label className="flex items-start gap-2 mt-4 text-sm text-astro-text">
             <input
@@ -239,13 +239,13 @@ export function Settings(): React.ReactElement {
                   onClick={() => invoke('export:sessions-csv')}
                   className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
                 >
-                  Export Sessions CSV
+                  Export sessions CSV
                 </button>
                 <button
                   onClick={() => invoke('export:fits-csv')}
                   className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
                 >
-                  Export FITS Data CSV
+                  Export FITS data CSV
                 </button>
               </div>
             </div>
@@ -260,7 +260,7 @@ export function Settings(): React.ReactElement {
                 }}
                 className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
               >
-                Import NINA Sequence
+                Import NINA sequence
               </button>
               {importResult && <p className="text-xs text-astro-muted mt-2">{importResult}</p>}
             </div>
@@ -285,7 +285,7 @@ export function Settings(): React.ReactElement {
               onClick={() => setShowResetConfirm(true)}
               className="px-4 py-2 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-500/10 transition-colors"
             >
-              Clear Database
+              Clear database
             </button>
           ) : (
             <div className="flex items-center gap-3">

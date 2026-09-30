@@ -72,7 +72,7 @@ export function Calibration(): React.ReactElement {
           disabled={analyzing}
           className="px-4 py-2 bg-astro-accent text-white rounded-lg text-sm font-medium hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
         >
-          {analyzing ? 'Analyzing...' : 'Analyze Coverage'}
+          {analyzing ? 'Analyzing...' : 'Analyze coverage'}
         </button>
       }
     >
@@ -82,7 +82,7 @@ export function Calibration(): React.ReactElement {
           <SummaryCard label="Flats" value={summary?.totalFlats ?? 0} color="text-sky-400" />
           <SummaryCard label="Biases" value={summary?.totalBiases ?? 0} color="text-amber-400" />
           <SummaryCard
-            label="Overall Coverage"
+            label="Overall coverage"
             value={totalCalib > 0 ? `${overallCoverage}%` : '--'}
             color="text-astro-accent"
           />

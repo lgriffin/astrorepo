@@ -15,13 +15,13 @@ when the code says otherwise, and the reasons are recorded here.
 | L · Seasons, moon and tonight | Coming-nights card, 12-month season table, closing-season warnings, new-moon windows, bright-moon filtering | [012](../specs/012-seasons-moon/requirements.md) | Done |
 | C2 · Ranked cockpit | Next actions: tonight's captures (closing seasons first) ranked ahead of stacking; other checks in their own section | [013](../specs/013-ranked-cockpit/requirements.md) | Done |
 | C3a · Stacking plan | Which stock Siril script fits a target's frames, the disk space it needs stage by stage, and whether the work area has room | [014](../specs/014-siril-space/requirements.md) | Done |
-| C3b · Tool hub and post-processing recipes | Settings > Tools finds Siril, Siril_Scripts, RC Astro and Git Bash; each target's page gives the Siril_Scripts v2 command for its stack (profile, coordinates and optics filled in) and the disk it needs | [015](../specs/015-tool-hub/requirements.md) | Done |
+| C3b · Tool hub and post-processing recipes | Settings → Tools finds Siril, Siril_Scripts, RC Astro and Git Bash; each target's page gives the Siril_Scripts v2 command for its stack (profile, coordinates and optics filled in) and the disk it needs | [015](../specs/015-tool-hub/requirements.md) | Done |
 | G · Job runner | A small CI-like queue on the Windows PC: stack and post-processing runs start in a nightly run window while the PC is idle, one at a time at low priority, with predicted length, live logs, Run now and Cancel | [016](../specs/016-job-runner/requirements.md) | Done |
 | U1 · One map (UX overhaul) | Sidebar grouped into the four daily places plus Files, Review, Collections and Setup; one name per place; back links on detail pages; jobs status on every page; links open the Settings section they name | [017](../specs/017-unified-ux/requirements.md) | Done (PR #22) |
 | U2 · Home first (UX overhaul) | Home opens on Next actions, then Coming nights and hidden data, then progress; totals move to Insights; a stacking suggestion already queued in Jobs says so; one shared card and empty state | [017](../specs/017-unified-ux/requirements.md) | Done (PR #27) |
 | U3 · A target in one flow (UX overhaul) | A target's page in four parts (Overview, Stack and process, Files, Notes and nights); stack, post-process and runs as numbered steps that say when a job is already queued; suggestions and jobs open the target at Stack and process | [017](../specs/017-unified-ux/requirements.md) | Done (PR #28) |
-| U4 · Setup once (UX overhaul) | The site set only in Settings; a Get set up checklist on Home until the site, home folder, a scan and Siril are there; empty pages link to the step that fills them | [017](../specs/017-unified-ux/requirements.md) | Done |
-| U5 · UX overhaul | Consistent wording: sentence-case labels, places named as the sidebar names them | [017](../specs/017-unified-ux/requirements.md) | Next |
+| U4 · Setup once (UX overhaul) | The site set only in Settings; a Get set up checklist on Home until the site, home folder, a scan and Siril are there; empty pages link to the step that fills them | [017](../specs/017-unified-ux/requirements.md) | Done (PR #29) |
+| U5 · Consistent words (UX overhaul) | Every button, figure label, card title and suggestion action in sentence case; messages name places as the sidebar does; a test fails on new title-case labels | [017](../specs/017-unified-ux/requirements.md) | Done |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
 
 ## Changes to the blueprint
@@ -75,4 +75,4 @@ when the code says otherwise, and the reasons are recorded here.
 - ([#25](https://github.com/lgriffin/astrorepo/issues/25)) Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
   jobs only start while it is open.
 - ([#26](https://github.com/lgriffin/astrorepo/issues/26)) Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
-  checks (it can also be set in Settings > Tools).
+  checks (it can also be set in Settings → Tools).

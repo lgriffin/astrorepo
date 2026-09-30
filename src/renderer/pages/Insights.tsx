@@ -183,17 +183,17 @@ export function Insights(): React.ReactElement {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Imaging Hours" value={summary.totalImagingHours.toFixed(1)} accent />
-          <StatCard label="Light Frames" value={summary.totalFiles.toLocaleString()} />
-          <StatCard label="Targets Imaged" value={summary.totalTargets} />
+          <StatCard label="Total imaging hours" value={summary.totalImagingHours.toFixed(1)} accent />
+          <StatCard label="Light frames" value={summary.totalFiles.toLocaleString()} />
+          <StatCard label="Targets imaged" value={summary.totalTargets} />
           <StatCard label="Sessions" value={summary.totalSessions} />
         </div>
 
         {summary.mostImagedTarget && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <StatCard label="Most Imaged Target" value={summary.mostImagedTarget} compact />
-            {summary.mostUsedFilter && <StatCard label="Most Used Filter" value={summary.mostUsedFilter} compact />}
-            {summary.bestNightDate && <StatCard label="Best Night" value={summary.bestNightDate} compact />}
+            <StatCard label="Most imaged target" value={summary.mostImagedTarget} compact />
+            {summary.mostUsedFilter && <StatCard label="Most used filter" value={summary.mostUsedFilter} compact />}
+            {summary.bestNightDate && <StatCard label="Best night" value={summary.bestNightDate} compact />}
           </div>
         )}
 

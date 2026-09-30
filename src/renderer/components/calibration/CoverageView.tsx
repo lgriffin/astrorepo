@@ -60,9 +60,9 @@ export function CoverageView({ coverage }: CoverageViewProps): React.ReactElemen
         </div>
 
         <div className="space-y-3">
-          <CoverageBar label="Darks Coverage" percent={coverage.darksCoverage} />
-          <CoverageBar label="Flats Coverage" percent={coverage.flatsCoverage} />
-          <CoverageBar label="Bias Coverage" percent={coverage.biasCoverage} />
+          <CoverageBar label="Darks coverage" percent={coverage.darksCoverage} />
+          <CoverageBar label="Flats coverage" percent={coverage.flatsCoverage} />
+          <CoverageBar label="Bias coverage" percent={coverage.biasCoverage} />
         </div>
       </div>
     </div>

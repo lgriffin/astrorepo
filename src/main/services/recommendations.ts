@@ -82,7 +82,7 @@ export function getRecommendations(): Recommendation[] {
         description: `Only ${hrs} more hours of ${g.filter} needed to reach your integration goal. Consider prioritizing this target in your next session.`,
         targetId: g.target_id,
         targetName: g.canonical_name,
-        actionLabel: 'View Target'
+        actionLabel: 'Open target'
       })
     } else if (pct < 30 && g.achieved > 0) {
       const hrs = (remaining / 3600).toFixed(1)
@@ -94,7 +94,7 @@ export function getRecommendations(): Recommendation[] {
         description: `Integration goal for ${g.filter} is only ${pct.toFixed(0)}% complete. ${hrs} hours remaining.`,
         targetId: g.target_id,
         targetName: g.canonical_name,
-        actionLabel: 'View Target'
+        actionLabel: 'Open target'
       })
     }
   }
@@ -158,7 +158,7 @@ export function getRecommendations(): Recommendation[] {
       description: `Consider advancing this target to the next workflow stage. Last imaged: ${st.lastImaged?.substring(0, 10) ?? 'unknown'}.`,
       targetId: st.id,
       targetName: st.canonical_name,
-      actionLabel: 'Advance Stage'
+      actionLabel: 'Advance stage'
     })
   }
 

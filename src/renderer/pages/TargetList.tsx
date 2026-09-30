@@ -175,7 +175,7 @@ export function TargetList(): React.ReactElement {
             onClick={selected.size === targets.length ? clearSelection : selectAll}
             className="px-3 py-2.5 bg-astro-surface border border-astro-border rounded-lg text-astro-muted text-sm hover:text-astro-text"
           >
-            {selected.size > 0 ? 'Deselect All' : 'Select All'}
+            {selected.size > 0 ? 'Deselect all' : 'Select all'}
           </button>
         </div>
 
@@ -254,7 +254,7 @@ export function TargetList(): React.ReactElement {
             ) : (
               <button onClick={() => setShowBatchStage(true)}
                 className="px-3 py-1.5 bg-astro-bg border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text">
-                Advance Stage
+                Advance stage
               </button>
             )}
 
@@ -273,7 +273,7 @@ export function TargetList(): React.ReactElement {
             ) : (
               <button onClick={openCollectionPicker}
                 className="px-3 py-1.5 bg-astro-bg border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text">
-                Add to Collection
+                Add to collection
               </button>
             )}
 
@@ -295,7 +295,7 @@ export function TargetList(): React.ReactElement {
             <div className="flex-1" />
             <button onClick={clearSelection}
               className="px-3 py-1.5 text-sm text-astro-muted hover:text-astro-text">
-              Clear Selection
+              Clear selection
             </button>
           </div>
         )}

@@ -34,9 +34,9 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Files" value={a.totalFiles} accent compact />
-        <StatCard label="Total Size" value={formatSize(a.totalSizeBytes)} compact />
-        <StatCard label="Total Exposure" value={formatExposure(a.totalExposureSec)} compact />
-        <StatCard label="Avg Exposure" value={a.avgExposureSec ? formatExposure(a.avgExposureSec) : '-'} compact />
+        <StatCard label="Total size" value={formatSize(a.totalSizeBytes)} compact />
+        <StatCard label="Total exposure" value={formatExposure(a.totalExposureSec)} compact />
+        <StatCard label="Avg exposure" value={a.avgExposureSec ? formatExposure(a.avgExposureSec) : '-'} compact />
         <StatCard label="Targets" value={a.uniqueObjects.length} compact />
         <StatCard label="Filters" value={a.uniqueFilters.length} compact />
         <StatCard label="Stacked" value={a.stackedCount} compact />
@@ -65,12 +65,12 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <BreakdownCard title="Files by Folder (Target)" data={a.filesByFolder} />
-        <BreakdownCard title="Files by Session" data={a.filesBySessionFolder} />
-        <BreakdownCard title="Files by Object" data={a.filesByObject} />
-        <BreakdownCard title="Files by Filter" data={a.filesByFilter} />
-        <BreakdownCard title="Files by Type" data={a.filesByImageType} />
-        <BreakdownCard title="Exposure by Filter" data={Object.fromEntries(
+        <BreakdownCard title="Files by folder (target)" data={a.filesByFolder} />
+        <BreakdownCard title="Files by session" data={a.filesBySessionFolder} />
+        <BreakdownCard title="Files by object" data={a.filesByObject} />
+        <BreakdownCard title="Files by filter" data={a.filesByFilter} />
+        <BreakdownCard title="Files by type" data={a.filesByImageType} />
+        <BreakdownCard title="Exposure by filter" data={Object.fromEntries(
           Object.entries(a.exposureByFilter).map(([k, v]) => [k, Math.round(v)])
         )} />
         {Object.keys(a.nightsPerObject).length > 0 && (

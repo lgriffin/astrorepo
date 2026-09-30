@@ -66,7 +66,7 @@ function StackingSummarySection({ summary }: { summary: StackingSummary | null }
 
   if (!summary || summary.totalStacked === 0) {
     return (
-      <Section title="Stacking Summary">
+      <Section title="Stacking summary">
         <p className="text-astro-muted text-sm">No stacked files found. Run a FITS scan to detect stacked masters.</p>
       </Section>
     )
@@ -81,11 +81,11 @@ function StackingSummarySection({ summary }: { summary: StackingSummary | null }
   })
 
   return (
-    <Section title="Stacking Summary">
+    <Section title="Stacking summary">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-        <StatCard label="Stacked Masters" value={summary.totalStacked} compact />
-        <StatCard label="Combined Subs" value={summary.totalNcombine} compact />
-        <StatCard label="Total Integration" value={formatHours(summary.totalIntegrationSec)} compact />
+        <StatCard label="Stacked masters" value={summary.totalStacked} compact />
+        <StatCard label="Combined subs" value={summary.totalNcombine} compact />
+        <StatCard label="Total integration" value={formatHours(summary.totalIntegrationSec)} compact />
         <StatCard label="Software" value={summary.softwareUsed.join(', ') || 'Unknown'} compact />
         <StatCard label="Filters" value={summary.filtersUsed.join(', ') || 'None'} compact />
       </div>
@@ -179,14 +179,14 @@ function SubFrameBreakdownSection({ rows }: { rows: StackingSummaryRow[] }): Rea
 
   if (rows.length === 0) {
     return (
-      <Section title="Sub-frame Breakdown">
+      <Section title="Sub-frame breakdown">
         <p className="text-astro-muted text-sm">No stacked files to analyze.</p>
       </Section>
     )
   }
 
   return (
-    <Section title="Sub-frame Breakdown">
+    <Section title="Sub-frame breakdown">
       <p className="text-astro-muted text-xs mb-3">Click a stacked master to see its constituent sub-frames.</p>
       <div className="space-y-1">
         {rows.map(row => {
@@ -301,14 +301,14 @@ function IntegrationProgressSection({ targets, onGoalChanged }: {
 
   if (targets.length === 0) {
     return (
-      <Section title="Integration Progress">
+      <Section title="Integration progress">
         <p className="text-astro-muted text-sm">No linked light frames found. Run a FITS scan and link files to targets.</p>
       </Section>
     )
   }
 
   return (
-    <Section title="Integration Progress">
+    <Section title="Integration progress">
       <p className="text-astro-muted text-xs mb-3">Per-target integration time by filter. Set goals to track progress.</p>
       <div className="space-y-1">
         {targets.map(target => (

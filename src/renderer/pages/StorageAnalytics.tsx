@@ -66,7 +66,7 @@ export function StorageAnalytics(): React.ReactElement {
           disabled={capturing}
           className="px-4 py-2 bg-astro-accent text-astro-bg rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {capturing ? 'Capturing...' : 'Capture Snapshot'}
+          {capturing ? 'Capturing...' : 'Capture snapshot'}
         </button>
       }
     >
@@ -75,11 +75,11 @@ export function StorageAnalytics(): React.ReactElement {
         <StatCard label="Total Storage" value={formatBytes(stats.totalSizeBytes)} accent />
         <StatCard label="Total Files" value={stats.totalFiles.toLocaleString()} />
         <StatCard
-          label="Daily Growth"
+          label="Daily growth"
           value={projection ? formatBytes(projection.dailyGrowthBytes) : '--'}
         />
         <StatCard
-          label="Monthly Growth"
+          label="Monthly growth"
           value={projection ? formatBytes(projection.monthlyGrowthBytes) : '--'}
         />
       </div>

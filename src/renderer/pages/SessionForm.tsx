@@ -74,7 +74,7 @@ export function SessionForm(): React.ReactElement {
   return (
     <PageContainer title="Log a night" subtitle="When and where you imaged, with what, and what you captured">
       <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
-        <FormSection title="When & Where">
+        <FormSection title="When & where">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Date" value={form.date} onChange={(v) => update('date', v)} type="date" required />
             <FormField label="Location" value={form.locationFreetext} onChange={(v) => update('locationFreetext', v)} placeholder="Observatory name or location" />
@@ -83,19 +83,19 @@ export function SessionForm(): React.ReactElement {
 
         <FormSection title="Conditions">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <FormField label="Sky Quality (mag/arcsec²)" value={form.skyQuality} onChange={(v) => update('skyQuality', v)} type="number" />
+            <FormField label="Sky quality (mag/arcsec²)" value={form.skyQuality} onChange={(v) => update('skyQuality', v)} type="number" />
             <FormSelect label="Weather" value={form.weather} onChange={(v) => update('weather', v)}
               options={['Clear','Partly Cloudy','Hazy','Thin Cloud','Variable']} />
             <FormSelect label="Seeing" value={form.seeing} onChange={(v) => update('seeing', v)}
               options={['Excellent','Good','Average','Poor','Very Poor']} />
             <FormSelect label="Transparency" value={form.transparency} onChange={(v) => update('transparency', v)}
               options={['Excellent','Good','Average','Poor','Very Poor']} />
-            <FormField label="Moon Phase (%)" value={form.moonPhase} onChange={(v) => update('moonPhase', v)} type="number" />
-            <FormField label="Moon Distance (°)" value={form.moonDistance} onChange={(v) => update('moonDistance', v)} type="number" />
+            <FormField label="Moon phase (%)" value={form.moonPhase} onChange={(v) => update('moonPhase', v)} type="number" />
+            <FormField label="Moon distance (°)" value={form.moonDistance} onChange={(v) => update('moonDistance', v)} type="number" />
           </div>
         </FormSection>
 
-        <FormSection title="Targets Observed">
+        <FormSection title="Targets observed">
           <TargetSearchSelect
             selected={selectedTargets}
             onAdd={(t) => setSelectedTargets(prev => prev.some(p => p.id === t.id) ? prev : [...prev, t])}
@@ -106,7 +106,7 @@ export function SessionForm(): React.ReactElement {
           )}
         </FormSection>
 
-        <FormSection title="Equipment Used">
+        <FormSection title="Equipment used">
           <EquipmentCheckList
             equipment={allEquipment}
             selectedIds={selectedEquipmentIds}
@@ -118,17 +118,17 @@ export function SessionForm(): React.ReactElement {
 
         <FormSection title="Capture">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <FormField label="Exposure Strategy" value={form.exposureStrategy} onChange={(v) => update('exposureStrategy', v)} placeholder="e.g., 300s Ha, 180s OIII" />
-            <FormField label="Total Frames" value={form.totalFrames} onChange={(v) => update('totalFrames', v)} type="number" />
-            <FormField label="Accepted Frames" value={form.acceptedFrames} onChange={(v) => update('acceptedFrames', v)} type="number" />
-            <FormField label="Rejected Frames" value={form.rejectedFrames} onChange={(v) => update('rejectedFrames', v)} type="number" />
-            <FormField label="Total Exposure (sec)" value={form.totalExposureSec} onChange={(v) => update('totalExposureSec', v)} type="number" />
+            <FormField label="Exposure strategy" value={form.exposureStrategy} onChange={(v) => update('exposureStrategy', v)} placeholder="e.g., 300s Ha, 180s OIII" />
+            <FormField label="Total frames" value={form.totalFrames} onChange={(v) => update('totalFrames', v)} type="number" />
+            <FormField label="Accepted frames" value={form.acceptedFrames} onChange={(v) => update('acceptedFrames', v)} type="number" />
+            <FormField label="Rejected frames" value={form.rejectedFrames} onChange={(v) => update('rejectedFrames', v)} type="number" />
+            <FormField label="Total exposure (sec)" value={form.totalExposureSec} onChange={(v) => update('totalExposureSec', v)} type="number" />
           </div>
         </FormSection>
 
         <FormSection title="Notes">
-          <FormField label="Guiding Notes" value={form.guidingNotes} onChange={(v) => update('guidingNotes', v)} multiline />
-          <FormField label="Session Notes" value={form.notes} onChange={(v) => update('notes', v)} multiline />
+          <FormField label="Guiding notes" value={form.guidingNotes} onChange={(v) => update('guidingNotes', v)} multiline />
+          <FormField label="Session notes" value={form.notes} onChange={(v) => update('notes', v)} multiline />
         </FormSection>
 
         <div className="flex gap-3 pt-2">
@@ -137,7 +137,7 @@ export function SessionForm(): React.ReactElement {
             disabled={saving}
             className="px-4 py-2 bg-astro-accent text-white rounded-lg hover:bg-astro-accent/80 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Session'}
+            {saving ? 'Saving...' : 'Save session'}
           </button>
           <button
             type="button"

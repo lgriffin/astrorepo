@@ -99,7 +99,7 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
             disabled={analyzingAll}
             className="text-sm px-3 py-1 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
           >
-            {analyzingAll ? 'Analyzing...' : 'Analyze Quality'}
+            {analyzingAll ? 'Analyzing...' : 'Analyze quality'}
           </button>
         )}
         <select value={filterFolder} onChange={e => { setFilterFolder(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
