@@ -6,6 +6,7 @@
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
 ![License](https://img.shields.io/badge/License-ISC-blue)
 
 Desktop application for managing astronomical targets across any catalogue, recording observation sessions, tracking equipment, planning observations with real-time ephemeris computation, and visualizing collection progress.
@@ -13,7 +14,8 @@ Desktop application for managing astronomical targets across any catalogue, reco
 It is becoming a local-first observatory cockpit: it shows what is hiding in your FITS files, what each target is ready to become, and what to shoot in the coming nights given the season and the moon. Start with these:
 
 - [Charter](.specify/memory/constitution.md): the principles every change is checked against.
-- [Roadmap](docs/roadmap.md): which slices have landed and what comes next.
+- [Roadmap](docs/roadmap.md): which slices have landed, what comes next, and the open questions.
+- [Changelog](CHANGELOG.md): what each release holds. The current release is 0.2.0.
 - [Finding your way around](docs/guides/finding-your-way.md): the sidebar's places and groups, the jobs line under it, and where each task lives.
 - [Using the cockpit](docs/guides/cockpit.md): what Home's progress strip, hidden-data card and suggestions mean.
 - [Planning ahead](docs/guides/planning.md): seasons, closing windows, new-moon windows and bright-moon choices from your site.
@@ -168,4 +170,4 @@ All IPC inputs are validated at the boundary between renderer and main process u
 
 ## License
 
-ISC
+ISC, as this README has said so far; there is no LICENSE file yet. The project licence is being settled in [#32](https://github.com/lgriffin/astrorepo/issues/32) before 1.0.0.
