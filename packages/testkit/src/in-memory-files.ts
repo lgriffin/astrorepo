@@ -122,7 +122,11 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
     return paths.map(path => ({ path, ...(this.details.get(path) ?? { sizeBytes: 50_000_000, width: null, height: null, colour: null }) }))
   }
 
-  async workAreaSpace(): Promise<WorkAreaSpace> {
+  /** Every folder whose space was asked for, in order. */
+  readonly spaceAsked: string[] = []
+
+  async workAreaSpace(workDir: string): Promise<WorkAreaSpace> {
+    this.spaceAsked.push(workDir)
     return { ...this.space }
   }
 

@@ -3,6 +3,7 @@ import {
   buildPostProcessRecipe,
   commandLine,
   formatCoords,
+  parentDir,
   postProcessingSpace,
   profileForObjectType,
   targetLabel,
@@ -72,7 +73,8 @@ describe('post-processing recipe', () => {
     ])
     expect(r.outputDir).toBe('D:/work/siril/M 31/processed/M31')
     expect(r).toMatchObject({ missing: [], skipped: [], warnings: [] })
-    expect(commandLine(r.program ?? '', r.args)).toBe(
+    expect(r.command).toBe(commandLine(r.program ?? '', r.args, true))
+    expect(r.command).toBe(
       'C:/Users/leigh/Siril_Scripts/v2/postprocess.bat "D:/work/siril/M 31/result_10800s.fit" --target=M31 --profile=galaxy --quality=normal --coords=00:42:44.28,+41:16:09.1 --focal=250 --pixelsize=2.9'
     )
   })
@@ -131,6 +133,28 @@ describe('post-processing recipe', () => {
     expect(r.space).toEqual({ neededBytes: 213e6, fits: false, headroomBytes: null, shortBytes: 113e6 })
     const guessed = buildPostProcessRecipe(input({ stack: { ...input().stack, width: null, height: null, sizeBytes: 12e6 } }))
     expect(guessed).toMatchObject({ sizeApproximate: true, peakBytes: 213e6 })
+  })
+})
+
+describe('pasting the command', () => {
+  it('[PPR-001] Given a POSIX path holding $, backticks, a semicolon and an apostrophe, When the command is rendered, Then every one stays literal inside single quotes', () => {
+    expect(commandLine('/opt/Siril_Scripts/v2/postprocess.sh', ["/data/M31 $(rm -rf ~);`id`/it's.fit", '--target=M31'], false)).toBe(
+      "/opt/Siril_Scripts/v2/postprocess.sh '/data/M31 $(rm -rf ~);`id`/it'\\''s.fit' --target=M31"
+    )
+  })
+
+  it('[PPR-001] Given a Windows path with characters Command Prompt acts on, When the recipe is built, Then no command is offered and the characters are named', () => {
+    const r = buildPostProcessRecipe(input({ stack: { ...input().stack, path: 'D:/work/M31 & %TEMP%/result.fit' } }))
+    expect(r.command).toBeNull()
+    expect(r.program).not.toBeNull()
+    expect(r.warnings.at(-1)).toBe('The path holds & %, which Command Prompt would act on, so no command is offered. Rename the file or folder without them.')
+  })
+
+  it('[PPR-001] Given a stack at the root of a disk, When its folder is found, Then the root is kept', () => {
+    expect(parentDir('/result.fit')).toEqual({ dir: '/', sep: '/' })
+    expect(parentDir('D:\\result.fit')).toEqual({ dir: 'D:\\', sep: '\\' })
+    expect(parentDir('result.fit')).toEqual({ dir: '.', sep: '/' })
+    expect(buildPostProcessRecipe(input({ stack: { ...input().stack, path: '/result.fit' } })).outputDir).toBe('/processed/M31')
   })
 })
 

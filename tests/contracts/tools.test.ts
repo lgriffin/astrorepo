@@ -42,10 +42,10 @@ stackCatalogueContract('SQLite', seed => {
   seedTarget(db, { id: seed.targetId, canonicalName: seed.target.name, objectType: seed.target.objectType ?? 'unknown', raHours: seed.target.raHours, decDegrees: seed.target.decDeg })
   const scan = seedFitsScan(db)
   for (const s of seed.stacks) {
-    const id = seedFitsFile(db, scan, { filePath: s.path, isStacked: true, targetId: seed.targetId })
+    const id = seedFitsFile(db, scan, { filePath: s.path, isStacked: true, ncombine: 20, targetId: seed.targetId })
     db.prepare('UPDATE fits_files SET naxis1 = ?, naxis2 = ?, file_modified_at = ? WHERE id = ?').run(s.width, s.height, s.modifiedAt, id)
   }
-  return new SqliteStackCatalogue(db)
+  return new SqliteStackCatalogue(db, () => true)
 })
 
 describe('NodeToolHub', () => {
@@ -100,17 +100,31 @@ describe('SqliteStackCatalogue', () => {
     seedTarget(db, { id: 'm31', canonicalName: 'M 31' })
     const scan = seedFitsScan(db)
     const header = db.prepare('INSERT INTO fits_headers (id, file_id, keyword, value, comment, ordinal) VALUES (?, ?, ?, ?, NULL, ?)')
-    const stack = seedFitsFile(db, scan, { filePath: '/s/mono.fit', isStacked: true, targetId: 'm31' })
+    const stack = seedFitsFile(db, scan, { filePath: '/s/mono.fit', isStacked: true, ncombine: 40, targetId: 'm31' })
     header.run('h1', stack, 'NAXIS3', '1', 1)
     header.run('h2', stack, 'FOCALLEN', "'250.0'", 2)
     db.prepare('UPDATE fits_files SET xpixsz = 2.9 WHERE id = ?').run(stack)
-    for (const [i, focal, px] of [[1, 250, 2.9], [2, 250, 2.9], [3, 400, 3.76]] as const) {
-      const light = seedFitsFile(db, scan, { filePath: `/l/${i}.fit`, targetId: 'm31' })
-      header.run(`l${i}`, light, 'FOCALLEN', String(focal), 1)
-      db.prepare('UPDATE fits_files SET xpixsz = ? WHERE id = ?').run(px, light)
+    // Three darks at another setup outnumber the lights, but only lights count.
+    for (const [i, focal, px, type] of [[1, 250, 2.9, 'Light Frame'], [2, 250, 2.9, 'Light Frame'], [3, 400, 3.76, 'Dark Frame'], [4, 400, 3.76, 'Dark Frame'], [5, 400, 3.76, 'Dark Frame']] as const) {
+      const file = seedFitsFile(db, scan, { filePath: `/l/${i}.fit`, targetId: 'm31', imageType: type })
+      header.run(`l${i}`, file, 'FOCALLEN', String(focal), 1)
+      db.prepare('UPDATE fits_files SET xpixsz = ? WHERE id = ?').run(px, file)
     }
-    const catalogue = new SqliteStackCatalogue(db)
+    const catalogue = new SqliteStackCatalogue(db, () => true)
     expect((await catalogue.listStacks('m31'))[0]).toMatchObject({ colour: false, focalMm: 250, pixelUm: 2.9 })
     expect(await catalogue.targetOptics('m31')).toEqual({ focalMm: 250, pixelUm: 2.9 })
+  })
+
+  it('[PPR-001] Given a calibrated sub flagged only by CALSTAT, a master dark and a stack whose file is gone, When stacks are listed, Then only the real stack on disk comes back', async () => {
+    const db = setupTestDb()
+    seedTarget(db, { id: 'm31', canonicalName: 'M 31' })
+    const scan = seedFitsScan(db)
+    seedFitsFile(db, scan, { filePath: '/s/calibrated_sub.fit', isStacked: true, targetId: 'm31' })
+    seedFitsFile(db, scan, { filePath: '/s/master_dark.fit', isStacked: true, ncombine: 30, imageType: 'Master Dark', targetId: 'm31' })
+    seedFitsFile(db, scan, { filePath: '/s/gone.fit', isStacked: true, ncombine: 30, targetId: 'm31' })
+    seedFitsFile(db, scan, { filePath: '/s/seestar.fit', isStacked: true, totalExposure: 3600, exposureSec: 10, targetId: 'm31' })
+    seedFitsFile(db, scan, { filePath: '/s/siril.fit', isStacked: true, imageType: 'Stacked Light', targetId: 'm31' })
+    const stacks = await new SqliteStackCatalogue(db, p => p !== '/s/gone.fit').listStacks('m31')
+    expect(stacks.map(s => s.path).sort()).toEqual(['/s/seestar.fit', '/s/siril.fit'])
   })
 })

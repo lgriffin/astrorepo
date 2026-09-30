@@ -142,8 +142,9 @@ plan never comes out too small. Making the plan writes nothing, anywhere.
 ## Post-processing
 
 Once a target has a stack, its page shows the Siril_Scripts v2 command to finish it. The recipe
-uses the newest stack: one the FITS Analyzer indexed, or the `result*.fit` Siril left in the
-target's work folder. Pick another from the list if there are several.
+uses the newest stack still on disk: an integration the FITS Analyzer indexed (not a calibrated
+sub or a master calibration frame), or the `result*.fit` Siril left in the target's work folder.
+Pick another from the list if there are several.
 
 - **Profile and quality.** The profile comes from the object type, the way Siril_Scripts would
   choose it from SIMBAD: galaxies get `galaxy`; emission, reflection, planetary and dark nebulae
@@ -160,8 +161,10 @@ target's work folder. Pick another from the list if there are several.
   what it keeps, against the free space on that disk. A stack in a folder the app only reads
   gets a warning, since the script would write there.
 
-Copy the command and run it in a terminal on the PC. Running it from the app comes with the job
-runner. Working the recipe out runs nothing and writes nothing.
+Copy the command and run it in Command Prompt on the PC (on Linux or macOS, any shell; every
+argument is quoted so paths stay literal). A path holding characters Command Prompt acts on
+(`% ! ^ & | < > "`) gets no command, and the panel says which to rename. Running it from the app
+comes with the job runner. Working the recipe out runs nothing and writes nothing.
 
 ## Tools
 

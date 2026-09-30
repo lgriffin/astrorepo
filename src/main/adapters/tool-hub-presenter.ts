@@ -1,5 +1,5 @@
 import type { PostProcessingPlan, ToolsReport } from '@astro/application'
-import { commandLine, PROFILES, QUALITIES, toolSpec, type ToolSource } from '@astro/domain'
+import { PROFILES, QUALITIES, toolSpec, type ToolSource } from '@astro/domain'
 import type { PostProcessView, ToolsView } from '@shared/types'
 import { formatBytes } from './discovery-presenter'
 
@@ -71,7 +71,7 @@ export function toPostProcessView(plan: PostProcessingPlan): PostProcessView {
     profile: r.profile,
     profileReason: r.profileReason,
     quality: r.quality,
-    command: r.program ? commandLine(r.program, r.args) : null,
+    command: r.command,
     missing:
       r.missing.length > 0
         ? `Needs ${LIST(r.missing.map(id => toolSpec(id).label))}, which the tool hub did not find. Set ${r.missing.length === 1 ? 'its path' : 'their paths'} in Settings, under Tools.`

@@ -1,4 +1,4 @@
-import { buildPostProcessRecipe, type PostProcessRecipe, type Profile, type Quality, type RecipeTarget } from '@astro/domain'
+import { buildPostProcessRecipe, parentDir, type PostProcessRecipe, type Profile, type Quality, type RecipeTarget } from '@astro/domain'
 import type { SirilWorkspace } from '../ports/siril-workspace'
 import type { StackCatalogue, StackFile } from '../ports/stack-catalogue'
 import type { ToolHub } from '../ports/tool-hub'
@@ -53,17 +53,16 @@ export function makePlanPostProcessing(deps: PlanPostProcessingDeps): PlanPostPr
     const stack = stacks.find(s => s.path === options.stackPath) ?? stacks[0] ?? null
     if (!stack) return { target, stacks, stack: null, recipe: null }
 
-    const stackDir = stack.path.replace(/[\\/][^\\/]*$/, '')
+    const stackDir = parentDir(stack.path).dir
     const [tools, space, readOnly, lightOptics] = await Promise.all([
       deps.tools.locate(),
       deps.workspace.workAreaSpace(stackDir),
       Promise.all((options.readOnlyDirs ?? []).map(dir => deps.workspace.contains(dir, stack.path))),
       deps.stacks.targetOptics(targetId)
     ])
-    // A stack straight from Siril may carry no optics; the target's light subs do.
-    const optics = stack.focalMm && stack.pixelUm ? stack : lightOptics
+    // A stack straight from Siril may carry no optics; the target's light subs fill each gap.
     const recipe = buildPostProcessRecipe({
-      stack: { ...stack, focalMm: optics?.focalMm ?? null, pixelUm: optics?.pixelUm ?? null },
+      stack: { ...stack, focalMm: stack.focalMm ?? lightOptics?.focalMm ?? null, pixelUm: stack.pixelUm ?? lightOptics?.pixelUm ?? null },
       target,
       tools,
       windows: deps.tools.windows,

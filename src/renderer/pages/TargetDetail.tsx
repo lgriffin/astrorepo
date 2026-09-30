@@ -519,10 +519,21 @@ function PostProcessing({ targetId, rawPath }: { targetId: string; rawPath: stri
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    // Only the latest request may land: an earlier one finishing late must not show an old command.
+    let current = true
     setFailed(false)
     invoke<PostProcessView>('recipe:post-process', { target_id: targetId, ...(rawPath ? { raw_path: rawPath } : {}), ...choice })
-      .then(setView)
-      .catch(() => setFailed(true))
+      .then(v => {
+        if (!current) return
+        setView(v)
+        setCopied(false)
+      })
+      .catch(() => {
+        if (current) setFailed(true)
+      })
+    return () => {
+      current = false
+    }
   }, [targetId, rawPath, choice])
 
   if (failed) return <p className="text-xs text-astro-muted">The post-processing recipe could not be worked out.</p>
@@ -569,7 +580,7 @@ function PostProcessing({ targetId, rawPath }: { targetId: string; rawPath: stri
       {view.outputDir && <p className="text-xs text-astro-muted">Writes to <span className="font-mono">{view.outputDir}</span>.</p>}
       {view.skipped.map(s => <p key={s} className="text-xs text-astro-muted">Skips {s}</p>)}
       {view.warnings.map(w => <p key={w} className="text-xs text-yellow-400">{w}</p>)}
-      <p className="text-[10px] text-astro-muted">Run it in a terminal on the PC for now; running it from here comes with the job runner.</p>
+      <p className="text-[10px] text-astro-muted">Run it in Command Prompt on the PC for now; running it from here comes with the job runner.</p>
     </div>
   )
 }

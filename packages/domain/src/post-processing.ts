@@ -99,6 +99,8 @@ export interface PostProcessRecipe {
   /** The entry script, then its arguments; null when a required tool is missing. */
   program: string | null
   args: string[]
+  /** The command to paste into a terminal; null when a tool is missing or a path is unsafe to paste. */
+  command: string | null
   outputDir: string
   /** Disk v2 uses at its busiest (every intermediate file at once), and what it leaves behind. */
   peakBytes: number
@@ -127,16 +129,36 @@ export function postProcessingSpace(width: number, height: number, colour: boole
   }
 }
 
-const quote = (arg: string) => (/[\s"&|<>^]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg)
+/**
+ * Characters a terminal would act on rather than pass through: cmd.exe expands %VAR% and !VAR!
+ * even inside quotes, and Siril_Scripts' .bat re-parses its arguments, so on Windows these are
+ * refused rather than escaped. POSIX shells get every argument single-quoted instead.
+ */
+const WINDOWS_HAZARDS = /["%!^&|<>`\r\n]/g
+const POSIX_SAFE = /^[A-Za-z0-9_@%+=:,./-]+$/
 
-/** The command as the user would type it. */
-export function commandLine(program: string, args: string[]): string {
+/** Characters in the arguments that no quoting makes safe to paste into cmd.exe; none on POSIX. */
+export function shellHazards(args: string[], windows: boolean): string[] {
+  if (!windows) return []
+  return [...new Set(args.flatMap(a => a.match(WINDOWS_HAZARDS) ?? []))]
+}
+
+/** The command as the user would type it: cmd.exe on Windows, a POSIX shell elsewhere. */
+export function commandLine(program: string, args: string[], windows: boolean): string {
+  const quote = windows
+    ? (a: string) => (/\s/.test(a) ? `"${a}"` : a)
+    : (a: string) => (POSIX_SAFE.test(a) ? a : `'${a.replace(/'/g, `'\\''`)}'`)
   return [program, ...args].map(quote).join(' ')
 }
 
-function dirOf(p: string): { dir: string; sep: string } {
+/** The folder holding a file, keeping the root ("/" or "C:\\") and the path's own separator. */
+export function parentDir(p: string): { dir: string; sep: string } {
   const i = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'))
-  return { dir: i > 0 ? p.slice(0, i) : '.', sep: i >= 0 ? p[i] : '/' }
+  if (i < 0) return { dir: '.', sep: '/' }
+  const sep = p[i]
+  if (i === 0) return { dir: sep, sep }
+  if (i === 2 && p[1] === ':') return { dir: p.slice(0, 3), sep }
+  return { dir: p.slice(0, i), sep }
 }
 
 export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
@@ -173,10 +195,15 @@ export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
     }
   }
 
-  const { dir, sep } = dirOf(stack.path)
-  const outputDir = `${dir}${sep}processed${sep}${label}`
+  const { dir, sep } = parentDir(stack.path)
+  const outputDir = `${dir.endsWith(sep) ? dir : dir + sep}processed${sep}${label}`
   if (input.inReadOnlyFolder) {
     warnings.push(`The stack is in a folder the app only reads, and Siril_Scripts writes ${outputDir} beside it. Copy the stack to the work area first if that folder must stay untouched.`)
+  }
+
+  const hazards = shellHazards([found('siril-scripts') ?? '', ...args], windows)
+  if (hazards.length > 0) {
+    warnings.push(`The path holds ${hazards.map(h => (h === '\r' || h === '\n' ? 'a line break' : h)).join(' ')}, which Command Prompt would act on, so no command is offered. Rename the file or folder without ${hazards.length === 1 ? 'it' : 'them'}.`)
   }
 
   const channels = stack.colour ? 3 : 1
@@ -193,6 +220,7 @@ export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
     warnings,
     program: missing.length === 0 ? found('siril-scripts') : null,
     args,
+    command: missing.length === 0 && hazards.length === 0 ? commandLine(found('siril-scripts') ?? '', args, windows) : null,
     outputDir,
     peakBytes,
     keptBytes,

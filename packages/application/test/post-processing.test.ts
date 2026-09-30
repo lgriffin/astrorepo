@@ -32,6 +32,22 @@ describe('PlanPostProcessing', () => {
     expect(plan.recipe?.args).toContain('--pixelsize=2.9')
   })
 
+  it("[PPR-001] Given a stack with a focal length but no pixel size, When the plan is made, Then only the gap is filled from the lights", async () => {
+    const s = setup()
+    s.stacks.addStack('m31', { path: '/stacks/M31.fit', width: 100, height: 100, focalMm: 400 })
+    s.stacks.optics.set('m31', { focalMm: 250, pixelUm: 2.9 })
+    const args = (await s.plan('m31')).recipe?.args ?? []
+    expect(args).toContain('--focal=400')
+    expect(args).toContain('--pixelsize=2.9')
+  })
+
+  it('[PPR-005] Given a stack at the root of a disk, When the plan is made, Then free space is read for that root', async () => {
+    const s = setup()
+    s.stacks.addStack('m31', { path: '/result.fit', width: 100, height: 100 })
+    await s.plan('m31')
+    expect(s.workspace.spaceAsked).toEqual(['/'])
+  })
+
   it('[PPR-002] Given a chosen stack, profile and quality, When the plan is made, Then the command uses them', async () => {
     const s = setup()
     s.stacks.addStack('m31', { path: '/a.fit', modifiedAt: new Date('2026-09-02') }).addStack('m31', { path: '/b.fit', modifiedAt: new Date('2026-09-01') })

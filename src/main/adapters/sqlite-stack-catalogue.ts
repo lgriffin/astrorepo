@@ -1,15 +1,29 @@
+import fs from 'fs'
 import type Database from 'better-sqlite3'
 import type { StackCatalogue, StackFile } from '@astro/application'
 import type { RecipeTarget } from '@astro/domain'
-import { parseUtc } from './sqlite-frame-catalogue'
+import { IS_LIGHT, parseUtc } from './sqlite-frame-catalogue'
 
 /** A header card's number, without the quotes some writers put around it. */
 const HEADER_NUMBER = (keyword: string) =>
   `(SELECT CAST(TRIM(REPLACE(h.value, '''', '')) AS REAL) FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = '${keyword}' LIMIT 1)`
 
-/** StackCatalogue over the targets and fits_files tables. */
+/**
+ * An integration, not just a flagged file: the scanner also marks a calibrated sub (CALSTAT alone)
+ * as stacked, and master calibration frames are stacks too, so neither is offered.
+ */
+const IS_INTEGRATED_LIGHT = `(${IS_LIGHT.replace("LIKE '%light%'", "LIKE '%light%' OR LOWER(f.image_type) LIKE '%stack%' OR LOWER(f.image_type) LIKE '%integrat%'")}
+  AND (COALESCE(f.ncombine, 0) > 1
+       OR (f.total_exposure IS NOT NULL AND f.exposure_sec IS NOT NULL AND f.total_exposure > f.exposure_sec)
+       OR LOWER(COALESCE(f.image_type, '')) LIKE '%stack%'
+       OR LOWER(COALESCE(f.image_type, '')) LIKE '%integrat%'))`
+
+/** StackCatalogue over the targets and fits_files tables. Stacks whose file is gone are left out. */
 export class SqliteStackCatalogue implements StackCatalogue {
-  constructor(private readonly db: Database.Database) {}
+  constructor(
+    private readonly db: Database.Database,
+    private readonly exists: (p: string) => boolean = p => fs.existsSync(p)
+  ) {}
 
   async describeTarget(targetId: string): Promise<RecipeTarget | null> {
     const row = this.db
@@ -23,7 +37,7 @@ export class SqliteStackCatalogue implements StackCatalogue {
       .prepare(
         `SELECT f.file_path, f.file_size_bytes, f.naxis1, f.naxis2, f.xpixsz, f.file_modified_at, f.created_at,
                 ${HEADER_NUMBER('NAXIS3')} AS naxis3, ${HEADER_NUMBER('FOCALLEN')} AS focal
-         FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 1`
+         FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 1 AND ${IS_INTEGRATED_LIGHT}`
       )
       .all(targetId) as {
       file_path: string
@@ -37,6 +51,7 @@ export class SqliteStackCatalogue implements StackCatalogue {
       focal: number | null
     }[]
     return rows
+      .filter(r => this.exists(r.file_path))
       .map(r => ({
         path: r.file_path,
         sizeBytes: r.file_size_bytes,
@@ -55,7 +70,7 @@ export class SqliteStackCatalogue implements StackCatalogue {
       .prepare(
         `SELECT focal, xpixsz, COUNT(*) AS n FROM (
            SELECT ${HEADER_NUMBER('FOCALLEN')} AS focal, f.xpixsz
-           FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 0
+           FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 0 AND ${IS_LIGHT}
          ) WHERE focal > 0 AND xpixsz > 0
          GROUP BY focal, xpixsz ORDER BY n DESC LIMIT 1`
       )
