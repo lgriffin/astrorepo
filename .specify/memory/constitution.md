@@ -61,7 +61,9 @@ computed on the machine from the ephemeris; online services such as weather are 
 never required. Proprietary
 tools are called, never bundled, and so are scripts under a copyleft licence (Siril's stock
 scripts, Leigh's GPL-3.0 Siril_Scripts): the app names them and runs them where they are
-installed, and may reimplement their arithmetic with credit. Dependencies are OSI licensed.
+installed, and may reimplement their arithmetic with credit. External programs are reached only
+through the tool hub (the `ToolHub` port): it finds them, the domain builds their commands, and
+no use case knows where a program lives. Dependencies are OSI licensed.
 
 ### VII. Docs move with the code
 
@@ -88,4 +90,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.0.3 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
+**Version**: 1.0.4 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30

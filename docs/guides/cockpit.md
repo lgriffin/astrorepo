@@ -139,6 +139,42 @@ Analyzer, the plan guesses the frame size from the file size and says the figure
 approximate. When the lights are not all one size, every light is counted at the largest, so the
 plan never comes out too small. Making the plan writes nothing, anywhere.
 
+## Post-processing
+
+Once a target has a stack, its page shows the Siril_Scripts v2 command to finish it. The recipe
+uses the newest stack still on disk: an integration the FITS Analyzer indexed (not a calibrated
+sub or a master calibration frame), or the `result*.fit` Siril left in the target's work folder.
+Pick another from the list if there are several.
+
+- **Profile and quality.** The profile comes from the object type, the way Siril_Scripts would
+  choose it from SIMBAD: galaxies get `galaxy`; emission, reflection, planetary and dark nebulae
+  and supernova remnants get `nebula`; clusters get `cluster`; stars get `stellar`; anything
+  else gets `broadband`. Quality starts at `normal`. Change either and the command follows.
+- **What the command carries.** The target name (spaces dropped, as the output folder is named
+  after it), the target's coordinates so no SIMBAD lookup is needed, and focal length and pixel
+  size from the stack's headers (or the target's lights), so Siril plate-solves a Seestar stack
+  with its 2.9 µm pixels rather than Siril_Scripts' default of 2 µm.
+- **What it skips.** Without the RC Astro CLI, the command adds `--no-bxt --no-nxt --no-sxt` and
+  says so.
+- **Where it writes and how much.** Siril_Scripts writes `processed/<TARGET>/` beside the stack.
+  The panel gives the space the run uses at its busiest (every intermediate file at once) and
+  what it keeps, against the free space on that disk. A stack in a folder the app only reads
+  gets a warning, since the script would write there.
+
+Copy the command and run it in Command Prompt on the PC (on Linux or macOS, any shell; every
+argument is quoted so paths stay literal). A path holding characters Command Prompt acts on
+(`% ! ^ & | < > "`) gets no command, and the panel says which to rename. Running it from the app
+comes with the job runner. Working the recipe out runs nothing and writes nothing.
+
+## Tools
+
+**Settings > Tools** lists the programs the app hands work to: Siril, Siril_Scripts v2, the RC
+Astro CLI and, on Windows, Git Bash (which Siril_Scripts' `.bat` needs). Each is looked for in
+the path you save there, then on PATH, then in its usual install folder; for Siril_Scripts, the
+repo folder, its `v2` folder or `postprocess.bat` itself will do. A tool that is not found lists
+every place the hub looked. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...`
+without searching, so a tool found anywhere else is flagged. Nothing is run to check.
+
 ## Rescanning
 
 Scanning a folder again reads only files that are new or whose size or modified time changed.

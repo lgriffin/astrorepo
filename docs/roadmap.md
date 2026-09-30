@@ -15,8 +15,8 @@ when the code says otherwise, and the reasons are recorded here.
 | L · Seasons, moon and tonight | Coming-nights card, 12-month season table, closing-season warnings, new-moon windows, bright-moon filtering | [012](../specs/012-seasons-moon/requirements.md) | Done |
 | C2 · Ranked cockpit | Next actions: tonight's captures (closing seasons first) ranked ahead of stacking; other checks in their own section | [013](../specs/013-ranked-cockpit/requirements.md) | Done |
 | C3a · Stacking plan | Which stock Siril script fits a target's frames, the disk space it needs stage by stage, and whether the work area has room | [014](../specs/014-siril-space/requirements.md) | Done |
-| C3b · Post-processing recipes | Siril_Scripts v2 on a stack (profile from the object type), with the exact command, confirmed before it runs | later | Next |
-| G · Jobs and Siril runner | A recipe runs on the Windows PC with a live log | later | Planned |
+| C3b · Tool hub and post-processing recipes | Settings > Tools finds Siril, Siril_Scripts, RC Astro and Git Bash; each target's page gives the Siril_Scripts v2 command for its stack (profile, coordinates and optics filled in) and the disk it needs | [015](../specs/015-tool-hub/requirements.md) | Done |
+| G · Jobs and Siril runner | A recipe runs on the Windows PC through the tool hub, confirmed first, with a live log | later | Next |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
 
 ## Changes to the blueprint
@@ -43,6 +43,11 @@ when the code says otherwise, and the reasons are recorded here.
   opens with the stacking plan: the stock Siril script that fits and the space it needs, reimplemented
   from the estimator's arithmetic. Siril_Scripts is GPL-3.0 and post-processing (not stacking), so
   its scripts are called where they are installed, never copied (charter VI), in C3b.
+- **A tool hub comes before the job runner** (spec 015). Leigh asked for a small gateway to wire
+  in the tools the app needs, so every external program is found through one `ToolHub` port and
+  its command is built in the domain. Recipes are shown and copied for now; slice G runs them
+  through the same port. The app passes the profile, coordinates and optics it already knows, so
+  Siril_Scripts needs no SIMBAD lookup and Seestar stacks plate-solve with the right pixel size.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
   packages. Until then the core runs inside the Electron main process over SQLite, which keeps the
   app shippable at every step.
@@ -52,6 +57,5 @@ when the code says otherwise, and the reasons are recorded here.
 - One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
   the scope adapters can be built from real files.
 - The Synology model, which decides the container image targets.
-- Where RC Astro runs today (assumed: inside PixInsight on the Windows PC).
-- Where Siril_Scripts lives on the Windows PC and whether RC Astro CLI is installed there, for the
-  post-processing recipes (C3b).
+- Where Siril_Scripts is cloned on the Windows PC, if not in one of the folders the tool hub
+  checks (it can also be set in Settings > Tools).

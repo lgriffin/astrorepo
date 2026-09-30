@@ -7,6 +7,8 @@ import {
   makeFindDuplicates,
   makeListNextActions,
   makeListStackingSuggestions,
+  makeListTools,
+  makePlanPostProcessing,
   makePlanForward,
   makePrepareSirilWorkspace,
   makeReportHiddenData
@@ -19,6 +21,8 @@ import { NodeSirilWorkspace } from './adapters/node-siril-workspace'
 import { systemClock } from './adapters/system-clock'
 import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
 import { SqlitePlanningSettings, SqliteTargetPositions } from './adapters/sqlite-planning'
+import { NodeToolHub } from './adapters/node-tool-hub'
+import { SqliteStackCatalogue } from './adapters/sqlite-stack-catalogue'
 
 /**
  * Composition root for the hexagonal core inside the desktop app. IPC handlers call these use
@@ -29,6 +33,8 @@ export function composeCore(db: Database.Database) {
   const dismissals = new SqliteDismissalStore(db)
   const hashes = new SqliteFileHashStore(db, () => systemClock.now())
   const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals })
+  const readSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
+  const tools = new NodeToolHub({ setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null })
   const planForward = makePlanForward({
     frames,
     positions: new SqliteTargetPositions(db),
@@ -50,7 +56,9 @@ export function composeCore(db: Database.Database) {
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
     prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db) }),
     estimateSirilRun: makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db) }),
-    planForward
+    planForward,
+    listTools: makeListTools({ tools }),
+    planPostProcessing: makePlanPostProcessing({ stacks: new SqliteStackCatalogue(db), tools, workspace: new NodeSirilWorkspace(db) })
   }
 }
 

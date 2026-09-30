@@ -91,6 +91,12 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
       expect(await f.sourceListing()).toEqual(before)
     })
 
+    it('[PPR-001] Given a work folder not made yet, When stack results are read, Then there are none and nothing is created', async () => {
+      const f = await setup(['Light_001.fit'])
+      expect(await f.workspace.stackResults(f.workDir)).toEqual([])
+      expect(await f.workHas('lights')).toBe(false)
+    })
+
     it('[RCP-002] Given frames already placed, When the copy is estimated, Then they cost nothing and nothing is written', async () => {
       const f = await setup(['Light_001.fit'])
       const [frame] = await f.workspace.listSourceFrames(f.sourceDir)

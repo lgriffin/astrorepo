@@ -31,7 +31,7 @@ export function parseUtc(value: string | null): Date | null {
 }
 
 /** Light frames as the scanners record them: typed as light, or untyped. */
-const IS_LIGHT = `(f.image_type IS NULL OR LOWER(f.image_type) LIKE '%light%')`
+export const IS_LIGHT = `(f.image_type IS NULL OR LOWER(f.image_type) LIKE '%light%')`
 
 /**
  * FrameCatalogue over the desktop app's existing fits_files table.

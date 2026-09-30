@@ -245,6 +245,13 @@ export const schemas = {
   'home:scan-progress': z.object({}).optional(),
   'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
   'siril:estimate': z.object({ raw_path: z.string().min(1) }),
+  'recipe:post-process': z.object({
+    target_id: id,
+    raw_path: z.string().min(1).optional(),
+    stack_path: z.string().min(1).optional(),
+    profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']).optional(),
+    quality: z.enum(['light', 'normal', 'strong']).optional()
+  }),
   'home:open-folder': z.object({ folder_path: z.string().min(1) }),
   'home:target-data': z.object({ target_id: z.string().min(1) }),
   'targets:observation-data': z.object({ target_id: z.string().min(1) }),

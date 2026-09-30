@@ -48,4 +48,6 @@ export interface SirilWorkspace {
    * area or one it can hard-link (on the same volume as the work area). Writes nothing.
    */
   copyBytes(placements: SirilPlacement[], workDir: string): Promise<number>
+  /** Stacks a Siril run left in `workDir` (its result*.fit files), newest first. Writes nothing. */
+  stackResults(workDir: string): Promise<{ path: string; sizeBytes: number; modifiedAt: Date | null }[]>
 }

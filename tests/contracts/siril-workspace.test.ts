@@ -152,3 +152,16 @@ describe('NodeSirilWorkspace space', () => {
     expect(fs.existsSync(work)).toBe(false)
   })
 })
+
+describe('NodeSirilWorkspace stack results', () => {
+  it('[PPR-001] Given a Siril run left result files, When they are read, Then only result*.fit come back, newest first', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
+    tempDirs.push(root)
+    fs.writeFileSync(path.join(root, 'result_3600s.fit'), 'x'.repeat(10))
+    fs.writeFileSync(path.join(root, 'result_7200s.fit'), 'x'.repeat(20))
+    fs.writeFileSync(path.join(root, 'notes.txt'), 'x')
+    fs.utimesSync(path.join(root, 'result_3600s.fit'), new Date('2026-01-01'), new Date('2026-01-01'))
+    const results = await new NodeSirilWorkspace().stackResults(root)
+    expect(results.map(r => [path.basename(r.path), r.sizeBytes])).toEqual([['result_7200s.fit', 20], ['result_3600s.fit', 10]])
+  })
+})
