@@ -853,7 +853,7 @@ export interface YearSummaryMonth {
 
 export interface Recommendation {
   id: string
-  category: 'calibration' | 'integration' | 'equipment' | 'quality' | 'workflow' | 'stacking'
+  category: 'calibration' | 'integration' | 'equipment' | 'quality' | 'workflow' | 'stacking' | 'capture'
   priority: 'high' | 'medium' | 'low'
   title: string
   description: string

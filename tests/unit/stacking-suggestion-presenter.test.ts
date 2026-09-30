@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDuration, toRecommendation } from '../../src/main/adapters/stacking-suggestion-presenter'
+import { formatDuration, toNextActionRecommendation, toRecommendation } from '../../src/main/adapters/stacking-suggestion-presenter'
 
 describe('Stacking suggestion presenter', () => {
   it('[DSC-010] Given a ready-to-stack suggestion, When presented, Then it states integration, subs and nights', () => {
@@ -30,5 +30,32 @@ describe('Stacking suggestion presenter', () => {
     expect(formatDuration(45 * 60)).toBe('45 m')
     expect(formatDuration(2 * 3600)).toBe('2 h')
     expect(formatDuration(8 * 3600 + 12 * 60)).toBe('8 h 12 m')
+  })
+
+  it('[DSC-016] Given a closing capture, When presented, Then it is high priority and states hours, days left, shortfall and moon', () => {
+    const r = toNextActionRecommendation({
+      kind: 'capture', id: 'capture:target-m-13:2026-09-29', targetId: 'target-m-13', targetName: 'M 13', night: '2026-09-29',
+      usableHours: 1.5, moonSeparationDeg: 64, closesInDays: 6, shortOfGoalSec: 3 * 3600
+    })
+    expect(r).toMatchObject({ category: 'capture', priority: 'high', dismissible: false, targetId: 'target-m-13' })
+    expect(r.title).toBe('M 13 · shoot tonight, 1 h 30 m above 30°')
+    expect(r.description).toBe('Its season closes in 6 days. 3 h short of your goal. The moon comes within 64°.')
+  })
+
+  it('[DSC-016] Given an ordinary capture with no goal and the moon down, When presented, Then it is medium priority and says the moon is down', () => {
+    const r = toNextActionRecommendation({
+      kind: 'capture', id: 'capture:target-m-31:2026-09-29', targetId: 'target-m-31', targetName: 'M 31', night: '2026-09-29',
+      usableHours: 7, moonSeparationDeg: null, closesInDays: null, shortOfGoalSec: null
+    })
+    expect(r.priority).toBe('medium')
+    expect(r.description).toBe('The moon is down while it is up.')
+  })
+
+  it('[DSC-007] Given a stack action, When presented, Then it reads exactly as the stacking suggestion did', () => {
+    const suggestion = {
+      kind: 'ready-to-stack' as const, id: 'ready-to-stack:target-m-42', targetId: 'target-m-42', targetName: 'M 42',
+      integrationSec: 3 * 3600, subCount: 36, nights: 2
+    }
+    expect(toNextActionRecommendation({ kind: 'stack', suggestion })).toEqual(toRecommendation(suggestion))
   })
 })

@@ -29,6 +29,7 @@ export function target(name: string, frames: Partial<Omit<TargetFrames, 'targetI
     subs: frames.subs ?? [],
     stacks: frames.stacks ?? [],
     goalSec: frames.goalSec ?? null,
+    ...(frames.filterGoals ? { filterGoals: frames.filterGoals } : {}),
     processedCount: frames.processedCount ?? 0,
     finalCount: frames.finalCount ?? 0
   }

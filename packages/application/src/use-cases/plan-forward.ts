@@ -1,5 +1,6 @@
 import {
   DEFAULT_PLANNING_POLICY,
+  goalShortfallSec,
   hasWorkLeft,
   monthlySeason,
   newMoonWindows,
@@ -67,7 +68,15 @@ export type ForwardPlan =
       seasons: TargetSeason[]
     }
 
-export type PlanForward = () => Promise<ForwardPlan>
+export interface PlanForwardOptions {
+  /**
+   * 'tonight' computes only tonight and the closing-season nights (about a month of skies) and
+   * leaves windows and seasons empty; 'full' (the default) adds the year ahead.
+   */
+  scope?: 'tonight' | 'full'
+}
+
+export type PlanForward = (options?: PlanForwardOptions) => Promise<ForwardPlan>
 
 /** How far ahead each part of the plan looks. */
 export interface PlanningHorizon {
@@ -95,7 +104,8 @@ export function makePlanForward(
   policy: PlanningPolicy = DEFAULT_PLANNING_POLICY,
   horizon: PlanningHorizon = DEFAULT_HORIZON
 ): PlanForward {
-  return async () => {
+  return async (options = {}) => {
+    const full = options.scope !== 'tonight'
     const site = await deps.settings.site()
     if (!site) return { status: 'no-site' }
 
@@ -121,7 +131,7 @@ export function makePlanForward(
       deps.frames.listTargetFrames(),
       deps.positions.listPositions(),
       deps.settings.hasNarrowbandFilter(),
-      deps.ephemeris.newMoons(monthStart, new Date(now.getTime() + horizon.seasonWeeks * 7 * DAY_MS))
+      full ? deps.ephemeris.newMoons(monthStart, new Date(now.getTime() + horizon.seasonWeeks * 7 * DAY_MS)) : Promise.resolve([])
     ])
     const newMoonNights = newMoons.map(d => siteNightOf(d, site.longitudeDeg))
 
@@ -137,7 +147,7 @@ export function makePlanForward(
         decDeg: p.decDeg,
         objectType: p.objectType,
         integrationSec: totalSec(usableSubs(f)),
-        goalSec: f.goalSec,
+        shortOfGoalSec: goalShortfallSec(f),
         hasFinal: f.finalCount > 0
       })
     }
@@ -146,7 +156,7 @@ export function makePlanForward(
     const hoursOn = (sky: NightSky | null, t: SkyTarget) => (sky ? usableHours(sky, site, t, policy) : 0)
 
     const closingNights = nightsFrom(tonightDate, horizon.closingDays, 1)
-    const seasonNights = nightsFrom(tonightDate, horizon.seasonWeeks, 7)
+    const seasonNights = full ? nightsFrom(tonightDate, horizon.seasonWeeks, 7) : []
     const lastWindowNight = nightsFrom(tonightDate, horizon.windowDays + 1, 1)[horizon.windowDays]
     const soonWindows = newMoonWindows(newMoonNights, policy).filter(w => w.end >= tonightDate && w.newMoon <= lastWindowNight)
     const windowNights = soonWindows.map(w => w.newMoon)
@@ -173,7 +183,7 @@ export function makePlanForward(
       return { ...w, bestTargets }
     })
 
-    const seasons: TargetSeason[] = open.map(t => {
+    const seasons: TargetSeason[] = (full ? open : []).map(t => {
       // 52 weekly nights touch 13 calendar months; the view shows the first 12.
       const months = monthlySeason(
         seasonNights.map(n => ({ night: n, hours: hoursOn(skies.get(n) ?? null, t) })),

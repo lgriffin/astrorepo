@@ -1,4 +1,4 @@
-import type { StackingSuggestion } from '@astro/domain'
+import type { NextAction, StackingSuggestion } from '@astro/domain'
 import type { Recommendation } from '@shared/types'
 
 export function formatDuration(sec: number): string {
@@ -36,5 +36,26 @@ export function toRecommendation(s: StackingSuggestion): Recommendation {
     targetName: s.targetName,
     actionLabel: 'View Target',
     dismissible: true
+  }
+}
+
+/** A ranked next action in the Recommendations shape; captures lead, stacking follows. */
+export function toNextActionRecommendation(a: NextAction): Recommendation {
+  if (a.kind === 'stack') return toRecommendation(a.suggestion)
+  const hours = formatDuration(Math.round(a.usableHours * 3600))
+  const parts: string[] = []
+  if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
+  if (a.shortOfGoalSec !== null && a.shortOfGoalSec > 0) parts.push(`${formatDuration(a.shortOfGoalSec)} short of your goal.`)
+  parts.push(a.moonSeparationDeg === null ? 'The moon is down while it is up.' : `The moon comes within ${a.moonSeparationDeg}°.`)
+  return {
+    id: a.id,
+    category: 'capture',
+    priority: a.closesInDays !== null ? 'high' : 'medium',
+    title: `${a.targetName} · shoot tonight, ${hours} above 30°`,
+    description: parts.join(' '),
+    targetId: a.targetId,
+    targetName: a.targetName,
+    actionLabel: 'View Target',
+    dismissible: false
   }
 }

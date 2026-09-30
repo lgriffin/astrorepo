@@ -36,7 +36,9 @@ frameCatalogueContract('SQLite', seed => {
       const id = seedFitsFile(sqlite, scanId, { targetId: t.targetId, isStacked: true, imageType: null })
       sqlite.prepare('UPDATE fits_files SET file_modified_at = ? WHERE id = ?').run(st.producedAt.toISOString(), id)
     }
-    if (t.goalSec !== null) seedIntegrationGoal(sqlite, { targetId: t.targetId, filter: 'Any', goalSeconds: t.goalSec })
+    if (t.filterGoals?.length) {
+      for (const g of t.filterGoals) seedIntegrationGoal(sqlite, { targetId: t.targetId, filter: g.filter, goalSeconds: g.goalSec })
+    } else if (t.goalSec !== null) seedIntegrationGoal(sqlite, { targetId: t.targetId, filter: 'Any', goalSeconds: t.goalSec })
     if (t.processedCount > 0 || t.finalCount > 0) {
       sqlite.prepare(
         `INSERT INTO target_home_data (target_id, tif_files, image_files, scanned_at) VALUES (?, ?, ?, ?)`

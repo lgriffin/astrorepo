@@ -32,6 +32,7 @@ TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 
 ## Recent Changes
 
+- 013-ranked-cockpit: Next actions list ranks tonight's captures (closing seasons first) ahead of stacking suggestions
 - 012-seasons-moon: forward plan (tonight, closing seasons, new-moon windows, 12-month seasons) via Ephemeris/PlanningSettings/TargetPositions ports and an astronomy-engine adapter
 - 011-ingest-core: Siril work area (sources never renamed), fast rescans, quarantine, sampled SHA-256 duplicate check
 - 010-discovery-cockpit: hidden-data report, derived progress, per-target discovery, dismissible suggestions, one migration source, charter

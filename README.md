@@ -34,6 +34,7 @@ It is becoming a local-first observatory cockpit: it shows what is hiding in you
 - **Safe Ingest** -- Source folders are read-only: Siril prep builds its folders in a work area, rescans read only changed files, unreadable files are quarantined with the reason, and a duplicate check reports copies and reclaimable space without deleting anything.
 - **Project Folder Generation** -- Create imaging project directories from configurable templates (default Siril structure).
 - **Observatory Cockpit** -- What is hidden in your files (nights never stacked, subs with no target, orphan calibration, rejected subs), progress derived from your data, and dismissible "ready to stack" and "restack" suggestions.
+- **Next Actions** -- One ranked to-do list on the dashboard: tonight's captures (closing seasons first, with hours up, moon distance and goal shortfall) ahead of stacking suggestions.
 - **Seasons and Moon Planning** -- From your site: tonight's targets with work left and how close the moon comes, bright-moon filtering for dual-band or narrowband filters, targets whose season closes within 30 days, new-moon windows with the best targets, and a 12-month season table.
 - **Observatory Dashboard** -- Aggregate statistics across sessions, targets, and equipment.
 - **Dark Astronomy UI** -- Tailwind CSS custom palette designed for nighttime use.

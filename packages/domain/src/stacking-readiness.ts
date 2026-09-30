@@ -23,10 +23,17 @@ export interface TargetFrames {
   stacks: StackedImage[]
   /** Sum of the user's integration goals for the target, if any are set. */
   goalSec: number | null
+  /** The goals one by one, per filter, when the store keeps them that way. */
+  filterGoals?: FilterGoal[]
   /** Processed files (for example TIFFs out of Siril) found for the target. */
   processedCount: number
   /** Finished images (JPEG, PNG) found for the target. */
   finalCount: number
+}
+
+export interface FilterGoal {
+  filter: string
+  goalSec: number
 }
 
 export interface StackingPolicy {
@@ -119,4 +126,22 @@ export function assessStackingReadiness(
 /** Unprocessed integration first: the most photons waiting to become an image. */
 export function unprocessedSec(s: StackingSuggestion): number {
   return s.kind === 'ready-to-stack' ? s.integrationSec : s.addedSec
+}
+
+const sameFilter = (a: string | null, b: string) => (a ?? '').trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Integration still needed to reach the target's goals, or null with no goal set. With goals per
+ * filter, each filter counts only its own usable subs, so a filter past its goal never makes up
+ * for one that is short.
+ */
+export function goalShortfallSec(target: TargetFrames): number | null {
+  const usable = usableSubs(target)
+  if (target.filterGoals && target.filterGoals.length > 0) {
+    return target.filterGoals.reduce(
+      (short, g) => short + Math.max(0, g.goalSec - totalSec(usable.filter(s => sameFilter(s.filter, g.filter)))),
+      0
+    )
+  }
+  return target.goalSec === null ? null : Math.max(0, target.goalSec - totalSec(usable))
 }

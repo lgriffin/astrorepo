@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
 import type { FrameCatalogue } from '@astro/application'
-import type { CalibrationFrame, CalibrationKind, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
+import type { CalibrationFrame, CalibrationKind, FilterGoal, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
 
 interface FrameRow {
   target_id: string
@@ -63,6 +63,14 @@ export class SqliteFrameCatalogue implements FrameCatalogue {
           OR COALESCE(h.tif_files, 0) > 0 OR COALESCE(h.image_files, 0) > 0`
     ).all() as TargetRow[]
 
+    const goals = this.db.prepare('SELECT target_id, filter, goal_seconds FROM integration_goals ORDER BY filter').all() as {
+      target_id: string
+      filter: string
+      goal_seconds: number
+    }[]
+    const goalsOf = new Map<string, FilterGoal[]>()
+    for (const g of goals) goalsOf.set(g.target_id, [...(goalsOf.get(g.target_id) ?? []), { filter: g.filter, goalSec: g.goal_seconds }])
+
     const byTarget = new Map<string, TargetFrames>()
     for (const t of targets) {
       byTarget.set(t.id, {
@@ -71,6 +79,7 @@ export class SqliteFrameCatalogue implements FrameCatalogue {
         subs: [],
         stacks: [],
         goalSec: t.goal_sec,
+        filterGoals: goalsOf.get(t.id) ?? [],
         processedCount: t.processed ?? 0,
         finalCount: t.final ?? 0
       })

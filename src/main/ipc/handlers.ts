@@ -23,7 +23,7 @@ import { startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages 
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
 import { composeCore } from '../composition'
-import { toRecommendation } from '../adapters/stacking-suggestion-presenter'
+import { toNextActionRecommendation } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
@@ -601,9 +601,9 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('recommendations:list', async () => {
-    // Strangler seam: stacking suggestions come from the hexagonal core, the rest from the legacy service.
-    const stacking = await composeCore(getSqlite()).listStackingSuggestions()
-    return { recommendations: [...stacking.map(toRecommendation), ...getRecommendations()] }
+    // Strangler seam: ranked captures and stacking come from the hexagonal core, the rest from the legacy service.
+    const actions = await composeCore(getSqlite()).listNextActions()
+    return { recommendations: [...actions.map(toNextActionRecommendation), ...getRecommendations()] }
   })
 
   handle('cockpit:overview', async () => {
