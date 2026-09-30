@@ -6,6 +6,7 @@ import { invoke } from '../hooks/useIPC'
 import { ProgressStrip } from '../components/cockpit/ProgressStrip'
 import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
 import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
+import { SetupCard } from '../components/cockpit/SetupCard'
 import { useToast } from '../contexts/ToastContext'
 import type { Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
@@ -116,6 +117,8 @@ export function Dashboard(): React.ReactElement {
       }
     >
       <div className="space-y-4">
+        <SetupCard />
+
         <Card title="Next actions">
           {recommendations === null ? (
             <EmptyState>Working out tonight's sky and what your data is ready for…</EmptyState>
