@@ -1,4 +1,4 @@
-import type { ContentHasher, FileHashStore, FileIndex, PlacementResult, SirilWorkspace } from '@astro/application'
+import type { ContentHasher, FileHashStore, FileIndex, FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
 import type { FileHash, FileStamp, SirilPlacement } from '@astro/domain'
 
 /**
@@ -107,5 +107,32 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
   async contains(dir: string, candidate: string): Promise<boolean> {
     const d = dir.replace(/\/+$/, '')
     return candidate === d || candidate.startsWith(`${d}/`)
+  }
+
+  /** Size, dimensions and sensor per source path; unset frames are 50 MB and never indexed. */
+  readonly details = new Map<string, Omit<FrameDetail, 'path'>>()
+  space: WorkAreaSpace = { freeBytes: null, usedBytes: 0 }
+
+  describe(path: string, detail: Partial<Omit<FrameDetail, 'path'>>): this {
+    this.details.set(path, { sizeBytes: 50_000_000, width: null, height: null, colour: null, ...this.details.get(path), ...detail })
+    return this
+  }
+
+  async frameDetails(paths: string[]): Promise<FrameDetail[]> {
+    return paths.map(path => ({ path, ...(this.details.get(path) ?? { sizeBytes: 50_000_000, width: null, height: null, colour: null }) }))
+  }
+
+  async workAreaSpace(): Promise<WorkAreaSpace> {
+    return { ...this.space }
+  }
+
+  async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {
+    let bytes = 0
+    for (const p of placements) {
+      const dest = `${workDir}/${p.folder}/${p.name}`
+      const current = this.placed.get(dest) === p.from && this.placedVersion.get(dest) === (this.versions.get(p.from) ?? 0)
+      if (!current && this.otherVolume.has(p.from)) bytes += this.details.get(p.from)?.sizeBytes ?? 50_000_000
+    }
+    return bytes
   }
 }

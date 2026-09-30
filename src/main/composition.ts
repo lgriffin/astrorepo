@@ -3,6 +3,7 @@ import {
   makeDiscoverTarget,
   makeDiscoverTargets,
   makeDismissSuggestion,
+  makeEstimateSirilRun,
   makeFindDuplicates,
   makeListNextActions,
   makeListStackingSuggestions,
@@ -48,6 +49,7 @@ export function composeCore(db: Database.Database) {
     reportHiddenData: makeReportHiddenData({ frames, hashes }),
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
     prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db) }),
+    estimateSirilRun: makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db) }),
     planForward
   }
 }

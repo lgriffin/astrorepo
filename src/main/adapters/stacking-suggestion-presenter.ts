@@ -9,7 +9,7 @@ export function formatDuration(sec: number): string {
   return m === 0 ? `${h} h` : `${h} h ${m} m`
 }
 
-export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+export const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`
 
 /** Presents a core suggestion in the shape the existing Dashboard already renders. */
 export function toRecommendation(s: StackingSuggestion): Recommendation {

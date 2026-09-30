@@ -14,7 +14,8 @@ when the code says otherwise, and the reasons are recorded here.
 | B · Ingest core | Siril prep in a work area (sources untouched), fast rescans, quarantine of unreadable files, duplicate check | [011](../specs/011-ingest-core/requirements.md) | Done |
 | L · Seasons, moon and tonight | Coming-nights card, 12-month season table, closing-season warnings, new-moon windows, bright-moon filtering | [012](../specs/012-seasons-moon/requirements.md) | Done |
 | C2 · Ranked cockpit | Next actions: tonight's captures (closing seasons first) ranked ahead of stacking; other checks in their own section | [013](../specs/013-ranked-cockpit/requirements.md) | Done |
-| C3 · Recipes | Siril recipe library, "what could I build", confirm before run | later | Next (needs your Siril scripts) |
+| C3a · Stacking plan | Which stock Siril script fits a target's frames, the disk space it needs stage by stage, and whether the work area has room | [014](../specs/014-siril-space/requirements.md) | Done |
+| C3b · Post-processing recipes | Siril_Scripts v2 on a stack (profile from the object type), with the exact command, confirmed before it runs | later | Next |
 | G · Jobs and Siril runner | A recipe runs on the Windows PC with a live log | later | Planned |
 | D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture | later | Backlog |
 
@@ -37,6 +38,11 @@ when the code says otherwise, and the reasons are recorded here.
 - **Captures rank ahead of stacking** (spec 013). The blueprint ranked by unprocessed hours alone;
   a night cannot be moved and stacking can, so tonight's captures lead and closing seasons lead
   those.
+- **Recipes start with disk space** (spec 014). Leigh's Siril_Scripts has a space estimator he
+  relies on, and a stack that runs out of disk halfway wastes a night's processing, so slice C3
+  opens with the stacking plan: the stock Siril script that fits and the space it needs, reimplemented
+  from the estimator's arithmetic. Siril_Scripts is GPL-3.0 and post-processing (not stacking), so
+  its scripts are called where they are installed, never copied (charter VI), in C3b.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
   packages. Until then the core runs inside the Electron main process over SQLite, which keeps the
   app shippable at every step.
@@ -47,4 +53,5 @@ when the code says otherwise, and the reasons are recorded here.
   the scope adapters can be built from real files.
 - The Synology model, which decides the container image targets.
 - Where RC Astro runs today (assumed: inside PixInsight on the Windows PC).
-- Two or three Siril scripts you trust, to become the first recipes.
+- Where Siril_Scripts lives on the Windows PC and whether RC Astro CLI is installed there, for the
+  post-processing recipes (C3b).

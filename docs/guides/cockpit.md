@@ -110,6 +110,35 @@ master FITS folder, or any scanned folder is refused, since the app never writes
 reads these frames; do not edit them in place, because a hard link shares its bytes with the
 original.
 
+## Stacking plan
+
+Under **Prep for Siril**, the **Stacking plan** says which of Siril's stock preprocessing scripts
+to run on the prepared folders, and whether your disk has room, before anything is written.
+
+- **Which script.** Colour frames with biases, flats and darks get `OSC_Preprocessing.ssf`. With
+  darks but not all three sets, `OSC_Preprocessing_WithoutFlat.ssf`; with no darks,
+  `OSC_Preprocessing_WithoutDBF.ssf`. Siril's scripts use flats and biases only with all three
+  sets, so the plan says when yours are left out. Mono frames need all three sets for
+  `Mono_Preprocessing.ssf`; without them no stock script fits, and the plan says what is missing.
+  A light whose header names a Bayer pattern is colour; frames never scanned are taken as colour,
+  since the Seestar and the Vespera are colour cameras.
+- **How much space.** Siril's stock scripts keep every intermediate file (converted, calibrated
+  and registered copies of every light), so a stack needs many times the size of the lights. The
+  plan adds up each stage the way Leigh's Siril space estimator does, plus what Prep for Siril
+  must copy: each frame on another disk from the work area, unless an up-to-date copy is already
+  there (frames on the same disk are hard-linked for free). It then says whether that fits in the
+  free space on the work area's disk, or by how much it is short. Files an earlier run left in the
+  work folder's `process` and `masters` folders are reported but not counted as free, since they
+  may belong to another script; delete them to get the space back.
+- **Every script and its stages** lists the other stock scripts for your sensor (Bayer drizzle,
+  Ha or Ha+OIII extraction for dual-band data) with their size, whether they fit, what
+  calibration they would need, and a stage-by-stage breakdown.
+
+Sizes come from each light's header (width and height). For a folder not yet scanned in the FITS
+Analyzer, the plan guesses the frame size from the file size and says the figures are
+approximate. When the lights are not all one size, every light is counted at the largest, so the
+plan never comes out too small. Making the plan writes nothing, anywhere.
+
 ## Rescanning
 
 Scanning a folder again reads only files that are new or whose size or modified time changed.
