@@ -11,7 +11,7 @@ export interface QueueResult {
  * Queue a run after a confirm step that shows what it will do (specs/016-job-runner, JOB-001).
  * The main process works the plan out again before anything is queued.
  */
-export function QueueJob({ label, confirm, onQueue }: { label: string; confirm: string[]; onQueue: (timing: 'window' | 'now') => Promise<QueueResult> }): React.ReactElement {
+export function QueueJob({ label, confirm, onQueue, onQueued }: { label: string; confirm: string[]; onQueue: (timing: 'window' | 'now') => Promise<QueueResult>; onQueued?: () => void }): React.ReactElement {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<QueueResult | null>(null)
@@ -19,8 +19,10 @@ export function QueueJob({ label, confirm, onQueue }: { label: string; confirm: 
   async function queue(timing: 'window' | 'now'): Promise<void> {
     setBusy(true)
     try {
-      setResult(await onQueue(timing))
+      const result = await onQueue(timing)
+      setResult(result)
       setOpen(false)
+      if (result.ok) onQueued?.()
     } catch (error) {
       setResult({ ok: false, error: error instanceof Error ? error.message : String(error) })
     } finally {

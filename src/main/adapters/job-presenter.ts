@@ -56,6 +56,7 @@ function toJobView(job: Job, now: Date, extra: { estimate: JobEstimate | null; w
   const end = job.finishedAt ?? (job.state === 'running' ? now : null)
   return {
     id: job.id,
+    targetId: job.targetId,
     title: job.title,
     kind: job.kind,
     state: job.state,
@@ -76,7 +77,11 @@ function toJobView(job: Job, now: Date, extra: { estimate: JobEstimate | null; w
 }
 
 /** The queue for the Jobs page. `now` is the clock the snapshot was taken by. */
-export function toJobsView(snap: JobsSnapshot, now: Date): JobsView {
+/**
+ * `historyFor` picks one target's finished jobs before the history is cut to its newest few, so a
+ * busy other target never hides them (the target page's Runs step, UX-011).
+ */
+export function toJobsView(snap: JobsSnapshot, now: Date, historyFor?: string): JobsView {
   const { schedule, settings, load, jobs } = snap
   const byId = new Map(jobs.map(j => [j.id, j]))
   const window = `${formatClock(settings.windowStart)} and ${formatClock(settings.windowEnd)}`
@@ -105,7 +110,7 @@ export function toJobsView(snap: JobsSnapshot, now: Date): JobsView {
       return toJobView(job, now, { estimate: q.estimate, waiting: q.wait ? waitText(q.wait, q.estimate, now) : 'Starting now.' })
     }),
     history: jobs
-      .filter(j => j.state !== 'queued' && j.state !== 'running')
+      .filter(j => j.state !== 'queued' && j.state !== 'running' && (historyFor === undefined || j.targetId === historyFor))
       .sort((a, b) => (b.finishedAt?.getTime() ?? 0) - (a.finishedAt?.getTime() ?? 0))
       .slice(0, HISTORY_SHOWN)
       .map(j => toJobView(j, now, { estimate: null, waiting: null })),

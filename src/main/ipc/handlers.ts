@@ -458,7 +458,7 @@ export function registerIpcHandlers(): void {
     return toPostProcessView(plan)
   }))
 
-  handle('jobs:list', async () => toJobsView(await jobs().snapshot(), new Date()))
+  handle('jobs:list', validated('jobs:list', async (args) => toJobsView(await jobs().snapshot(), new Date(), args?.target_id)))
 
   /** A refusal the user can act on comes back as a message; anything else is a bug and throws. */
   const refusable = async (work: () => Promise<{ title: string }>) => {

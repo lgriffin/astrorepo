@@ -1066,6 +1066,8 @@ export interface PostProcessView {
 /** One job as the Jobs page shows it. */
 export interface JobView {
   id: string
+  /** The target the job works on, so its page can list it. */
+  targetId: string
   title: string
   kind: 'stack' | 'post-process'
   state: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'

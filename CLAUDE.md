@@ -32,6 +32,7 @@ TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 
 ## Recent Changes
 
+- 017-unified-ux U3: a target's page in tabs (TARGET_TABS, targetLink(id, tab) in src/shared/navigation.ts); Stack and process in components/target/ProcessTab.tsx shows runsForTarget and hides a step's Queue button while its job is active
 - 017-unified-ux U2: Home leads with Next actions; totals on Insights (ObservatoryTotals); withQueuedJobs marks stacking suggestions already in Jobs; shared Card/EmptyState/LinkButton in components/common/Card.tsx
 - 017-unified-ux: one map of places (src/shared/navigation.ts) drives the grouped sidebar, page titles, back links and Settings section links; jobs status under the sidebar. Pages take their title from the map (no literal PageContainer title on a place)
 - 016-job-runner: CI-like job queue (run window, idle PC, one at a time, predicted length, live logs) via JobStore/ProcessRunner/MachineMonitor/JobLogs ports and the jobs host in src/main/jobs-host.ts

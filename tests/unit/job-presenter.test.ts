@@ -33,6 +33,16 @@ function view(jobs: Job[], now: Date, settings: JobSettings = DEFAULT_JOB_SETTIN
 }
 
 describe('job presenter', () => {
+  it("[UX-011] Given 25 newer finished jobs for other targets, When one target's runs are asked for, Then its own finished jobs still come back", () => {
+    const done = (id: string, targetId: string, hour: number) =>
+      job(id, { targetId, state: 'succeeded', startedAt: local(hour), finishedAt: local(hour, 30), exitCode: 0 })
+    const jobs = [done('mine', 'm31', 1), ...Array.from({ length: 25 }, (_, i) => done(`other-${i}`, 'm42', 2 + (i % 20)))]
+    const schedule = scheduleJobs({ now: local(23), settings: DEFAULT_JOB_SETTINGS, jobs, history: [], load: { userIdleSeconds: 1200, cpuPercent: 4 }, freeBytes: {} })
+    const snap = { jobs, schedule, settings: DEFAULT_JOB_SETTINGS, load: { userIdleSeconds: 1200, cpuPercent: 4 } }
+    expect(toJobsView(snap, local(23)).history.map(j => j.id)).not.toContain('mine')
+    expect(toJobsView(snap, local(23), 'm31').history.map(j => j.id)).toEqual(['mine'])
+  })
+
   it('[JOB-002] Given the window closed, When shown, Then the rules, the next opening and why each job waits read as sentences', () => {
     const v = view([job('a'), job('b', { timing: 'now', queuedAt: local(13) })], local(14))
     expect(v.rules).toBe(

@@ -82,4 +82,13 @@ The slices, each its own pull request:
 |----|---------|-------------|
 | UX-006 | Ubiquitous | The system shall open Home on Next actions, followed by Coming nights and what is hiding in the files, then how far the targets have got, each part loading on its own and saying, with a way to try again, when it could not be read, and shall show the totals and breakdowns on Insights instead. |
 | UX-007 | State | While a target has a stack job queued or running, the system shall say so on that target's stacking suggestion on Home, keeping that line current while Home stays open, and link it to Jobs rather than to the target. |
-| UX-008 | Ubiquitous | The system shall draw the cards on Home and Jobs, and what each says when it is empty, with one shared card and empty-state component. |
+| UX-008 | Ubiquitous | The system shall draw the cards on Home, Jobs and a target's page, and what each says when it is empty, with one shared card and empty-state component. |
+
+## U3 · A target in one flow
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| UX-009 | Ubiquitous | The system shall split a target's page into Overview, Stack and process, Files, and Notes and nights, opening on the part a link names and on Overview otherwise. |
+| UX-010 | Ubiquitous | The system shall show stacking, post-processing and the target's runs as numbered steps, in that order, on Stack and process. |
+| UX-011 | State | While a target has a job queued or running, the system shall say so at the top of the step the job belongs to instead of offering to queue that step again, and list the job, with the target's last five finished jobs, under Runs. |
+| UX-012 | Event | When the user opens the target of a stacking suggestion or of a job, the system shall open that target on Stack and process. |
