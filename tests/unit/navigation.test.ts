@@ -24,6 +24,7 @@ function pageContainerProps(text: string): string[][] {
 
 const job = (over: Partial<JobView> = {}): JobView => ({
   id: 'j1',
+  targetId: 't-m31',
   title: 'Stack M 31 with OSC_Preprocessing',
   kind: 'stack',
   state: 'queued',

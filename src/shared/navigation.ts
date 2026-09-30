@@ -1,4 +1,4 @@
-import type { JobsView } from './types'
+import type { JobsView, JobView } from './types'
 
 /**
  * The app's one map of places (specs/017-unified-ux). The sidebar, every page's title and
@@ -125,4 +125,55 @@ export function jobsStatus(view: Pick<JobsView, 'running' | 'queue'> | null): { 
   const waiting = view.queue[0].waiting
   const next = waiting ? `Next ${waiting.charAt(0).toLowerCase()}${waiting.slice(1)}` : 'Next starts in a moment.'
   return { text: `${count}. ${next}`, busy: false }
+}
+
+/** The parts of a target's page (UX-009), in the order they appear. */
+export const TARGET_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'process', label: 'Stack and process' },
+  { id: 'files', label: 'Files' },
+  { id: 'notes', label: 'Notes and nights' }
+] as const
+
+export type TargetTab = (typeof TARGET_TABS)[number]['id']
+
+/** A link to a target's page, opened on one part of it. */
+export function targetLink(targetId: string, tab: TargetTab = 'overview'): string {
+  const path = `/targets/${encodeURIComponent(targetId)}`
+  return tab === 'overview' ? path : `${path}?tab=${tab}`
+}
+
+/** The part of a target's page a link asks for; Overview when it names none. */
+export function targetTabFrom(search: string): TargetTab {
+  const wanted = new URLSearchParams(search).get('tab')
+  return TARGET_TABS.find(t => t.id === wanted)?.id ?? 'overview'
+}
+
+export interface TargetRuns {
+  /** Queued or running, in the order the queue will run them (the running one first). */
+  active: JobView[]
+  /** The last few that finished, newest first. */
+  finished: JobView[]
+  /** The active job for each step of the flow, so the step can say it is already on its way. */
+  stack: JobView | null
+  postProcess: JobView | null
+}
+
+/** One target's jobs out of the whole queue (UX-011). */
+export function runsForTarget(view: Pick<JobsView, 'running' | 'queue' | 'history'> | null, targetId: string, keep = 5): TargetRuns {
+  const mine = (j: JobView) => j.targetId === targetId
+  const active = view ? [...(view.running ? [view.running] : []), ...view.queue].filter(mine) : []
+  const finished = view ? view.history.filter(mine).slice(0, keep) : []
+  return {
+    active,
+    finished,
+    stack: active.find(j => j.kind === 'stack') ?? null,
+    postProcess: active.find(j => j.kind === 'post-process') ?? null
+  }
+}
+
+/** What a step says when its job is already on its way. */
+export function runLine(job: JobView): string {
+  if (job.state === 'running') return `Running now: ${job.title}.`
+  return job.waiting && job.waiting !== 'Starting now.' ? `Queued: ${job.title}. ${job.waiting}` : `Queued: ${job.title}. Starting now.`
 }

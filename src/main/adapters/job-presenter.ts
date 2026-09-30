@@ -56,6 +56,7 @@ function toJobView(job: Job, now: Date, extra: { estimate: JobEstimate | null; w
   const end = job.finishedAt ?? (job.state === 'running' ? now : null)
   return {
     id: job.id,
+    targetId: job.targetId,
     title: job.title,
     kind: job.kind,
     state: job.state,

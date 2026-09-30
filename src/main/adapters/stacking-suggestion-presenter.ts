@@ -1,5 +1,6 @@
 import type { Job, NextAction, StackingSuggestion } from '@astro/domain'
 import type { Recommendation } from '@shared/types'
+import { targetLink } from '@shared/navigation'
 
 export function formatDuration(sec: number): string {
   const totalMin = Math.round(sec / 60)
@@ -22,7 +23,8 @@ export function toRecommendation(s: StackingSuggestion): Recommendation {
       description: `${plural(s.subCount, 'sub')} across ${plural(s.nights, 'night')} are waiting to be stacked.`,
       targetId: s.targetId,
       targetName: s.targetName,
-      actionLabel: 'View Target',
+      actionLabel: 'Open the stacking plan',
+      actionTo: targetLink(s.targetId, 'process'),
       dismissible: true
     }
   }
@@ -34,7 +36,8 @@ export function toRecommendation(s: StackingSuggestion): Recommendation {
     description: `${plural(s.addedSubCount, 'newer sub')} captured after the stack of ${s.lastStackedAt.toISOString().slice(0, 10)}. A restack would include them.`,
     targetId: s.targetId,
     targetName: s.targetName,
-    actionLabel: 'View Target',
+    actionLabel: 'Open the stacking plan',
+    actionTo: targetLink(s.targetId, 'process'),
     dismissible: true
   }
 }

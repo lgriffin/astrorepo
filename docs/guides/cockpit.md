@@ -99,6 +99,24 @@ a different filter, scope or quality verdict, brings it back.
 
 ## On a target's page
 
+A target's page has four parts, in tabs under its name. Its image and its other names stay
+beside every part.
+
+- **Overview**: what the files say (below), the next step for the target in one sentence, and the
+  workflow stage.
+- **Stack and process**: the whole flow from raw frames to a processed image, as numbered steps.
+  **1 · Stack** is Prep for Siril and the stacking plan. **2 · Post-process** is the Siril_Scripts
+  recipe. **3 · Runs** lists this target's queued, running and recent jobs. When a stack or
+  post-processing job is already queued or running, its step says so at the top and does not
+  offer to queue it again.
+- **Files**: the target's folders, with buttons to open each one, and what the index knows about
+  its FITS files.
+- **Notes and nights**: your notes, the description, the nights you logged and the catalogue
+  details.
+
+A stacking suggestion on Home and each job on the Jobs page open the target at **Stack and
+process**.
+
 "What the files say" shows the target's integration split by filter, by scope and by observing
 night, when it was last captured, how many stacks it has, how many nights are not in a stack yet,
 and how close it is to its integration goal.
@@ -108,7 +126,7 @@ one night.
 
 ## Preparing a target for Siril
 
-On a target's page, **Prep for Siril** builds the folders Siril expects (lights, darks, flats and
+In **Stack and process**, step 1, **Prep for Siril** builds the folders Siril expects (lights, darks, flats and
 biases) in the app's work area and opens it. Your target folder is not touched. Frames in session
 subfolders are included, and a frame in a folder named for its type (such as `darks`) goes to that
 Siril folder when its header does not say. Preparing again replaces any frame whose source has
@@ -120,9 +138,12 @@ master FITS folder, or any scanned folder is refused, since the app never writes
 reads these frames; do not edit them in place, because a hard link shares its bytes with the
 original.
 
+You only need Prep for Siril to run Siril yourself: a queued stack prepares the folders on its own
+before Siril starts.
+
 ## Stacking plan
 
-Under **Prep for Siril**, the **Stacking plan** says which of Siril's stock preprocessing scripts
+Under **Prep for Siril**, the stacking plan says which of Siril's stock preprocessing scripts
 to run on the prepared folders, and whether your disk has room, before anything is written.
 
 - **Which script.** Colour frames with biases, flats and darks get `OSC_Preprocessing.ssf`. With
@@ -151,7 +172,8 @@ plan never comes out too small. Making the plan writes nothing, anywhere.
 
 ## Post-processing
 
-Once a target has a stack, its page shows the Siril_Scripts v2 command to finish it. The recipe
+Once a target has a stack, step 2 of **Stack and process** shows the Siril_Scripts v2 command to
+finish it. The recipe
 uses the newest stack still on disk: an integration the FITS files scan indexed (not a calibrated
 sub or a master calibration frame), or the `result*.fit` Siril left in the target's work folder.
 Pick another from the list if there are several.

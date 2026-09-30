@@ -88,13 +88,18 @@ describe('Home', () => {
     expect(withQueuedJobs([recs[1]], [job({})])).toEqual([recs[1]])
   })
 
-  it('[UX-008] Given Home, Jobs and the cockpit cards, When they are drawn, Then every card and empty state comes from the shared components', () => {
+  it('[UX-008] Given Home, Jobs, the cockpit cards and a target\'s page, When they are drawn, Then every card and empty state comes from the shared components', () => {
     const files = [
       'pages/Dashboard.tsx',
       'pages/Jobs.tsx',
       'components/cockpit/ComingNightsCard.tsx',
       'components/cockpit/HiddenDataCard.tsx',
-      'components/insights/ObservatoryTotals.tsx'
+      'components/insights/ObservatoryTotals.tsx',
+      'pages/TargetDetail.tsx',
+      'components/target/ProcessTab.tsx',
+      'components/target/FilesTab.tsx',
+      'components/target/NotesTab.tsx',
+      'components/target/TargetAside.tsx'
     ]
     for (const file of files) {
       const source = read(file)

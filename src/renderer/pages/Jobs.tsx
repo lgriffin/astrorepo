@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { JobsView, JobView } from '@shared/types'
-import { settingsLink } from '@shared/navigation'
+import { settingsLink, targetLink } from '@shared/navigation'
 import { Card, EmptyState, LinkButton } from '../components/common/Card'
 
 const time = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
@@ -73,6 +73,9 @@ export function Jobs(): React.ReactElement {
               Cancel
             </button>
           )}
+          <button onClick={() => navigate(targetLink(job.targetId, 'process'))} className="px-2 py-1 text-xs border border-astro-border rounded text-astro-muted hover:text-astro-text">
+            Open target
+          </button>
           <button onClick={() => setLogFor(logFor === job.id ? null : job.id)} className="px-2 py-1 text-xs border border-astro-border rounded text-astro-muted hover:text-astro-text">
             {logFor === job.id ? 'Hide log' : 'Log'}
           </button>
