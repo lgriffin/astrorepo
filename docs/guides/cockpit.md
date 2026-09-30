@@ -1,6 +1,15 @@
 # Using the cockpit
 
-Home is the cockpit. From the top it shows:
+Home is the cockpit. Until the app is set up, it opens with a **Get set up** checklist:
+1. Set your site.
+2. Choose your home folder.
+3. Scan your library.
+4. Find Siril.
+
+Each step links to where it is done and is ticked off once it is. **Hide** puts the checklist
+away; **Start again** in Settings brings it back.
+
+Below that, from the top, Home shows:
 1. **Next actions**: what is worth doing next.
 2. **Coming nights** and **Hidden in your files**, side by side.
 3. **Where your targets are**: how many targets are at each stage.

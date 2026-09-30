@@ -27,6 +27,13 @@ sits on a smaller line below that.
 To record a night by hand, use **Log a night** on Home or on Nights. It is an action rather than a
 place, so it is not in the sidebar.
 
+## Getting set up
+
+On a fresh install Home opens with **Get set up**: your site, your home folder, a library scan and
+Siril, each linking to where it is done. Pages with nothing to show yet say what would appear there
+and link to the step that fills them. The site is set only in **Settings → Your site**; every page
+that needs it links there.
+
 ## Pages below a place
 
 A target, a collection and the night form belong to a place. While you are on one, that place
@@ -50,5 +57,5 @@ site in Settings" on Home's Coming nights card opens **Your site**.
 
 The overhaul lands in slices ([spec 017](../../specs/017-unified-ux/requirements.md)). Home now
 opens on Next actions, and a target's page runs from plan to stack to post-processing to its
-jobs on **Stack and process** (see [Using the cockpit](cockpit.md)). Next, the site is set in one
-place with a setup checklist on Home.
+jobs on **Stack and process** (see [Using the cockpit](cockpit.md)), and the site is set in one
+place with **Get set up** on Home until you are ready. Next, the wording is made consistent.

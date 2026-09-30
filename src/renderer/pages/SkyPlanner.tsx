@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { Card, EmptyState, LinkButton } from '../components/common/Card'
+import { useNavigate } from 'react-router-dom'
+import { settingsLink } from '@shared/navigation'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { SeasonsTable } from '../components/cockpit/SeasonsTable'
@@ -118,6 +121,7 @@ function moonIcon(phaseName: string): string {
 }
 
 export function SkyPlanner(): React.ReactElement {
+  const navigate = useNavigate()
   const [lat, setLat] = useState<number | null>(null)
   const [lon, setLon] = useState<number | null>(null)
   const [elevation, setElevation] = useState<number>(0)
@@ -193,16 +197,6 @@ export function SkyPlanner(): React.ReactElement {
     setVisibility(vis)
   }, [lat, lon, elevation, date])
 
-  const saveLocation = useCallback(async () => {
-    if (lat === null || lon === null) return
-    await Promise.all([
-      invoke('settings:set', { key: 'observer_latitude', value: String(lat) }),
-      invoke('settings:set', { key: 'observer_longitude', value: String(lon) }),
-      invoke('settings:set', { key: 'observer_elevation', value: String(elevation) })
-    ])
-    loadSkyData()
-    loadPlan()
-  }, [lat, lon, elevation, loadSkyData, loadPlan])
 
   if (!locationLoaded) {
     return (
@@ -215,36 +209,12 @@ export function SkyPlanner(): React.ReactElement {
   if (lat === null || lon === null) {
     return (
       <PageContainer>
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-md">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>
-          <div className="space-y-3">
-            <label className="block">
-              <span className="text-xs text-astro-muted">Latitude (°N)</span>
-              <input type="number" step="0.0001" min={-90} max={90}
-                onChange={e => setLat(parseFloat(e.target.value) || null)}
-                placeholder="e.g. 51.5074"
-                className="w-full mt-1 px-3 py-2 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent" />
-            </label>
-            <label className="block">
-              <span className="text-xs text-astro-muted">Longitude (°E)</span>
-              <input type="number" step="0.0001" min={-180} max={180}
-                onChange={e => setLon(parseFloat(e.target.value) || null)}
-                placeholder="e.g. -0.1278"
-                className="w-full mt-1 px-3 py-2 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent" />
-            </label>
-            <label className="block">
-              <span className="text-xs text-astro-muted">Elevation (m)</span>
-              <input type="number" step="1" min={0}
-                value={elevation}
-                onChange={e => setElevation(parseFloat(e.target.value) || 0)}
-                className="w-full mt-1 px-3 py-2 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent" />
-            </label>
-            <button onClick={saveLocation} disabled={lat === null || lon === null}
-              className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50">
-              Save Location
-            </button>
-          </div>
-        </div>
+        <Card title="Your site">
+          <EmptyState action={<LinkButton onClick={() => navigate(settingsLink('location'))}>Set your site in Settings</LinkButton>}>
+            The Sky planner works out tonight, the moon and each target's season from where your scopes stand. Set your latitude and
+            longitude once in Settings and every page uses it.
+          </EmptyState>
+        </Card>
       </PageContainer>
     )
   }
@@ -253,9 +223,10 @@ export function SkyPlanner(): React.ReactElement {
 
   return (
     <PageContainer
-      subtitle={`Observer: ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`}
+      subtitle={`Your site: ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E, set in Settings`}
       actions={
         <div className="flex items-center gap-2">
+          <LinkButton onClick={() => navigate(settingsLink('location'))}>Change your site</LinkButton>
           <input
             type="date"
             value={date}

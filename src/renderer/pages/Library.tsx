@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { Card, EmptyState } from '../components/common/Card'
+import { settingsLink } from '@shared/navigation'
 import { invoke } from '../hooks/useIPC'
 import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress } from '@shared/types'
 
@@ -96,13 +98,11 @@ export function Library(): React.ReactElement {
   if (!homeFolderSet) {
     return (
       <PageContainer>
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
-          <p className="text-sm text-astro-muted">
-            No home folder configured. Set your home folder path in{' '}
-            <a href="#/settings" className="text-astro-accent hover:underline">Settings</a>{' '}
-            to scan your library.
-          </p>
-        </div>
+        <Card title="Home folder" className="max-w-lg">
+          <EmptyState action={<a href={`#${settingsLink('folders')}`} className="text-xs text-astro-accent hover:underline">Choose it in Settings</a>}>
+            Choose the folder that holds your raw, stacked and finished data, then scan it here.
+          </EmptyState>
+        </Card>
       </PageContainer>
     )
   }

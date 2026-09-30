@@ -6,8 +6,9 @@ windows** list at the bottom of the Sky planner.
 
 ## Before you start
 
-Set your latitude and longitude (and elevation, if you like) in **Settings → Your site**
-or on the Sky planner. Until then, the card says what to set and links there.
+Set your latitude and longitude (and elevation, if you like) in **Settings → Your site**. It is
+the only place the site is set: the Sky planner, the Coming nights card and Home's **Get set up**
+checklist all link there until it is.
 
 Tick **I have a dual-band or narrowband filter** if you do. It is on by default, because the
 Seestar S50's built-in light-pollution filter is dual-band.

@@ -5,6 +5,7 @@ import type { ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 import { useLocation } from 'react-router-dom'
 import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
+import { SETUP_HIDDEN_KEY } from '@shared/setup'
 
 const scrollTo = (section: string): void => {
   document.getElementById(`settings-${section}`)?.scrollIntoView({ block: 'start' })
@@ -268,6 +269,13 @@ export function Settings(): React.ReactElement {
 
         <div id="settings-reset" className="scroll-mt-6 bg-astro-surface border border-red-500/30 rounded-lg p-4">
           <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Start again</h2>
+          <p className="text-xs text-astro-muted mb-3">
+            Hid the Get set up checklist on Home?{' '}
+            <button onClick={() => void invoke('settings:set', { key: SETUP_HIDDEN_KEY, value: '' })} className="text-astro-accent hover:underline">
+              Show it again
+            </button>
+            .
+          </p>
           <p className="text-xs text-astro-muted mb-4">
             Clear all targets, FITS scans, sessions, and scan data from the local database. Folder settings are preserved. Your actual files on disk are not affected.
           </p>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { Card, EmptyState } from '../components/common/Card'
 import { ScanHistory } from '../components/fits/ScanHistory'
 import { AggregateView } from '../components/fits/AggregateView'
 import { FileTable } from '../components/fits/FileTable'
@@ -69,13 +70,11 @@ export function FitsAnalyzer(): React.ReactElement {
     <PageContainer>
       <div className="space-y-4">
         {scans.length === 0 && (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
-            <p className="text-sm text-astro-muted">
-              No FITS scans found. Run a library scan from the{' '}
-              <a href="#/library" className="text-astro-accent hover:underline">Library</a>{' '}
-              page to analyze your FITS data.
-            </p>
-          </div>
+          <Card title="FITS scans" className="max-w-lg">
+            <EmptyState action={<a href="#/library" className="text-xs text-astro-accent hover:underline">Open Library</a>}>
+              No FITS files scanned yet. Scan your library to read their headers.
+            </EmptyState>
+          </Card>
         )}
 
         <ScanHistory

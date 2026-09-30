@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { Card, EmptyState } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
 import type { ImageScanResult, ImageTargetGroup, ImageFileInfo } from '@shared/types'
 
@@ -25,13 +26,11 @@ export function Images(): React.ReactElement {
   if (!result || (result.targets.length === 0 && result.unmatched.length === 0)) {
     return (
       <PageContainer>
-        <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">
-          <p className="text-sm text-astro-muted">
-            No images found. Run a library scan from the{' '}
-            <a href="#/library" className="text-astro-accent hover:underline">Library</a>{' '}
-            page to discover and organize your images.
-          </p>
-        </div>
+        <Card title="Images" className="max-w-lg">
+          <EmptyState action={<a href="#/library" className="text-xs text-astro-accent hover:underline">Open Library</a>}>
+            No images found yet. Scan your library to find your stacked and finished images.
+          </EmptyState>
+        </Card>
       </PageContainer>
     )
   }

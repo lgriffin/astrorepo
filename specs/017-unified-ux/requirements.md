@@ -92,3 +92,11 @@ The slices, each its own pull request:
 | UX-010 | Ubiquitous | The system shall show stacking, post-processing and the target's runs as numbered steps, in that order, on Stack and process. |
 | UX-011 | State | While a target has a job queued or running, the system shall say so at the top of the step the job belongs to instead of offering to queue that step again, and list the job, with the target's last five finished jobs, under Runs. |
 | UX-012 | Event | When the user opens the target of a stacking suggestion or of a job, the system shall open that target on Stack and process. |
+
+## U4 · Setup once
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| UX-013 | Ubiquitous | The system shall take the site only in Settings > Your site, with the Sky planner and Home linking there rather than asking for it themselves. |
+| UX-014 | State | While the site, the home folder, a library scan or Siril is missing, the system shall show a Get set up checklist on Home that links each missing step to where it is done, until every step is done or the user hides it. |
+| UX-015 | Ubiquitous | The system shall say on each empty Library, FITS files and Images page what would appear there and link to the step that fills it. |
