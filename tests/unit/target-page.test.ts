@@ -68,6 +68,13 @@ describe("A target's page", () => {
     expect(tab).toContain('{view.canQueue && view.stackPath && !queued && (')
   })
 
+  it('[UX-011] Given a poll of the queue that fails, When the step is drawn, Then the runs already shown stay and Runs says the queue could not be read', () => {
+    const tab = read('components/target/ProcessTab.tsx')
+    expect(tab).not.toMatch(/catch\(\(\) => setView\(null\)\)/)
+    expect(tab).toContain('id === request.current && setUnreadable(true)')
+    expect(tab).toContain('Could not read the job queue.')
+  })
+
   it("[UX-011] Given the whole queue, When a target's runs are picked out, Then only its jobs appear, running first, with each step's job found", () => {
     const running = job({ id: 'r', state: 'running', stateLabel: 'Running', kind: 'post-process', title: 'Post-process M 31' })
     const mine = job({ id: 'q' })

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
@@ -13,10 +13,21 @@ import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView
  */
 export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: string | null }): React.ReactElement {
   const [view, setView] = useState<JobsView | null>(null)
+  const [unreadable, setUnreadable] = useState(false)
   const [prepKey, setPrepKey] = useState<string | null>(null)
+  // Only the newest poll may update the runs, so a slow old one never brings back a stale queue.
+  const request = useRef(0)
 
   const loadRuns = (): void => {
-    invoke<JobsView>('jobs:list').then(setView).catch(() => setView(null))
+    const id = ++request.current
+    invoke<JobsView>('jobs:list')
+      .then(v => {
+        if (id !== request.current) return
+        setView(v)
+        setUnreadable(false)
+      })
+      // A failed poll keeps the runs already shown, so a queued step never offers to queue again.
+      .catch(() => id === request.current && setUnreadable(true))
   }
   useEffect(() => {
     loadRuns()
@@ -48,7 +59,7 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         <PostProcessing targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.postProcess !== null} />
       </Card>
 
-      <TargetRunsCard runs={runs} />
+      <TargetRunsCard runs={runs} unreadable={unreadable && view === null} />
     </div>
   )
 }
@@ -63,7 +74,7 @@ function RunBanner({ job }: { job: JobView }): React.ReactElement {
 }
 
 /** 3 · Runs: this target's queued, running and recent jobs. */
-function TargetRunsCard({ runs }: { runs: TargetRuns }): React.ReactElement {
+function TargetRunsCard({ runs, unreadable }: { runs: TargetRuns; unreadable: boolean }): React.ReactElement {
   const row = (job: JobView) => (
     <li key={job.id} className="flex items-baseline justify-between gap-3 py-1.5 border-t border-astro-border first:border-t-0">
       <span className="text-sm text-astro-text">{job.title}</span>
@@ -74,7 +85,9 @@ function TargetRunsCard({ runs }: { runs: TargetRuns }): React.ReactElement {
   )
   return (
     <Card title="3 · Runs" action={<Link to="/jobs" className="text-xs text-astro-accent hover:underline">Open Jobs</Link>}>
-      {runs.active.length === 0 && runs.finished.length === 0 ? (
+      {unreadable ? (
+        <EmptyState>Could not read the job queue. This part tries again every few seconds.</EmptyState>
+      ) : runs.active.length === 0 && runs.finished.length === 0 ? (
         <EmptyState>Nothing has been queued for this target yet. Queue a stack or post-processing run above and it appears here.</EmptyState>
       ) : (
         <ul>{[...runs.active, ...runs.finished].map(row)}</ul>
