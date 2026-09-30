@@ -65,12 +65,17 @@ describe('NodeToolHub', () => {
 
   it('[HUB-001] Given Siril_Scripts cloned in Documents, When tools are located, Then its v2 entry script is found; a setting may name the repo, v2 or the script', async () => {
     const entry = 'C:\\Users\\leigh\\Documents\\Siril_Scripts\\v2\\postprocess.bat'
-    const found = (await windowsHub([entry]).locate()).find(s => s.id === 'siril-scripts')
+    const found = (await windowsHub([entry, entry.replace('.bat', '.sh')]).locate()).find(s => s.id === 'siril-scripts')
     expect(found).toMatchObject({ path: win(entry), source: 'standard' })
     for (const setting of ['D:\\Siril_Scripts', 'D:\\Siril_Scripts\\v2', 'D:\\Siril_Scripts\\v2\\postprocess.bat']) {
-      const s = (await windowsHub(['D:\\Siril_Scripts\\v2\\postprocess.bat'], { tool_path_siril_scripts: setting }).locate()).find(x => x.id === 'siril-scripts')
+      const s = (await windowsHub(['D:\\Siril_Scripts\\v2\\postprocess.bat', 'D:\\Siril_Scripts\\v2\\postprocess.sh'], { tool_path_siril_scripts: setting }).locate()).find(x => x.id === 'siril-scripts')
       expect(s).toMatchObject({ path: win('D:\\Siril_Scripts\\v2\\postprocess.bat'), source: 'setting' })
     }
+  })
+
+  it('[HUB-001] Given a Siril_Scripts folder with postprocess.bat but no postprocess.sh, When tools are located, Then it is not taken, since the runner starts the .sh', async () => {
+    const found = (await windowsHub(['C:\\Users\\leigh\\Siril_Scripts\\v2\\postprocess.bat']).locate()).find(s => s.id === 'siril-scripts')
+    expect(found).toMatchObject({ path: null })
   })
 
   it('[HUB-004] Given nothing installed, When tools are located, Then each lists every place it looked, in order', async () => {

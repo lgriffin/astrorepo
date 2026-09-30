@@ -80,15 +80,23 @@ export class SqliteJobStore implements JobStore {
   }
 
   async update(id: string, patch: JobPatch): Promise<Job> {
-    const entries = Object.entries(patch).filter(([key, value]) => key in COLUMNS && value !== undefined) as [keyof JobPatch, unknown][]
-    if (entries.length > 0) {
-      const sets = entries.map(([key]) => `${COLUMNS[key]} = ?`).join(', ')
-      const values = entries.map(([, value]) => (value instanceof Date ? value.toISOString() : value))
-      this.db.prepare(`UPDATE jobs SET ${sets} WHERE id = ?`).run(...values, id)
-    }
+    this.write(id, patch, null)
     const job = await this.get(id)
     if (!job) throw new Error(`No job ${id}`)
     return job
+  }
+
+  async transition(id: string, from: Job['state'], patch: JobPatch): Promise<Job | null> {
+    return this.write(id, patch, from) ? this.get(id) : null
+  }
+
+  /** One UPDATE, guarded by the current state when `from` is given; whether a row changed. */
+  private write(id: string, patch: JobPatch, from: Job['state'] | null): boolean {
+    const entries = Object.entries(patch).filter(([key, value]) => key in COLUMNS && value !== undefined) as [keyof JobPatch, unknown][]
+    const sets = entries.length > 0 ? entries.map(([key]) => `${COLUMNS[key]} = ?`).join(', ') : 'id = id'
+    const values = entries.map(([, value]) => (value instanceof Date ? value.toISOString() : value))
+    const guard = from ? ' AND state = ?' : ''
+    return this.db.prepare(`UPDATE jobs SET ${sets} WHERE id = ?${guard}`).run(...values, id, ...(from ? [from] : [])).changes > 0
   }
 }
 

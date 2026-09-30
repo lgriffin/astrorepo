@@ -93,6 +93,10 @@ export interface PostProcessRecipe {
   quality: Quality
   /** Tools that must be found before the command can run; empty when it can. */
   missing: ToolId[]
+  /** Tools found somewhere other than where Siril_Scripts v2 runs them from (Windows), so the script would not find them. */
+  misplaced: ToolId[]
+  /** The stack is in a folder the app only reads, and the script writes beside it. */
+  inReadOnlyFolder: boolean
   /** Stages left out, and why. */
   skipped: string[]
   warnings: string[]
@@ -185,11 +189,13 @@ export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
     args.push('--no-bxt', '--no-nxt', '--no-sxt')
     skipped.push('BlurXTerminator, NoiseXTerminator and StarXTerminator, because the RC Astro CLI was not found.')
   }
+  const misplaced: ToolId[] = []
   if (windows) {
     for (const id of ['siril', 'rc-astro'] as const) {
       const at = found(id)
       const expected = SIRIL_SCRIPTS_EXPECTS[id]
       if (at && expected && at.replace(/\\/g, '/').toLowerCase() !== expected.toLowerCase()) {
+        misplaced.push(id)
         warnings.push(`Siril_Scripts v2 runs ${toolSpec(id).label} from ${expected}, not ${at}; install it there or edit the path at the top of postprocess.sh.`)
       }
     }
@@ -216,6 +222,8 @@ export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
     profileReason,
     quality,
     missing,
+    misplaced,
+    inReadOnlyFolder: input.inReadOnlyFolder,
     skipped,
     warnings,
     program: missing.length === 0 ? found('siril-scripts') : null,

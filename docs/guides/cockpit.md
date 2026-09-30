@@ -176,8 +176,11 @@ small CI runner rather than straight away.
   script; under its post-processing recipe, **Queue post-processing** runs Siril_Scripts v2.
   Either first shows what will run: the script, the frames, the disk it needs and whether it
   fits, and where it writes. Then choose **Queue for the run window** or **Run as soon as
-  possible**. The app works the plan out again before queueing, and refuses it if the tools,
-  calibration frames or disk space are no longer there. A stack job lays the frames out in the
+  possible**. The app works the plan out again from the target's own folders before queueing,
+  and refuses it if the tools, calibration frames or disk space are no longer there, or the
+  confirmed stack has gone. Post-processing is refused for a stack in a folder the app only
+  reads (Siril_Scripts writes beside it), and on Windows when Siril or RC Astro is installed
+  anywhere but where Siril_Scripts runs it from. A stack Siril made in the work area is fine. A stack job lays the frames out in the
   work area (Prep for Siril) before Siril starts.
 - **When jobs start.** A window job starts only inside the run window (02:00 to 03:00 unless you
   change it in **Settings > Run window**), once nobody has used the keyboard or mouse for 10
@@ -190,7 +193,7 @@ small CI runner rather than straight away.
   that would run past the window's close lets a shorter one go first and waits for the next
   night; a job longer than the whole window starts anyway, since it would never fit.
 - **Disk space.** Free space is checked again just before a job starts. A job whose disk is
-  short waits and says by how much, and the next job may go instead.
+  short, or will not report its free space, waits and says so, and the next job may go instead.
 - **The Jobs page** shows whether the window is open, how busy the PC was at the last check, the
   running job with its time so far, the queue in the order it will run with why each waits, and
   the last 20 finished jobs. **Log** shows a job's output (live while it runs), the exact program
@@ -210,7 +213,8 @@ under `jobs/`.
 **Settings > Tools** lists the programs the app hands work to: Siril, Siril_Scripts v2, the RC
 Astro CLI and, on Windows, Git Bash (which Siril_Scripts' `.bat` needs). Each is looked for in
 the path you save there, then on PATH, then in its usual install folder; for Siril_Scripts, the
-repo folder, its `v2` folder or `postprocess.bat` itself will do. A tool that is not found lists
+repo folder, its `v2` folder or `postprocess.bat` itself will do, as long as `postprocess.sh`
+sits beside it. A tool that is not found lists
 every place the hub looked. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...`
 without searching, so a tool found anywhere else is flagged. Siril's stock scripts are found
 where Siril installs them, under `share/siril/scripts` beside its `bin` folder. Nothing is run to

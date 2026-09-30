@@ -64,10 +64,13 @@ export class NodeToolHub implements ToolHub {
 
   private find(spec: ToolSpec): ToolStatus {
     const looked: string[] = []
+    // On Windows the runner starts postprocess.sh beside the .bat, so both must be there.
+    const usable = (c: string) =>
+      this.exists(c) && (spec.id !== 'siril-scripts' || !this.windows || !/\.bat$/i.test(c) || this.exists(c.replace(/\.bat$/i, '.sh')))
     const tryAt = (candidates: string[]): string | null => {
       for (const c of candidates) {
         looked.push(c)
-        if (this.exists(c)) return c
+        if (usable(c)) return c
       }
       return null
     }

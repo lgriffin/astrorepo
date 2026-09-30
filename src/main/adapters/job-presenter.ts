@@ -35,6 +35,8 @@ export function waitText(wait: WaitReason, estimate: JobEstimate, now: Date): st
       return 'Waits for the job ahead of it.'
     case 'space':
       return `Waits for disk space: ${formatBytes(wait.shortBytes)} short where it writes.`
+    case 'space-unknown':
+      return 'Waits until the disk it writes to reports its free space.'
     case 'window':
       return `Waits for the run window at ${when(wait.opensAt, now)}.`
     case 'idle':

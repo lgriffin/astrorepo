@@ -485,7 +485,7 @@ function StackingPlan({ targetId, rawPath, refreshKey }: { targetId: string; raw
             `Needs ${chosen.needed}: ${chosen.verdictText.toLowerCase()}.`,
             'Prep for Siril lays the frames out in the work area first; the source folder is never written to.'
           ]}
-          onQueue={timing => invoke<QueueResult>('jobs:queue-stack', { target_id: targetId, raw_path: rawPath, script: chosen.script, timing })}
+          onQueue={timing => invoke<QueueResult>('jobs:queue-stack', { target_id: targetId, script: chosen.script, timing })}
         />
       )}
       {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
@@ -605,7 +605,6 @@ function PostProcessing({ targetId, rawPath }: { targetId: string; rawPath: stri
           onQueue={timing =>
             invoke<QueueResult>('jobs:queue-post-process', {
               target_id: targetId,
-              ...(rawPath ? { raw_path: rawPath } : {}),
               stack_path: view.stackPath ?? undefined,
               profile: view.profile,
               quality: view.quality,

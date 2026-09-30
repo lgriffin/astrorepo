@@ -28,7 +28,7 @@ function job(id: string, over: Partial<Job> = {}): Job {
 }
 
 function view(jobs: Job[], now: Date, settings: JobSettings = DEFAULT_JOB_SETTINGS, load: MachineLoad = { userIdleSeconds: 1200, cpuPercent: 4 }) {
-  const schedule = scheduleJobs({ now, settings, jobs, history: [], load, freeBytes: {} })
+  const schedule = scheduleJobs({ now, settings, jobs, history: [], load, freeBytes: Object.fromEntries(jobs.map(j => [j.id, 1000 * GB])) })
   return toJobsView({ jobs, schedule, settings, load }, now)
 }
 
@@ -77,6 +77,7 @@ describe('job presenter', () => {
     const est = { seconds: 45 * 60, basis: 'guess' as const }
     expect(waitText({ code: 'running' }, est, now)).toBe('Waits for the running job to finish.')
     expect(waitText({ code: 'space', shortBytes: 2 * GB }, est, now)).toBe('Waits for disk space: 2.0 GB short where it writes.')
+    expect(waitText({ code: 'space-unknown' }, est, now)).toBe('Waits until the disk it writes to reports its free space.')
     expect(waitText({ code: 'window', opensAt: local(2, 0, 31) }, est, now)).toBe('Waits for the run window at 02:00 tomorrow.')
     expect(waitText({ code: 'idle', idleMinutes: 10, idleSeconds: 120 }, est, now)).toBe('Waits until the PC has been idle for 10 minutes (last used 2 min ago).')
     expect(waitText({ code: 'cpu', maxCpuPercent: 30, cpuPercent: 64 }, est, now)).toBe('Waits for CPU use to drop below 30% (now 64%).')

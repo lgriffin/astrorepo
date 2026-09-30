@@ -41,6 +41,8 @@ export interface JobScheduler {
   recover(): Promise<void>
   /** At quit: stops what runs, leaving it to be recovered at the next start. */
   shutdown(): void
+  /** Before the job table is cleared: cancels what runs and waits for it to stop. */
+  clear(): Promise<void>
   log(jobId: string, maxBytes?: number): Promise<string>
   /** Settles when no job is running (for tests and quitting). */
   idle(): Promise<void>
@@ -77,7 +79,9 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     deps.logs.append(id, `\n${job.finishedAt?.toISOString()} ${state}${exitCode === null ? '' : ` (exit code ${exitCode})`}${note ? `: ${note}` : ''}\n`)
   }
 
-  const run = async (job: Job, entry: { process: RunningProcess | null; cancelled: boolean }) => {
+  type Entry = { process: RunningProcess | null; cancelled: boolean; finished: Promise<void> }
+
+  const run = async (job: Job, entry: Entry) => {
     const { command } = job
     deps.logs.append(job.id, `${deps.clock.now().toISOString()} started ${job.title}\n> ${[command.program, ...command.args].join(' ')}\n\n`)
     if (job.prepare) {
@@ -88,10 +92,12 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
         if (!stopping) await finish(job.id, entry.cancelled ? 'cancelled' : 'failed', null, error instanceof Error ? error.message : String(error))
         return
       }
-      if (entry.cancelled || stopping) {
-        if (!stopping) await finish(job.id, 'cancelled', null, 'Cancelled before Siril started.')
-        return
-      }
+    }
+    // Checked again right before the program starts: a cancel or quit may have come in meanwhile.
+    if (stopping) return
+    if (entry.cancelled) {
+      await finish(job.id, 'cancelled', null, job.prepare ? 'Cancelled before Siril started.' : 'Cancelled before it started.')
+      return
     }
     entry.process = deps.runner.run(command, text => deps.logs.append(job.id, text))
     const result = await entry.process.done
@@ -101,10 +107,27 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     else await finish(job.id, 'failed', result.exitCode, result.error ?? `${command.program} exited with code ${result.exitCode ?? 'unknown'}.`)
   }
 
-  const launch = async (job: Job) => {
-    const started = await deps.store.update(job.id, { state: 'running', startedAt: deps.clock.now(), finishedAt: null, exitCode: null, note: null, attempts: job.attempts + 1 })
-    const entry = { process: null as RunningProcess | null, cancelled: false, finished: Promise.resolve() }
-    entry.finished = run(started, entry)
+  /**
+   * The entry is registered before anything is awaited, so a quit or cancel arriving while the job
+   * starts still finds it; the job only moves to running if it is still queued at that moment.
+   */
+  const launch = (job: Job) => {
+    const entry: Entry = { process: null, cancelled: false, finished: Promise.resolve() }
+    active.set(job.id, entry)
+    entry.finished = (async () => {
+      if (stopping || entry.cancelled) return
+      const started = await deps.store.transition(job.id, 'queued', {
+        state: 'running',
+        startedAt: deps.clock.now(),
+        finishedAt: null,
+        exitCode: null,
+        note: null,
+        attempts: job.attempts + 1
+      })
+      if (!started) return
+      deps.onChange?.()
+      await run(started, entry)
+    })()
       .catch(async error => {
         if (!stopping) await finish(job.id, 'failed', null, error instanceof Error ? error.message : String(error))
       })
@@ -112,8 +135,6 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
         active.delete(job.id)
         deps.onChange?.()
       })
-    active.set(job.id, entry)
-    deps.onChange?.()
   }
 
   const require = async (jobId: string) => {
@@ -129,15 +150,24 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
       const snap = await snapshot()
       const job = snap.jobs.find(j => j.id === snap.schedule.start)
       if (!job || stopping || active.size > 0) return snap
-      await launch(job)
-      return snapshot()
+      launch(job)
+      return snap
     },
 
     async cancel(jobId) {
       const job = await require(jobId)
-      if (job.state === 'queued') return deps.store.update(jobId, { state: 'cancelled', note: 'Cancelled before it started.', finishedAt: deps.clock.now() })
+      if (job.state === 'queued') {
+        const entry = active.get(jobId)
+        if (entry) entry.cancelled = true
+        const cancelled = await deps.store.transition(jobId, 'queued', { state: 'cancelled', note: 'Cancelled before it started.', finishedAt: deps.clock.now() })
+        if (cancelled) return cancelled
+      }
+      // Running, or it started while the cancel was on its way.
       const entry = active.get(jobId)
-      if (job.state !== 'running' || !entry) throw new JobStateError(`The job has already ${job.state === 'running' ? 'stopped' : job.state}.`)
+      if (!entry) {
+        const now = await require(jobId)
+        throw new JobStateError(`The job has already ${now.state === 'running' ? 'stopped' : now.state}.`)
+      }
       entry.cancelled = true
       entry.process?.cancel()
       await entry.finished
@@ -145,9 +175,11 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     },
 
     async runNow(jobId) {
-      const job = await require(jobId)
-      if (job.state !== 'queued') throw new JobStateError('Only a queued job can be moved ahead.')
-      const moved = await deps.store.update(jobId, { timing: 'now' })
+      const moved = await deps.store.transition(jobId, 'queued', { timing: 'now' })
+      if (!moved) {
+        await require(jobId)
+        throw new JobStateError('Only a queued job can be moved ahead.')
+      }
       deps.onChange?.()
       return moved
     },
@@ -169,6 +201,14 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     log: (jobId, maxBytes = 64 * 1024) => deps.logs.read(jobId, maxBytes),
 
     busy: () => active.size > 0,
+
+    async clear() {
+      for (const entry of active.values()) {
+        entry.cancelled = true
+        entry.process?.cancel()
+      }
+      while (active.size > 0) await Promise.all([...active.values()].map(e => e.finished))
+    },
 
     async idle() {
       while (active.size > 0) await Promise.all([...active.values()].map(e => e.finished))

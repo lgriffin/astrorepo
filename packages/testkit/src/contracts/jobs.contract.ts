@@ -47,5 +47,14 @@ export function jobStoreContract(adapterName: string, make: () => JobStore): voi
       expect(await store.update(job.id, {})).toEqual(cleared)
       await expect(store.update('missing', { state: 'running' })).rejects.toThrow()
     })
+
+    it('[JOB-010] Given a job cancelled while it was about to start, When the start is applied from queued, Then it does not apply', async () => {
+      const store = make()
+      const job = await store.add(newJob(), new Date('2026-09-30T20:00:00Z'))
+      expect(await store.transition(job.id, 'queued', { state: 'cancelled', note: 'Cancelled before it started.' })).toMatchObject({ state: 'cancelled' })
+      expect(await store.transition(job.id, 'queued', { state: 'running', attempts: 1 })).toBeNull()
+      expect(await store.get(job.id)).toMatchObject({ state: 'cancelled', attempts: 0 })
+      expect(await store.transition('missing', 'queued', { state: 'running' })).toBeNull()
+    })
   })
 }

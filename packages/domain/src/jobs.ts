@@ -180,6 +180,7 @@ export type WaitReason =
   | { code: 'running' }
   | { code: 'behind' }
   | { code: 'space'; shortBytes: number }
+  | { code: 'space-unknown' }
   | { code: 'window'; opensAt: Date }
   | { code: 'idle'; idleMinutes: number; idleSeconds: number }
   | { code: 'cpu'; maxCpuPercent: number; cpuPercent: number }
@@ -198,7 +199,7 @@ export interface ScheduleInput {
   jobs: Job[]
   history: JobRun[]
   load: MachineLoad
-  /** Free bytes where each queued job writes, by job id; missing or null when unknown. */
+  /** Free bytes where each queued job writes, by job id; missing or null when the disk would not say. */
   freeBytes: Record<string, number | null>
 }
 
@@ -222,7 +223,7 @@ export function queueOrder(jobs: Job[]): Job[] {
  * a window job also needs the window open, the PC idle and the CPU quiet. A job predicted to run
  * past the window's close lets a later one that fits go first and waits for the next night,
  * unless it is longer than the whole window, when it would never fit and so starts anyway. Any
- * job waits while its disk lacks the space it needs.
+ * job waits while its disk lacks the space it needs, or will not say how much it has.
  */
 export function scheduleJobs(input: ScheduleInput): Schedule {
   const { now, settings, load } = input
@@ -245,8 +246,10 @@ export function scheduleJobs(input: ScheduleInput): Schedule {
     const wait = ((): WaitReason | null => {
       if (start === 'running') return { code: 'running' }
       if (start) return { code: 'behind' }
+      // A disk that will not report its free space is not taken to have room.
       const free = input.freeBytes[job.id] ?? null
-      if (free !== null && job.neededBytes > free) return { code: 'space', shortBytes: job.neededBytes - free }
+      if (free === null) return { code: 'space-unknown' }
+      if (job.neededBytes > free) return { code: 'space', shortBytes: job.neededBytes - free }
       if (job.timing === 'now') return null
       const machine = machineWait()
       if (machine) return machine

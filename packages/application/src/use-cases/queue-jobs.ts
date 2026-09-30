@@ -1,4 +1,4 @@
-import { parentDir, postProcessCommand, sirilStackCommand, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
+import { parentDir, postProcessCommand, sirilStackCommand, toolSpec, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
 import type { Clock } from '../ports/clock'
 import type { JobStore } from '../ports/jobs'
 import type { StackCatalogue } from '../ports/stack-catalogue'
@@ -44,6 +44,7 @@ export function makeQueueStack(deps: QueueStackDeps): QueueStack {
     if (!script) throw new JobRefusedError(`${request.script} is not a stock Siril script for these frames' sensor.`)
     if (estimate.counts.lights === 0) throw new JobRefusedError('There are no light frames to stack.')
     if (script.missing.length > 0) throw new JobRefusedError(`${request.script} needs ${script.missing.join(', ')}, which this target does not have.`)
+    if (estimate.freeBytes === null) throw new JobRefusedError("The work area's disk does not report its free space, so the run could fill it.")
     if (!script.fits) throw new JobRefusedError(`The work area's disk is short of the space ${request.script} needs.`)
     const siril = (await deps.tools.locate()).find(t => t.id === 'siril')?.path ?? null
     if (!siril) throw new JobRefusedError('Siril was not found. Set where siril-cli is in Settings > Tools.')
@@ -81,7 +82,14 @@ export function makeQueuePostProcess(deps: QueuePostProcessDeps): QueuePostProce
     const plan = await deps.plan(targetId, options)
     const { recipe, stack, target } = plan
     if (!recipe || !stack || !target) throw new JobRefusedError('This target has no stack to post-process.')
+    // The confirmed stack, or none: never another one the plan fell back to.
+    if (options.stackPath && stack.path !== options.stackPath) throw new JobRefusedError(`${options.stackPath} is no longer there to post-process.`)
     if (recipe.missing.length > 0 || !recipe.program) throw new JobRefusedError(`Siril_Scripts needs ${recipe.missing.join(', ')}, which the tool hub did not find.`)
+    if (recipe.misplaced.length > 0) {
+      throw new JobRefusedError(`Siril_Scripts v2 only runs ${recipe.misplaced.map(id => toolSpec(id).label).join(' and ')} from its standard install folder, where it is not installed, so the run would fail.`)
+    }
+    if (recipe.inReadOnlyFolder) throw new JobRefusedError('The stack is in a folder the app only reads, and Siril_Scripts writes beside it. Stack it into the work area, or copy it there, first.')
+    if (recipe.space.headroomBytes === null && recipe.space.shortBytes === null) throw new JobRefusedError("The stack's disk does not report its free space, so the run could fill it.")
     if (!recipe.space.fits) throw new JobRefusedError("The stack's disk is short of the space Siril_Scripts needs.")
     const bash = (await deps.tools.locate()).find(t => t.id === 'bash')?.path ?? null
     const stackDir = parentDir(stack.path).dir

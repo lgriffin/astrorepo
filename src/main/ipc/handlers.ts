@@ -472,26 +472,33 @@ export function registerIpcHandlers(): void {
     }
   }
 
-  handle('jobs:queue-stack', validated('jobs:queue-stack', args =>
-    // The plan is worked out again here, from the index and the disk (JOB-001).
-    refusable(() => composeCore(getSqlite()).queueStack({
+  // The folders come from the target's own home data, never from the page, so a job always works on
+  // that target's frames and stacks (JOB-001).
+  const targetRawPath = (targetId: string) => getTargetHomeData(targetId)?.rawPath ?? null
+
+  handle('jobs:queue-stack', validated('jobs:queue-stack', args => {
+    const rawPath = targetRawPath(args.target_id)
+    if (!rawPath) return { ok: false, error: 'This target has no raw folder to stack from.' }
+    // The plan is worked out again here, from the index and the disk.
+    return refusable(() => composeCore(getSqlite()).queueStack({
       targetId: args.target_id,
-      sourceDir: args.raw_path,
-      workDir: sirilWorkDir(args.raw_path),
+      sourceDir: rawPath,
+      workDir: sirilWorkDir(rawPath),
       script: args.script,
       timing: args.timing
     }))
-  ))
+  }))
 
-  handle('jobs:queue-post-process', validated('jobs:queue-post-process', args =>
-    refusable(() => composeCore(getSqlite()).queuePostProcess(args.target_id, {
-      workDir: args.raw_path ? sirilWorkDir(args.raw_path) : undefined,
+  handle('jobs:queue-post-process', validated('jobs:queue-post-process', args => {
+    const rawPath = targetRawPath(args.target_id)
+    return refusable(() => composeCore(getSqlite()).queuePostProcess(args.target_id, {
+      workDir: rawPath ? sirilWorkDir(rawPath) : undefined,
       readOnlyDirs: readOnlyDirs(),
       stackPath: args.stack_path,
       profile: args.profile,
       quality: args.quality
     }, args.timing))
-  ))
+  }))
 
   handle('jobs:cancel', validated('jobs:cancel', args => refusable(() => jobs().cancel(args.job_id))))
   handle('jobs:run-now', validated('jobs:run-now', args => refusable(() => jobs().runNow(args.job_id))))
@@ -696,6 +703,8 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('db:reset', async () => {
+    // Queued and running jobs refer to the targets and folders being cleared, so they go too.
+    await jobs().clear()
     const result = resetDatabase()
     try {
       loadCatalogueSeedData()

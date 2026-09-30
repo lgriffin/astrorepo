@@ -9,6 +9,8 @@ export interface JobStore {
   /** Every job, oldest queued first. */
   list(): Promise<Job[]>
   update(id: string, patch: JobPatch): Promise<Job>
+  /** Applies the patch only while the job is still in state `from`, in one step; null when it had moved on. */
+  transition(id: string, from: Job['state'], patch: JobPatch): Promise<Job | null>
 }
 
 /** Driven port: the run window and idle rules the user set. */

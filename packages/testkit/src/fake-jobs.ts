@@ -27,6 +27,11 @@ export class InMemoryJobStore implements JobStore {
     this.jobs.set(id, updated)
     return { ...updated }
   }
+
+  async transition(id: string, from: Job['state'], patch: JobPatch): Promise<Job | null> {
+    const job = this.jobs.get(id)
+    return job && job.state === from ? this.update(id, patch) : null
+  }
 }
 
 export class FixedJobSettings implements JobSettingsSource {

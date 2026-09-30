@@ -70,6 +70,7 @@ describe('queueing a stack', () => {
       [stackSetup(estimate({}, 0)), request, /no light frames/],
       [stackSetup(estimate({ missing: ['flats'] })), request, /needs flats/],
       [stackSetup(estimate({ fits: false, shortBytes: GB })), request, /short/],
+      [stackSetup({ ...estimate(), freeBytes: null }), request, /does not report its free space/],
       [stackSetup(estimate(), new FakeToolHub()), request, /Siril was not found/]
     ]
     const noScript = stackSetup()
@@ -95,6 +96,8 @@ function recipe(over: Partial<PostProcessRecipe> = {}): PostProcessRecipe {
     profileReason: '',
     quality: 'normal',
     missing: [],
+    misplaced: [],
+    inReadOnlyFolder: false,
     skipped: [],
     warnings: [],
     program: 'C:/S/v2/postprocess.bat',
@@ -145,16 +148,25 @@ describe('queueing post-processing', () => {
     expect((await queue('m42', {}, 'window')).command.args).toContain('D:/100%/result.fit')
   })
 
-  it('[JOB-001] Given no stack, a missing tool or too little disk, When queued, Then it is refused', async () => {
+  it('[JOB-001] Given no stack, a missing or misplaced tool, a read-only folder or too little disk, When queued, Then it is refused', async () => {
     for (const [plan, message] of [
       [{ recipe: null }, /no stack/],
       [{ recipe: recipe({ missing: ['bash'], program: null }) }, /needs bash/],
+      [{ recipe: recipe({ misplaced: ['siril', 'rc-astro'] }) }, /only runs Siril and RC Astro CLI from its standard install folder/],
+      [{ recipe: recipe({ inReadOnlyFolder: true }) }, /only reads/],
+      [{ recipe: recipe({ space: { neededBytes: 2 * GB, fits: true, headroomBytes: null, shortBytes: null } }) }, /does not report its free space/],
       [{ recipe: recipe({ space: { neededBytes: 2 * GB, fits: false, headroomBytes: null, shortBytes: GB } }) }, /short/]
     ] as [Partial<PostProcessingPlan>, RegExp][]) {
       const { queue, store } = postSetup(plan)
       await expect(queue('m42', {}, 'window')).rejects.toThrow(message)
       expect(await store.list()).toEqual([])
     }
+  })
+
+  it('[JOB-001] Given the confirmed stack has gone, When the plan falls back to another, Then nothing is queued', async () => {
+    const { queue, store } = postSetup({})
+    await expect(queue('m42', { stackPath: 'D:/m42/older.fit' }, 'window')).rejects.toThrow('D:/m42/older.fit is no longer there')
+    expect(await store.list()).toEqual([])
   })
 
   it('[JOB-001] Given no Git Bash off Windows, When queued, Then the script runs directly', async () => {
@@ -212,9 +224,9 @@ describe('the job runner', () => {
   it('[JOB-004] Given a window job and an idle PC in the window, When ticked, Then it lays out the frames, runs Siril and succeeds on exit code 0', async () => {
     const t = scheduler()
     const job = await t.add()
-    const snap = await t.s.tick()
-    expect(snap.jobs.find(j => j.id === job.id)).toMatchObject({ state: 'running', attempts: 1 })
+    expect((await t.s.tick()).schedule.start).toBe(job.id)
     await flush()
+    expect(await t.store.get(job.id)).toMatchObject({ state: 'running', attempts: 1 })
     expect(t.prepared).toEqual([{ sourceDir: '/astro/m42', workDir: '/work', protectedDirs: ['D:/astro'] }])
     expect(t.runner.last?.command.program).toBe('siril-cli')
     expect(t.s.busy()).toBe(true)
@@ -322,6 +334,62 @@ describe('the job runner', () => {
     const cancelled = await t.s.cancel(job.id)
     expect(t.runner.last?.cancelled).toBe(true)
     expect(cancelled).toMatchObject({ state: 'cancelled', note: 'Cancelled while it ran.' })
+  })
+
+  /** Holds the store's move to running until the test releases it. */
+  function gateStart(t: ReturnType<typeof scheduler>) {
+    let release: () => void = () => {}
+    const gate = new Promise<void>(resolve => (release = resolve))
+    const transition = t.store.transition.bind(t.store)
+    t.store.transition = async (id, from, patch) => {
+      if (patch.state === 'running') await gate
+      return transition(id, from, patch)
+    }
+    return () => release()
+  }
+
+  it('[JOB-010] Given a job cancelled while it is being started, When the start lands, Then it does not run and stays cancelled', async () => {
+    const t = scheduler()
+    const job = await t.add({ prepare: null })
+    const release = gateStart(t)
+    await t.s.tick()
+    expect(await t.s.cancel(job.id)).toMatchObject({ state: 'cancelled', note: 'Cancelled before it started.' })
+    release()
+    await t.s.idle()
+    expect(t.runner.runs).toHaveLength(0)
+    expect(await t.store.get(job.id)).toMatchObject({ state: 'cancelled', attempts: 0 })
+  })
+
+  it('[JOB-008] Given the app quits while a job is being started, When the start lands, Then its program never runs', async () => {
+    const t = scheduler()
+    const job = await t.add({ prepare: null })
+    const release = gateStart(t)
+    await t.s.tick()
+    t.s.shutdown()
+    release()
+    await t.s.idle()
+    expect(t.runner.runs).toHaveLength(0)
+    expect(await t.store.get(job.id)).toMatchObject({ state: 'running' })
+  })
+
+  it('[JOB-010] Given a running job, When the database is about to be reset, Then clearing cancels it and waits for it to stop', async () => {
+    const t = scheduler()
+    const job = await t.add({ prepare: null })
+    await t.s.tick()
+    await flush()
+    await t.s.clear()
+    expect(t.runner.last?.cancelled).toBe(true)
+    expect(await t.store.get(job.id)).toMatchObject({ state: 'cancelled' })
+    await t.s.clear()
+  })
+
+  it('[JOB-008] Given the app is quitting, When a tick picks a job, Then nothing starts', async () => {
+    const t = scheduler()
+    const job = await t.add({ prepare: null })
+    t.s.shutdown()
+    await t.s.tick()
+    await t.s.idle()
+    expect(await t.store.get(job.id)).toMatchObject({ state: 'queued' })
   })
 
   it('[JOB-010] Given a stack job still laying out frames, When cancelled, Then Siril never starts', async () => {

@@ -255,13 +255,11 @@ export const schemas = {
   'jobs:list': z.object({}).optional(),
   'jobs:queue-stack': z.object({
     target_id: id,
-    raw_path: z.string().min(1),
     script: z.enum(['OSC_Preprocessing', 'OSC_Preprocessing_WithoutFlat', 'OSC_Preprocessing_WithoutDBF', 'OSC_Preprocessing_BayerDrizzle', 'OSC_Extract_Ha', 'OSC_Extract_HaOIII', 'Mono_Preprocessing']),
     timing: z.enum(['window', 'now'])
   }),
   'jobs:queue-post-process': z.object({
     target_id: id,
-    raw_path: z.string().min(1).optional(),
     stack_path: z.string().min(1).optional(),
     profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']).optional(),
     quality: z.enum(['light', 'normal', 'strong']).optional(),

@@ -46,14 +46,15 @@ function job(over: Partial<Job> = {}): Job {
   }
 }
 
+/** Every job's disk has plenty of room unless the test says otherwise. */
 const input = (over: Partial<ScheduleInput> = {}): ScheduleInput => ({
   now: local(2, 5),
   settings: DEFAULT_JOB_SETTINGS,
   jobs: [],
   history: [],
   load: { userIdleSeconds: 3600, cpuPercent: 5 },
-  freeBytes: {},
-  ...over
+  ...over,
+  freeBytes: over.freeBytes ?? Object.fromEntries((over.jobs ?? []).map(j => [j.id, 1000 * GB]))
 })
 
 describe('run window', () => {
@@ -173,6 +174,15 @@ describe('scheduling', () => {
     const s = scheduleJobs(input({ jobs: [big, small], freeBytes: { [big.id]: 4 * GB, [small.id]: 4 * GB } }))
     expect(s.queue[0].wait).toEqual({ code: 'space', shortBytes: 6 * GB })
     expect(s.start).toBe(small.id)
+  })
+
+  it('[JOB-007] Given a disk that will not report its free space, When scheduled, Then the job waits rather than risk running out, even for Run now', () => {
+    const unknown = job({ timing: 'now' })
+    const known = job()
+    const s = scheduleJobs(input({ jobs: [unknown, known], freeBytes: { [unknown.id]: null, [known.id]: 100 * GB } }))
+    expect(s.queue[0].wait).toEqual({ code: 'space-unknown' })
+    expect(s.start).toBe(known.id)
+    expect(scheduleJobs(input({ jobs: [unknown], freeBytes: {} })).queue[0].wait).toEqual({ code: 'space-unknown' })
   })
 
   it('[JOB-005] Given a job predicted to run past the close, When a shorter one is queued behind it, Then the shorter one starts and the longer carries to the next window', () => {

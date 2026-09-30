@@ -1048,7 +1048,7 @@ export interface PostProcessView {
   qualities: string[]
   /** The command to run; null while a required tool is missing. */
   command: string | null
-  /** The job runner can queue it: every tool found and room on the disk. */
+  /** The job runner can queue it: every tool found where Siril_Scripts runs it, the stack outside the read-only folders, and room on the disk. */
   canQueue: boolean
   missing: string | null
   skipped: string[]

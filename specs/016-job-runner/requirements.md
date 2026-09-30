@@ -43,7 +43,7 @@ one at a time at low priority, and each keeps a log.
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| JOB-001 | Event | When the user confirms a stack or post-processing run, the system shall work the plan out again from the index and the disk and queue it only if it still holds: a stock script with its calibration present, or a recipe with every tool found, and room on the disk. |
+| JOB-001 | Event | When the user confirms a stack or post-processing run, the system shall work the plan out again from the target's own folders, the index and the disk and queue it only if it still holds: a stock script with its calibration present, or the confirmed stack outside the folders the app only reads with every tool found where Siril_Scripts runs it, and a disk that reports room. |
 | JOB-012 | Ubiquitous | The system shall let the user set when the run window opens and closes, how long the PC must be idle and the CPU use above which a job waits, with defaults of 02:00 to 03:00, 10 minutes and 30%. |
 
 ## Scheduling
@@ -55,7 +55,7 @@ one at a time at low priority, and each keeps a log.
 | JOB-004 | Ubiquitous | The system shall run one job at a time, at below-normal priority, Run now jobs first and then in the order they were queued. |
 | JOB-005 | Unwanted | If a window job is predicted to run past the window's close, then the system shall start a later job that fits instead and keep it for the next window, unless it is longer than the whole window. |
 | JOB-006 | Ubiquitous | The system shall predict each job's length from this PC's recent runs of the same kind, else from a first-run guess, and say which. |
-| JOB-007 | Unwanted | If the disk a job writes to no longer has the space it needs, then the system shall not start it and shall say how much is short. |
+| JOB-007 | Unwanted | If the disk a job writes to no longer has the space it needs, or does not report its free space, then the system shall not start it and shall say how much is short or that the space is unknown. |
 | JOB-011 | Event | When the user chooses Run now, the system shall start the job as soon as no other job runs, whatever the window and the PC's load. |
 
 ## Running
@@ -64,7 +64,7 @@ one at a time at low priority, and each keeps a log.
 |----|---------|-------------|
 | JOB-008 | Unwanted | If the app closes while a job runs, then the system shall stop the job and, at the next start, queue it again, failing it once it has been stopped twice. |
 | JOB-009 | Ubiquitous | The system shall keep each job's output in a log the user can read while it runs and after, and record its exit code, a failure's reason and how long it took. |
-| JOB-010 | Event | When the user cancels a job, the system shall take it off the queue, or stop it and every program it started. |
+| JOB-010 | Event | When the user cancels a job, the system shall take it off the queue, or stop it and every program it started, and a job cancelled while it was being started shall not run. |
 
 ## Non-functional
 

@@ -37,7 +37,7 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
     scripts: e.scripts.map(s => ({
       file: `${s.script}.ssf`,
       script: s.script,
-      canQueue: e.counts.lights > 0 && s.missing.length === 0 && s.fits,
+      canQueue: e.counts.lights > 0 && e.freeBytes !== null && s.missing.length === 0 && s.fits,
       label: s.label,
       recommended: s.script === e.recommended.script,
       needed: formatBytes(s.neededBytes),
