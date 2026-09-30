@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
@@ -151,6 +152,7 @@ function FullMonthCalendar({ year, monthNum, dayMap, maxExposure, onSelectDay, s
 }
 
 export function SessionTimeline(): React.ReactElement {
+  const navigate = useNavigate()
   const [year, setYear] = useState(() => new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null)
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null)
@@ -188,10 +190,12 @@ export function SessionTimeline(): React.ReactElement {
 
   return (
     <PageContainer
-      title="Session Timeline"
       subtitle={`${totalDays} active nights in ${year} — ${formatExposure(totalExposure)} total`}
       actions={
         <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/sessions/new')} className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80">
+            Log a night
+          </button>
           <button
             onClick={() => { setYear(y => y - 1); setSelectedMonth(null); setSelectedDay(null) }}
             className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text"

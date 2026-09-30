@@ -154,14 +154,14 @@ export function Insights(): React.ReactElement {
 
   if (loading || !summary) {
     return (
-      <PageContainer title="Data Insights" subtitle="Analyzing your imaging data...">
+      <PageContainer>
         <p className="text-astro-muted text-sm">Loading insights...</p>
       </PageContainer>
     )
   }
 
   return (
-    <PageContainer title="Data Insights" subtitle="Patterns, trends, and analysis across your imaging data">
+    <PageContainer>
       <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

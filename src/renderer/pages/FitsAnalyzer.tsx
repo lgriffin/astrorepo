@@ -59,14 +59,14 @@ export function FitsAnalyzer(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="FITS Analyzer">
+      <PageContainer>
         <div className="text-astro-muted">Loading...</div>
       </PageContainer>
     )
   }
 
   return (
-    <PageContainer title="FITS Analyzer" subtitle="Browse and analyze FITS file metadata">
+    <PageContainer>
       <div className="space-y-4">
         {scans.length === 0 && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-lg">

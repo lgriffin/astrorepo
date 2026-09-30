@@ -1,0 +1,126 @@
+import type { JobsView } from './types'
+
+/**
+ * The app's one map of places (specs/017-unified-ux). The sidebar, every page's title and
+ * subtitle, the breadcrumb above it and the back link on a detail page all come from here, so a
+ * place has one name wherever it appears.
+ */
+export interface NavItem {
+  id: string
+  to: string
+  label: string
+  icon: string
+  /** What the page answers, shown under its title. */
+  hint: string
+  /** Other path prefixes that belong to this place (its detail pages and forms). */
+  also?: string[]
+}
+
+export interface NavGroup {
+  /** Null for the daily places at the top, which need no heading. */
+  label: string | null
+  items: NavItem[]
+}
+
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    label: null,
+    items: [
+      { id: 'home', to: '/dashboard', label: 'Home', icon: '◉', hint: 'What is hiding in your files, and what to do next' },
+      { id: 'targets', to: '/targets', label: 'Targets', icon: '★', hint: 'Every object you have captured or plan to' },
+      { id: 'sky', to: '/sky-planner', label: 'Sky planner', icon: '☽', hint: 'Tonight, the moon and the seasons from your site' },
+      { id: 'jobs', to: '/jobs', label: 'Jobs', icon: '▶', hint: 'Stacking and post-processing runs, queued for the run window' }
+    ]
+  },
+  {
+    label: 'Files',
+    items: [
+      { id: 'library', to: '/library', label: 'Library', icon: '⊟', hint: 'The folders that hold your captures, and their last scan' },
+      { id: 'fits', to: '/fits-analyzer', label: 'FITS files', icon: '◈', hint: 'What the headers say, file by file' },
+      { id: 'images', to: '/images', label: 'Images', icon: '▢', hint: 'Your stacked and finished images' },
+      { id: 'calibration', to: '/calibration', label: 'Calibration', icon: '◇', hint: 'Darks, flats and biases, and which lights they cover' }
+    ]
+  },
+  {
+    label: 'Review',
+    items: [
+      { id: 'nights', to: '/timeline', label: 'Nights', icon: '▥', hint: 'Every night you imaged, month by month', also: ['/sessions'] },
+      { id: 'stacks', to: '/stacking', label: 'Stacks', icon: '⊞', hint: "Integration so far against each target's goal" },
+      { id: 'insights', to: '/insights', label: 'Insights', icon: '◎', hint: 'Seeing, filters and activity over time' },
+      { id: 'storage', to: '/analytics', label: 'Storage', icon: '▤', hint: 'How much space your data takes, and how fast it grows' }
+    ]
+  },
+  {
+    label: 'Collections',
+    items: [
+      { id: 'collections', to: '/collections', label: 'Collections', icon: '▦', hint: 'Catalogues and lists of targets, and how far through each you are' },
+      { id: 'posters', to: '/poster', label: 'Posters', icon: '▣', hint: 'A printable grid of a collection' }
+    ]
+  },
+  {
+    label: 'Setup',
+    items: [
+      { id: 'equipment', to: '/equipment', label: 'Equipment', icon: '⚙', hint: 'Your scopes, cameras and filters, and their field of view' },
+      { id: 'settings', to: '/settings', label: 'Settings', icon: '⚒', hint: 'Your site, folders, tools and run window' }
+    ]
+  }
+]
+
+export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap(g => g.items)
+
+export interface Location {
+  group: NavGroup
+  item: NavItem
+  /** A page below the place (a target, a collection, a form), which gets a back link to it. */
+  detail: boolean
+}
+
+const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+
+/** Which place a path belongs to, or null for a path the map does not know. */
+export function locate(pathname: string): Location | null {
+  const path = pathname === '/' || pathname === '' ? '/dashboard' : pathname.replace(/\/+$/, '')
+  for (const group of NAV_GROUPS) {
+    for (const item of group.items) {
+      if (path === item.to) return { group, item, detail: false }
+      if (under(path, item.to) || (item.also ?? []).some(p => under(path, p))) return { group, item, detail: true }
+    }
+  }
+  return null
+}
+
+/** The sections of Settings, in page order; links elsewhere open Settings at one of them. */
+export const SETTINGS_SECTIONS = [
+  { id: 'location', label: 'Your site' },
+  { id: 'folders', label: 'Folders' },
+  { id: 'tools', label: 'Tools' },
+  { id: 'run-window', label: 'Run window' },
+  { id: 'import', label: 'Import and export' },
+  { id: 'reset', label: 'Start again' }
+] as const
+
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id']
+
+/** A link that opens Settings scrolled to one section. */
+export function settingsLink(section: SettingsSection): string {
+  return `/settings?section=${section}`
+}
+
+/** The section a Settings link asks for, or null when it names none the page has. */
+export function settingsSectionFrom(search: string): SettingsSection | null {
+  const wanted = new URLSearchParams(search).get('section')
+  return SETTINGS_SECTIONS.find(s => s.id === wanted)?.id ?? null
+}
+
+/**
+ * The line under the sidebar that says what the job runner is doing, wherever the user is:
+ * the running job, else how many wait and when the window opens, else nothing.
+ */
+export function jobsStatus(view: Pick<JobsView, 'running' | 'queue' | 'windowStatus'> | null): { text: string; busy: boolean } | null {
+  if (!view) return null
+  if (view.running) return { text: `Running: ${view.running.title}`, busy: true }
+  if (view.queue.length === 0) return null
+  const count = view.queue.length === 1 ? '1 job queued' : `${view.queue.length} jobs queued`
+  const next = view.queue.some(j => j.timing === 'now') ? 'Starting as soon as it can' : view.windowStatus.replace(/\.$/, '')
+  return { text: `${count}. ${next}.`, busy: false }
+}

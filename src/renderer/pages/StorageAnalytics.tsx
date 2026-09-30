@@ -52,7 +52,7 @@ export function StorageAnalytics(): React.ReactElement {
 
   if (loading || !stats) {
     return (
-      <PageContainer title="Storage Analytics">
+      <PageContainer>
         <div className="text-astro-muted">Loading storage analytics...</div>
       </PageContainer>
     )
@@ -60,8 +60,6 @@ export function StorageAnalytics(): React.ReactElement {
 
   return (
     <PageContainer
-      title="Storage Analytics"
-      subtitle="Analyze storage usage, growth trends, and data breakdowns"
       actions={
         <button
           onClick={handleCaptureSnapshot}

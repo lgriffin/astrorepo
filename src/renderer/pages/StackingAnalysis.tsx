@@ -41,14 +41,14 @@ export function StackingAnalysis(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="Stacking Analysis" subtitle="Loading...">
+      <PageContainer>
         <div className="text-center py-12 text-astro-muted">Loading stacking data...</div>
       </PageContainer>
     )
   }
 
   return (
-    <PageContainer title="Stacking Analysis" subtitle="Integration summary, sub-frame breakdown, and progress tracking">
+    <PageContainer>
       <div className="space-y-8">
         <StackingSummarySection summary={summary} />
         <SubFrameBreakdownSection rows={summary?.rows ?? []} />

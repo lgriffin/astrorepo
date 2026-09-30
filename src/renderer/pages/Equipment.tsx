@@ -184,7 +184,6 @@ export function Equipment(): React.ReactElement {
 
   return (
     <PageContainer
-      title="Equipment"
       subtitle={`${items.length} items registered`}
       actions={
         <button

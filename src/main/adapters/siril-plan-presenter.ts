@@ -16,7 +16,7 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
   if (e.geometryApproximate) guessed.push('frame size is guessed from file size')
   if (!e.sensorKnown && e.counts.lights > 0) guessed.push('the lights are taken as colour')
   const approximate = [
-    guessed.length > 0 ? `Scan this folder in the FITS Analyzer for exact figures: ${LIST(guessed)}, so sizes are approximate.` : null,
+    guessed.length > 0 ? `Scan this folder on the FITS files page for exact figures: ${LIST(guessed)}, so sizes are approximate.` : null,
     e.geometryMixed ? 'The lights are not all one size, so every light is counted at the largest.' : null
   ].filter(Boolean)
 

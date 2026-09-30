@@ -16,14 +16,14 @@ export function Collections(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="Collections">
+      <PageContainer>
         <div className="text-astro-muted">Loading collections...</div>
       </PageContainer>
     )
   }
 
   return (
-    <PageContainer title="Collections" subtitle={`${collections.length} collections`}>
+    <PageContainer subtitle={`${collections.length} collections`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {collections.map((c) => {
           const obsPct = c.total > 0 ? Math.round((c.observed / c.total) * 100) : 0

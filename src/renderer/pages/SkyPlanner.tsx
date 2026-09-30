@@ -206,7 +206,7 @@ export function SkyPlanner(): React.ReactElement {
 
   if (!locationLoaded) {
     return (
-      <PageContainer title="Sky Planner" subtitle="Loading...">
+      <PageContainer>
         <p className="text-astro-muted text-sm">Loading observer location...</p>
       </PageContainer>
     )
@@ -214,7 +214,7 @@ export function SkyPlanner(): React.ReactElement {
 
   if (lat === null || lon === null) {
     return (
-      <PageContainer title="Sky Planner" subtitle="Set your observer location to get started">
+      <PageContainer>
         <div className="bg-astro-surface border border-astro-border rounded-lg p-6 max-w-md">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Observer Location</h2>
           <div className="space-y-3">
@@ -253,7 +253,6 @@ export function SkyPlanner(): React.ReactElement {
 
   return (
     <PageContainer
-      title="Sky Planner"
       subtitle={`Observer: ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`}
       actions={
         <div className="flex items-center gap-2">

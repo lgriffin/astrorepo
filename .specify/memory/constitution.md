@@ -26,6 +26,12 @@ to where it can be acted on, and can be dismissed until the data changes. Progre
 derived from its files, not typed in. A feature that adds data but no way to find or act on it is
 not finished.
 
+The app is one place, not a set of tools. Every page has one name, the one the sidebar gives it in
+`src/shared/navigation.ts`, and a new page takes its place in that map's groups rather than a new
+line in the sidebar. An action (log a night, queue a run) is a button where the work is, not a
+place. A link says where it goes and lands there, down to the section. Work the app does unseen,
+such as a queued job, stays visible on every page until it is done.
+
 ### III. Requirements are EARS, and every one is tested (non-negotiable)
 
 Each requirement is one EARS sentence with an ID, kept in `specs/<nnn>/requirements.md`. Every ID
@@ -93,4 +99,4 @@ This charter overrides other practice in the repository. Amendments are made in 
 that states what changed and why, and bump the version below: major for a removed or redefined
 principle, minor for a new principle or section, patch for wording.
 
-**Version**: 1.0.5 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30
+**Version**: 1.1.0 | **Ratified**: 2026-09-29 | **Last Amended**: 2026-09-30

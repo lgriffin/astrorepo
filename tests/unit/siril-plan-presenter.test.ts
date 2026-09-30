@@ -70,7 +70,7 @@ describe('Siril plan presenter', () => {
   it('[RCP-004] Given a guessed frame size and an unknown sensor, When presented, Then the plan says its figures are approximate and why', () => {
     const view = toSirilPlanView(estimate({ geometryApproximate: true, sensorKnown: false }))
     expect(view.approximateNote).toBe(
-      'Scan this folder in the FITS Analyzer for exact figures: frame size is guessed from file size and the lights are taken as colour, so sizes are approximate.'
+      'Scan this folder on the FITS files page for exact figures: frame size is guessed from file size and the lights are taken as colour, so sizes are approximate.'
     )
     expect(toSirilPlanView(estimate()).approximateNote).toBeNull()
     expect(toSirilPlanView(estimate({ geometryMixed: true })).approximateNote).toBe('The lights are not all one size, so every light is counted at the largest.')

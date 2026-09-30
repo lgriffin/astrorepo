@@ -1,13 +1,13 @@
 # Planning ahead: seasons, the moon and tonight
 
 The app looks ahead from your site for the targets that still need data. It shows up in two
-places: the **Coming nights** card on the dashboard, and the **Seasons** table and **New-moon
-windows** list at the bottom of the Sky Planner.
+places: the **Coming nights** card on Home, and the **Seasons** table and **New-moon
+windows** list at the bottom of the Sky planner.
 
 ## Before you start
 
 Set your latitude and longitude (and elevation, if you like) in **Settings → Observer Location**
-or on the Sky Planner. Until then, the card says what to set and links there.
+or on the Sky planner. Until then, the card says what to set and links there.
 
 Tick **I have a dual-band or narrowband filter** if you do. It is on by default, because the
 Seestar S50's built-in light-pollution filter is dual-band.
@@ -49,7 +49,7 @@ Subs rejected by quality checks do not count toward a goal.
 - **Next new moon**: the dark window three nights either side of it, and the three targets that
   are up longest on the new-moon night.
 
-The same captures also lead the dashboard's **Next actions** list, ranked with closing seasons
+The same captures also lead Home's **Next actions** list, ranked with closing seasons
 first (see [Using the cockpit](cockpit.md#next-actions)).
 
 ## Seasons table

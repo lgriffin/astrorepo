@@ -63,7 +63,7 @@ export function SessionForm(): React.ReactElement {
         equipment_ids: selectedEquipmentIds
       })
       addToast('Session recorded', 'success')
-      navigate('/dashboard')
+      navigate('/timeline')
     } catch {
       addToast('Failed to save session', 'error')
     } finally {
@@ -72,7 +72,7 @@ export function SessionForm(): React.ReactElement {
   }
 
   return (
-    <PageContainer title="Record Session" subtitle="Log a new observation session">
+    <PageContainer title="Log a night" subtitle="When and where you imaged, with what, and what you captured">
       <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
         <FormSection title="When & Where">
           <div className="grid grid-cols-2 gap-4">

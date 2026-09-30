@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ForwardPlanView, PlanTargetView } from '@shared/types'
+import { settingsLink } from '@shared/navigation'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -28,8 +29,8 @@ export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.Rea
       <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
         <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Coming nights</h2>
         <p className="text-sm text-astro-muted">{plan.message}</p>
-        <button onClick={() => navigate('/settings')} className="mt-2 text-xs text-astro-accent hover:underline">
-          Open Settings
+        <button onClick={() => navigate(settingsLink('location'))} className="mt-2 text-xs text-astro-accent hover:underline">
+          Set your site in Settings
         </button>
       </div>
     )
