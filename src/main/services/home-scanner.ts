@@ -4,6 +4,7 @@ import { getSqlite } from '../db/connection'
 import { normalizeCatalogName } from './fits-linker'
 import { isAstronomicalName } from './astro-names'
 import { startFolderScan } from './fits-analyzer'
+import { ScanPacer, ScanCancelled } from './scan-pacer'
 import { advanceStage } from './workflow'
 import { syncTargetsToCollections } from './collection'
 import { ulid } from 'ulid'
@@ -68,9 +69,13 @@ let scanState: HomeScanProgress = {
   phases: makePhases(),
   currentPhaseIndex: 0,
   totalTargetsFound: 0,
+  files: null,
   result: null,
   error: null
 }
+
+/** Set while a scan runs; aborting it cancels the scan at its next checkpoint (ING-014). */
+let scanAbort: AbortController | null = null
 
 function buildTargetLookup(): Map<string, TargetLookup> {
   const sqlite = getSqlite()
@@ -107,24 +112,47 @@ function matchFolderToTarget(
   return undefined
 }
 
-function collectSubfolderDetail(dir: string, extensions: Set<string>): TargetSubfolderDetail[] {
-  const subfolders: TargetSubfolderDetail[] = []
-
-  let entries: fs.Dirent[]
+/** Lists a folder a batch at a time, resting at the pacer's checkpoints. Unreadable folders are empty. */
+async function listDir(dir: string, pacer: ScanPacer): Promise<fs.Dirent[]> {
+  const entries: fs.Dirent[] = []
+  let handle: fs.Dir
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true })
+    handle = await fs.promises.opendir(dir)
   } catch {
-    return subfolders
+    return entries
   }
+  try {
+    for await (const entry of handle) {
+      entries.push(entry)
+      await pacer.checkpoint()
+    }
+  } catch (err) {
+    if (err instanceof ScanCancelled) throw err
+  } finally {
+    await handle.close().catch(() => undefined)
+  }
+  return entries
+}
+
+async function sizeOf(file: string): Promise<number> {
+  try {
+    return (await fs.promises.stat(file)).size
+  } catch {
+    return 0
+  }
+}
+
+async function collectSubfolderDetail(dir: string, extensions: Set<string>, pacer: ScanPacer): Promise<TargetSubfolderDetail[]> {
+  const subfolders: TargetSubfolderDetail[] = []
+  const entries = await listDir(dir, pacer)
 
   let rootFileCount = 0
   let rootSizeBytes = 0
   for (const entry of entries) {
     if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) {
       rootFileCount++
-      try {
-        rootSizeBytes += fs.statSync(path.join(dir, entry.name)).size
-      } catch { /* skip */ }
+      rootSizeBytes += await sizeOf(path.join(dir, entry.name))
+      await pacer.checkpoint()
     }
   }
   if (rootFileCount > 0) {
@@ -136,26 +164,20 @@ function collectSubfolderDetail(dir: string, extensions: Set<string>): TargetSub
     const subPath = path.join(dir, entry.name)
     let count = 0
     let sizeBytes = 0
-    function walkSub(d: string): void {
-      let subEntries: fs.Dirent[]
-      try {
-        subEntries = fs.readdirSync(d, { withFileTypes: true })
-      } catch {
-        return
-      }
-      for (const e of subEntries) {
+    const pending = [subPath]
+    while (pending.length > 0) {
+      const d = pending.pop()!
+      for (const e of await listDir(d, pacer)) {
         const full = path.join(d, e.name)
         if (e.isDirectory()) {
-          walkSub(full)
+          pending.push(full)
         } else if (e.isFile() && extensions.has(path.extname(e.name).toLowerCase())) {
           count++
-          try {
-            sizeBytes += fs.statSync(full).size
-          } catch { /* skip */ }
+          sizeBytes += await sizeOf(full)
+          await pacer.checkpoint()
         }
       }
     }
-    walkSub(subPath)
     if (count > 0) {
       subfolders.push({ name: entry.name, path: subPath, fileCount: count, totalSizeBytes: sizeBytes })
     }
@@ -164,22 +186,15 @@ function collectSubfolderDetail(dir: string, extensions: Set<string>): TargetSub
   return subfolders
 }
 
-function discoverTargetFolders(
+async function discoverTargetFolders(
   dir: string,
   extensions: Set<string>,
-  targetLookup: Map<string, TargetLookup>
-): FolderDiscovery[] {
-  if (!fs.existsSync(dir)) return []
+  targetLookup: Map<string, TargetLookup>,
+  pacer: ScanPacer
+): Promise<FolderDiscovery[]> {
   const discoveries: FolderDiscovery[] = []
 
-  let entries: fs.Dirent[]
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return discoveries
-  }
-
-  for (const entry of entries) {
+  for (const entry of await listDir(dir, pacer)) {
     if (!entry.isDirectory()) continue
     const folderName = entry.name
     const normalized = normalizeCatalogName(folderName)
@@ -190,7 +205,7 @@ function discoverTargetFolders(
     if (!matchedTarget && !isAstro) continue
 
     const folderPath = path.join(dir, folderName)
-    const subfolders = collectSubfolderDetail(folderPath, extensions)
+    const subfolders = await collectSubfolderDetail(folderPath, extensions, pacer)
     const totalFiles = subfolders.reduce((s, f) => s + f.fileCount, 0)
     const totalSizeBytes = subfolders.reduce((s, f) => s + f.totalSizeBytes, 0)
 
@@ -210,14 +225,8 @@ function discoverTargetFolders(
   return discoveries
 }
 
-function findFirstImage(dir: string): string | null {
-  if (!fs.existsSync(dir)) return null
-  let entries: fs.Dirent[]
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return null
-  }
+async function findFirstImage(dir: string, pacer: ScanPacer): Promise<string | null> {
+  const entries = await listDir(dir, pacer)
   for (const entry of entries) {
     if (entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
       return path.join(dir, entry.name)
@@ -225,7 +234,7 @@ function findFirstImage(dir: string): string | null {
   }
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      const found = findFirstImage(path.join(dir, entry.name))
+      const found = await findFirstImage(path.join(dir, entry.name), pacer)
       if (found) return found
     }
   }
@@ -279,8 +288,13 @@ function persistTargetHomeData(
   `).run(targetId, rawFiles, stackedFiles, tifFiles, imageFiles, rawPath, stackedPath, tifPath, imagesPath, suggested)
 }
 
-export function startHomeScan(homePath: string): { started: boolean; reason?: string } {
-  if (scanState.status === 'scanning') {
+/**
+ * Starts a scan of the home folder in the background and returns at once. The scan is paced so
+ * the app and the PC stay usable however large the library is (NFR-013), reports live counts
+ * (ING-007), and can be cancelled (ING-014). `pacer` overrides the pacing, for tests.
+ */
+export function startHomeScan(homePath: string, pacer?: (signal: AbortSignal) => ScanPacer): { started: boolean; reason?: string } {
+  if (scanState.status === 'scanning' || scanState.status === 'cancelling') {
     return { started: false, reason: 'Scan already in progress' }
   }
 
@@ -289,14 +303,45 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
     phases: makePhases(),
     currentPhaseIndex: 0,
     totalTargetsFound: 0,
+    files: null,
     result: null,
     error: null
   }
+  const abort = new AbortController()
+  scanAbort = abort
 
-  const rawDir = path.join(homePath, 'raw')
-  const stackedDir = path.join(homePath, 'stacked')
-  const tifDir = path.join(homePath, 'tif')
-  const imagesDir = path.join(homePath, 'images')
+  void runHomeScan(homePath, abort.signal, pacer?.(abort.signal) ?? new ScanPacer(abort.signal))
+    .then(result => {
+      scanState.status = 'done'
+      scanState.result = result
+    })
+    .catch(err => {
+      if (err instanceof ScanCancelled || abort.signal.aborted) {
+        scanState.status = 'cancelled'
+      } else {
+        scanState.status = 'error'
+        scanState.error = err instanceof Error ? err.message : String(err)
+      }
+    })
+    .finally(() => {
+      if (scanAbort === abort) scanAbort = null
+    })
+
+  return { started: true }
+}
+
+/**
+ * Stops the running scan at its next checkpoint (ING-014). FITS files read so far stay indexed,
+ * so the next scan reads only what this one did not reach (ING-008).
+ */
+export function cancelHomeScan(): { cancelled: boolean } {
+  if (!scanAbort || scanState.status !== 'scanning') return { cancelled: false }
+  scanState.status = 'cancelling'
+  scanAbort.abort()
+  return { cancelled: true }
+}
+
+async function runHomeScan(homePath: string, signal: AbortSignal, pacer: ScanPacer): Promise<HomeScanResult> {
   const targetMap = new Map<string, TargetAccumulator>()
 
   function getOrCreateAccum(normalizedName: string, folderName: string, targetId: string | null): TargetAccumulator {
@@ -329,215 +374,158 @@ export function startHomeScan(homePath: string): { started: boolean; reason?: st
     }
   }
 
-  function finalizeResults(): void {
-    try {
-      const sqlite = getSqlite()
-      const result: HomeScanResult = {
-        homePath,
-        targets: [],
-        rawScanned: scanState.phases[0].foldersFound > 0,
-        created: 0,
-        advanced: 0
+  const phases: { dir: string; extensions: Set<string>; field: 'rawDiscovery' | 'stackedDiscovery' | 'tifDiscovery' | 'imagesDiscovery'; fits: boolean }[] = [
+    { dir: path.join(homePath, 'raw'), extensions: FITS_EXTENSIONS, field: 'rawDiscovery', fits: true },
+    { dir: path.join(homePath, 'stacked'), extensions: FITS_EXTENSIONS, field: 'stackedDiscovery', fits: true },
+    { dir: path.join(homePath, 'tif'), extensions: TIF_EXTENSIONS, field: 'tifDiscovery', fits: false },
+    { dir: path.join(homePath, 'images'), extensions: IMAGE_EXTENSIONS, field: 'imagesDiscovery', fits: false },
+  ]
+
+  let targetLookup = buildTargetLookup()
+  for (let i = 0; i < phases.length; i++) {
+    const { dir, extensions, field, fits } = phases[i]
+    const phase = scanState.phases[i]
+    scanState.currentPhaseIndex = i
+    phase.status = 'discovering'
+    const discoveries = await discoverTargetFolders(dir, extensions, targetLookup, pacer)
+    phase.foldersFound = discoveries.length
+
+    if (fits && fs.existsSync(dir)) {
+      phase.status = 'scanning_fits'
+      scanState.files = null
+      try {
+        await startFolderScan(dir, { signal, pacer, onProgress: counts => { scanState.files = counts } })
+      } catch (err) {
+        if (err instanceof ScanCancelled) throw err
+        console.error(`FITS scan of ${dir} failed:`, err)
       }
+      targetLookup = buildTargetLookup()
+    }
 
-      // Final lookup rebuild to pick up all targets created by FITS scans
-      const finalLookup = buildTargetLookup()
+    mergeDiscoveries(discoveries, targetLookup, field)
+    phase.status = 'complete'
+    await pacer.checkpoint()
+  }
 
-      // Resolve any accumulators still missing a targetId
-      for (const [normalizedName, acc] of targetMap) {
-        if (acc.targetId) continue
-        const matched = finalLookup.get(normalizedName)
-        if (matched) {
-          acc.targetId = matched.id
-        } else if (isAstronomicalName(acc.targetName)) {
-          const id = ulid()
-          const now = new Date().toISOString()
-          sqlite.prepare(`
-            INSERT OR IGNORE INTO targets (id, canonical_name, object_type, workflow_stage, is_custom, created_at, updated_at)
-            VALUES (?, ?, 'unknown', 'not_observed', 0, ?, ?)
-          `).run(id, normalizeCatalogName(acc.targetName), now, now)
-          const created = sqlite.prepare('SELECT id, canonical_name, workflow_stage FROM targets WHERE canonical_name = ?').get(normalizeCatalogName(acc.targetName)) as TargetLookup | undefined
-          if (created) {
-            acc.targetId = created.id
-            result.created++
-          }
-        }
+  return finalizeResults(homePath, targetMap, pacer)
+}
+
+async function finalizeResults(homePath: string, targetMap: Map<string, TargetAccumulator>, pacer: ScanPacer): Promise<HomeScanResult> {
+  const sqlite = getSqlite()
+  const result: HomeScanResult = {
+    homePath,
+    targets: [],
+    rawScanned: scanState.phases[0].foldersFound > 0,
+    created: 0,
+    advanced: 0
+  }
+
+  // Final lookup rebuild to pick up all targets created by FITS scans
+  const finalLookup = buildTargetLookup()
+
+  // Resolve any accumulators still missing a targetId
+  for (const [normalizedName, acc] of targetMap) {
+    if (acc.targetId) continue
+    const matched = finalLookup.get(normalizedName)
+    if (matched) {
+      acc.targetId = matched.id
+    } else if (isAstronomicalName(acc.targetName)) {
+      const id = ulid()
+      const now = new Date().toISOString()
+      sqlite.prepare(`
+        INSERT OR IGNORE INTO targets (id, canonical_name, object_type, workflow_stage, is_custom, created_at, updated_at)
+        VALUES (?, ?, 'unknown', 'not_observed', 0, ?, ?)
+      `).run(id, normalizeCatalogName(acc.targetName), now, now)
+      const created = sqlite.prepare('SELECT id, canonical_name, workflow_stage FROM targets WHERE canonical_name = ?').get(normalizeCatalogName(acc.targetName)) as TargetLookup | undefined
+      if (created) {
+        acc.targetId = created.id
+        result.created++
       }
-
-      scanState.totalTargetsFound = targetMap.size
-
-      for (const [, acc] of targetMap) {
-        if (!acc.targetId) continue
-
-        const target = sqlite.prepare('SELECT id, canonical_name, workflow_stage FROM targets WHERE id = ?').get(acc.targetId) as TargetLookup | undefined
-        if (!target) continue
-
-        const rawFiles = acc.rawDiscovery?.totalFiles ?? 0
-        const stackedFiles = acc.stackedDiscovery?.totalFiles ?? 0
-        const tifFiles = acc.tifDiscovery?.totalFiles ?? 0
-        const imageFiles = acc.imagesDiscovery?.totalFiles ?? 0
-        const suggested = suggestStage(rawFiles, stackedFiles, tifFiles, imageFiles)
-
-        const rawPath = acc.rawDiscovery?.folderPath ?? null
-        const stackedPath = acc.stackedDiscovery?.folderPath ?? null
-        const tifPath = acc.tifDiscovery?.folderPath ?? null
-        const imagesPath = acc.imagesDiscovery?.folderPath ?? null
-
-        persistTargetHomeData(
-          target.id, rawFiles, stackedFiles, tifFiles, imageFiles,
-          rawPath, stackedPath, tifPath, imagesPath, suggested
-        )
-
-        if (acc.rawDiscovery) persistTargetSubfolders(target.id, 'raw', acc.rawDiscovery.subfolders)
-        if (acc.stackedDiscovery) persistTargetSubfolders(target.id, 'stacked', acc.stackedDiscovery.subfolders)
-        if (acc.tifDiscovery) persistTargetSubfolders(target.id, 'tif', acc.tifDiscovery.subfolders)
-        if (acc.imagesDiscovery) persistTargetSubfolders(target.id, 'images', acc.imagesDiscovery.subfolders)
-
-        if (rawPath) {
-          sqlite.prepare('UPDATE targets SET folder_path = ? WHERE id = ?').run(rawPath, target.id)
-        }
-
-        let thumbnailPath: string | null = null
-        if (imagesPath) thumbnailPath = findFirstImage(imagesPath)
-        if (!thumbnailPath && tifPath) thumbnailPath = findFirstImage(tifPath)
-        if (thumbnailPath) {
-          sqlite.prepare('UPDATE targets SET thumbnail_path = ? WHERE id = ?').run(thumbnailPath, target.id)
-        }
-
-        const currentOrder = STAGE_ORDER[target.workflow_stage] ?? 0
-        const suggestedOrder = STAGE_ORDER[suggested] ?? 0
-        if (suggestedOrder > currentOrder) {
-          advanceStage(target.id, suggested, 'Auto-advanced by home folder scan')
-          result.advanced++
-        }
-
-        const entry: HomeFolderTarget = {
-          targetName: target.canonical_name,
-          targetId: target.id,
-          rawFiles,
-          stackedFiles,
-          tifFiles,
-          imageFiles,
-          rawSubfolders: acc.rawDiscovery?.subfolders ?? [],
-          stackedSubfolders: acc.stackedDiscovery?.subfolders ?? [],
-          tifSubfolders: acc.tifDiscovery?.subfolders ?? [],
-          imageSubfolders: acc.imagesDiscovery?.subfolders ?? [],
-          rawPath,
-          stackedPath,
-          tifPath,
-          imagesPath,
-          currentStage: target.workflow_stage,
-          suggestedStage: suggested,
-          thumbnailPath
-        }
-        result.targets.push(entry)
-      }
-
-      const processedTargetIds = result.targets.map(t => t.targetId).filter((id): id is string => !!id)
-      syncTargetsToCollections(processedTargetIds)
-
-      sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan', datetime('now'))").run()
-      // Which folder the scan was of, so a new home folder reads as not yet scanned.
-      sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan_folder', ?)").run(homePath)
-
-      scanState.status = 'done'
-      scanState.result = result
-    } catch (err) {
-      scanState.status = 'error'
-      scanState.error = err instanceof Error ? err.message : String(err)
     }
   }
 
-  // Phase 1: RAW — yield between phases so IPC polls can read progress
-  setImmediate(() => {
-    try {
-      scanState.phases[0].status = 'discovering'
-      let targetLookup = buildTargetLookup()
-      const rawDiscoveries = discoverTargetFolders(rawDir, FITS_EXTENSIONS, targetLookup)
-      scanState.phases[0].foldersFound = rawDiscoveries.length
+  scanState.totalTargetsFound = targetMap.size
 
-      scanState.phases[0].status = 'scanning_fits'
-      if (fs.existsSync(rawDir)) {
-        try {
-          startFolderScan(rawDir)
-        } catch (err) {
-          console.error('FITS scan of raw folder failed:', err)
-        }
-      }
+  for (const [, acc] of targetMap) {
+    if (!acc.targetId) continue
 
-      targetLookup = buildTargetLookup()
-      mergeDiscoveries(rawDiscoveries, targetLookup, 'rawDiscovery')
-      scanState.phases[0].status = 'complete'
-      scanState.currentPhaseIndex = 1
+    const target = sqlite.prepare('SELECT id, canonical_name, workflow_stage FROM targets WHERE id = ?').get(acc.targetId) as TargetLookup | undefined
+    if (!target) continue
 
-      // Phase 2: STACKED
-      setImmediate(() => {
-        try {
-          scanState.phases[1].status = 'discovering'
-          const stackedDiscoveries = discoverTargetFolders(stackedDir, FITS_EXTENSIONS, targetLookup)
-          scanState.phases[1].foldersFound = stackedDiscoveries.length
+    const rawFiles = acc.rawDiscovery?.totalFiles ?? 0
+    const stackedFiles = acc.stackedDiscovery?.totalFiles ?? 0
+    const tifFiles = acc.tifDiscovery?.totalFiles ?? 0
+    const imageFiles = acc.imagesDiscovery?.totalFiles ?? 0
+    const suggested = suggestStage(rawFiles, stackedFiles, tifFiles, imageFiles)
 
-          scanState.phases[1].status = 'scanning_fits'
-          if (fs.existsSync(stackedDir)) {
-            try {
-              startFolderScan(stackedDir)
-            } catch (err) {
-              console.error('FITS scan of stacked folder failed:', err)
-            }
-          }
+    const rawPath = acc.rawDiscovery?.folderPath ?? null
+    const stackedPath = acc.stackedDiscovery?.folderPath ?? null
+    const tifPath = acc.tifDiscovery?.folderPath ?? null
+    const imagesPath = acc.imagesDiscovery?.folderPath ?? null
 
-          targetLookup = buildTargetLookup()
-          mergeDiscoveries(stackedDiscoveries, targetLookup, 'stackedDiscovery')
-          scanState.phases[1].status = 'complete'
-          scanState.currentPhaseIndex = 2
+    let thumbnailPath: string | null = null
+    if (imagesPath) thumbnailPath = await findFirstImage(imagesPath, pacer)
+    if (!thumbnailPath && tifPath) thumbnailPath = await findFirstImage(tifPath, pacer)
 
-          // Phase 3: TIF
-          setImmediate(() => {
-            try {
-              scanState.phases[2].status = 'discovering'
-              const tifDiscoveries = discoverTargetFolders(tifDir, TIF_EXTENSIONS, targetLookup)
-              scanState.phases[2].foldersFound = tifDiscoveries.length
-              mergeDiscoveries(tifDiscoveries, targetLookup, 'tifDiscovery')
-              scanState.phases[2].status = 'complete'
-              scanState.currentPhaseIndex = 3
+    persistTargetHomeData(
+      target.id, rawFiles, stackedFiles, tifFiles, imageFiles,
+      rawPath, stackedPath, tifPath, imagesPath, suggested
+    )
 
-              // Phase 4: IMAGES
-              setImmediate(() => {
-                try {
-                  scanState.phases[3].status = 'discovering'
-                  const imageDiscoveries = discoverTargetFolders(imagesDir, IMAGE_EXTENSIONS, targetLookup)
-                  scanState.phases[3].foldersFound = imageDiscoveries.length
-                  mergeDiscoveries(imageDiscoveries, targetLookup, 'imagesDiscovery')
-                  scanState.phases[3].status = 'complete'
+    if (acc.rawDiscovery) persistTargetSubfolders(target.id, 'raw', acc.rawDiscovery.subfolders)
+    if (acc.stackedDiscovery) persistTargetSubfolders(target.id, 'stacked', acc.stackedDiscovery.subfolders)
+    if (acc.tifDiscovery) persistTargetSubfolders(target.id, 'tif', acc.tifDiscovery.subfolders)
+    if (acc.imagesDiscovery) persistTargetSubfolders(target.id, 'images', acc.imagesDiscovery.subfolders)
 
-                  // Finalize
-                  setImmediate(() => finalizeResults())
-                } catch (err) {
-                  scanState.status = 'error'
-                  scanState.error = err instanceof Error ? err.message : String(err)
-                }
-              })
-            } catch (err) {
-              scanState.status = 'error'
-              scanState.error = err instanceof Error ? err.message : String(err)
-            }
-          })
-        } catch (err) {
-          scanState.status = 'error'
-          scanState.error = err instanceof Error ? err.message : String(err)
-        }
-      })
-    } catch (err) {
-      scanState.status = 'error'
-      scanState.error = err instanceof Error ? err.message : String(err)
+    if (rawPath) {
+      sqlite.prepare('UPDATE targets SET folder_path = ? WHERE id = ?').run(rawPath, target.id)
     }
-  })
 
-  return { started: true }
+    if (thumbnailPath) {
+      sqlite.prepare('UPDATE targets SET thumbnail_path = ? WHERE id = ?').run(thumbnailPath, target.id)
+    }
+
+    const currentOrder = STAGE_ORDER[target.workflow_stage] ?? 0
+    const suggestedOrder = STAGE_ORDER[suggested] ?? 0
+    if (suggestedOrder > currentOrder) {
+      advanceStage(target.id, suggested, 'Auto-advanced by home folder scan')
+      result.advanced++
+    }
+
+    const entry: HomeFolderTarget = {
+      targetName: target.canonical_name,
+      targetId: target.id,
+      rawFiles,
+      stackedFiles,
+      tifFiles,
+      imageFiles,
+      rawSubfolders: acc.rawDiscovery?.subfolders ?? [],
+      stackedSubfolders: acc.stackedDiscovery?.subfolders ?? [],
+      tifSubfolders: acc.tifDiscovery?.subfolders ?? [],
+      imageSubfolders: acc.imagesDiscovery?.subfolders ?? [],
+      rawPath,
+      stackedPath,
+      tifPath,
+      imagesPath,
+      currentStage: target.workflow_stage,
+      suggestedStage: suggested,
+      thumbnailPath
+    }
+    result.targets.push(entry)
+  }
+
+  const processedTargetIds = result.targets.map(t => t.targetId).filter((id): id is string => !!id)
+  syncTargetsToCollections(processedTargetIds)
+
+  sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan', datetime('now'))").run()
+  // Which folder the scan was of, so a new home folder reads as not yet scanned.
+  sqlite.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('last_library_scan_folder', ?)").run(homePath)
+
+  return result
 }
 
 export function getHomeScanProgress(): HomeScanProgress {
-  return { ...scanState, phases: scanState.phases.map(p => ({ ...p })) }
+  return { ...scanState, phases: scanState.phases.map(p => ({ ...p })), files: scanState.files && { ...scanState.files } }
 }
 
 interface HomeDataRow {

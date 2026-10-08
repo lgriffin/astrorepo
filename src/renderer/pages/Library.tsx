@@ -3,7 +3,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
 import { settingsLink } from '@shared/navigation'
 import { invoke } from '../hooks/useIPC'
-import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress } from '@shared/types'
+import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress, ScanFileCounts } from '@shared/types'
 
 const PHASE_LABELS: Record<string, { title: string; description: string }> = {
   raw: { title: 'Raw', description: 'FITS files from capture sessions' },
@@ -17,8 +17,30 @@ export function Library(): React.ReactElement {
   const [scanProgress, setScanProgress] = useState<HomeScanProgress | null>(null)
   const [scanResult, setScanResult] = useState<HomeScanResult | null>(null)
   const [lastScanTime, setLastScanTime] = useState<string | null>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [expandedTargets, setExpandedTargets] = useState<Set<string>>(new Set())
+
+  // One poll at a time: the next is asked for only after the last answer, so polls never pile up.
+  const poll = useCallback(() => {
+    const next = (): void => {
+      pollRef.current = setTimeout(async () => {
+        const progress = await invoke<HomeScanProgress>('home:scan-progress')
+        setScanProgress(progress)
+        if (progress.status === 'scanning' || progress.status === 'cancelling') {
+          next()
+          return
+        }
+        pollRef.current = null
+        if (progress.status === 'done' && progress.result) {
+          setScanResult(progress.result)
+          invoke<{ value: string | null }>('settings:get', { key: 'last_library_scan' }).then(r => {
+            setLastScanTime(r.value)
+          })
+        }
+      }, 500)
+    }
+    next()
+  }, [])
 
   useEffect(() => {
     invoke<{ value: string | null }>('settings:get', { key: 'home_folder_path' }).then(r => {
@@ -31,12 +53,16 @@ export function Library(): React.ReactElement {
       if (progress.status === 'done' && progress.result) {
         setScanProgress(progress)
         setScanResult(progress.result)
+      } else if (progress.status === 'scanning' || progress.status === 'cancelling') {
+        // A scan started before this page was opened carries on; follow it.
+        setScanProgress(progress)
+        poll()
       }
     })
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
+      if (pollRef.current) clearTimeout(pollRef.current)
     }
-  }, [])
+  }, [poll])
 
   const startScan = useCallback(async () => {
     setScanResult(null)
@@ -50,6 +76,7 @@ export function Library(): React.ReactElement {
       ],
       currentPhaseIndex: 0,
       totalTargetsFound: 0,
+      files: null,
       result: null,
       error: null
     })
@@ -58,25 +85,15 @@ export function Library(): React.ReactElement {
       setScanProgress(null)
       return
     }
+    poll()
+  }, [poll])
 
-    pollRef.current = setInterval(async () => {
-      const progress = await invoke<HomeScanProgress>('home:scan-progress')
-      setScanProgress(progress)
-
-      if (progress.status === 'done' || progress.status === 'error') {
-        if (pollRef.current) clearInterval(pollRef.current)
-        pollRef.current = null
-        if (progress.status === 'done' && progress.result) {
-          setScanResult(progress.result)
-          invoke<{ value: string | null }>('settings:get', { key: 'last_library_scan' }).then(r => {
-            setLastScanTime(r.value)
-          })
-        }
-      }
-    }, 500)
+  const cancelScan = useCallback(async () => {
+    await invoke('home:scan-cancel')
+    setScanProgress(prev => prev && { ...prev, status: 'cancelling' })
   }, [])
 
-  const isScanning = scanProgress?.status === 'scanning'
+  const isScanning = scanProgress?.status === 'scanning' || scanProgress?.status === 'cancelling'
 
   function toggleExpand(targetId: string): void {
     setExpandedTargets(prev => {
@@ -136,8 +153,21 @@ export function Library(): React.ReactElement {
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4 space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 border-2 border-astro-accent border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-astro-text font-medium">Scanning home folder...</p>
+              <p className="text-sm text-astro-text font-medium flex-1">
+                {scanProgress.status === 'cancelling' ? 'Stopping the scan...' : 'Scanning home folder...'}
+              </p>
+              <button
+                onClick={cancelScan}
+                disabled={scanProgress.status === 'cancelling'}
+                className="px-3 py-1 text-xs border border-astro-border rounded text-astro-muted hover:text-astro-text disabled:opacity-50"
+              >
+                Cancel
+              </button>
             </div>
+            <p className="text-xs text-astro-muted">
+              The scan runs gently in the background so your PC stays usable. A big library can take a
+              while. If you cancel, files already read are kept and the next scan carries on from there.
+            </p>
 
             <div className="w-full h-1.5 bg-astro-border rounded-full overflow-hidden">
               <div
@@ -148,7 +178,7 @@ export function Library(): React.ReactElement {
 
             <div className="bg-astro-bg border border-astro-border rounded-lg p-3 space-y-2">
               {scanProgress.phases.map((phase) => (
-                <PhaseRow key={phase.name} phase={phase} />
+                <PhaseRow key={phase.name} phase={phase} files={phase.status === 'scanning_fits' ? scanProgress.files : null} />
               ))}
             </div>
 
@@ -157,6 +187,12 @@ export function Library(): React.ReactElement {
                 {scanProgress.totalTargetsFound} targets discovered so far
               </p>
             )}
+          </div>
+        )}
+
+        {scanProgress?.status === 'cancelled' && (
+          <div className="p-3 bg-astro-surface border border-astro-border rounded text-sm text-astro-muted">
+            Scan cancelled. Files read so far are kept; scan again to carry on from there.
           </div>
         )}
 
@@ -253,11 +289,20 @@ export function Library(): React.ReactElement {
   )
 }
 
-function PhaseRow({ phase }: { phase: HomeScanPhaseProgress }): React.ReactElement {
+function fileCountsText(files: ScanFileCounts | null): string {
+  if (!files) return 'Reading FITS metadata...'
+  if (files.filesToRead === 0 && files.filesRead === 0 && files.filesUnchanged === 0) return `Finding FITS files: ${files.filesFound.toLocaleString()} so far`
+  const parts = [`Read ${files.filesRead.toLocaleString()} of ${files.filesToRead.toLocaleString()} new or changed files`]
+  if (files.filesUnchanged > 0) parts.push(`${files.filesUnchanged.toLocaleString()} unchanged`)
+  if (files.quarantined > 0) parts.push(`${files.quarantined.toLocaleString()} unreadable`)
+  return parts.join(', ')
+}
+
+function PhaseRow({ phase, files = null }: { phase: HomeScanPhaseProgress; files?: ScanFileCounts | null }): React.ReactElement {
   const label = PHASE_LABELS[phase.name] ?? { title: phase.name, description: '' }
   const isActive = phase.status === 'discovering' || phase.status === 'scanning_fits'
   const statusText = phase.status === 'discovering' ? 'Searching for target folders...'
-    : phase.status === 'scanning_fits' ? 'Reading FITS metadata (this may take a moment)...'
+    : phase.status === 'scanning_fits' ? fileCountsText(files)
     : phase.status === 'complete' && phase.foldersFound > 0 ? `Done — ${phase.foldersFound} target${phase.foldersFound !== 1 ? 's' : ''} found`
     : phase.status === 'complete' ? 'Done — no targets found'
     : 'Waiting...'

@@ -1,17 +1,18 @@
 import { getSqlite } from '../db/connection'
-import { parseFitsFile } from '../fits/parser'
+import { parseFitsFile, parseFitsFileAsync, type FitsParseResult } from '../fits/parser'
 import { detectStacking } from '../fits/stacking'
-import { linkFitsFilesToTargets, normalizeCatalogName } from './fits-linker'
+import { linkFitsFilesToTargetsPaced, normalizeCatalogName } from './fits-linker'
 import { isAstronomicalName } from './astro-names'
 import { advanceStage } from './workflow'
-import { ulid } from 'ulid'
+import { ulid, monotonicFactory } from 'ulid'
+import { ScanPacer, ScanCancelled } from './scan-pacer'
 import { planRescan, type FileStamp } from '@astro/domain'
 import fs from 'fs'
 import path from 'path'
 import type {
   FitsScan, FitsScanSummary, FitsFileSummary, FitsFileDetail,
   FitsHeaderRow, FitsScanAggregates, FitsTargetSummary, TargetObservationData,
-  StackedFileDetail
+  StackedFileDetail, ScanFileCounts
 } from '@shared/types'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
@@ -22,38 +23,48 @@ interface WalkedFile {
   sessionFolder: string | null
 }
 
-function walkFitsFiles(dir: string): WalkedFile[] {
+/**
+ * Walks the folder reading each directory as a stream rather than one big listing, resting at
+ * the pacer's checkpoints. Links are not followed, so a junction loop cannot trap it.
+ */
+async function walkFitsFiles(dir: string, pacer: ScanPacer, onFound: (count: number) => void): Promise<WalkedFile[]> {
   const results: WalkedFile[] = []
-  const rootDir = path.resolve(dir)
+  const pending: { dir: string; targetFolder: string | null; sessionFolder: string | null; depth: number }[] = [
+    { dir: path.resolve(dir), targetFolder: null, sessionFolder: null, depth: 0 }
+  ]
 
-  function walk(currentDir: string, targetFolder: string | null, sessionFolder: string | null, depth: number): void {
-    let entries: fs.Dirent[]
+  while (pending.length > 0) {
+    const { dir: currentDir, targetFolder, sessionFolder, depth } = pending.pop()!
+    let handle: fs.Dir
     try {
-      entries = fs.readdirSync(currentDir, { withFileTypes: true })
+      handle = await fs.promises.opendir(currentDir)
     } catch {
-      return
+      continue
     }
-
-    for (const entry of entries) {
-      const fullPath = path.join(currentDir, entry.name)
-      if (entry.isDirectory()) {
-        if (depth === 0) {
-          walk(fullPath, entry.name, null, 1)
-        } else if (depth === 1) {
-          walk(fullPath, targetFolder, entry.name, 2)
-        } else {
-          walk(fullPath, targetFolder, sessionFolder, depth + 1)
-        }
-      } else if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase()
-        if (FITS_EXTENSIONS.has(ext)) {
+    try {
+      for await (const entry of handle) {
+        const fullPath = path.join(currentDir, entry.name)
+        if (entry.isDirectory()) {
+          pending.push({
+            dir: fullPath,
+            targetFolder: depth === 0 ? entry.name : targetFolder,
+            sessionFolder: depth === 1 ? entry.name : sessionFolder,
+            depth: depth + 1
+          })
+        } else if (entry.isFile() && FITS_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
           results.push({ filePath: fullPath, folderName: targetFolder, sessionFolder })
+          if (results.length % 500 === 0) onFound(results.length)
         }
+        await pacer.checkpoint()
       }
+    } catch (err) {
+      if (err instanceof ScanCancelled) throw err
+      // A folder that vanishes or stops answering mid-listing is skipped, like an unreadable one.
+    } finally {
+      await handle.close().catch(() => undefined)
     }
   }
-
-  walk(rootDir, null, null, 0)
+  onFound(results.length)
   return results
 }
 
@@ -80,40 +91,100 @@ export function normaliseScanRoot(folderPath: string): string {
   return resolved.length > root.length ? resolved.replace(/[\\/]+$/, '') : resolved
 }
 
-export function startFolderScan(requestedPath: string): FitsScan {
+/** What a folder scan has done so far, for live progress (ING-007). */
+export type FolderScanProgress = ScanFileCounts
+
+export interface FolderScanOptions {
+  /** Aborting stops the scan at its next checkpoint; what it has stored so far is kept (ING-014). */
+  signal?: AbortSignal
+  onProgress?: (progress: FolderScanProgress) => void
+  /** Overrides the pacing, for tests. */
+  pacer?: ScanPacer
+}
+
+/** Files read, and rows written, per database transaction: small enough to never hold the app up. */
+const READ_BATCH = 20
+const WRITE_CHUNK = 250
+
+/** Folders being scanned now. Two scans of the same files at once would race each other. */
+const activeRoots = new Set<string>()
+
+const overlaps = (a: string, b: string) => a === b || a.startsWith(b + path.sep) || b.startsWith(a + path.sep)
+
+/**
+ * Indexes the FITS files under a folder. Long scans are paced and yield to the app between
+ * small pieces of work (NFR-013), report progress (ING-007), can be cancelled (ING-014), and pick
+ * up where a cancelled scan stopped because already-read files are unchanged (ING-008).
+ */
+export async function startFolderScan(requestedPath: string, options: FolderScanOptions = {}): Promise<FitsScan> {
   const folderPath = normaliseScanRoot(requestedPath)
+  for (const active of activeRoots) {
+    if (overlaps(active, folderPath)) throw new Error(`A scan of ${active} is already running`)
+  }
+  activeRoots.add(folderPath)
+  try {
+    return await scanFolder(folderPath, options)
+  } finally {
+    activeRoots.delete(folderPath)
+  }
+}
+
+async function scanFolder(folderPath: string, options: FolderScanOptions): Promise<FitsScan> {
   const sqlite = getSqlite()
+  const pacer = options.pacer ?? new ScanPacer(options.signal)
   const now = new Date().toISOString()
   const scanId = ulid()
+  // ulid() draws fresh randomness for every id, which cost most of a large scan's time.
+  const nextId = monotonicFactory()
+  const progress: FolderScanProgress = { filesFound: 0, filesToRead: 0, filesRead: 0, filesUnchanged: 0, quarantined: 0 }
+  const report = () => options.onProgress?.({ ...progress })
 
   sqlite.prepare(
     `INSERT INTO fits_scans (id, folder_path, file_count, total_size_bytes, status, started_at, created_at)
      VALUES (?, ?, 0, 0, 'running', ?, ?)`
   ).run(scanId, folderPath, now, now)
 
+  let fileCount = 0
+  let totalSize = 0
   try {
-    const fitsFiles = walkFitsFiles(folderPath)
-    let totalSize = 0
+    const fitsFiles = await walkFitsFiles(folderPath, pacer, count => {
+      progress.filesFound = count
+      report()
+    })
+    fileCount = fitsFiles.length
 
     // Rescan fast path (ING-008): files whose size and modified time are unchanged keep their row,
     // headers, quality metrics and target link; only new or changed files are read again.
     const stamps = new Map<string, FileStamp>()
     for (const { filePath } of fitsFiles) {
       try {
-        const stat = fs.statSync(filePath)
+        const stat = await fs.promises.stat(filePath)
         stamps.set(filePath, { path: filePath, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() })
         totalSize += stat.size
       } catch {
         // Vanished between the walk and the stat; treated as removed.
       }
+      await pacer.checkpoint()
     }
     // Every indexed file under this folder counts, whichever scan found it: a scan of a parent
     // folder, or an earlier spelling of this one, must not leave files behind or hide them.
     const prefix = folderPath + path.sep
     const under = `substr(file_path, 1, ?) = ?`
-    const indexed = sqlite.prepare(
-      `SELECT file_path, file_size_bytes, file_modified_at FROM fits_files WHERE ${under}`
-    ).all(prefix.length, prefix) as { file_path: string; file_size_bytes: number; file_modified_at: string | null }[]
+    // Read a page at a time along the file_path index: every path under the folder sorts at or
+    // after the prefix and before the prefix with its separator bumped by one.
+    const upper = folderPath + String.fromCharCode(path.sep.charCodeAt(0) + 1)
+    const page = sqlite.prepare(
+      `SELECT file_path, file_size_bytes, file_modified_at FROM fits_files
+       WHERE file_path > ? AND file_path < ? ORDER BY file_path LIMIT ${WRITE_CHUNK * 8}`
+    )
+    const indexed: { file_path: string; file_size_bytes: number; file_modified_at: string | null }[] = []
+    for (let after = prefix; ;) {
+      const rows = page.all(after, upper) as typeof indexed
+      for (const r of rows) indexed.push(r)
+      if (rows.length === 0) break
+      after = rows[rows.length - 1].file_path
+      await pacer.checkpoint()
+    }
     const plan = planRescan(
       indexed.map(r => ({ path: r.file_path, sizeBytes: r.file_size_bytes, modifiedAt: r.file_modified_at ?? '' })),
       [...stamps.values()]
@@ -134,16 +205,29 @@ export function startFolderScan(requestedPath: string): FitsScan {
     const drop = sqlite.prepare('DELETE FROM fits_files WHERE file_path = ?')
     const keepQuarantine = sqlite.prepare('UPDATE quarantined_files SET folder_path = ? WHERE file_path = ?')
     const release = sqlite.prepare('DELETE FROM quarantined_files WHERE file_path = ?')
+    // In chunks, so a library of a hundred thousand files never holds the app up at once. Every
+    // kept file moves to this scan before older scans of the folder go (they cascade to their files).
+    const inChunks = async (paths: string[], run: (p: string) => void) => {
+      for (let i = 0; i < paths.length; i += WRITE_CHUNK) {
+        sqlite.transaction(() => { for (const p of paths.slice(i, i + WRITE_CHUNK)) run(p) })()
+        await pacer.checkpoint()
+      }
+    }
+    await inChunks(plan.unchanged, p => keep.run(scanId, p))
+    await inChunks([...plan.changed, ...plan.removed], p => drop.run(p))
     sqlite.transaction(() => {
-      for (const p of plan.unchanged) keep.run(scanId, p)
-      for (const p of [...plan.changed, ...plan.removed]) drop.run(p)
       sqlite.prepare("DELETE FROM fits_scans WHERE folder_path = ? AND id != ?").run(folderPath, scanId)
       for (const q of quarantined) {
         if (stillQuarantined.has(q.file_path)) keepQuarantine.run(folderPath, q.file_path)
         else release.run(q.file_path)
       }
     })()
-    const toRead = new Set([...plan.added, ...plan.changed].filter(p => !stillQuarantined.has(p)))
+    const readSet = new Set([...plan.added, ...plan.changed])
+    const toRead = fitsFiles.filter(f => readSet.has(f.filePath) && !stillQuarantined.has(f.filePath))
+    progress.filesUnchanged = plan.unchanged.length
+    progress.quarantined = stillQuarantined.size
+    progress.filesToRead = toRead.length
+    report()
 
     // A file that cannot be parsed is set aside with the reason and the scan carries on (ING-006).
     const quarantine = sqlite.prepare(
@@ -176,95 +260,106 @@ export function startFolderScan(requestedPath: string): FitsScan {
        VALUES (?, ?, ?, ?, ?, ?)`
     )
 
-    const batchSize = 50
-    for (let i = 0; i < fitsFiles.length; i += batchSize) {
-      const batch = fitsFiles.slice(i, i + batchSize)
-      const transaction = sqlite.transaction(() => {
-        for (const { filePath, folderName, sessionFolder } of batch) {
-          const stamp = stamps.get(filePath)
-          if (!stamp || !toRead.has(filePath)) continue
-          const fileId = ulid()
-          const fileName = path.basename(filePath)
-          const fileSizeBytes = stamp.sizeBytes
-          const fileModifiedAt = stamp.modifiedAt
+    const store = (file: WalkedFile, stamp: FileStamp, result: FitsParseResult) => {
+      const { filePath, folderName, sessionFolder } = file
+      if (!result.isValid) {
+        quarantine.run(filePath, folderPath, result.error ?? 'Unreadable FITS file', stamp.sizeBytes, stamp.modifiedAt, now)
+        progress.quarantined++
+        return
+      }
 
-          const result = parseFitsFile(filePath)
-          if (!result.isValid) {
-            quarantine.run(filePath, folderPath, result.error ?? 'Unreadable FITS file', fileSizeBytes, fileModifiedAt, now)
-            continue
-          }
+      const hm = result.headerMap
+      const stacking = detectStacking(hm)
+      const fileId = nextId()
 
-          const hm = result.headerMap
-          const stacking = detectStacking(hm)
+      const objectName = getHeaderString(hm, 'OBJECT') ?? folderName
+      const ra = getHeaderString(hm, 'RA', 'OBJCTRA', 'CRVAL1')
+      const dec = getHeaderString(hm, 'DEC', 'OBJCTDEC', 'CRVAL2')
+      const software = getHeaderString(hm, 'SWCREATE', 'PROGRAM', 'SOFTWARE', 'CREATOR')
 
-          const objectName = getHeaderString(hm, 'OBJECT') ?? folderName
-          const ra = getHeaderString(hm, 'RA', 'OBJCTRA', 'CRVAL1')
-          const dec = getHeaderString(hm, 'DEC', 'OBJCTDEC', 'CRVAL2')
-          const software = getHeaderString(hm, 'SWCREATE', 'PROGRAM', 'SOFTWARE', 'CREATOR')
+      const insertResult = insertFile.run(
+        fileId, scanId, filePath, path.basename(filePath), stamp.sizeBytes, stamp.modifiedAt, folderName, sessionFolder,
+        objectName,
+        getHeaderString(hm, 'TELESCOP'),
+        getHeaderString(hm, 'INSTRUME'),
+        getHeaderString(hm, 'OBSERVER'),
+        getHeaderNumber(hm, 'EXPTIME', 'EXPOSURE'),
+        getHeaderString(hm, 'DATE-OBS'),
+        getHeaderString(hm, 'FILTER'),
+        getHeaderNumber(hm, 'GAIN'),
+        getHeaderNumber(hm, 'OFFSET'),
+        getHeaderNumber(hm, 'CCD-TEMP', 'SET-TEMP'),
+        getHeaderNumber(hm, 'XPIXSZ'),
+        getHeaderNumber(hm, 'YPIXSZ'),
+        getHeaderNumber(hm, 'XBINNING'),
+        getHeaderNumber(hm, 'YBINNING'),
+        ra, dec,
+        getHeaderNumber(hm, 'AIRMASS'),
+        getHeaderNumber(hm, 'BITPIX'),
+        getHeaderNumber(hm, 'NAXIS1'),
+        getHeaderNumber(hm, 'NAXIS2'),
+        getHeaderNumber(hm, 'BSCALE'),
+        getHeaderNumber(hm, 'BZERO'),
+        getHeaderString(hm, 'IMAGETYP', 'FRAME'),
+        software,
+        stacking.isStacked ? 1 : 0,
+        stacking.ncombine,
+        stacking.totalExposure,
+        stacking.calstat,
+        result.imageStats?.min ?? null,
+        result.imageStats?.max ?? null,
+        result.imageStats?.mean ?? null,
+        result.imageStats?.stddev ?? null,
+        now
+      )
 
-          const insertResult = insertFile.run(
-            fileId, scanId, filePath, fileName, fileSizeBytes, fileModifiedAt, folderName, sessionFolder,
-            objectName,
-            getHeaderString(hm, 'TELESCOP'),
-            getHeaderString(hm, 'INSTRUME'),
-            getHeaderString(hm, 'OBSERVER'),
-            getHeaderNumber(hm, 'EXPTIME', 'EXPOSURE'),
-            getHeaderString(hm, 'DATE-OBS'),
-            getHeaderString(hm, 'FILTER'),
-            getHeaderNumber(hm, 'GAIN'),
-            getHeaderNumber(hm, 'OFFSET'),
-            getHeaderNumber(hm, 'CCD-TEMP', 'SET-TEMP'),
-            getHeaderNumber(hm, 'XPIXSZ'),
-            getHeaderNumber(hm, 'YPIXSZ'),
-            getHeaderNumber(hm, 'XBINNING'),
-            getHeaderNumber(hm, 'YBINNING'),
-            ra, dec,
-            getHeaderNumber(hm, 'AIRMASS'),
-            getHeaderNumber(hm, 'BITPIX'),
-            getHeaderNumber(hm, 'NAXIS1'),
-            getHeaderNumber(hm, 'NAXIS2'),
-            getHeaderNumber(hm, 'BSCALE'),
-            getHeaderNumber(hm, 'BZERO'),
-            getHeaderString(hm, 'IMAGETYP', 'FRAME'),
-            software,
-            stacking.isStacked ? 1 : 0,
-            stacking.ncombine,
-            stacking.totalExposure,
-            stacking.calstat,
-            result.imageStats?.min ?? null,
-            result.imageStats?.max ?? null,
-            result.imageStats?.mean ?? null,
-            result.imageStats?.stddev ?? null,
-            now
-          )
+      if (insertResult.changes === 0) return
 
-          if (insertResult.changes === 0) continue
+      for (let ordinal = 0; ordinal < result.headers.length; ordinal++) {
+        const h = result.headers[ordinal]
+        const valueStr = h.value === null ? null : String(h.value)
+        insertHeader.run(nextId(), fileId, h.keyword, valueStr, h.comment, ordinal)
+      }
+    }
 
-          for (let ordinal = 0; ordinal < result.headers.length; ordinal++) {
-            const h = result.headers[ordinal]
-            const valueStr = h.value === null ? null : String(h.value)
-            insertHeader.run(ulid(), fileId, h.keyword, valueStr, h.comment, ordinal)
-          }
-        }
-      })
-      transaction()
+    // Headers are read outside any transaction, one file at a time, so the disk or the network is
+    // never asked for more than one read at once; each small batch is then written in one go and
+    // kept, so a cancelled scan resumes from where it stopped.
+    for (let i = 0; i < toRead.length; i += READ_BATCH) {
+      const batch: { file: WalkedFile; stamp: FileStamp; result: FitsParseResult }[] = []
+      for (const file of toRead.slice(i, i + READ_BATCH)) {
+        batch.push({ file, stamp: stamps.get(file.filePath)!, result: await parseFitsFileAsync(file.filePath) })
+        await pacer.checkpoint()
+      }
+      sqlite.transaction(() => { for (const b of batch) store(b.file, b.stamp, b.result) })()
+      progress.filesRead += batch.length
+      report()
+      await pacer.checkpoint()
     }
 
     const completedAt = new Date().toISOString()
     sqlite.prepare(
       `UPDATE fits_scans SET file_count = ?, total_size_bytes = ?, status = 'completed', completed_at = ? WHERE id = ?`
-    ).run(fitsFiles.length, totalSize, completedAt, scanId)
+    ).run(fileCount, totalSize, completedAt, scanId)
 
     autoCreateTargetsFromScan(sqlite, scanId)
-    linkFitsFilesToTargets(scanId)
+    await linkFitsFilesToTargetsPaced(scanId, () => pacer.checkpoint())
     advanceLinkedTargets(sqlite, scanId)
 
     return getScanById(scanId)!
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err)
+    const cancelled = err instanceof ScanCancelled
+    // A cancelled scan keeps its row: files already moved to it, or read by it, belong to it.
     sqlite.prepare(
-      `UPDATE fits_scans SET status = 'failed', error_message = ?, completed_at = ? WHERE id = ?`
-    ).run(errorMsg, new Date().toISOString(), scanId)
+      `UPDATE fits_scans SET status = ?, error_message = ?, file_count = ?, total_size_bytes = ?, completed_at = ? WHERE id = ?`
+    ).run(cancelled ? 'cancelled' : 'failed', cancelled ? null : err instanceof Error ? err.message : String(err),
+      fileCount, totalSize, new Date().toISOString(), scanId)
+    if (cancelled) {
+      // Link what was read, so a cancelled scan still shows its targets. It yields between chunks
+      // but does not rest: the user asked for the scan to stop.
+      autoCreateTargetsFromScan(sqlite, scanId)
+      await linkFitsFilesToTargetsPaced(scanId, () => new Promise(resolve => setImmediate(resolve)))
+    }
     throw err
   }
 }

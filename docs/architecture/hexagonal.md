@@ -58,8 +58,9 @@ flowchart LR
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 
 The legacy FITS scan (`services/fits-analyzer.ts`) uses the domain's `planRescan` for its fast
-path and writes unreadable files to `quarantined_files`; moving the scan itself into the core is
-the next step for ingest.
+path and writes unreadable files to `quarantined_files`. It is paced by the domain's `restAfter`
+through `services/scan-pacer.ts` (spec 018), so it rests between small slices of work and can be
+cancelled. Moving the scan itself into the core is the next step for ingest.
 
 The Ephemeris port hands the domain sidereal time and the moon for each half hour of a night's dark
 window, so altitude, separation and every planning rule are plain trigonometry in the domain. The

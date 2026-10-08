@@ -9,6 +9,14 @@ licence is settled ([#32](https://github.com/lgriffin/astrorepo/issues/32)).
 Each entry links its spec, where the EARS requirements live, and its pull request.
 [docs/roadmap.md](docs/roadmap.md) has the plan and what comes next.
 
+## [Unreleased]
+
+### Fixed
+- **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one
+  uninterrupted block on the app's main process. It now walks, reads and writes a small piece at
+  a time and rests in between, shows live file counts, can be cancelled, and carries on from where
+  a cancelled scan stopped.
+
 ## [0.2.0] - 2026-09-30
 
 The first release since the cockpit blueprint. Discovery, planning, stacking and job running now
