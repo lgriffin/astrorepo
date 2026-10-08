@@ -97,53 +97,96 @@ function parseRecord(record: string): FitsHeaderRecord {
   return { keyword, ...parsed, raw: record }
 }
 
-export function parseFitsHeaders(filePath: string): { headers: FitsHeaderRecord[]; headerMap: Map<string, FitsHeaderRecord> } {
-  const fd = fs.openSync(filePath, 'r')
-  try {
-    const headers: FitsHeaderRecord[] = []
-    const headerMap = new Map<string, FitsHeaderRecord>()
-    const blockBuf = Buffer.alloc(BLOCK_SIZE)
-    let done = false
-    let continueKeyword: string | null = null
+/**
+ * Most headers are one to three blocks. A file named .fit with no END card in its first 200
+ * blocks (576 KB) is not read to the end: on a large non-FITS file that would read it all.
+ */
+export const MAX_HEADER_BLOCKS = 200
 
-    while (!done) {
-      const bytesRead = fs.readSync(fd, blockBuf, 0, BLOCK_SIZE, null)
-      if (bytesRead < BLOCK_SIZE) break
+type ParsedHeaders = { headers: FitsHeaderRecord[]; headerMap: Map<string, FitsHeaderRecord> }
 
-      for (let i = 0; i < RECORDS_PER_BLOCK; i++) {
-        const record = blockBuf.toString('ascii', i * RECORD_SIZE, (i + 1) * RECORD_SIZE)
+/** Takes header blocks one at a time and says when the END card has been seen. */
+class HeaderReader {
+  readonly headers: FitsHeaderRecord[] = []
+  readonly headerMap = new Map<string, FitsHeaderRecord>()
+  private continueKeyword: string | null = null
+  private blocks = 0
+  private ended = false
 
-        if (record.substring(0, 8).trimEnd() === 'END') {
-          done = true
-          break
-        }
+  /** Returns true when no more blocks are wanted: END was found, or the header limit was reached. */
+  take(blockBuf: Buffer): boolean {
+    this.blocks++
+    for (let i = 0; i < RECORDS_PER_BLOCK; i++) {
+      const record = blockBuf.toString('ascii', i * RECORD_SIZE, (i + 1) * RECORD_SIZE)
 
-        if (record.substring(0, 8).trimEnd() === 'CONTINUE') {
-          if (continueKeyword) {
-            const content = record.substring(10).trimStart()
-            const prev = headerMap.get(continueKeyword)
-            if (prev && typeof prev.value === 'string' && content.startsWith("'")) {
-              const closingQuote = findClosingQuote(content)
-              if (closingQuote !== -1) {
-                prev.value += content.substring(1, closingQuote).replace(/''/g, "'").trimEnd()
-              }
+      if (record.substring(0, 8).trimEnd() === 'END') {
+        this.ended = true
+        return true
+      }
+
+      if (record.substring(0, 8).trimEnd() === 'CONTINUE') {
+        if (this.continueKeyword) {
+          const content = record.substring(10).trimStart()
+          const prev = this.headerMap.get(this.continueKeyword)
+          if (prev && typeof prev.value === 'string' && content.startsWith("'")) {
+            const closingQuote = findClosingQuote(content)
+            if (closingQuote !== -1) {
+              prev.value += content.substring(1, closingQuote).replace(/''/g, "'").trimEnd()
             }
           }
-          continue
         }
+        continue
+      }
 
-        const rec = parseRecord(record)
-        headers.push(rec)
-        if (rec.keyword) {
-          headerMap.set(rec.keyword, rec)
-          continueKeyword = rec.keyword
-        }
+      const rec = parseRecord(record)
+      this.headers.push(rec)
+      if (rec.keyword) {
+        this.headerMap.set(rec.keyword, rec)
+        this.continueKeyword = rec.keyword
       }
     }
+    return this.blocks >= MAX_HEADER_BLOCKS
+  }
 
-    return { headers, headerMap }
+  /** Throws when the header never ended: a truncated file, or one that is not FITS at all. */
+  result(): ParsedHeaders {
+    if (!this.ended) {
+      throw new Error(this.blocks >= MAX_HEADER_BLOCKS
+        ? `No END card in the first ${MAX_HEADER_BLOCKS} header blocks`
+        : 'No END card: the header is truncated')
+    }
+    return { headers: this.headers, headerMap: this.headerMap }
+  }
+}
+
+export function parseFitsHeaders(filePath: string): ParsedHeaders {
+  const fd = fs.openSync(filePath, 'r')
+  try {
+    const reader = new HeaderReader()
+    const blockBuf = Buffer.alloc(BLOCK_SIZE)
+    for (;;) {
+      const bytesRead = fs.readSync(fd, blockBuf, 0, BLOCK_SIZE, null)
+      if (bytesRead < BLOCK_SIZE || reader.take(blockBuf)) break
+    }
+    return reader.result()
   } finally {
     fs.closeSync(fd)
+  }
+}
+
+/** The same as parseFitsHeaders, without blocking the thread while the disk or network answers. */
+export async function parseFitsHeadersAsync(filePath: string): Promise<ParsedHeaders> {
+  const handle = await fs.promises.open(filePath, 'r')
+  try {
+    const reader = new HeaderReader()
+    const blockBuf = Buffer.alloc(BLOCK_SIZE)
+    for (let position = 0; ; position += BLOCK_SIZE) {
+      const { bytesRead } = await handle.read(blockBuf, 0, BLOCK_SIZE, position)
+      if (bytesRead < BLOCK_SIZE || reader.take(blockBuf)) break
+    }
+    return reader.result()
+  } finally {
+    await handle.close()
   }
 }
 
@@ -210,38 +253,53 @@ export function computeImageStats(
   }
 }
 
+function toParseResult(filePath: string, { headers, headerMap }: ParsedHeaders, computeStats: boolean): FitsParseResult {
+  const simple = headerMap.get('SIMPLE')
+  if (!simple || simple.value !== true) {
+    return { headers, headerMap, imageStats: null, isValid: false, error: 'Not a valid FITS file: SIMPLE != T' }
+  }
+
+  const bitpix = (headerMap.get('BITPIX')?.value as number) ?? 0
+  const naxis = (headerMap.get('NAXIS')?.value as number) ?? 0
+  const naxis1 = (headerMap.get('NAXIS1')?.value as number) ?? 0
+  const naxis2 = (headerMap.get('NAXIS2')?.value as number) ?? 0
+  const bscale = (headerMap.get('BSCALE')?.value as number) ?? 1
+  const bzero = (headerMap.get('BZERO')?.value as number) ?? 0
+
+  const headerBytes = headers.length * RECORD_SIZE + RECORD_SIZE
+  const headerBlockCount = Math.ceil(headerBytes / BLOCK_SIZE)
+
+  let imageStats: FitsImageStats | null = null
+  if (computeStats && naxis >= 2 && naxis1 > 0 && naxis2 > 0) {
+    imageStats = computeImageStats(filePath, headerBlockCount, bitpix, naxis, naxis1, naxis2, bscale, bzero)
+  }
+
+  return { headers, headerMap, imageStats, isValid: true }
+}
+
+function invalid(err: unknown): FitsParseResult {
+  return {
+    headers: [],
+    headerMap: new Map(),
+    imageStats: null,
+    isValid: false,
+    error: err instanceof Error ? err.message : String(err)
+  }
+}
+
 export function parseFitsFile(filePath: string, options?: { computeStats?: boolean }): FitsParseResult {
   try {
-    const { headers, headerMap } = parseFitsHeaders(filePath)
-
-    const simple = headerMap.get('SIMPLE')
-    if (!simple || simple.value !== true) {
-      return { headers, headerMap, imageStats: null, isValid: false, error: 'Not a valid FITS file: SIMPLE != T' }
-    }
-
-    const bitpix = (headerMap.get('BITPIX')?.value as number) ?? 0
-    const naxis = (headerMap.get('NAXIS')?.value as number) ?? 0
-    const naxis1 = (headerMap.get('NAXIS1')?.value as number) ?? 0
-    const naxis2 = (headerMap.get('NAXIS2')?.value as number) ?? 0
-    const bscale = (headerMap.get('BSCALE')?.value as number) ?? 1
-    const bzero = (headerMap.get('BZERO')?.value as number) ?? 0
-
-    const headerBytes = headers.length * RECORD_SIZE + RECORD_SIZE
-    const headerBlockCount = Math.ceil(headerBytes / BLOCK_SIZE)
-
-    let imageStats: FitsImageStats | null = null
-    if (options?.computeStats && naxis >= 2 && naxis1 > 0 && naxis2 > 0) {
-      imageStats = computeImageStats(filePath, headerBlockCount, bitpix, naxis, naxis1, naxis2, bscale, bzero)
-    }
-
-    return { headers, headerMap, imageStats, isValid: true }
+    return toParseResult(filePath, parseFitsHeaders(filePath), options?.computeStats ?? false)
   } catch (err) {
-    return {
-      headers: [],
-      headerMap: new Map(),
-      imageStats: null,
-      isValid: false,
-      error: err instanceof Error ? err.message : String(err)
-    }
+    return invalid(err)
+  }
+}
+
+/** Headers only, read asynchronously: what a folder scan needs. */
+export async function parseFitsFileAsync(filePath: string): Promise<FitsParseResult> {
+  try {
+    return toParseResult(filePath, await parseFitsHeadersAsync(filePath), false)
+  } catch (err) {
+    return invalid(err)
   }
 }

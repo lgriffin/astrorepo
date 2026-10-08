@@ -45,8 +45,8 @@ app has run on real data on the Windows PC and the licence is settled.
   otherwise be written twice.
 - **Ingest reshaped around the existing scanner** (spec 011): SHA-256 instead of BLAKE3 (native
   in Node, so faster), sampled hashing so only likely duplicates are read in full, and no
-  asset/location tables until the Postgres store. Indexing TIFF/PNG/JPEG and live import progress
-  (ING-002, ING-007) move to the NAS core-api.
+  asset/location tables until the Postgres store. Indexing TIFF/PNG/JPEG (ING-002) moves to the NAS core-api.
+  Live scan progress (ING-007) landed with the gentle scan (spec 018) instead.
 - **Seasons use the one site in Settings** (spec 012). Several sites wait for slice D, weather
   (FWD-003) waits for an optional forecast adapter, and nautical darkness stands in on summer
   nights when astronomical darkness never comes.

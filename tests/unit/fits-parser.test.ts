@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { parseFitsFile } from '../../src/main/fits/parser'
+import { parseFitsFile, parseFitsFileAsync, MAX_HEADER_BLOCKS } from '../../src/main/fits/parser'
 
 const BLOCK_SIZE = 2880
 const RECORD_SIZE = 80
@@ -243,5 +243,32 @@ describe('FITS Parser', () => {
 
     const result = parseFitsFile(filePath)
     expect(result.imageStats).toBeNull()
+  })
+
+  it('[ING-015] Given a large file with no END card, When parsed, Then it is reported unreadable after the header limit without reading the rest', async () => {
+    const filePath = path.join(os.tmpdir(), `noend-${Date.now()}-${Math.random().toString(36).slice(2)}.fit`)
+    tempFiles.push(filePath)
+    const block = Buffer.from(padRecord('SIMPLE  =                    T') + ' '.repeat(BLOCK_SIZE - RECORD_SIZE), 'ascii')
+    fs.writeFileSync(filePath, Buffer.concat(Array.from({ length: MAX_HEADER_BLOCKS + 50 }, () => block)))
+
+    for (const result of [parseFitsFile(filePath), await parseFitsFileAsync(filePath)]) {
+      expect(result.isValid).toBe(false)
+      expect(result.error).toMatch(/No END card/)
+    }
+  })
+
+  it('[ING-015] Given any FITS file, When its headers are read asynchronously, Then they match the synchronous read', async () => {
+    const records = ["SIMPLE  =                    T", "BITPIX  =                   16", "NAXIS   =                    0", "OBJECT  = 'M 31    '           / target"]
+    for (let i = 0; i < 40; i++) records.push(`KEY${String(i).padStart(4, '0')} =                    ${i}`)
+    const filePath = createTemp(records)
+    const sync = parseFitsFile(filePath)
+    const async = await parseFitsFileAsync(filePath)
+    expect(async.isValid).toBe(true)
+    expect(async.headers).toEqual(sync.headers)
+    expect(async.imageStats).toBeNull()
+
+    const missing = await parseFitsFileAsync(path.join(os.tmpdir(), 'does-not-exist.fit'))
+    expect(missing.isValid).toBe(false)
+    expect(missing.error).toMatch(/ENOENT/)
   })
 })

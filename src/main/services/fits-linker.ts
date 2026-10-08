@@ -12,21 +12,8 @@ export function normalizeCatalogName(name: string): string {
     .toUpperCase()
 }
 
-/**
- * Auto-link FITS files to targets by matching object_name and folder_name
- * against target canonical_name and target_aliases.
- *
- * Two passes:
- *  1. Match object_name to canonical_name/alias (case-insensitive, catalog-normalized)
- *  2. Match folder_name to canonical_name/alias for remaining unlinked files
- *
- * Only updates files where target_id IS NULL.
- */
-export function linkFitsFilesToTargets(scanId?: string): { linked: number; unlinked: number } {
+function nameLookup(): Map<string, string> {
   const sqlite = getSqlite()
-  let linked = 0
-
-  // Build a lookup map: normalized name -> target_id
   const targetRows = sqlite.prepare(
     'SELECT id, canonical_name FROM targets'
   ).all() as Array<{ id: string; canonical_name: string }>
@@ -42,52 +29,87 @@ export function linkFitsFilesToTargets(scanId?: string): { linked: number; unlin
   for (const a of aliasRows) {
     nameToTarget.set(normalizeCatalogName(a.alias), a.target_id)
   }
+  return nameToTarget
+}
 
-  // Pass 1: match object_name
+/** The two matching passes, as lists of (target, file) links to write. */
+function* linkPasses(scanId: string | undefined, nameToTarget: Map<string, string>): Generator<Array<[string, string]>> {
+  const sqlite = getSqlite()
   const scanFilter = scanId ? ' AND scan_id = ?' : ''
   const scanParams = scanId ? [scanId] : []
-
-  const unlinkedWithObject = sqlite.prepare(
-    `SELECT id, object_name FROM fits_files WHERE target_id IS NULL AND object_name IS NOT NULL${scanFilter}`
-  ).all(...scanParams) as Array<{ id: string; object_name: string }>
-
-  const updateStmt = sqlite.prepare('UPDATE fits_files SET target_id = ? WHERE id = ?')
-
-  const transaction1 = sqlite.transaction(() => {
-    for (const file of unlinkedWithObject) {
-      const normalized = normalizeCatalogName(file.object_name)
-      const targetId = nameToTarget.get(normalized)
-      if (targetId) {
-        updateStmt.run(targetId, file.id)
-        linked++
-      }
+  // Pass 1: object_name; pass 2: folder_name for files still unlinked after pass 1.
+  for (const column of ['object_name', 'folder_name'] as const) {
+    const unlinked = sqlite.prepare(
+      `SELECT id, ${column} AS name FROM fits_files WHERE target_id IS NULL AND ${column} IS NOT NULL${scanFilter}`
+    ).all(...scanParams) as Array<{ id: string; name: string }>
+    const links: Array<[string, string]> = []
+    for (const file of unlinked) {
+      const targetId = nameToTarget.get(normalizeCatalogName(file.name))
+      if (targetId) links.push([targetId, file.id])
     }
-  })
-  transaction1()
+    yield links
+  }
+}
 
-  // Pass 2: match folder_name for remaining unlinked
-  const unlinkedWithFolder = sqlite.prepare(
-    `SELECT id, folder_name FROM fits_files WHERE target_id IS NULL AND folder_name IS NOT NULL${scanFilter}`
-  ).all(...scanParams) as Array<{ id: string; folder_name: string }>
-
-  const transaction2 = sqlite.transaction(() => {
-    for (const file of unlinkedWithFolder) {
-      const normalized = normalizeCatalogName(file.folder_name)
-      const targetId = nameToTarget.get(normalized)
-      if (targetId) {
-        updateStmt.run(targetId, file.id)
-        linked++
-      }
-    }
-  })
-  transaction2()
-
-  // Count unlinked
-  const unlinkedCount = (sqlite.prepare(
+function unlinkedCount(scanId?: string): number {
+  const scanFilter = scanId ? ' AND scan_id = ?' : ''
+  return (getSqlite().prepare(
     `SELECT COUNT(*) as cnt FROM fits_files WHERE target_id IS NULL${scanFilter}`
-  ).get(...scanParams) as { cnt: number }).cnt
+  ).get(...(scanId ? [scanId] : [])) as { cnt: number }).cnt
+}
 
-  return { linked, unlinked: unlinkedCount }
+/** Only a file that is still unlinked: a link the user made meanwhile is never overwritten. */
+const LINK = 'UPDATE fits_files SET target_id = ? WHERE id = ? AND target_id IS NULL'
+
+/**
+ * Auto-link FITS files to targets by matching object_name and folder_name
+ * against target canonical_name and target_aliases.
+ *
+ * Two passes:
+ *  1. Match object_name to canonical_name/alias (case-insensitive, catalog-normalized)
+ *  2. Match folder_name to canonical_name/alias for remaining unlinked files
+ *
+ * Only updates files where target_id IS NULL.
+ */
+export function linkFitsFilesToTargets(scanId?: string): { linked: number; unlinked: number } {
+  const sqlite = getSqlite()
+  const updateStmt = sqlite.prepare(LINK)
+  let linked = 0
+  for (const links of linkPasses(scanId, nameLookup())) {
+    sqlite.transaction(() => { for (const [targetId, fileId] of links) linked += updateStmt.run(targetId, fileId).changes })()
+  }
+  return { linked, unlinked: unlinkedCount(scanId) }
+}
+
+/**
+ * The same two passes for one scan, read and written a page at a time along rowid with a
+ * checkpoint after each page, so a large scan's linking never holds the app up or ignores a cancel.
+ */
+export async function linkFitsFilesToTargetsPaced(scanId: string, checkpoint: () => Promise<void>, chunk = 250): Promise<{ linked: number; unlinked: number }> {
+  const sqlite = getSqlite()
+  const updateStmt = sqlite.prepare(LINK)
+  const nameToTarget = nameLookup()
+  let linked = 0
+  for (const column of ['object_name', 'folder_name'] as const) {
+    const page = sqlite.prepare(
+      `SELECT rowid AS rid, id, ${column} AS name FROM fits_files
+       WHERE scan_id = ? AND target_id IS NULL AND ${column} IS NOT NULL AND rowid > ?
+       ORDER BY rowid LIMIT ?`
+    )
+    for (let after = 0; ;) {
+      const rows = page.all(scanId, after, chunk) as Array<{ rid: number; id: string; name: string }>
+      if (rows.length === 0) break
+      sqlite.transaction(() => {
+        for (const file of rows) {
+          const targetId = nameToTarget.get(normalizeCatalogName(file.name))
+          if (targetId) linked += updateStmt.run(targetId, file.id).changes
+        }
+      })()
+      after = rows[rows.length - 1].rid
+      await checkpoint()
+    }
+  }
+  return { linked, unlinked: unlinkedCount(scanId) }
 }
 
 /**

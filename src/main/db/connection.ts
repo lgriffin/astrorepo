@@ -15,6 +15,9 @@ export function initDatabase(): void {
   const dbPath = getDbPath()
   sqlite = new Database(dbPath)
   sqlite.pragma('journal_mode = WAL')
+  // Safe with WAL (a power cut can lose the last commits, never corrupt the file) and spares a
+  // large scan a disk flush on every small batch.
+  sqlite.pragma('synchronous = NORMAL')
   sqlite.pragma('foreign_keys = ON')
   sqlite.pragma('busy_timeout = 5000')
   runMigrations(sqlite)

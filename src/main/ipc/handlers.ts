@@ -19,7 +19,7 @@ import { analyzeFileQuality, analyzeScanQuality, getQualityMetrics, getSessionQu
 import { getCurrentStorageStats, getStorageHistory, captureStorageSnapshot, getGrowthProjection, getStorageByTarget, getStorageByFilter } from '../services/storage-analytics'
 import { getCalibrationLibrary, matchCalibrationToLights, getLightCalibrationStatus, getCalibrationSummary } from '../services/calibration'
 import { getSetting, setSetting, listSettings } from '../services/settings'
-import { startHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
+import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
 import { composeCore } from '../composition'
@@ -430,6 +430,10 @@ export function registerIpcHandlers(): void {
 
   handle('home:scan-progress', async () => {
     return getHomeScanProgress()
+  })
+
+  handle('home:scan-cancel', async () => {
+    return cancelHomeScan()
   })
 
   handle('home:prep-siril', validated('home:prep-siril', (args) => {

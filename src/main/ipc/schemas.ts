@@ -243,6 +243,7 @@ export const schemas = {
 
   'home:scan-start': z.object({}).optional(),
   'home:scan-progress': z.object({}).optional(),
+  'home:scan-cancel': z.object({}).optional(),
   'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
   'siril:estimate': z.object({ raw_path: z.string().min(1) }),
   'recipe:post-process': z.object({

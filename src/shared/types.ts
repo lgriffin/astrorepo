@@ -270,7 +270,7 @@ export interface FitsScan {
   folderPath: string
   fileCount: number
   totalSizeBytes: number
-  status: 'running' | 'completed' | 'failed'
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
   errorMessage: string | null
   startedAt: string
   completedAt: string | null
@@ -575,11 +575,25 @@ export interface HomeScanPhaseProgress {
   foldersFound: number
 }
 
+/** What a folder scan has done so far (ING-007). */
+export interface ScanFileCounts {
+  filesFound: number
+  /** New or changed files that need their headers read. */
+  filesToRead: number
+  filesRead: number
+  /** Unchanged since the last scan: kept as they are, not read again. */
+  filesUnchanged: number
+  quarantined: number
+}
+
 export interface HomeScanProgress {
-  status: 'idle' | 'scanning' | 'done' | 'error'
+  /** 'cancelling' until the scan reaches its next checkpoint; 'cancelled' keeps what was read. */
+  status: 'idle' | 'scanning' | 'cancelling' | 'cancelled' | 'done' | 'error'
   phases: HomeScanPhaseProgress[]
   currentPhaseIndex: number
   totalTargetsFound: number
+  /** Live counts for the FITS files of the phase being scanned. */
+  files: ScanFileCounts | null
   result: HomeScanResult | null
   error: string | null
 }
