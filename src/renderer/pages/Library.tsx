@@ -27,7 +27,14 @@ export function Library(): React.ReactElement {
     if (pollRef.current) clearTimeout(pollRef.current)
     const next = (): void => {
       pollRef.current = setTimeout(async () => {
-        const progress = await invoke<HomeScanProgress>('home:scan-progress')
+        let progress: HomeScanProgress
+        try {
+          progress = await invoke<HomeScanProgress>('home:scan-progress')
+        } catch {
+          // A failed poll is tried again rather than leaving the page without updates.
+          if (mountedRef.current) next()
+          return
+        }
         if (!mountedRef.current) return
         setScanProgress(progress)
         if (progress.status === 'scanning' || progress.status === 'cancelling') {
