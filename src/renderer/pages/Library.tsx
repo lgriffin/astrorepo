@@ -18,13 +18,17 @@ export function Library(): React.ReactElement {
   const [scanResult, setScanResult] = useState<HomeScanResult | null>(null)
   const [lastScanTime, setLastScanTime] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** False once the page has gone, so an answer still in flight schedules no further polls. */
+  const mountedRef = useRef(true)
   const [expandedTargets, setExpandedTargets] = useState<Set<string>>(new Set())
 
   // One poll at a time: the next is asked for only after the last answer, so polls never pile up.
   const poll = useCallback(() => {
+    if (pollRef.current) clearTimeout(pollRef.current)
     const next = (): void => {
       pollRef.current = setTimeout(async () => {
         const progress = await invoke<HomeScanProgress>('home:scan-progress')
+        if (!mountedRef.current) return
         setScanProgress(progress)
         if (progress.status === 'scanning' || progress.status === 'cancelling') {
           next()
@@ -43,6 +47,7 @@ export function Library(): React.ReactElement {
   }, [])
 
   useEffect(() => {
+    mountedRef.current = true
     invoke<{ value: string | null }>('settings:get', { key: 'home_folder_path' }).then(r => {
       setHomeFolderSet(!!r.value)
     })
@@ -60,6 +65,7 @@ export function Library(): React.ReactElement {
       }
     })
     return () => {
+      mountedRef.current = false
       if (pollRef.current) clearTimeout(pollRef.current)
     }
   }, [poll])
@@ -89,8 +95,9 @@ export function Library(): React.ReactElement {
   }, [poll])
 
   const cancelScan = useCallback(async () => {
-    await invoke('home:scan-cancel')
-    setScanProgress(prev => prev && { ...prev, status: 'cancelling' })
+    const { cancelled } = await invoke<{ cancelled: boolean }>('home:scan-cancel')
+    // A scan that finished while the click was on its way has nothing to stop.
+    if (cancelled) setScanProgress(prev => prev && prev.status === 'scanning' ? { ...prev, status: 'cancelling' } : prev)
   }, [])
 
   const isScanning = scanProgress?.status === 'scanning' || scanProgress?.status === 'cancelling'

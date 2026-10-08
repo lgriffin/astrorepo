@@ -14,6 +14,7 @@ vi.mock('../../src/main/db/connection', () => ({
 
 const { startHomeScan, cancelHomeScan, getHomeScanProgress } = await import('../../src/main/services/home-scanner')
 const { ScanPacer } = await import('../../src/main/services/scan-pacer')
+const { startFolderScan } = await import('../../src/main/services/fits-analyzer')
 
 const fast = (signal: AbortSignal) => new ScanPacer(signal, { sliceMs: Number.MAX_SAFE_INTEGER, dutyCycle: 1 })
 
@@ -78,5 +79,14 @@ describe('home folder scan', () => {
 
   it('[ING-014] Given no scan running, When cancel is asked for, Then nothing happens', () => {
     expect(cancelHomeScan()).toEqual({ cancelled: false })
+  })
+
+  it('[NFR-013] Given a FITS scan of the raw folder already running, When the home scan reaches it, Then the home scan fails and says why instead of finishing as done', async () => {
+    const other = startFolderScan(path.join(home, 'raw'))
+    startHomeScan(home, fast)
+    const ended = await settled()
+    await other
+    expect(ended.status).toBe('error')
+    expect(ended.error).toMatch(/already running/)
   })
 })

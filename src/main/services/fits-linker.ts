@@ -58,6 +58,9 @@ function unlinkedCount(scanId?: string): number {
   ).get(...(scanId ? [scanId] : [])) as { cnt: number }).cnt
 }
 
+/** Only a file that is still unlinked: a link the user made meanwhile is never overwritten. */
+const LINK = 'UPDATE fits_files SET target_id = ? WHERE id = ? AND target_id IS NULL'
+
 /**
  * Auto-link FITS files to targets by matching object_name and folder_name
  * against target canonical_name and target_aliases.
@@ -70,24 +73,39 @@ function unlinkedCount(scanId?: string): number {
  */
 export function linkFitsFilesToTargets(scanId?: string): { linked: number; unlinked: number } {
   const sqlite = getSqlite()
-  const updateStmt = sqlite.prepare('UPDATE fits_files SET target_id = ? WHERE id = ?')
+  const updateStmt = sqlite.prepare(LINK)
   let linked = 0
   for (const links of linkPasses(scanId, nameLookup())) {
-    sqlite.transaction(() => { for (const [targetId, fileId] of links) updateStmt.run(targetId, fileId) })()
-    linked += links.length
+    sqlite.transaction(() => { for (const [targetId, fileId] of links) linked += updateStmt.run(targetId, fileId).changes })()
   }
   return { linked, unlinked: unlinkedCount(scanId) }
 }
 
-/** The same links, written a chunk at a time with a pause between chunks, for a large scan. */
+/**
+ * The same two passes for one scan, read and written a page at a time along rowid with a
+ * checkpoint after each page, so a large scan's linking never holds the app up or ignores a cancel.
+ */
 export async function linkFitsFilesToTargetsPaced(scanId: string, checkpoint: () => Promise<void>, chunk = 250): Promise<{ linked: number; unlinked: number }> {
   const sqlite = getSqlite()
-  const updateStmt = sqlite.prepare('UPDATE fits_files SET target_id = ? WHERE id = ?')
+  const updateStmt = sqlite.prepare(LINK)
+  const nameToTarget = nameLookup()
   let linked = 0
-  for (const links of linkPasses(scanId, nameLookup())) {
-    for (let i = 0; i < links.length; i += chunk) {
-      sqlite.transaction(() => { for (const [targetId, fileId] of links.slice(i, i + chunk)) updateStmt.run(targetId, fileId) })()
-      linked += Math.min(chunk, links.length - i)
+  for (const column of ['object_name', 'folder_name'] as const) {
+    const page = sqlite.prepare(
+      `SELECT rowid AS rid, id, ${column} AS name FROM fits_files
+       WHERE scan_id = ? AND target_id IS NULL AND ${column} IS NOT NULL AND rowid > ?
+       ORDER BY rowid LIMIT ?`
+    )
+    for (let after = 0; ;) {
+      const rows = page.all(scanId, after, chunk) as Array<{ rid: number; id: string; name: string }>
+      if (rows.length === 0) break
+      sqlite.transaction(() => {
+        for (const file of rows) {
+          const targetId = nameToTarget.get(normalizeCatalogName(file.name))
+          if (targetId) linked += updateStmt.run(targetId, file.id).changes
+        }
+      })()
+      after = rows[rows.length - 1].rid
       await checkpoint()
     }
   }

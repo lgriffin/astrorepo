@@ -13,7 +13,8 @@ const {
   manualLinkFile,
   unlinkFile,
   getLinkingStatus,
-  getUnlinkedFiles
+  getUnlinkedFiles,
+  linkFitsFilesToTargetsPaced
 } = await import('../../src/main/services/fits-linker')
 
 describe('FitsLinkerService', () => {
@@ -284,6 +285,26 @@ describe('FitsLinkerService', () => {
       expect(result.linked).toBe(1)
       const row = sqlite.prepare('SELECT target_id FROM fits_files WHERE scan_id = ?').get(scanId) as { target_id: string | null }
       expect(row.target_id).toBe(targetObj) // object_name match wins over folder_name
+    })
+  })
+
+  describe('Paced linking during a scan', () => {
+    it('[NFR-013] Given many unlinked files, When linked paced, Then it pauses between pages and never overwrites a link the user made meanwhile', async () => {
+      const m31 = seedTarget(sqlite, { canonicalName: 'M31' })
+      const m42 = seedTarget(sqlite, { canonicalName: 'M42' })
+      const scanId = seedFitsScan(sqlite)
+      const ids = Array.from({ length: 7 }, (_, i) => seedFitsFile(sqlite, scanId, { fileName: `L${i}.fit`, filePath: `/x/L${i}.fit`, objectName: 'M31' }))
+      let pauses = 0
+      const result = await linkFitsFilesToTargetsPaced(scanId, async () => {
+        // The user links the last file by hand while the scan rests after its first page.
+        if (pauses++ === 0) manualLinkFile(ids[6], m42)
+      }, 3)
+
+      expect(pauses).toBe(2)
+      expect(result).toEqual({ linked: 6, unlinked: 0 })
+      const targetOf = (id: string) => (sqlite.prepare('SELECT target_id FROM fits_files WHERE id = ?').get(id) as { target_id: string }).target_id
+      expect(ids.slice(0, 6).map(targetOf)).toEqual(Array(6).fill(m31))
+      expect(targetOf(ids[6])).toBe(m42)
     })
   })
 })

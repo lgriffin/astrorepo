@@ -194,4 +194,21 @@ describe('FITS scan ingest', () => {
     await first
     await expect(startFolderScan(path.join(root, 'M 81'))).resolves.toMatchObject({ status: 'completed' })
   })
+
+  it('[ING-014] Given changed files, When the scan is cancelled before rereading all of them, Then each keeps its old row or gets its new one, never neither', async () => {
+    await startFolderScan(root)
+    const night1 = path.join(root, 'M 81', 'night1')
+    fs.writeFileSync(path.join(night1, 'Light_001.fit'), fitsBytes({ OBJECT: 'M 81', EXPTIME: 30 }, 2880))
+    fs.writeFileSync(path.join(night1, 'Light_002.fit'), fitsBytes({ OBJECT: 'M 81', EXPTIME: 30 }, 2880))
+
+    const abort = new AbortController()
+    await expect(startFolderScan(root, {
+      pacer: fast(abort.signal),
+      onProgress: p => { if (p.filesToRead > 0) abort.abort() }
+    })).rejects.toBeInstanceOf(ScanCancelled)
+    expect(rows().map(r => r.file_name)).toEqual(['Light_001.fit', 'Light_002.fit'])
+
+    await startFolderScan(root)
+    expect(sqlite.prepare('SELECT exposure_sec FROM fits_files').all()).toEqual([{ exposure_sec: 30 }, { exposure_sec: 30 }])
+  })
 })

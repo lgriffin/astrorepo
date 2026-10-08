@@ -111,14 +111,18 @@ class HeaderReader {
   readonly headerMap = new Map<string, FitsHeaderRecord>()
   private continueKeyword: string | null = null
   private blocks = 0
+  private ended = false
 
-  /** Returns true once END is found. */
+  /** Returns true when no more blocks are wanted: END was found, or the header limit was reached. */
   take(blockBuf: Buffer): boolean {
-    if (++this.blocks > MAX_HEADER_BLOCKS) throw new Error(`No END card in the first ${MAX_HEADER_BLOCKS} header blocks`)
+    this.blocks++
     for (let i = 0; i < RECORDS_PER_BLOCK; i++) {
       const record = blockBuf.toString('ascii', i * RECORD_SIZE, (i + 1) * RECORD_SIZE)
 
-      if (record.substring(0, 8).trimEnd() === 'END') return true
+      if (record.substring(0, 8).trimEnd() === 'END') {
+        this.ended = true
+        return true
+      }
 
       if (record.substring(0, 8).trimEnd() === 'CONTINUE') {
         if (this.continueKeyword) {
@@ -141,10 +145,16 @@ class HeaderReader {
         this.continueKeyword = rec.keyword
       }
     }
-    return false
+    return this.blocks >= MAX_HEADER_BLOCKS
   }
 
+  /** Throws when the header never ended: a truncated file, or one that is not FITS at all. */
   result(): ParsedHeaders {
+    if (!this.ended) {
+      throw new Error(this.blocks >= MAX_HEADER_BLOCKS
+        ? `No END card in the first ${MAX_HEADER_BLOCKS} header blocks`
+        : 'No END card: the header is truncated')
+    }
     return { headers: this.headers, headerMap: this.headerMap }
   }
 }

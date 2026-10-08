@@ -207,14 +207,16 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
     const release = sqlite.prepare('DELETE FROM quarantined_files WHERE file_path = ?')
     // In chunks, so a library of a hundred thousand files never holds the app up at once. Every
     // kept file moves to this scan before older scans of the folder go (they cascade to their files).
+    // A changed file keeps its old row until its new one is written, so a cancel in between loses
+    // nothing: the next scan sees it as changed and reads it again.
     const inChunks = async (paths: string[], run: (p: string) => void) => {
       for (let i = 0; i < paths.length; i += WRITE_CHUNK) {
         sqlite.transaction(() => { for (const p of paths.slice(i, i + WRITE_CHUNK)) run(p) })()
         await pacer.checkpoint()
       }
     }
-    await inChunks(plan.unchanged, p => keep.run(scanId, p))
-    await inChunks([...plan.changed, ...plan.removed], p => drop.run(p))
+    await inChunks([...plan.unchanged, ...plan.changed], p => keep.run(scanId, p))
+    await inChunks(plan.removed, p => drop.run(p))
     sqlite.transaction(() => {
       sqlite.prepare("DELETE FROM fits_scans WHERE folder_path = ? AND id != ?").run(folderPath, scanId)
       for (const q of quarantined) {
@@ -262,6 +264,8 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
 
     const store = (file: WalkedFile, stamp: FileStamp, result: FitsParseResult) => {
       const { filePath, folderName, sessionFolder } = file
+      // Replaces the row of a changed file in the same transaction as its new one.
+      drop.run(filePath)
       if (!result.isValid) {
         quarantine.run(filePath, folderPath, result.error ?? 'Unreadable FITS file', stamp.sizeBytes, stamp.modifiedAt, now)
         progress.quarantined++
@@ -327,13 +331,22 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
     // kept, so a cancelled scan resumes from where it stopped.
     for (let i = 0; i < toRead.length; i += READ_BATCH) {
       const batch: { file: WalkedFile; stamp: FileStamp; result: FitsParseResult }[] = []
-      for (const file of toRead.slice(i, i + READ_BATCH)) {
-        batch.push({ file, stamp: stamps.get(file.filePath)!, result: await parseFitsFileAsync(file.filePath) })
-        await pacer.checkpoint()
+      const write = () => {
+        sqlite.transaction(() => { for (const b of batch) store(b.file, b.stamp, b.result) })()
+        progress.filesRead += batch.length
+        report()
       }
-      sqlite.transaction(() => { for (const b of batch) store(b.file, b.stamp, b.result) })()
-      progress.filesRead += batch.length
-      report()
+      try {
+        for (const file of toRead.slice(i, i + READ_BATCH)) {
+          batch.push({ file, stamp: stamps.get(file.filePath)!, result: await parseFitsFileAsync(file.filePath) })
+          await pacer.checkpoint()
+        }
+      } catch (err) {
+        // Files read before a cancel are kept, so the next scan does not read them again.
+        if (err instanceof ScanCancelled) write()
+        throw err
+      }
+      write()
       await pacer.checkpoint()
     }
 

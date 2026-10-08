@@ -393,12 +393,8 @@ async function runHomeScan(homePath: string, signal: AbortSignal, pacer: ScanPac
     if (fits && fs.existsSync(dir)) {
       phase.status = 'scanning_fits'
       scanState.files = null
-      try {
-        await startFolderScan(dir, { signal, pacer, onProgress: counts => { scanState.files = counts } })
-      } catch (err) {
-        if (err instanceof ScanCancelled) throw err
-        console.error(`FITS scan of ${dir} failed:`, err)
-      }
+      // A failed FITS scan fails the home scan: finishing as done would hide files never indexed.
+      await startFolderScan(dir, { signal, pacer, onProgress: counts => { scanState.files = counts } })
       targetLookup = buildTargetLookup()
     }
 
@@ -425,6 +421,7 @@ async function finalizeResults(homePath: string, targetMap: Map<string, TargetAc
 
   // Resolve any accumulators still missing a targetId
   for (const [normalizedName, acc] of targetMap) {
+    await pacer.checkpoint()
     if (acc.targetId) continue
     const matched = finalLookup.get(normalizedName)
     if (matched) {
@@ -447,6 +444,7 @@ async function finalizeResults(homePath: string, targetMap: Map<string, TargetAc
   scanState.totalTargetsFound = targetMap.size
 
   for (const [, acc] of targetMap) {
+    await pacer.checkpoint()
     if (!acc.targetId) continue
 
     const target = sqlite.prepare('SELECT id, canonical_name, workflow_stage FROM targets WHERE id = ?').get(acc.targetId) as TargetLookup | undefined
