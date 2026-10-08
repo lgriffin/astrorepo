@@ -4,6 +4,7 @@
   "description": "Universal Astrophotography Observatory Management System",
   "main": "out/main/index.js",
   "scripts": {
+    "predev": "node scripts/ensure-electron.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
@@ -17,7 +18,9 @@
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "db:seed": "tsx src/main/db/seed/run-seed.ts",
     "db:reset": "tsx src/main/db/seed/reset-and-seed.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:node": "npm rebuild better-sqlite3"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
