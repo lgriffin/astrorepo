@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import type { ArchiveArea } from '@astro/application'
+import { FolderRemovalError, type ArchiveArea } from '@astro/application'
 import { ARCHIVE_INDEX_FILE, INTERMEDIATE_FOLDERS, type ArchiveCopy, type ArchiveIndex, type WorkAreaFile } from '@astro/domain'
 
 /** Whether `p` is strictly inside `dir`, both resolved. */
@@ -20,6 +20,9 @@ async function nearestExisting(p: string): Promise<string> {
   }
 }
 
+const unreadable = (relative: string, error: NodeJS.ErrnoException) =>
+  new Error(`${relative} in the work folder could not be read (${error.code ?? error.message}), so it was not archived or removed. Check it is not locked, then try again.`)
+
 /** A copy whose size differs from the plan's: the file changed, or the copy is short. */
 export class ArchiveCopyError extends Error {
   constructor(readonly file: string) {
@@ -37,12 +40,21 @@ export class NodeArchiveArea implements ArchiveArea {
   async survey(workDir: string): Promise<WorkAreaFile[]> {
     const files: WorkAreaFile[] = []
     const walk = async (dir: string, rel: string): Promise<void> => {
-      const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
+      // Only a missing work folder lists as empty; anything else unreadable stops the survey, so a
+      // folder is never judged rebuildable on a partial listing (ARC-003).
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+        if (rel === '' && error.code === 'ENOENT') return []
+        throw unreadable(rel || '.', error)
+      })
       for (const e of entries) {
         const full = path.join(dir, e.name)
         const relPath = rel === '' ? e.name : `${rel}/${e.name}`
         // bigint, so an NTFS file id survives intact; lstat, so links are never followed.
-        const stat = await fs.promises.lstat(full, { bigint: true }).catch(() => null)
+        const stat = await fs.promises.lstat(full, { bigint: true }).catch((error: NodeJS.ErrnoException) => {
+          // Gone since it was listed: nothing left to judge or remove.
+          if (error.code === 'ENOENT') return null
+          throw unreadable(relPath, error)
+        })
         if (!stat) continue
         if (stat.isSymbolicLink()) files.push({ path: relPath, sizeBytes: 0, links: 1, fileId: null, symlink: true })
         else if (stat.isDirectory()) await walk(full, relPath)
@@ -108,22 +120,31 @@ export class NodeArchiveArea implements ArchiveArea {
   async removeFolders(workDir: string, folders: string[]): Promise<string[]> {
     const root = await fs.promises.realpath(workDir).catch(() => null)
     if (!root) return []
-    const removed: string[] = []
+    // Every folder is checked before any is removed, so a link refuses the whole removal.
+    const checked: { folder: string; dir: string }[] = []
     for (const folder of new Set(folders)) {
       if (!INTERMEDIATE_FOLDERS.includes(folder)) continue
       const dir = path.join(workDir, folder)
       const stat = await fs.promises.lstat(dir).catch(() => null)
       if (!stat) continue
       // A link or junction could lead into a source folder; only a real folder of the work folder goes.
-      if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error(`The work folder's ${folder} (${dir}) is a link, not a folder of its own, so it was left alone.`)
+      if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error(`The work folder's ${folder} (${dir}) is a link, not a folder of its own, so nothing was removed.`)
       const rel = path.relative(root, await fs.promises.realpath(dir))
       if (rel !== folder && !(process.platform === 'win32' && rel.toLowerCase() === folder.toLowerCase())) {
-        throw new Error(`The work folder's ${folder} (${dir}) leads outside the work folder, so it was left alone.`)
+        throw new Error(`The work folder's ${folder} (${dir}) leads outside the work folder, so nothing was removed.`)
       }
-      // rm does not follow links inside the folder: a link is removed, never what it points to.
-      await fs.promises.rm(dir, { recursive: true })
+      checked.push({ folder, dir })
+    }
+    const removed: string[] = []
+    for (const { folder, dir } of checked.sort((a, b) => a.folder.localeCompare(b.folder))) {
+      try {
+        // rm does not follow links inside the folder: a link is removed, never what it points to.
+        await fs.promises.rm(dir, { recursive: true })
+      } catch (error) {
+        throw new FolderRemovalError([...removed], folder, error instanceof Error ? error.message : String(error))
+      }
       removed.push(folder)
     }
-    return removed.sort()
+    return removed
   }
 }

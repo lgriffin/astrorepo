@@ -8,6 +8,7 @@ import {
   parseStackManifest,
   planArchive,
   removalChoice,
+  sharedAcrossFolders,
   summariseWorkFolder,
   type ArchiveMode,
   type ArchivePlan,
@@ -15,18 +16,33 @@ import {
   type WorkAreaFile,
   type WorkFolderSummary
 } from '@astro/domain'
-import type { ArchiveArea, ArchiveRecord, ArchiveStore } from '../ports/archive'
+import { FolderRemovalError, type ArchiveArea, type ArchiveRecord, type ArchiveStore } from '../ports/archive'
 import type { Clock } from '../ports/clock'
 import type { FrameCatalogue } from '../ports/frame-catalogue'
 import type { JobStore } from '../ports/jobs'
 import type { SirilWorkspace } from '../ports/siril-workspace'
 import type { StackCatalogue } from '../ports/stack-catalogue'
+import type { TargetHolds } from './target-holds'
 
 /** An archive the app will not make, with what to change. */
 export class ArchiveRefusedError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'ArchiveRefusedError'
+  }
+}
+
+/**
+ * The archive was made, but removing the intermediates stopped part way. The record lists what
+ * was removed; the message says where the archive is, what went and what did not.
+ */
+export class ArchiveRemovalError extends Error {
+  constructor(
+    message: string,
+    readonly record: ArchiveRecord
+  ) {
+    super(message)
+    this.name = 'ArchiveRemovalError'
   }
 }
 
@@ -38,6 +54,8 @@ export interface ArchiveTargetDeps {
   jobs: Pick<JobStore, 'list'>
   workspace: Pick<SirilWorkspace, 'contains'>
   clock: Clock
+  /** Shared with the job runner, so no job for the target starts while it is archived (ARC-008). */
+  holds?: Pick<TargetHolds, 'hold'>
 }
 
 export interface ArchiveRequest {
@@ -62,6 +80,8 @@ export interface ArchivePreview {
   /** The archive folder this archive would make. */
   destination: string
   folders: WorkFolderSummary[]
+  /** Files hard-linked across intermediate folders, freed only when all of `folders` go (ARC-002). */
+  shared: { folders: string[]; bytes: number }[]
   manifests: number
   freeBytes: number | null
   options: ArchiveOption[]
@@ -148,44 +168,64 @@ export function makeArchiveTarget(deps: ArchiveTargetDeps): ArchiveTarget {
     async preview(request) {
       const [l, record, free] = await Promise.all([look(request), deps.store.get(request.targetId), deps.area.freeBytes(request.archiveRoot)])
       const options = request.workDir ? (['linked', 'self-contained'] as const).map(mode => optionFor(l, request.workDir as string, mode, free)) : []
-      return { target: l.target, workDir: request.workDir, destination: l.destination, folders: l.folders, manifests: l.manifests.length, freeBytes: free, options, record, blocked: l.blocked }
+      return { target: l.target, workDir: request.workDir, destination: l.destination, folders: l.folders, shared: sharedAcrossFolders(l.files), manifests: l.manifests.length, freeBytes: free, options, record, blocked: l.blocked }
     },
 
     async archive(request) {
-      const l = await look(request)
-      if (l.blocked || !request.workDir) throw new ArchiveRefusedError(l.blocked ?? 'This target has no work folder to archive.')
-      const workDir = request.workDir
-      const choice = removalChoice(l.folders, request.remove)
-      if (choice.refused.length > 0) {
-        throw new ArchiveRefusedError(`${choice.refused.join(', ')} cannot be removed, because the stack manifests cannot rebuild it. Nothing was archived or removed.`)
+      // Held first, then the jobs are checked: a job queued from here on waits until this ends.
+      const release = deps.holds ? deps.holds.hold(request.targetId) : () => {}
+      if (!release) throw new ArchiveRefusedError('This target is already being archived. Wait for that to finish.')
+      try {
+        return await archiveHeld(request)
+      } finally {
+        release()
       }
-      const option = optionFor(l, workDir, request.mode, await deps.area.freeBytes(request.archiveRoot))
-      if (option.space.verdict === 'short') {
-        throw new ArchiveRefusedError(`The archive folder's disk is short of the space this archive needs. Free space there, or choose another archive folder in Settings → Folders.`)
-      }
+    }
+  }
 
-      // Built whole in a staging folder and renamed into place, or not at all (ARC-006).
-      const indexPath = await deps.area.build(workDir, l.destination, option.plan.copies, option.plan.index)
-      const frames = (await deps.frames.listTargetFrames()).find(t => t.targetId === request.targetId)
-      const record: ArchiveRecord = {
-        targetId: request.targetId,
-        archivedAt: deps.clock.now(),
-        mode: request.mode,
-        path: l.destination,
-        fingerprint: frames ? dataFingerprint(frames) : '',
-        copiedBytes: option.plan.copyBytes,
-        removed: [],
-        freedBytes: 0
-      }
-      await deps.store.save(record)
+  async function archiveHeld(request: ArchiveRequest & { mode: ArchiveMode; remove: string[] }): Promise<ArchiveOutcome> {
+    const l = await look(request)
+    if (l.blocked || !request.workDir) throw new ArchiveRefusedError(l.blocked ?? 'This target has no work folder to archive.')
+    const workDir = request.workDir
+    const choice = removalChoice(l.folders, request.remove)
+    if (choice.refused.length > 0) {
+      throw new ArchiveRefusedError(`${choice.refused.join(', ')} cannot be removed, because the stack manifests cannot rebuild it. Nothing was archived or removed.`)
+    }
+    const option = optionFor(l, workDir, request.mode, await deps.area.freeBytes(request.archiveRoot))
+    if (option.space.verdict === 'short') {
+      throw new ArchiveRefusedError(`The archive folder's disk is short of the space this archive needs. Free space there, or choose another archive folder in Settings → Folders.`)
+    }
 
-      // Only after the archive is in place, and only what the user confirmed (ARC-009).
-      if (choice.remove.length > 0) {
+    // Built whole in a staging folder and renamed into place, or not at all (ARC-006).
+    const indexPath = await deps.area.build(workDir, l.destination, option.plan.copies, option.plan.index)
+    const frames = (await deps.frames.listTargetFrames()).find(t => t.targetId === request.targetId)
+    const record: ArchiveRecord = {
+      targetId: request.targetId,
+      archivedAt: deps.clock.now(),
+      mode: request.mode,
+      path: l.destination,
+      fingerprint: frames ? dataFingerprint(frames) : '',
+      copiedBytes: option.plan.copyBytes,
+      removed: [],
+      freedBytes: 0
+    }
+    await deps.store.save(record)
+
+    // Only after the archive is in place, and only what the user confirmed (ARC-009).
+    if (choice.remove.length > 0) {
+      try {
         record.removed = await deps.area.removeFolders(workDir, choice.remove)
+      } catch (error) {
+        record.removed = error instanceof FolderRemovalError ? error.removed : []
         record.freedBytes = freedBytes(l.files, record.removed)
         await deps.store.save(record)
+        const reason = (error instanceof Error ? error.message : String(error)).replace(/\.?$/, '.')
+        const gone = record.removed.length > 0 ? `Removed from the work folder: ${record.removed.join(', ')}. ` : ''
+        throw new ArchiveRemovalError(`The archive was made in ${l.destination}. ${gone}${reason} Remove the rest by hand, or archive again another day.`, record)
       }
-      return { record, indexPath, plan: option.plan }
+      record.freedBytes = freedBytes(l.files, record.removed)
+      await deps.store.save(record)
     }
+    return { record, indexPath, plan: option.plan }
   }
 }

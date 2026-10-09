@@ -64,6 +64,7 @@ describe('Archive presenter', () => {
       workDir: '/w',
       destination: '/archive/M 42 2026-10-09',
       folders: [],
+      shared: [{ folders: ['lights', 'process'], bytes: 80 }],
       manifests: 2,
       freeBytes: null,
       options: [option('linked', null), option('self-contained', GB)],
@@ -73,6 +74,7 @@ describe('Archive presenter', () => {
     const view = toArchivePreviewView(preview)
     expect(view.archived).toBe('Archived on 9 Oct 2026, linked. Removing process freed 12.0 GB.')
     expect(view.archivedPath).toBe('D:\\Archive\\M 42 2026-10-09')
+    expect(view.shared).toEqual([{ folders: ['lights', 'process'], bytes: 80 }])
     expect(view.manifests).toBe('The work folder holds 2 stack manifests, which say how to rebuild what can be removed.')
     expect(view.options[0]).toMatchObject({ label: 'Linked', verdictText: 'That disk does not report its free space', missing: null })
     expect(view.options[0].text).toMatch(/^Copies the stacks, manifests, masters and finished images \(1\.5 GB\) to \/archive\/M 42 2026-10-09\. The raw frames stay where they are/)

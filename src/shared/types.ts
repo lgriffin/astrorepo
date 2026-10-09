@@ -1254,6 +1254,8 @@ export interface ArchivePreviewView {
   workDir: string | null
   destination: string
   folders: ArchiveFolderView[]
+  /** Bytes that only come back when every one of `folders` is removed (one file hard-linked from each). */
+  shared: { folders: string[]; bytes: number }[]
   /** How many stack manifests the work folder holds, in one sentence. */
   manifests: string
   options: ArchiveOptionView[]

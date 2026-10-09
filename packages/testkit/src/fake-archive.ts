@@ -1,4 +1,4 @@
-import type { ArchiveArea, ArchiveRecord, ArchiveStore } from '@astro/application'
+import { FolderRemovalError, type ArchiveArea, type ArchiveRecord, type ArchiveStore } from '@astro/application'
 import { ARCHIVE_INDEX_FILE, INTERMEDIATE_FOLDERS, type ArchiveCopy, type ArchiveIndex, type WorkAreaFile } from '@astro/domain'
 
 interface Entry {
@@ -20,6 +20,8 @@ export class InMemoryArchiveArea implements ArchiveArea {
   readonly disk = new Map<string, Entry>()
   /** Free bytes where archives go; null when the disk will not say. */
   free: number | null = 1024 ** 4
+  /** A folder whose removal fails part way, as a locked file would make it. */
+  failRemoval: string | null = null
   private next = 1
 
   /** A file of its own; its text stands for its bytes unless a size is given. */
@@ -113,14 +115,15 @@ export class InMemoryArchiveArea implements ArchiveArea {
 
   async removeFolders(workDir: string, folders: string[]): Promise<string[]> {
     const removed: string[] = []
-    for (const folder of new Set(folders)) {
+    for (const folder of [...new Set(folders)].sort()) {
       if (!INTERMEDIATE_FOLDERS.includes(folder)) continue
       const inside = this.listing(`${workDir}/${folder}`)
       if (inside.length === 0) continue
+      if (folder === this.failRemoval) throw new FolderRemovalError([...removed], folder, 'EBUSY: a file in it is in use')
       for (const p of inside) this.disk.delete(`${workDir}/${folder}/${p}`)
       removed.push(folder)
     }
-    return removed.sort()
+    return removed
   }
 }
 

@@ -65,7 +65,8 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
     if (!view) return <EmptyState>Measuring the work folder…</EmptyState>
     const option = view.options.find(o => o.mode === mode) ?? null
     const chosen = view.folders.filter(f => remove.has(f.folder))
-    const frees = chosen.reduce((sum, f) => sum + f.freesBytes, 0)
+    // Each folder's own figure, plus files hard-linked across folders that are all chosen.
+    const frees = chosen.reduce((sum, f) => sum + f.freesBytes, 0) + view.shared.filter(s => s.folders.every(f => remove.has(f))).reduce((sum, s) => sum + s.bytes, 0)
     const toggle = (folder: string) =>
       setRemove(r => {
         const next = new Set(r)

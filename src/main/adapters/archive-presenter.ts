@@ -103,6 +103,7 @@ export function toArchivePreviewView(p: ArchivePreview): ArchivePreviewView {
     workDir: p.workDir,
     destination: p.destination,
     folders: p.folders.map(toArchiveFolderView),
+    shared: p.shared,
     manifests:
       p.manifests === 0
         ? 'The work folder holds no stack manifest, so Siril’s working files and the laid-out frames cannot be rebuilt from it. Stacks queued from this app write one.'

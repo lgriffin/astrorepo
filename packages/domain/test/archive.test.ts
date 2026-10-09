@@ -8,6 +8,7 @@ import {
   manifestPaths,
   namedFrames,
   parseStackManifest,
+  sharedAcrossFolders,
   planArchive,
   removalChoice,
   stackManifest,
@@ -118,6 +119,33 @@ describe('Archive: what the work folder holds', () => {
     expect(parseStackManifest(JSON.stringify(unknown))?.frames.darks[0].source).toBeNull()
   })
 
+  it('[ARC-003] [ARC-005] Given an older run whose source for a frame name is gone, When summarised and archived, Then lights cannot be rebuilt and a self-contained archive bundles each source that is still there under its own name', () => {
+    const older = manifest(new Date('2026-09-01T03:00:00Z'), [{ from: '/old/Light_001.fit', folder: 'lights', name: 'Light_001.fit' }])
+    const both = [{ path: 'a.astrorepo.json', manifest: older }, ...found()]
+    const gone = summariseWorkFolder({ files: workFiles, manifests: both, sources: sources() })
+    expect(gone.find(f => f.folder === 'lights')?.reason).toBe('missing-sources')
+
+    const there = new Map([...sources(), ['/old/Light_001.fit', 50] as [string, number | null]])
+    const plan = planArchive({ files: workFiles, manifests: both, sources: there, mode: 'self-contained', target: { id: 'm42', name: 'M 42' }, workFolder: '/work/M42', at: new Date('2026-10-09T12:00:00Z') })
+    const bundled = plan.copies.filter(c => !c.inWorkFolder).map(c => `${c.from}>${c.to}`)
+    expect(bundled).toContain('/nas/M42/Light_001.fit>frames/lights/Light_001.fit')
+    expect(bundled).toContain('/old/Light_001.fit>frames/lights/Light_001 (2).fit')
+    expect(plan.index.frames.lights.map(f => f.source)).toEqual(['/nas/M42/Light_001.fit', '/old/Light_001.fit', '/nas/M42/Light_002.fit'])
+  })
+
+  it('[ARC-003] Given a manifest with no job or finishing time, When parsed, Then it is ignored rather than breaking the archive step', () => {
+    expect(parseStackManifest(JSON.stringify({ ...manifest(), job: undefined }))).toBeNull()
+    expect(parseStackManifest(JSON.stringify({ ...manifest(), job: { id: 'job-1' } }))).toBeNull()
+  })
+
+  it('[ARC-002] Given one file hard-linked from two intermediate folders, When the folders are chosen together, Then the shared bytes are counted once both are chosen, as freedBytes does', () => {
+    const shared = [file('lights/L.fit', 80, { links: 2, fileId: 'S' }), file('process/L.fit', 80, { links: 2, fileId: 'S' }), file('lights/own.fit', 5), file('darks/D.fit', 30, { links: 2, fileId: 'NAS' })]
+    expect(sharedAcrossFolders(shared)).toEqual([{ folders: ['lights', 'process'], bytes: 80 }])
+    const own = (folders: string[]) => folders.reduce((sum, f) => sum + freedBytes(shared, [f]), 0)
+    const together = (folders: string[]) => own(folders) + sharedAcrossFolders(shared).filter(s => s.folders.every(f => folders.includes(f))).reduce((sum, s) => sum + s.bytes, 0)
+    for (const chosen of [['lights'], ['process'], ['lights', 'process'], ['lights', 'process', 'darks']]) expect(together(chosen)).toBe(freedBytes(shared, chosen))
+  })
+
   it('[ARC-009] Given the user ticks folders, When the choice is checked, Then only removable intermediates are taken and the rest are named', () => {
     const folders = summariseWorkFolder({ files: workFiles, manifests: [], sources: new Map() })
     expect(removalChoice(folders, ['failed', 'process', 'masters', 'failed', 'nowhere'])).toEqual({ remove: ['failed'], refused: ['process', 'masters', 'nowhere'] })
@@ -133,12 +161,13 @@ describe('Archive: manifests', () => {
     expect(parseStackManifest(JSON.stringify({ ...manifest(), frames: { lights: [{ name: 1 }], darks: [], flats: [], biases: [] } }))).toBeNull()
   })
 
-  it('[ARC-003] Given two runs naming the same frame, When the frames are listed, Then each is listed once with the newest source, and only manifests beside a result count', () => {
-    const older = manifest(new Date('2026-09-01T03:00:00Z'), [{ from: '/old/Light_001.fit', folder: 'lights', name: 'Light_001.fit' }])
+  it('[ARC-003] Given two runs naming one frame name from different sources, When the frames are listed, Then each source is listed, newest first, and only manifests beside a result count', () => {
+    const older = manifest(new Date('2026-09-01T03:00:00Z'), [{ from: '/old/Light_001.fit', folder: 'lights', name: 'Light_001.fit' }, placements[1]])
     const frames = namedFrames([{ path: 'a.astrorepo.json', manifest: older }, ...found()])
     expect(frames.map(f => `${f.folder}/${f.name}<${f.source}`)).toEqual([
       'darks/Dark_001.fit</nas/darks/Dark_001.fit',
       'lights/Light_001.fit</nas/M42/Light_001.fit',
+      'lights/Light_001.fit</old/Light_001.fit',
       'lights/Light_002.fit</nas/M42/Light_002.fit'
     ])
     expect(manifestPaths([...workFiles, file('failed/job-0/result_30s.fit.astrorepo.json', 1)])).toEqual(['result_60s.fit.astrorepo.json'])

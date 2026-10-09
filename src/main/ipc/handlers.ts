@@ -31,7 +31,7 @@ import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
-import { ArchiveRefusedError, JobRefusedError, JobStateError } from '@astro/application'
+import { ArchiveRefusedError, ArchiveRemovalError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
@@ -552,9 +552,12 @@ export function registerIpcHandlers(): void {
       const out = await composeCore(getSqlite()).archive.archive({ ...archiveRequest(args.target_id), mode: args.mode, remove: args.remove })
       return { ok: true, message: archiveResultMessage(out) }
     } catch (error) {
-      if (error instanceof ArchiveRefusedError) return { ok: false, error: error.message }
+      if (error instanceof ArchiveRefusedError || error instanceof ArchiveRemovalError) return { ok: false, error: error.message }
       // A failed copy leaves no archive and removes nothing; the user can fix the cause and try again.
       return { ok: false, error: `The archive was not made, and nothing was removed: ${error instanceof Error ? error.message : String(error)}` }
+    } finally {
+      // Jobs queued for the target while it was held can start now.
+      kickJobs()
     }
   }))
 

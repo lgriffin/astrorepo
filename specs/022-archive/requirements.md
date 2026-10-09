@@ -71,19 +71,19 @@ the archive shows what each of those folders takes and frees before anything is 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | ARC-001 | Event | When the user opens a target's archive step, the system shall show each folder of its work folder with its size, the space removing it frees, and whether it can be rebuilt, before anything is copied or removed. |
-| ARC-002 | Ubiquitous | The system shall count a hard-linked file as freeing no space unless every one of its names is removed, and a symbolic link as freeing none. |
-| ARC-003 | Ubiquitous | The system shall treat a folder of laid-out frames as rebuildable only when a stack manifest in the work folder names every file in it and every source the manifest names still exists, treat Siril's process folder as rebuildable only when a manifest exists and all its sources exist, and never treat the failed runs folder as rebuildable. |
+| ARC-002 | Ubiquitous | The system shall count a hard-linked file as freeing no space unless every one of its names is removed, including names in other folders the user ticked, and a symbolic link as freeing none. |
+| ARC-003 | Ubiquitous | The system shall treat a folder of laid-out frames as rebuildable only when a stack manifest in the work folder names every file in it and every source any manifest names for it, from every run, still exists, treat Siril's process folder as rebuildable only when a manifest exists and all its sources exist, and never treat the failed runs folder as rebuildable; if any part of the work folder cannot be read, it shall judge nothing and remove nothing. |
 
 ## Archiving
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | ARC-004 | Event | When the user archives a target linked, the system shall copy its stacks, manifests, masters and finished images into a new archive folder with an index listing each kept file with its size and the source path of every raw frame the manifests name. |
-| ARC-005 | Event | When the user archives a target self-contained, the system shall also copy every raw frame the manifests name that still exists into the archive folder and record in the index where each came from. |
+| ARC-005 | Event | When the user archives a target self-contained, the system shall also copy every raw frame the manifests name that still exists into the archive folder, each source under its own name when two runs used one name, and record in the index where each came from. |
 | ARC-006 | Unwanted | If a copy fails or a copied file's size differs from the plan, then the system shall remove the staging folder, leave no archive folder behind, and remove nothing from the work folder. |
 | ARC-007 | Unwanted | If the archive folder already exists, lies in a folder the app only reads, overlaps the work folder, or its disk lacks the room the copy needs, then the system shall refuse to archive and say what to change. |
-| ARC-008 | Unwanted | If a stack or post-processing job for the target is queued or running, then the system shall refuse to archive it. |
-| ARC-009 | Event | When an archive has been made, the system shall remove from the work folder only the intermediate folders the user ticked that are rebuildable or hold runs that did not finish. |
+| ARC-008 | Unwanted | If a stack or post-processing job for the target is queued or running, then the system shall refuse to archive it; while an archive is under way, the system shall not start any job for that target. |
+| ARC-009 | Event | When an archive has been made, the system shall remove from the work folder only the intermediate folders the user ticked that are rebuildable or hold runs that did not finish, checking every one for links before removing any; if a removal stops part way, the system shall record what was removed and say that the archive was made and what was left. |
 | ARC-010 | Event | When a target is archived, the system shall keep the date, the kind of archive, the archive folder and what removing intermediates freed, and show them on the target's Stack and process page. |
 | ARC-011 | State | While a target is archived and its frames are unchanged since, the system shall leave it out of the stacking suggestions. |
 | ARC-012 | Ubiquitous | The system shall put each archive in a new folder named after the target and the day, inside the archive folder set in Settings, or the work area's archive folder when none is set. |

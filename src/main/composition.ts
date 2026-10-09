@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
 import {
   makeArchiveTarget,
+  makeTargetHolds,
   makeDiscoverTarget,
   makeDiscoverTargets,
   makeDismissSuggestion,
@@ -46,6 +47,10 @@ import { SqliteArchiveStore } from './adapters/sqlite-archive-store'
 let frameMeasurer = new NodeFrameMeasurer()
 
 /** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
+
+/** Targets an archive is working on, shared by every composition so the job runner waits for it (ARC-008). */
+export const targetHolds = makeTargetHolds()
+
 export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
   frameMeasurer = new NodeFrameMeasurer(createWorker)
   return frameMeasurer
@@ -104,6 +109,7 @@ export function composeCore(db: Database.Database) {
     queueStack: makeQueueStack({ estimate: estimateSirilRun, tools, stacks, store: jobStore, clock: systemClock }),
     queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock }),
     archive: makeArchiveTarget({
+      holds: targetHolds,
       area: new NodeArchiveArea(),
       store: archives,
       frames,
@@ -139,7 +145,8 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     targetName: async id => (await new SqliteStackCatalogue(db).describeTarget(id))?.name ?? null,
     readOnlyDirs: options.readOnlyDirs,
     clock: systemClock,
-    onChange: options.onChange
+    onChange: options.onChange,
+    holds: targetHolds
   })
 }
 

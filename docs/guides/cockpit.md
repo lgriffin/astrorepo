@@ -360,7 +360,8 @@ the disk back. Nothing is copied or removed until you press **Archive** and conf
 removing it frees, and whether it can be rebuilt.
 
 - The laid-out `lights`, `darks`, `flats` and `biases` can be rebuilt when the stack manifest
-  names every frame in them and those frames are still where it says. When Prep for Siril
+  names every frame in them and those frames are still where it says, for every run that used
+  the folder. When Prep for Siril
   hard-linked them (the work area is on the same disk as the frames), removing them frees nothing,
   and the table says so.
 - `process`, Siril's working files, is usually the big one. It can be rebuilt when a stack
@@ -391,9 +392,17 @@ must be outside the folders the app only reads.
 - The archive is built in a hidden staging folder and renamed into place only when every copy
   has the size it should. If a copy fails, nothing is left behind and nothing is removed, so you
   can fix the cause and try again.
+- If any file or folder in the work folder cannot be read, the step says which and does nothing,
+  rather than judge a folder on a partial listing.
+- When one frame file is hard-linked from two folders you tick, the space it frees is counted once
+  both are ticked, so the figure in the confirmation is what the disk gets back.
+- Every ticked folder is checked for links before any is removed. If a removal still stops part
+  way (a file in use, say), the archive stays, the step says what was removed and what was not,
+  and you can remove the rest by hand.
 - Only the folders you ticked are removed, only from the work folder, and only after the archive
   is in place. Source folders are never touched.
-- A target with a stack or post-processing run queued or running cannot be archived until it ends.
+- A target with a stack or post-processing run queued or running cannot be archived until it ends,
+  and a run queued for it while the archive is under way waits until the archive finishes.
 
 Afterwards the step says "Archived on 9 Oct 2026, linked." with the archive folder and the space
 removing intermediates freed. Stacking suggestions leave the target out until new frames arrive.

@@ -89,6 +89,7 @@ export function parseStackManifest(text: string): StackManifest | null {
   try {
     const m = JSON.parse(text) as Partial<StackManifest>
     if (m?.format !== 'astrorepo-stack-manifest' || m.version !== 1 || typeof m.frames !== 'object' || m.frames === null) return null
+    if (typeof m.job?.finishedAt !== 'string') return null
     for (const folder of FRAME_FOLDERS) {
       const list = (m.frames as Record<string, unknown>)[folder]
       if (!Array.isArray(list) || !list.every(f => typeof f?.name === 'string' && (typeof f?.source === 'string' || f?.source === null))) return null
@@ -105,8 +106,9 @@ export function manifestPaths(files: WorkAreaFile[]): string[] {
 }
 
 /**
- * Every raw frame the manifests name, once per folder and name; when two manifests name the same
- * one, the newest run's source wins.
+ * Every raw frame the manifests name, once per folder, name and source, newest run first. Two runs
+ * can lay different sources out under one name, so each source is kept: every one must still be
+ * there for the folder to count as rebuildable, and a self-contained archive bundles each.
  */
 export function namedFrames(manifests: FoundManifest[]): NamedFrame[] {
   const newestFirst = [...manifests].sort((a, b) => b.manifest.job.finishedAt.localeCompare(a.manifest.job.finishedAt))
@@ -114,16 +116,27 @@ export function namedFrames(manifests: FoundManifest[]): NamedFrame[] {
   for (const { manifest } of newestFirst) {
     for (const folder of FRAME_FOLDERS) {
       for (const f of manifest.frames[folder]) {
-        const key = `${folder}/${f.name}`
+        const key = `${folder}/${f.name}\n${f.source}`
         if (!byKey.has(key)) byKey.set(key, { folder, name: f.name, source: f.source })
       }
     }
   }
+  // Stable, so frames sharing a name stay newest first.
   return [...byKey.values()].sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name))
 }
 
 /** A named frame's size now; null when it is gone or its source is not known. */
 const sizeOf = (sources: Map<string, number | null>, f: NamedFrame): number | null => (f.source === null ? null : (sources.get(f.source) ?? null))
+
+/** Where a bundled frame goes: its own name, or `name (2).ext` when another source took it. */
+function bundledName(f: NamedFrame, taken: Map<string, number>): string {
+  const key = `${f.folder}/${f.name}`
+  const n = (taken.get(key) ?? 0) + 1
+  taken.set(key, n)
+  const dot = f.name.lastIndexOf('.')
+  const name = n === 1 ? f.name : dot > 0 ? `${f.name.slice(0, dot)} (${n})${f.name.slice(dot)}` : `${f.name} (${n})`
+  return `${ARCHIVE_FRAMES_FOLDER}/${f.folder}/${name}`
+}
 
 const topFolder = (p: string): string => (p.includes('/') ? p.slice(0, p.indexOf('/')) : '')
 
@@ -159,6 +172,22 @@ export function freedBytes(files: WorkAreaFile[], folders: string[]): number {
     }
   }
   return bytes
+}
+
+/**
+ * Files whose every name is in the work folder but spread over more than one top-level folder:
+ * each folder alone frees nothing for them, removing all of `folders` frees `bytes`. Added to the
+ * folders' own figures, they give what any choice of folders frees, as freedBytes would.
+ */
+export function sharedAcrossFolders(files: WorkAreaFile[]): { folders: string[]; bytes: number }[] {
+  const byId = new Map<string, WorkAreaFile[]>()
+  for (const f of files) if (!f.symlink && f.links > 1 && f.fileId) byId.set(f.fileId, [...(byId.get(f.fileId) ?? []), f])
+  const shared: { folders: string[]; bytes: number }[] = []
+  for (const names of byId.values()) {
+    const folders = [...new Set(names.map(f => topFolder(f.path)))].sort()
+    if (folders.length > 1 && names.length >= names[0].links) shared.push({ folders, bytes: names[0].sizeBytes })
+  }
+  return shared
 }
 
 export interface WorkFolderInput {
@@ -288,11 +317,12 @@ export function planArchive(input: ArchivePlanInput): ArchivePlan {
   const frames: ArchiveIndex['frames'] = { lights: [], darks: [], flats: [], biases: [] }
   let bundledFrames = 0
   let missingFrames = 0
+  const taken = new Map<string, number>()
   for (const f of namedFrames(input.manifests)) {
     const size = sizeOf(input.sources, f)
     if (size === null) missingFrames++
     const bundle = input.mode === 'self-contained' && size !== null
-    const archived = bundle ? `${ARCHIVE_FRAMES_FOLDER}/${f.folder}/${f.name}` : null
+    const archived = bundle ? bundledName(f, taken) : null
     if (bundle && archived) {
       copies.push({ from: f.source as string, inWorkFolder: false, to: archived, sizeBytes: size })
       bundledFrames++

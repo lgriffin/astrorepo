@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ArchiveRefusedError, makeArchiveTarget, makeListStackingSuggestions, type ArchiveRequest } from '@astro/application'
+import { ArchiveRefusedError, ArchiveRemovalError, makeArchiveTarget, makeListStackingSuggestions, makeTargetHolds, type ArchiveRequest } from '@astro/application'
 import { stackManifest, type SirilPlacement } from '@astro/domain'
 import {
   FixedClock,
@@ -46,6 +46,7 @@ function world() {
   const jobs = new InMemoryJobStore()
   const frames = new InMemoryFrameCatalogue().add(target('M 42', { subs: subs(1080, 10, '2026-03-01T21:00:00Z') }))
   const clock = new FixedClock(new Date(2026, 9, 9, 21, 0))
+  const holds = makeTargetHolds()
   const archive = makeArchiveTarget({
     area,
     store,
@@ -53,10 +54,11 @@ function world() {
     stacks: new InMemoryStackCatalogue().addTarget('target-m-42', { name: 'M 42' }),
     jobs,
     workspace: new InMemorySirilWorkspace(),
-    clock
+    clock,
+    holds
   })
   const request: ArchiveRequest = { targetId: 'target-m-42', workDir: WORK, archiveRoot: '/archive', readOnlyDirs: ['/nas'] }
-  return { area, store, jobs, frames, archive, request }
+  return { area, store, jobs, frames, archive, request, holds }
 }
 
 const DEST = '/archive/M 42 2026-10-09'
@@ -137,6 +139,35 @@ describe('Archive this target', () => {
     expect((await w.archive.preview(w.request)).blocked).toMatch(/queued or running/)
     await expect(w.archive.archive({ ...w.request, mode: 'linked', remove: [] })).rejects.toThrow(/queued or running/)
     expect(w.area.listing('/archive')).toEqual([])
+  })
+
+  it('[ARC-008] Given an archive under way, When it copies and removes, Then the target is held so no job for it starts, and let go after, even when it fails', async () => {
+    const w = world()
+    const held: boolean[] = []
+    const build = w.area.build.bind(w.area)
+    w.area.build = async (...args) => {
+      held.push(w.holds.hold('target-m-42') === null)
+      return build(...args)
+    }
+    await w.archive.archive({ ...w.request, mode: 'linked', remove: ['process'] })
+    expect(held).toEqual([true])
+    const release = w.holds.hold('target-m-42')
+    expect(release).not.toBeNull()
+    await expect(w.archive.archive({ ...w.request, mode: 'linked', remove: [] })).rejects.toThrow(/already being archived/)
+    release?.()
+    await expect(w.archive.archive({ ...w.request, mode: 'linked', remove: [] })).rejects.toThrow(/already exists/)
+    expect(w.holds.hold('target-m-42')).not.toBeNull()
+  })
+
+  it('[ARC-009] Given a folder that fails part way through removal, When archived, Then the archive stays, the record lists what went, and the message says what was made and what was not removed', async () => {
+    const w = world()
+    w.area.failRemoval = 'process'
+    const error = await w.archive.archive({ ...w.request, mode: 'linked', remove: ['process', 'failed'] }).catch(e => e)
+    expect(error).toBeInstanceOf(ArchiveRemovalError)
+    expect(error.message).toBe(`The archive was made in ${DEST}. Removed from the work folder: failed. The work folder's process could not be removed: EBUSY: a file in it is in use. Remove the rest by hand, or archive again another day.`)
+    expect(w.area.listing(DEST)).toContain('astrorepo-archive.json')
+    expect(await w.store.get('target-m-42')).toMatchObject({ removed: ['failed'], freedBytes: 7 })
+    expect(w.area.listing(`${WORK}/process`)).toEqual(['pp_light_00001.fit'])
   })
 
   it('[ARC-009] Given a folder that cannot be rebuilt, When the user asks for it to go, Then nothing is archived or removed', async () => {
