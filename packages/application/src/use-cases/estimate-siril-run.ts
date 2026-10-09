@@ -1,4 +1,9 @@
 import {
+  cameraRawSummary,
+  filterWorkDir,
+  framesForFilter,
+  planFilterStacks,
+  type FilterStackPlan,
   checkCalibration,
   commonImageScale,
   drizzleAdvice,
@@ -87,9 +92,33 @@ export interface SirilRunEstimate {
   /** Scripts for this sensor, recommended first, with what each needs and whether it fits. */
   scripts: ScriptEstimate[]
   advice: StackAdvice
+  /** Camera RAW lights among the stack's lights (RIG-004); null when there are none. */
+  cameraRaw?: { count: number; unread: number; formats: string[] } | null
+  /**
+   * For mono lights carrying two filters or more: one stack per filter, each in its own work folder
+   * (RIG-006 to RIG-008). Null otherwise, and for a single filter's estimate.
+   */
+  filters?: (Omit<FilterStackPlan, 'filters'> & { stacks: FilterStackEstimate[] }) | null
 }
 
-export type EstimateSirilRun = (sourceDir: string, workDir: string) => Promise<SirilRunEstimate>
+/** One filter's stack in a mono plan: its own work folder, frames, script, space and master. */
+export interface FilterStackEstimate {
+  filter: string
+  workDir: string
+  counts: FrameCounts
+  rejectedLights: number
+  /** Siril's mono script, with what it lacks and whether it fits. */
+  script: ScriptEstimate | null
+  /** The newest result a finished stack left in the filter's work folder: its channel master (RIG-007). */
+  master: { path: string; sizeBytes: number; modifiedAt: Date | null } | null
+}
+
+export interface EstimateOptions {
+  /** Estimates one filter's stack alone: its lights and flats with every dark and bias (RIG-009). */
+  filter?: string
+}
+
+export type EstimateSirilRun = (sourceDir: string, workDir: string, options?: EstimateOptions) => Promise<SirilRunEstimate>
 
 /**
  * Before anything is written: which stock Siril script fits the target's frames and how much disk
@@ -97,8 +126,8 @@ export type EstimateSirilRun = (sourceDir: string, workDir: string) => Promise<S
  * the way Prep for Siril would lay them out, so the estimate matches what Siril will see.
  */
 export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilRun {
-  return async (sourceDir, workDir) => {
-    const selected = await selectFrames(deps, sourceDir)
+  const estimate: EstimateSirilRun = async (sourceDir, workDir, options = {}) => {
+    const selected = await selectFrames(deps, sourceDir, options.filter)
     const rejected = selected.rejected
     const frames = selected.frames.filter(f => !selected.rejectedPaths.has(f.path))
     const placements = planSirilWorkspace(selected.frames).filter(p => !selected.rejectedPaths.has(p.from))
@@ -144,8 +173,32 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
 
     const advice = await adviseStack({ deps, lights, details, placements, sensor, keptLights: counts.lights, scripts, recommended: recommended.script, allLights: lightPathsOf(selected.frames) })
 
+    // Per filter only from the whole folder: a filter's own estimate is one of these stacks.
+    const filterOf = new Map(details.map(d => [d.path, d.settings?.filter ?? null]))
+    const filterPlan = sensor === 'mono' && options.filter === undefined ? planFilterStacks(placements.map(p => ({ folder: p.folder, filter: filterOf.get(p.from) ?? null }))) : null
+    let filters: SirilRunEstimate['filters'] = null
+    if (filterPlan) {
+      const { filters: planned, ...rest } = filterPlan
+      const stacks: FilterStackEstimate[] = []
+      for (const f of planned) {
+        const dir = filterWorkDir(workDir, f.filter)
+        const [one, results] = await Promise.all([estimate(sourceDir, dir, { filter: f.filter }), deps.workspace.stackResults(dir)])
+        stacks.push({
+          filter: f.filter,
+          workDir: dir,
+          counts: one.counts,
+          rejectedLights: one.rejectedLights,
+          script: one.scripts.find(x => x.script === 'Mono_Preprocessing') ?? null,
+          master: results[0] ?? null
+        })
+      }
+      filters = { ...rest, stacks }
+    }
+
     return {
       advice,
+      cameraRaw: cameraRawSummary(placements.filter(p => p.folder === 'lights').map(p => p.name)),
+      filters,
       counts,
       rejectedLights: rejected,
       sensor,
@@ -160,6 +213,7 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
       scripts
     }
   }
+  return estimate
 }
 
 /**
@@ -168,15 +222,28 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
  * way an earlier run did; leave `rejectedPaths` out of it to get what a stack uses.
  */
 export async function selectFrames(
-  deps: { workspace: Pick<SirilWorkspace, 'listSourceFrames'>; selection?: FrameSelection },
-  sourceDir: string
+  deps: { workspace: Pick<SirilWorkspace, 'listSourceFrames' | 'frameDetails'>; selection?: FrameSelection },
+  sourceDir: string,
+  filter?: string
 ): Promise<{ frames: { path: string; name: string; imageType: string | null }[]; rejected: number; rejectedPaths: Set<string> }> {
-  const all = await deps.workspace.listSourceFrames(sourceDir)
+  const listed = await deps.workspace.listSourceFrames(sourceDir)
+  const all = filter === undefined ? listed : await onlyFilter(deps.workspace, listed, filter)
   if (!deps.selection) return { frames: all, rejected: 0, rejectedPaths: new Set() }
   const lights = planSirilWorkspace(all).filter(p => p.folder === 'lights').map(p => p.from)
   const flagged = await deps.selection.rejected(lights)
   const rejectedPaths = new Set(lights.filter(p => flagged.has(p)))
   return { frames: all, rejected: rejectedPaths.size, rejectedPaths }
+}
+
+/** One filter's lights and flats, with every dark and bias (RIG-009). */
+async function onlyFilter(
+  workspace: Pick<SirilWorkspace, 'frameDetails'>,
+  frames: { path: string; name: string; imageType: string | null }[],
+  filter: string
+): Promise<{ path: string; name: string; imageType: string | null }[]> {
+  const filterOf = new Map((await workspace.frameDetails(frames.map(f => f.path))).map(d => [d.path, d.settings?.filter ?? null]))
+  const tagged = frames.map(f => ({ frame: f, folder: sirilFolderFor(f.name, f.imageType), filter: filterOf.get(f.path) ?? null }))
+  return framesForFilter(tagged, filter).map(t => t.frame)
 }
 
 const lightPathsOf = (frames: { path: string; name: string; imageType: string | null }[]) =>

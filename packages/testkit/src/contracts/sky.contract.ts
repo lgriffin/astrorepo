@@ -42,6 +42,30 @@ export function ephemerisContract(adapterName: string, make: () => Ephemeris): v
         expect(days).toBeLessThan(30.1)
       }
     })
+
+    it('[RIG-013] Given the March equinox, When the Earth is placed in J2000, Then it is 1 AU from the Sun on the −x axis, turned by the precession since 2000', async () => {
+      const [earth] = await make().observerPositions(null, [new Date('2026-03-20T14:46:00Z')])
+      expect(earth.x).toBeCloseTo(-0.996, 2)
+      // The equinox of date has moved 26 × 50.3″ = 0.36° since J2000: 0.0063 AU along the ecliptic.
+      expect(earth.y).toBeCloseTo(0.0063 * Math.cos((23.44 * Math.PI) / 180), 3)
+      expect(earth.z).toBeCloseTo(0.0063 * Math.sin((23.44 * Math.PI) / 180), 3)
+    })
+
+    it('[RIG-013] Given a year of dates and a site, When the observer is placed, Then the Earth stays 0.983 to 1.017 AU out and the site sits one Earth radius from its centre', async () => {
+      const eph = make()
+      const times = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2026, i, 15)))
+      const centre = await eph.observerPositions(null, times)
+      const site = await eph.observerPositions(london, times)
+      expect(centre).toHaveLength(12)
+      for (const [i, c] of centre.entries()) {
+        const r = Math.hypot(c.x, c.y, c.z)
+        expect(r).toBeGreaterThan(0.983)
+        expect(r).toBeLessThan(1.0175)
+        const offset = Math.hypot(site[i].x - c.x, site[i].y - c.y, site[i].z - c.z)
+        expect(offset).toBeGreaterThan(4.2e-5)
+        expect(offset).toBeLessThan(4.3e-5)
+      }
+    })
   })
 }
 

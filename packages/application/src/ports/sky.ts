@@ -1,4 +1,4 @@
-import type { NightSky, Site } from '@astro/domain'
+import type { NightSky, Site, Vec3 } from '@astro/domain'
 
 /**
  * Driven port: sun, moon and sidereal time for a site.
@@ -13,6 +13,11 @@ export interface Ephemeris {
   nightSky(site: Site, night: string): Promise<NightSky | null>
   /** Moments of new moon between two instants, in order. */
   newMoons(from: Date, to: Date): Promise<Date[]>
+  /**
+   * Where the observer is at each UTC instant: heliocentric, J2000 equatorial, in AU. The Earth's
+   * centre, plus the site's offset from it when a site is given. For comet positions (RIG-013).
+   */
+  observerPositions(site: Site | null, times: Date[]): Promise<Vec3[]>
 }
 
 /** Driven port: the planning settings the user has entered. */

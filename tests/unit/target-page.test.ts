@@ -59,8 +59,9 @@ describe("A target's page", () => {
     expect(at('1 · Grade the lights')).toBeLessThan(at('2 · Stack'))
     expect(at('2 · Stack')).toBeLessThan(at('3 · Post-process'))
     expect(at('3 · Post-process')).toBeLessThan(at('4 · Runs'))
-    // Every step (stack, post-process, SyQon) queues into the same runner and refreshes the target's runs when they do.
-    expect(tab.match(/onQueued=\{onQueued\}/g)).toHaveLength(3)
+    // Every queue button (the stack, each filter's stack, post-processing, a SyQon step) goes to the
+    // same runner and refreshes the target's runs when it does; the filter stacks are handed it by the plan.
+    expect(tab.match(/onQueued=\{onQueued\}/g)).toHaveLength(5)
   })
 
   it('[UX-011] Given a step whose job is already on its way, When the step is drawn, Then it does not offer to queue that step again', () => {

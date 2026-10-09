@@ -157,3 +157,20 @@ describe('IPC Zod Validation (Boundary Tests)', () => {
   })
 })
 
+describe('Other rigs channels (specs/026-other-rigs)', () => {
+  it('[RIG-009] Given a stack queued for one filter, When validated, Then the filter is kept trimmed, and an empty or overlong one is refused', () => {
+    const base = { target_id: 't1', script: 'Mono_Preprocessing', timing: 'window' }
+    expect(schemas['jobs:queue-stack'].parse({ ...base, filter: ' Ha ' }).filter).toBe('Ha')
+    expect(schemas['jobs:queue-stack'].parse(base).filter).toBeUndefined()
+    expect(() => schemas['jobs:queue-stack'].parse({ ...base, filter: '   ' })).toThrow()
+    expect(() => schemas['jobs:queue-stack'].parse({ ...base, filter: 'x'.repeat(41) })).toThrow()
+  })
+
+  it('[RIG-011] Given a comet line or null, When validated, Then both pass and an overlong line or a missing target is refused', () => {
+    expect(schemas['comet:set-orbit'].parse({ target_id: 't1', line: '0002P  1990 10 28.54502 ...' }).line).toContain('0002P')
+    expect(schemas['comet:set-orbit'].parse({ target_id: 't1', line: null }).line).toBeNull()
+    expect(() => schemas['comet:set-orbit'].parse({ target_id: 't1', line: 'x'.repeat(401) })).toThrow()
+    expect(() => schemas['comet:plan'].parse({})).toThrow()
+    expect(schemas['comet:write-positions'].parse({ target_id: 't1' }).target_id).toBe('t1')
+  })
+})

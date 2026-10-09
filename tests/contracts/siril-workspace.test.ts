@@ -3,12 +3,13 @@ import os from 'os'
 import path from 'path'
 import { afterEach, describe, it, expect } from 'vitest'
 import { InMemorySirilWorkspace } from '@astro/testkit'
+import { frameFileKind } from '@astro/domain'
 import { sirilWorkspaceContract } from '@astro/testkit/contracts/siril-workspace.contract'
 import { NodeSirilWorkspace } from '../../src/main/adapters/node-siril-workspace'
 import { setupTestDb, teardownTestDb, seedFitsScan, seedFitsFile } from '../helpers/setup'
 
 sirilWorkspaceContract('in-memory', async frames => {
-  const fits = frames.filter(n => /\.(fit|fits|fts)$/i.test(n)).sort()
+  const fits = frames.filter(n => frameFileKind(n) !== null).sort()
   // The fake has no folders of its own; a frame type folder in the name stands for IMAGETYP.
   const typed = fits.map(name => ({ name, imageType: /\/(darks?|flats?|bias(es)?)\//i.exec(name)?.[1] ?? null }))
   const workspace = new InMemorySirilWorkspace().addSource('/src', ...typed)
@@ -19,7 +20,8 @@ sirilWorkspaceContract('in-memory', async frames => {
     sourceListing: async () => (workspace.source.get('/src') ?? []).map(f => f.name).sort(),
     workHas: async rel => workspace.placed.has(`/work/${rel}`),
     rewriteSource: async rel => void workspace.rewrite(`/src/${rel}`),
-    join: (dir, rel) => `${dir}/${rel}`
+    join: (dir, rel) => `${dir}/${rel}`,
+    workText: async rel => workspace.written.get(`/work/${rel}`) ?? null
   }
 })
 
@@ -50,7 +52,8 @@ sirilWorkspaceContract('Node', async frames => {
       fs.writeFileSync(`${target}.tmp`, `new content of ${rel}, longer than before`)
       fs.renameSync(`${target}.tmp`, target)
     },
-    join: (dir, rel) => path.join(dir, rel)
+    join: (dir, rel) => path.join(dir, rel),
+    workText: async rel => (fs.existsSync(path.join(workDir, rel)) ? fs.readFileSync(path.join(workDir, rel), 'utf-8') : null)
   }
 })
 

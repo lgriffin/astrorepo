@@ -1,4 +1,4 @@
-import type { ChannelGap, Job, NextAction, StackingSuggestion } from '@astro/domain'
+import type { ChannelGap, FilterSuggestion, Job, NextAction, StackingSuggestion } from '@astro/domain'
 import { mosaicPlannerLink } from '@shared/navigation'
 import type { Recommendation } from '@shared/types'
 import { targetLink } from '@shared/navigation'
@@ -17,6 +17,23 @@ export const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n 
 export function channelLine(gap: ChannelGap): string {
   const have = gap.haveSec > 0 ? formatDuration(gap.haveSec) : 'nothing yet'
   return `Capture ${gap.filter}: it has ${have} against ${formatDuration(gap.leadSec)} of ${gap.leadFilter}.`
+}
+
+/**
+ * The filter to capture tonight on a filter-wheel target (RIG-010): "Narrowband while the moon is
+ * bright: capture OIII, it has 40 m against 6 h of Ha."
+ */
+export function filterLine(s: FilterSuggestion): string {
+  const have = s.haveSec > 0 ? formatDuration(s.haveSec) : 'nothing yet'
+  const why = s.lag ? `it has ${have} against ${formatDuration(s.lag.leadSec)} of ${s.lag.leadFilter}` : `it has the least so far (${have})`
+  if (!s.suitsMoon) return `Capture ${s.filter}: ${why}.`
+  return `${s.brightMoon ? 'Narrowband while the moon is bright' : 'Broadband while the moon is dark'}: capture ${s.filter}, ${why}.`
+}
+
+/** The filter a capture names: the one for tonight's moon when the target uses a filter wheel, else the lagging one. */
+export function captureFilter(a: { filter?: FilterSuggestion | null; channel: ChannelGap | null }): { name: string; line: string } | null {
+  if (a.filter) return { name: a.filter.filter, line: filterLine(a.filter) }
+  return a.channel ? { name: a.channel.filter, line: channelLine(a.channel) } : null
 }
 
 /** Presents a core suggestion in the shape the existing Dashboard already renders. */
@@ -57,13 +74,14 @@ export function toNextActionRecommendation(a: NextAction): Recommendation {
   const parts: string[] = []
   if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
   if (a.shortOfGoalSec !== null && a.shortOfGoalSec > 0) parts.push(`${formatDuration(a.shortOfGoalSec)} short of your goal.`)
-  if (a.channel) parts.push(channelLine(a.channel))
+  const filter = captureFilter(a)
+  if (filter) parts.push(filter.line)
   parts.push(a.moonSeparationDeg === null ? 'The moon is down while it is up.' : `The moon comes within ${a.moonSeparationDeg}°.`)
   return {
     id: a.id,
     category: 'capture',
     priority: a.closesInDays !== null ? 'high' : 'medium',
-    title: `${a.targetName} · shoot tonight${a.channel ? ` in ${a.channel.filter}` : ''}, ${hours} above 30°`,
+    title: `${a.targetName} · shoot tonight${filter ? ` in ${filter.name}` : ''}, ${hours} above 30°`,
     description: parts.join(' '),
     targetId: a.targetId,
     targetName: a.targetName,

@@ -28,7 +28,7 @@ export interface WorkAreaSpace {
  */
 export interface SirilWorkspace {
   /**
-   * FITS frames in the source folder and its subfolders, with IMAGETYP when the catalogue knows it
+   * FITS and camera RAW frames (RIG-004) in the source folder and its subfolders, with IMAGETYP when the catalogue knows it
    * (else a hint from a folder named for the frame type, such as "darks").
    */
   listSourceFrames(sourceDir: string): Promise<{ path: string; name: string; imageType: string | null }[]>
@@ -57,6 +57,12 @@ export interface SirilWorkspace {
    * removed hard link leaves its source untouched. Returns the names that were there and are gone.
    */
   remove(workDir: string, folder: SirilFolder, names: string[]): Promise<string[]>
+  /**
+   * Writes a small text file, such as a comet's positions (RIG-014), at the top of the work folder,
+   * creating the folder if need be, and returns its path. `name` must be a bare file name: nothing
+   * is ever written outside the work folder.
+   */
+  writeText(workDir: string, name: string, text: string): Promise<string>
   /** Stacks a Siril run left in `workDir` (its result*.fit files), newest first. Writes nothing. */
   stackResults(workDir: string): Promise<{ path: string; sizeBytes: number; modifiedAt: Date | null }[]>
   /**

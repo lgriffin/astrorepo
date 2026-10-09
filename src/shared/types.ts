@@ -1007,6 +1007,55 @@ export interface SirilPlanView {
   gradingNote: string | null
   scripts: SirilScriptView[]
   advice: StackAdviceView
+  /** Set when some lights are camera RAW (RIG-004). */
+  rawNote: string | null
+  /** For mono lights with two filters or more: one stack per filter (RIG-006 to RIG-008). */
+  filters: FilterPlanView | null
+}
+
+/** One filter's stack in a mono plan (specs/026-other-rigs). */
+export interface FilterStackView {
+  filter: string
+  workDir: string
+  frames: string
+  needed: string | null
+  verdict: 'fits' | 'short' | 'unknown'
+  verdictText: string
+  /** The calibration Siril's mono script needs that this filter lacks, as a sentence. */
+  missing: string | null
+  /** The job runner can queue this filter's stack. */
+  canQueue: boolean
+  /** The channel master a finished stack left, or null when there is none yet. */
+  master: string | null
+}
+
+export interface FilterPlanView {
+  intro: string
+  /** Lights or flats no filter takes, and filters with no flats of their own. */
+  notes: string[]
+  stacks: FilterStackView[]
+  /** What to do with the channel masters once there are some. */
+  mastersNote: string
+}
+
+/** A comet's positions in its lights and the plan step that registers on it (specs/026-other-rigs). */
+export interface CometPlanView {
+  /** False for a target that is not a comet: nothing is shown (RIG-016). */
+  show: boolean
+  orbit: { name: string; text: string } | null
+  count: number
+  /** The first and last positions and a few between, for checking. */
+  positions: { frame: string; time: string; ra: string; dec: string }[]
+  undatedNote: string | null
+  motion: string | null
+  observerNote: string | null
+  /** The step that uses the positions file; null until there are positions. */
+  step: string | null
+  file: string | null
+  canWrite: boolean
+  writtenNote: string | null
+  /** Set when writing the positions file was refused; nothing was written. */
+  writeError?: string
 }
 
 export interface CockpitOverview {

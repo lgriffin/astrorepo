@@ -4,7 +4,8 @@
  * and everything here is trigonometry and counting.
  */
 
-import type { ChannelGap } from './stacking-advice'
+import type { ChannelGap, FilterTotal } from './stacking-advice'
+import { suggestFilter, type FilterSuggestion } from './mono-filters'
 
 export interface Site {
   latitudeDeg: number
@@ -26,6 +27,8 @@ export interface SkyTarget {
   hasFinal: boolean
   /** A filter far behind the target's best (ADV-010); absent or null when balanced. */
   channel?: ChannelGap | null
+  /** Integration per filter, luminance included, for the filter to capture tonight (RIG-010). */
+  filters?: FilterTotal[]
 }
 
 /** One moment inside a night's dark window. */
@@ -219,6 +222,8 @@ export interface TonightChoice {
   shortOfGoalSec: number | null
   /** The filter to capture tonight because it lags the others (ADV-010). */
   channel: ChannelGap | null
+  /** For a filter-wheel target: the filter to capture tonight, for the moon and the lagging channel (RIG-010). */
+  filter?: FilterSuggestion | null
 }
 
 export interface TonightPlan {
@@ -268,7 +273,8 @@ export function planTonight(
       usableHours: hours,
       moonSeparationDeg: closest === null ? null : Math.round(closest),
       shortOfGoalSec: t.shortOfGoalSec,
-      channel: t.channel ?? null
+      channel: t.channel ?? null,
+      filter: t.filters ? suggestFilter(t.filters, brightMoon) : null
     })
   }
   choices.sort((a, b) => b.usableHours - a.usableHours || a.targetName.localeCompare(b.targetName))

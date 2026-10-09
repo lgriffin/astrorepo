@@ -34,3 +34,5 @@ export type { MosaicStore, MosaicTarget, PlateSolver, SavedMosaic, SolveIO, Solv
 export * from './use-cases/sky-geometry'
 export type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore, WcsHeader } from './ports/gallery'
 export * from './use-cases/gallery'
+export type { CometStore } from './ports/comet-store'
+export * from './use-cases/plan-comet'

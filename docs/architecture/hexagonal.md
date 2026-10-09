@@ -49,6 +49,9 @@ flowchart LR
   UC -->|GalleryCatalogue, PaletteStore| A19[SqliteGalleryCatalogue, SqlitePaletteStore]
   A18 -->|worker thread| FS
   A19 --> DB
+  UC -->|CometStore| A20[SqliteCometStore]
+  UC -->|Ephemeris| A21[AstronomyEngineEphemeris]
+  A20 --> DB
   A10 --> WA
   A11 --> WA
   A11 --> AR[(archive folder)]
@@ -73,27 +76,37 @@ flowchart LR
 | `discoverTargets`, `discoverTarget` | `discoverTarget`, `deriveProgress` | FrameCatalogue | `cockpit:overview`, `discovery:target` | 010 |
 | `reportHiddenData` | `reportHiddenData`, `calibrates`, `groupDuplicates` | FrameCatalogue, FileHashStore | `cockpit:overview` | 010, 011 |
 | `findDuplicates` | `isHashCurrent`, `duplicateCandidates`, `groupDuplicates` | FileIndex, ContentHasher, FileHashStore | `ingest:find-duplicates` | 011 |
-| `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace (`place`, `remove`), FrameSelection (grading) | `home:prep-siril` | 011, 019 |
-| `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict`, `estimateStackMemory`, `memoryFit`, `drizzleAdvice`, `rejectionAdvice`, `checkCalibration`, `planNights` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`), FrameSelection (grading), MemoryProbe | `siril:estimate` | 014, 019, 020 |
+| `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor`, `framesForFilter` | SirilWorkspace (`place`, `remove`, `frameDetails` for one filter), FrameSelection (grading) | `home:prep-siril` | 011, 019, 026 |
+| `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict`, `estimateStackMemory`, `memoryFit`, `drizzleAdvice`, `rejectionAdvice`, `checkCalibration`, `planNights`, `cameraRawSummary`, `planFilterStacks`, `filterWorkDir` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`, `stackResults`), FrameSelection (grading), MemoryProbe | `siril:estimate` | 014, 019, 020, 026 |
 | `listTools`, `checkCatalogues` | `toolWarnings`, `catalogueStatus`, `astapCatalogues`, `catalogueFiles` | ToolHub (`locate`, `catalogueFolders`), AppPathsRegistry (inside NodeToolHub) | `tools:list` | 015, 023 |
 | `checkToolHealth`, `listSyqonModels` | `parseToolVersion`, `parseSyqonModels`, `interpretExit` | ToolHub, ToolProbe | `tools:health` | 023 |
 | `planPostProcessing` | `buildPostProcessRecipe`, `profileForObjectType`, `formatCoords`, `postProcessingSpace`, `catalogueBlock`, `postProcessCatalogues` | StackCatalogue, ToolHub, SirilWorkspace (`stackResults`, `workAreaSpace`, `contains`) | `recipe:post-process` | 015, 023 |
 | `planSyqon` | `syqonModelsFor`, `syqonOutputPath`, `syqonCommand`, `syqonNeededBytes`, `spaceVerdict` | StackCatalogue, ToolHub (`listFolder`), SirilWorkspace, ToolProbe (through `listSyqonModels`) | `recipe:syqon` | 023 |
-| `queueStack`, `queuePostProcess`, `queueSyqon` | `sirilStackCommand`, `postProcessCommand`, `syqonCommand` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun`, `planPostProcessing` and `planSyqon`) | `jobs:queue-stack`, `jobs:queue-post-process`, `jobs:queue-syqon` | 016, 023 |
+| `queueStack`, `queuePostProcess`, `queueSyqon` | `sirilStackCommand`, `postProcessCommand`, `syqonCommand`, `filterWorkDir` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun`, `planPostProcessing` and `planSyqon`) | `jobs:queue-stack`, `jobs:queue-post-process`, `jobs:queue-syqon` | 016, 023, 026 |
 | `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption`, `splitSirilScript`, `runKey`, `resumeFrom`, `newResults`, `stackManifest`, `explainSirilFailure`, `interpretExit`, `runToolOf`, `parseLiveProgress` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`, `stackResults`), RunArea, Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016, 021, 023 |
 | `makeFrameGrading` (`measureBatch`, `grade`, `setOverride`, `setNightOverride`, `exportCsv`, `rejected`, `reportFor`) | `measureFrame`, `binBayer`, `gradeFrames`, `rejectedPaths`, `gradesCsv` | FrameGradeStore, FrameMeasurer, GradeLimitsSource, Clock | `grades:target`, `grades:measure`, `grades:override`, `grades:override-night`, `grades:export`, `grades:limits` | 019, 020 |
 | `makeArchiveTarget` (`preview`, `archive`) | `summariseWorkFolder`, `freedBytes`, `parseStackManifest`, `namedFrames`, `planArchive`, `removalChoice`, `archiveFolderName`, `archiveSpace` | ArchiveArea, ArchiveStore, FrameCatalogue, StackCatalogue (`describeTarget`), JobStore (`list`), SirilWorkspace (`contains`), Clock | `archive:preview`, `archive:run` | 022 |
 | `makeGallery` (`openFile`, `images`, `previewImage`, `palettes`, `palettePreview`, `choosePalette`) | `inspectImage`, `previewImage`, `autoStretch`, `channelSources`, `possiblePalettes`, `fieldFromWcs`, `skyOverlay` | ImagePixels, GalleryCatalogue, PaletteStore, Clock | `inspect:file`, `gallery:images`, `gallery:preview`, `gallery:palettes`, `gallery:palette-preview`, `gallery:choose-palette` | 025 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
-| `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours`, `channelGap` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
+| `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours`, `channelGap`, `filterTotals`, `suggestFilter` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012, 020, 026 |
 | `makePreferredSolver`, `queueSolves`, `runSolveJob` (inside the job runner) | `chooseSolver`, `planSolves`, `fieldFromWcs`, `astapCommand`, `parseAstapResult`, `sirilSolveScript`, `parseSirilSolve`, `solveJobCommand` | PlateSolver, SolveStore, MosaicStore, ToolHub, JobStore, Clock | `sky:solve-target` | 024 |
 | `describeTargetGeometry` | `misfiledCheck`, `rotationByNight`, `groupPanels`, `overlapsAny` | SolveStore, MosaicStore (`linkPanels`) | `sky:target-geometry` | 024 |
 | `planMosaic`, `saveMosaicPlan`, `exportMosaicCsv`, `listMosaicGaps` | `planMosaic`, `offsetPosition`, `mosaicNights`, `mosaicCsv`, `groupPanels`, `rankNextActions` | MosaicStore, SolveStore, PlanningSettings, Ephemeris, Clock | `mosaic:plan`, `mosaic:save`, `mosaic:export`, `recommendations:list` | 024 |
+| `setCometOrbit`, `planComet` | `parseMpcComet`, `orbitPlanePosition`, `cometPosition`, `midExposure`, `cometMotion`, `cometPositionsCsv` | CometStore, SirilWorkspace (`listSourceFrames`, `frameDetails`, `writeText`, `contains`), FrameSelection (grading), Ephemeris (`observerPositions`), PlanningSettings, StackCatalogue | `comet:plan`, `comet:set-orbit`, `comet:write-positions` | 026 |
 
-The legacy FITS scan (`services/fits-analyzer.ts`) uses the domain's `planRescan` for its fast
+The legacy FITS scan (`services/fits-analyzer.ts`) also indexes camera RAW (spec 026): the
+domain's `frameFileKind` says which files are frames, `src/main/raw/tiff-exif.ts` reads a RAW file's
+TIFF and EXIF tags without decoding a pixel, and the domain's `rawHeaders` names them as FITS
+headers, so RAW rows land in `fits_files` (with `source_format = 'raw'`) beside FITS ones.
+
+The legacy FITS scan uses the domain's `planRescan` for its fast
 path and writes unreadable files to `quarantined_files`. It is paced by the domain's `restAfter`
 through `services/scan-pacer.ts` (spec 018), so it rests between small slices of work and can be
 cancelled. Moving the scan itself into the core is the next step for ingest.
+
+The Ephemeris port also hands the domain where the observer is (`observerPositions`, heliocentric
+J2000), so a comet's two-body orbit is solved in the domain and only the Earth comes from
+astronomy-engine.
 
 The Ephemeris port hands the domain sidereal time and the moon for each half hour of a night's dark
 window, so altitude, separation and every planning rule are plain trigonometry in the domain. The

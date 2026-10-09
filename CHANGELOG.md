@@ -62,6 +62,14 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   whether the image is mirrored; the slider shows each image's own grid; a file is read once for
   its figures and preview, one at a time on the worker; PNGs are size-checked from the header and
   inflated no further than their stated size; a broadband LP filter gives red, green and blue, while a Seestar's LP filter stays dual-band.
+- **Other rigs** (spec 026): DSLR and mirrorless camera RAW (CR2, NEF, ARW, DNG and other
+  TIFF-based RAW) indexed from its tags, with ISO as gain, and stacked with Siril's colour script;
+  CR3 and RAF listed as found but not read. Mono lights with several filters stacked one filter at
+  a time in their own work folders, with flats checked per filter and each channel master listed.
+  Tonight's plan names the filter to shoot on a filter-wheel target, for the moon and the lagging
+  channel. Comets take their orbit from the Minor Planet Center's line; the app works out where the
+  comet is in every light and writes the positions file for Siril's comet registration. None of
+  it shows for a Seestar or Vespera target.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one
