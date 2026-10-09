@@ -42,6 +42,14 @@ describe('NodeProcessRunner', () => {
     expect(priorities).toEqual([os.constants.priority.PRIORITY_BELOW_NORMAL])
   })
 
+  it('[HUB-011] Given a program writing to both streams, When run, Then each piece of output says which stream it came from', async () => {
+    const seen: [string, string | undefined][] = []
+    const run = new NodeProcessRunner().run(node("process.stdout.write('D:/out.fit'); process.stderr.write('50%')"), (t, stream) => seen.push([t, stream]))
+    expect((await run.done).exitCode).toBe(0)
+    expect(seen).toContainEqual(['D:/out.fit', 'stdout'])
+    expect(seen).toContainEqual(['50%', 'stderr'])
+  })
+
   it('[NFR-012] Given arguments holding shell characters, When run, Then the program receives them literally', async () => {
     let out = ''
     const odd = 'D:/100% M42 & "x"/$(echo hi);`id`.fit'

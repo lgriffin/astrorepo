@@ -1,33 +1,46 @@
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { FakeToolHub, InMemoryStackCatalogue } from '@astro/testkit'
+import { CATALOGUE_SAMPLES, FakeAppPathsRegistry, FakeToolHub, InMemoryStackCatalogue } from '@astro/testkit'
 import { stackCatalogueContract, toolHubContract } from '@astro/testkit/contracts/tools.contract'
-import { toolSpec, type ToolId } from '@astro/domain'
-import { NodeToolHub } from '../../src/main/adapters/node-tool-hub'
+import { CATALOGUES, toolSpec, type ToolId } from '@astro/domain'
+import { NodeToolHub, type NodeToolHubOptions } from '../../src/main/adapters/node-tool-hub'
 import { SqliteStackCatalogue } from '../../src/main/adapters/sqlite-stack-catalogue'
 import { seedFitsFile, seedFitsScan, seedTarget, setupTestDb, teardownTestDb } from '../helpers/setup'
 
 const win = (p: string) => path.win32.normalize(p)
 
-/** A Windows hub over a pretend disk holding `files`. */
-function windowsHub(files: string[], settings: Record<string, string> = {}, PATH = '') {
+/** A Windows hub over a pretend disk holding `files`, and folders with the names in `dirs`. */
+function windowsHub(files: string[], settings: Record<string, string> = {}, PATH = '', dirs: Record<string, string[]> = {}, extra: Partial<NodeToolHubOptions> = {}) {
   const disk = new Set(files.map(f => win(f).toLowerCase()))
+  const folders = new Map(Object.entries(dirs).map(([d, names]) => [win(d).toLowerCase().replace(/\\$/, ''), names]))
   return new NodeToolHub({
     platform: 'win32',
     env: { PATH },
     home: 'C:\\Users\\leigh',
     setting: key => settings[key] ?? null,
-    exists: p => disk.has(win(p).toLowerCase())
+    exists: p => disk.has(win(p).toLowerCase()),
+    listDir: d => folders.get(win(d).toLowerCase().replace(/\\$/, '')) ?? null,
+    ...extra
   })
 }
 
-toolHubContract('fake', installed => {
+toolHubContract('fake', (installed, without = []) => {
   const hub = new FakeToolHub()
   const all = new FakeToolHub().installAll()
-  for (const id of installed) hub.install(id, all.found.get(id) ?? '')
+  for (const id of installed) hub.install(id, all.found.get(id) ?? toolSpec(id).standard.windows[0])
+  for (const c of CATALOGUES) if (without.includes(c.tool)) hub.removeCatalogue(c.id)
   return hub
 })
-toolHubContract('Node', installed => windowsHub(installed.map(id => toolSpec(id).standard.windows[0])))
+toolHubContract('Node', (installed, without = []) => {
+  const files = installed.map(id => toolSpec(id).standard.windows[0])
+  const dirs: Record<string, string[]> = {}
+  for (const id of installed) {
+    const dir = path.win32.dirname(win(toolSpec(id).standard.windows[0]))
+    const names = CATALOGUES.filter(c => c.tool === id && !without.includes(id)).flatMap(c => CATALOGUE_SAMPLES[c.id])
+    dirs[dir] = [path.win32.basename(toolSpec(id).standard.windows[0]), ...names]
+  }
+  return windowsHub(files, {}, '', dirs)
+})
 
 stackCatalogueContract('in-memory', seed => {
   const c = new InMemoryStackCatalogue().addTarget(seed.targetId, seed.target)
@@ -120,6 +133,87 @@ describe('NodeToolHub', () => {
       exists: p => ['/usr/bin/siril-cli', '/usr/share/siril/scripts/OSC_Preprocessing.ssf'].includes(p)
     })
     expect(await hub.stockScript('OSC_Preprocessing.ssf')).toBe('/usr/share/siril/scripts/OSC_Preprocessing.ssf')
+  })
+})
+
+describe('NodeToolHub: SyQon CLI and ASTAP', () => {
+  const syqonAt = (statuses: { id: string }[]) => statuses.find(s => s.id === 'syqon')
+
+  it('[HUB-006] Given SyQon in every place, When located, Then your setting wins, then SYQON_CLI_PATH, then the install folder, then App Paths', async () => {
+    const setting = 'D:\\Tools\\syqon-cli.exe'
+    const env = 'E:\\SyQon\\syqon-cli.exe'
+    const local = 'C:\\Users\\leigh\\AppData\\Local\\Programs\\SyQon Studio\\syqon-cli.exe'
+    const reg = 'F:\\Apps\\syqon-cli.exe'
+    const registry = new FakeAppPathsRegistry().register('syqon-cli.exe', reg)
+    const hub = (files: string[], settings: Record<string, string> = {}, vars: Record<string, string> = {}) =>
+      windowsHub(files, settings, '', {}, { env: { PATH: '', ...vars }, registry })
+    const all = [setting, env, local, reg]
+    expect(syqonAt(await hub(all, { tool_path_syqon: setting }, { SYQON_CLI_PATH: env }).locate())).toMatchObject({ path: win(setting), source: 'setting' })
+    expect(syqonAt(await hub(all, {}, { SYQON_CLI_PATH: `"${env}"` }).locate())).toMatchObject({ path: win(env), source: 'env' })
+    expect(syqonAt(await hub(all).locate())).toMatchObject({ path: win(local), source: 'standard' })
+    expect(syqonAt(await hub([reg]).locate())).toMatchObject({ path: win(reg), source: 'registry' })
+  })
+
+  it('[HUB-006] Given %LOCALAPPDATA% and %ProgramFiles% set, When SyQon is looked for, Then the install folders use them; a stale SYQON_CLI_PATH is passed over', async () => {
+    const programFiles = 'D:\\Programs\\SyQon Studio\\syqon-cli.exe'
+    const hub = windowsHub([programFiles], {}, '', {}, { env: { PATH: '', LOCALAPPDATA: 'X:\\Local', ProgramFiles: 'D:\\Programs', SYQON_CLI_PATH: 'Q:\\gone.exe' } })
+    expect(syqonAt(await hub.locate())).toMatchObject({ path: win(programFiles), source: 'standard' })
+  })
+
+  it('[HUB-006] Given SyQon nowhere, When located, Then every place is listed, the registry key last; PATH is not one of them', async () => {
+    const hub = windowsHub([], { tool_path_syqon: 'D:\\Gone\\syqon-cli.exe' }, 'E:\\bin', {}, { env: { PATH: 'E:\\bin', SYQON_CLI_PATH: 'Q:\\syqon-cli.exe' }, registry: new FakeAppPathsRegistry() })
+    const syqon = (await hub.locate()).find(s => s.id === 'syqon')
+    expect(syqon).toMatchObject({ path: null, settingMissing: true })
+    expect(syqon?.looked).toEqual([
+      win('D:\\Gone\\syqon-cli.exe'),
+      win('Q:\\syqon-cli.exe'),
+      win('C:\\Users\\leigh\\AppData\\Local\\Programs\\SyQon Studio\\syqon-cli.exe'),
+      win('C:\\Program Files\\SyQon Studio\\syqon-cli.exe'),
+      'App Paths\\syqon-cli.exe in the registry'
+    ])
+  })
+
+  it('[HUB-006] Given Linux, When SyQon is looked for, Then only your setting and SYQON_CLI_PATH are tried and the registry is never asked', async () => {
+    let asked = false
+    const hub = new NodeToolHub({
+      platform: 'linux',
+      env: { PATH: '/usr/bin', SYQON_CLI_PATH: '/opt/syqon/syqon-cli' },
+      home: '/home/leigh',
+      setting: () => null,
+      exists: p => p === '/opt/syqon/syqon-cli',
+      registry: { lookup: async () => ((asked = true), ['/x']) }
+    })
+    expect(syqonAt(await hub.locate())).toMatchObject({ path: '/opt/syqon/syqon-cli', source: 'env' })
+    expect(asked).toBe(false)
+  })
+
+  it('[HUB-015] Given ASTAP on PATH, When located, Then it is found there and its star database is looked for beside it first', async () => {
+    const hub = windowsHub(['E:\\astap\\astap.exe'], { catalogue_path_astap: 'G:\\stars' }, 'E:\\astap', { 'E:\\astap': ['astap.exe', 'd50_0101.1476'] })
+    const astap = (await hub.locate()).find(s => s.id === 'astap')
+    expect(astap).toMatchObject({ path: win('E:\\astap\\astap.exe'), source: 'path' })
+    const folders = await hub.catalogueFolders('astap-stars', astap?.path ?? null)
+    expect(folders.map(f => f.dir)).toEqual([win('G:\\stars'), win('E:\\astap'), win('C:/Program Files/astap')])
+    expect(folders[1].names).toEqual(['astap.exe', 'd50_0101.1476'])
+    expect(folders[0].names).toBeNull()
+  })
+
+  it("[HUB-009] Given Siril installed, When its Gaia catalogue folders are listed, Then Siril's own share folder comes before the user's AppData", async () => {
+    const hub = windowsHub([], {}, '', {}, { env: { PATH: '', LOCALAPPDATA: 'C:\\Users\\leigh\\AppData\\Local' } })
+    const folders = await hub.catalogueFolders('siril-spcc', 'C:\\Program Files\\Siril\\bin\\siril-cli.exe')
+    expect(folders.map(f => f.dir)).toEqual([
+      win('C:\\Program Files\\Siril\\share\\siril\\catalogue'),
+      win('C:\\Users\\leigh\\AppData\\Local\\siril\\catalogue'),
+      win('C:\\Users\\leigh\\AppData\\Local\\siril')
+    ])
+    expect(await hub.catalogueFolders('rc-astro-models', null)).toEqual([])
+  })
+
+  it('[HUB-009] Given Linux and no folders on disk, When catalogue folders are listed, Then home is expanded and the real file system answers', async () => {
+    const hub = new NodeToolHub({ platform: 'linux', env: {}, home: '/home/leigh', setting: () => null })
+    const folders = await hub.catalogueFolders('siril-spcc', '/usr/bin/siril-cli')
+    expect(folders.map(f => f.dir)).toEqual(['/usr/share/siril/catalogue', '/home/leigh/.local/share/siril/catalogue', '/home/leigh/.local/share/siril'])
+    expect(await hub.listFolder(path.join(__dirname, 'no-such-folder'))).toBeNull()
+    expect(await hub.listFolder(__dirname)).toContain('tools.test.ts')
   })
 })
 

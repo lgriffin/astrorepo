@@ -1080,12 +1080,63 @@ export interface ToolView {
   /** Set when Siril_Scripts v2 will not run it from where it was found. */
   warning: string | null
   notNeeded: boolean
+  /** No step the app runs today needs it (SyQon CLI, ASTAP), so a missing one is not a gap. */
+  optional: boolean
+  /** The catalogues it needs (specs/023-hub-syqon). */
+  catalogues: CatalogueView[]
+}
+
+/** A catalogue a tool needs: ASTAP's star database, Siril's Gaia SPCC catalogue, RC Astro's models. */
+export interface CatalogueView {
+  id: string
+  label: string
+  state: 'present' | 'missing' | 'not-checked'
+  /** "Installed in C:\Program Files\astap: D50 (1476 files)." or what to do when it is missing. */
+  text: string
+  /** Folders looked in when missing. */
+  looked: string[]
+  /** app_settings key for a folder the user names. */
+  settingKey: string
 }
 
 export interface ToolsView {
   windows: boolean
   summary: string
   tools: ToolView[]
+  /** Labels of catalogues missing for tools that are found, for the Get set up checklist. */
+  missingCatalogues: string[]
+}
+
+/** Each tool's version and SyQon's models, from asking the tools themselves (specs/023-hub-syqon). */
+export interface ToolHealthView {
+  /** By tool id: "1.4.0", or "Unknown". */
+  versions: Record<string, string>
+  /** Every model the SyQon CLI listed; null when it could not be asked. */
+  models: { id: string; step: string; available: boolean; status: string }[] | null
+  /** Why the models are not listed; null when they are. */
+  modelsNote: string | null
+}
+
+/** One SyQon CLI step for a target's stack (specs/023-hub-syqon). */
+export interface SyqonView {
+  /** Set when there is nothing to run yet, saying why. */
+  message: string | null
+  stacks: { path: string; label: string }[]
+  stackPath: string | null
+  steps: { id: string; label: string }[]
+  step: string
+  /** Models the account may use for the step. */
+  models: string[]
+  model: string | null
+  output: string | null
+  outputExists: boolean
+  overwrite: boolean
+  /** The program and arguments, as the Jobs page shows them. */
+  command: string | null
+  space: string | null
+  /** Why it cannot be queued; null when it can. */
+  blocked: string | null
+  canQueue: boolean
 }
 
 /** A target's Siril_Scripts v2 recipe (specs/015-tool-hub). */
@@ -1101,9 +1152,11 @@ export interface PostProcessView {
   qualities: string[]
   /** The command to run; null while a required tool is missing. */
   command: string | null
-  /** The job runner can queue it: every tool found where Siril_Scripts runs it, the stack outside the read-only folders, and room on the disk. */
+  /** The job runner can queue it: every tool found where Siril_Scripts runs it, its catalogues installed, the stack outside the read-only folders, and room on the disk. */
   canQueue: boolean
   missing: string | null
+  /** Names the catalogues the run needs that are not installed (specs/023-hub-syqon). */
+  catalogues: string | null
   skipped: string[]
   warnings: string[]
   outputDir: string | null
@@ -1118,7 +1171,7 @@ export interface JobView {
   /** The target the job works on, so its page can list it. */
   targetId: string
   title: string
-  kind: 'stack' | 'post-process'
+  kind: 'stack' | 'post-process' | 'syqon'
   state: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
   stateLabel: string
   timing: 'window' | 'now'

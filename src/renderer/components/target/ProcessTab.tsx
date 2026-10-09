@@ -7,7 +7,7 @@ import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
 import { ArchiveCard } from './ArchiveCard'
 import { runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
-import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView } from '@shared/types'
+import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView, SyqonView } from '@shared/types'
 
 /**
  * Stack and process (UX-010): the steps from a target's raw frames to a processed image, in
@@ -65,6 +65,11 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
       <Card title="3 · Post-process">
         {runs.postProcess && <RunBanner job={runs.postProcess} />}
         <PostProcessing targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.postProcess !== null || view === null} />
+        <div className="mt-4 pt-3 border-t border-astro-border">
+          <h3 className="text-xs font-semibold text-astro-muted uppercase tracking-wider mb-2">SyQon Studio</h3>
+          {runs.syqon && <RunBanner job={runs.syqon} />}
+          <SyqonSteps targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.syqon !== null || view === null} />
+        </div>
       </Card>
 
       <TargetRunsCard runs={runs} unreadable={unreadable && view === null} />
@@ -392,6 +397,7 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
       </div>
       <p className="text-xs text-astro-muted">{view.profileReason}</p>
       {view.missing && <p className="text-xs text-yellow-400">{view.missing}</p>}
+      {view.catalogues && <p className="text-xs text-yellow-400">{view.catalogues}</p>}
       {view.command && (
         <div className="flex gap-2 items-start">
           <code className="flex-1 block bg-astro-bg border border-astro-border rounded px-2 py-1.5 text-[11px] text-astro-text break-all">{view.command}</code>
@@ -436,6 +442,87 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
         />
       )}
       <p className="text-[10px] text-astro-muted">Queue it to run on this PC in the run window, or copy the command into Command Prompt.</p>
+    </div>
+  )
+}
+
+/**
+ * One SyQon CLI step for this target's stack (specs/023-hub-syqon): star separation, sharpening,
+ * denoise or gradient removal, with the models the account may use. An existing output is only
+ * replaced when the user ticks Replace it.
+ */
+function SyqonSteps({ targetId, rawPath, onQueued, queued }: { targetId: string; rawPath: string | null; onQueued: () => void; queued: boolean }): React.ReactElement {
+  const [view, setView] = useState<SyqonView | null>(null)
+  const [choice, setChoice] = useState<{ stack_path?: string; step?: string; model?: string; overwrite?: boolean }>({})
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let current = true
+    setFailed(false)
+    invoke<SyqonView>('recipe:syqon', { target_id: targetId, ...(rawPath ? { raw_path: rawPath } : {}), ...choice })
+      .then(v => current && setView(v))
+      .catch(() => current && setFailed(true))
+    return () => {
+      current = false
+    }
+  }, [targetId, rawPath, choice])
+
+  if (failed) return <p className="text-xs text-astro-muted">The SyQon steps could not be worked out.</p>
+  if (!view) return <p className="text-xs text-astro-muted">Asking the SyQon CLI for its models…</p>
+  if (view.message) return <p className="text-sm text-astro-muted">{view.message}</p>
+
+  const select = 'bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs text-astro-text'
+  const stackLabel = view.stacks.find(s => s.path === view.stackPath)?.label ?? view.stackPath
+  const stepLabel = view.steps.find(s => s.id === view.step)?.label ?? view.step
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 items-center text-xs">
+        {view.stacks.length > 1 && (
+          <select className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value }))}>
+            {view.stacks.map(s => <option key={s.path} value={s.path}>{s.label}</option>)}
+          </select>
+        )}
+        <select className={select} value={view.step} onChange={e => setChoice(c => ({ ...c, step: e.target.value, model: undefined, overwrite: false }))}>
+          {view.steps.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        {view.models.length > 0 && (
+          <select className={select} value={view.model ?? ''} onChange={e => setChoice(c => ({ ...c, model: e.target.value }))}>
+            {view.models.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        )}
+        {view.outputExists && (
+          <label className="flex items-center gap-1 text-astro-muted">
+            <input type="checkbox" checked={view.overwrite} onChange={e => setChoice(c => ({ ...c, overwrite: e.target.checked }))} />
+            Replace it
+          </label>
+        )}
+      </div>
+      {view.output && <p className="text-xs text-astro-muted">Writes <span className="font-mono">{view.output}</span>{view.outputExists ? (view.overwrite ? ', replacing the file already there.' : ', where a file is already there.') : '.'}</p>}
+      {view.space && <p className="text-xs text-astro-muted">{view.space}</p>}
+      {view.command && <code className="block bg-astro-bg border border-astro-border rounded px-2 py-1.5 text-[11px] text-astro-text break-all">{view.command}</code>}
+      {view.blocked && <p className="text-xs text-yellow-400">{view.blocked}</p>}
+      {view.canQueue && view.model && view.stackPath && !queued && (
+        <QueueJob
+          label="Queue this step"
+          confirm={[
+            `SyQon ${view.model} runs ${stepLabel.toLowerCase()} on ${stackLabel}.`,
+            ...(view.output ? [`Writes ${view.output}${view.overwrite ? ', replacing the file already there' : ''}.`] : []),
+            ...(view.space ? [view.space] : [])
+          ]}
+          onQueue={timing =>
+            invoke<QueueResult>('jobs:queue-syqon', {
+              target_id: targetId,
+              stack_path: view.stackPath ?? undefined,
+              step: view.step,
+              model: view.model ?? '',
+              overwrite: view.overwrite,
+              timing
+            })
+          }
+          onQueued={onQueued}
+        />
+      )}
+      <p className="text-[10px] text-astro-muted">The app runs the SyQon CLI you installed; it never ships it.</p>
     </div>
   )
 }

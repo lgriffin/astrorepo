@@ -1,10 +1,11 @@
-import { parentDir, postProcessCommand, sirilStackCommand, toolSpec, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
+import { parentDir, postProcessCommand, sirilStackCommand, SYQON_STEP_INFO, toolSpec, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
 import type { Clock } from '../ports/clock'
 import type { JobStore } from '../ports/jobs'
 import type { StackCatalogue } from '../ports/stack-catalogue'
 import type { ToolHub } from '../ports/tool-hub'
 import type { EstimateSirilRun } from './estimate-siril-run'
 import type { PlanPostProcessing, PostProcessingOptions } from './plan-post-processing'
+import type { PlanSyqon, SyqonOptions } from './plan-syqon'
 
 /** A confirmed plan that no longer holds when the app works it out again, so nothing is queued. */
 export class JobRefusedError extends Error {
@@ -88,6 +89,7 @@ export function makeQueuePostProcess(deps: QueuePostProcessDeps): QueuePostProce
     if (recipe.misplaced.length > 0) {
       throw new JobRefusedError(`Siril_Scripts v2 only runs ${recipe.misplaced.map(id => toolSpec(id).label).join(' and ')} from its standard install folder, where it is not installed, so the run would fail.`)
     }
+    if (recipe.missingCatalogues) throw new JobRefusedError(recipe.missingCatalogues)
     if (recipe.inReadOnlyFolder) throw new JobRefusedError('The stack is in a folder the app only reads, and Siril_Scripts writes beside it. Stack it into the work area, or copy it there, first.')
     if (recipe.space.headroomBytes === null && recipe.space.shortBytes === null) throw new JobRefusedError("The stack's disk does not report its free space, so the run could fill it.")
     if (!recipe.space.fits) throw new JobRefusedError("The stack's disk is short of the space Siril_Scripts needs.")
@@ -104,6 +106,43 @@ export function makeQueuePostProcess(deps: QueuePostProcessDeps): QueuePostProce
         prepare: null,
         spaceDir: stackDir,
         neededBytes: recipe.peakBytes
+      },
+      deps.clock.now()
+    )
+  }
+}
+
+export interface QueueSyqonDeps {
+  plan: PlanSyqon
+  store: JobStore
+  clock: Clock
+}
+
+export type QueueSyqon = (targetId: string, options: SyqonOptions & Required<Pick<SyqonOptions, 'step' | 'model'>>, timing: JobTiming) => Promise<Job>
+
+/**
+ * Queues one SyQon CLI step the user confirmed (HUB-011). The plan is worked out again: the model
+ * must still be one the CLI reports as available, the stack the confirmed one, and the output
+ * replaced only when the user said so.
+ */
+export function makeQueueSyqon(deps: QueueSyqonDeps): QueueSyqon {
+  return async (targetId, options, timing) => {
+    const plan = await deps.plan(targetId, options)
+    const { stack, target, command } = plan
+    if (!target || !stack) throw new JobRefusedError(plan.blocked ?? 'This target has no stack for SyQon.')
+    if (options.stackPath && stack.path !== options.stackPath) throw new JobRefusedError(`${options.stackPath} is no longer there for SyQon.`)
+    if (plan.blocked) throw new JobRefusedError(plan.blocked)
+    if (plan.model !== options.model || !command) throw new JobRefusedError(`The SyQon CLI does not report ${options.model} as available for this step any more.`)
+    return deps.store.add(
+      {
+        kind: 'syqon',
+        targetId,
+        title: `${SYQON_STEP_INFO[plan.step].label} for ${target.name} with SyQon ${plan.model}`,
+        timing,
+        command,
+        prepare: null,
+        spaceDir: parentDir(stack.path).dir,
+        neededBytes: plan.neededBytes
       },
       deps.clock.now()
     )

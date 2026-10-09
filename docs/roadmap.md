@@ -26,7 +26,7 @@ when the code says otherwise, and the reasons are recorded here.
 | Q2 · Stacking advice | Memory beside the disk estimate; drizzle and rejection advice from image scale and frame count; calibration gaps explained; one stacking plan across nights; channel balance suggestions | [020](../specs/020-stacking-advice/requirements.md) | Done |
 | P1 · Provenance | A manifest beside every master; outputs staged and published only on success; long stacks resume by stage; a processing timeline per target; known Siril failures explained | [021](../specs/021-provenance/requirements.md) | Done |
 | P2 · Archive | Archive a finished target, linked or self-contained, with the space each intermediate frees shown first | [022](../specs/022-archive/requirements.md) | Done |
-| N · Hub: SyQon CLI and tool health | SyQon CLI found and run like RC Astro; tool versions and the catalogues each needs; one exit-code contract for every tool | [023](../specs/023-hub-syqon/requirements.md) | Planned |
+| N · Hub: SyQon CLI and tool health | SyQon CLI found and run like RC Astro; tool versions and the catalogues each needs; one exit-code contract for every tool | [023](../specs/023-hub-syqon/requirements.md) | Done |
 | D · Sky geometry | Plate solving with ASTAP, Siril as fallback; a mosaic planner on the Sky planner; panels grouped from their solves | [024](../specs/024-sky-geometry/requirements.md) | Planned |
 | H1 · Gallery inspector | Histogram and clipping per file; palette suggestions with a preview; compare two images; a coordinate grid and catalogue labels on solved images | [025](../specs/025-gallery-inspector/requirements.md) | Planned |
 | O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels planned per filter; comets stacked on their motion | [026](../specs/026-other-rigs/requirements.md) | Planned |
@@ -94,6 +94,15 @@ app has run on real data on the Windows PC and the licence is settled.
   removes, so it copies when he presses Archive, into a staging folder that is renamed into place
   only when every copy checks out. Only intermediates a stack manifest can rebuild are offered for
   removal, and hard-linked frames are shown as freeing nothing.
+- **Checking a tool runs it, a little** (spec 023). A tool's version and SyQon's models can only
+  come from the tools themselves, so Settings runs each tool's version flag and
+  `syqon-cli --list-models`, and nothing else; finding tools and building recipes still run
+  nothing. A catalogue a found tool cannot run without (ASTAP's stars, RC Astro's models) blocks
+  the step that needs it, rather than letting it fail at night. Siril's Gaia SPCC files are shown
+  but optional, since Siril's colour calibration fetches Gaia data online without them. ASTAP is checked
+  for health only; plate solving stays in slice D, which reuses `astapCatalogues`. Several SyQon
+  details the developer pages do not name (exit codes 1 to 3 and 5 to 7, the run flags) are
+  assumptions listed in spec 023 to confirm.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
   index and plate solves; browsing finished images across the NAS (H2) waits for where files live
   ([#38](https://github.com/lgriffin/astrorepo/issues/38)).

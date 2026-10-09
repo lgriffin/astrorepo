@@ -10,10 +10,12 @@ export interface SetupState {
   lastLibraryScanFolder: string | null
   /** Siril was found by the tool hub; null when the hub could not be asked. */
   sirilFound: boolean | null
+  /** Catalogues missing for tools that are found (specs/023-hub-syqon); null or absent when unknown. */
+  missingCatalogues?: string[] | null
 }
 
 export interface SetupStep {
-  id: 'site' | 'folder' | 'scan' | 'siril'
+  id: 'site' | 'folder' | 'scan' | 'siril' | 'catalogues'
   label: string
   /** Why the step matters, in one line. */
   why: string
@@ -63,7 +65,20 @@ export function setupSteps(s: SetupState): SetupStep[] {
       done: s.sirilFound !== false,
       link: settingsLink('tools'),
       linkLabel: 'Open Tools'
-    }
+    },
+    // Shown only while a found tool lacks a catalogue, so a user without ASTAP is never asked for its stars (HUB-010).
+    ...(s.missingCatalogues && s.missingCatalogues.length > 0
+      ? [
+          {
+            id: 'catalogues' as const,
+            label: 'Install the catalogues your tools need',
+            why: `Not installed: ${s.missingCatalogues.join(', ')}. Steps that need ${s.missingCatalogues.length === 1 ? 'it' : 'them'} cannot be queued.`,
+            done: false,
+            link: settingsLink('tools'),
+            linkLabel: 'Open Tools'
+          }
+        ]
+      : [])
   ]
 }
 

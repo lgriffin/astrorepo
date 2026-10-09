@@ -57,6 +57,14 @@ export function jobStoreContract(adapterName: string, make: () => JobStore): voi
       expect(await store.transition('missing', 'queued', { state: 'running' })).toBeNull()
     })
 
+    it('[HUB-011] Given a SyQon step reporting its own progress, When the progress is saved, Then its kind and live progress come back', async () => {
+      const store = make()
+      const job = await store.add(newJob({ kind: 'syqon', prepare: null, command: { program: 'syqon-cli', args: ['--model', 'axiom-mini'], cwd: 'D:/s' } }), new Date('2026-09-30T20:00:00Z'))
+      const progress = { step: 0, of: 1, key: 'live', label: 'Star separation', live: { percent: 42.5, line: 'Separating 42.5%' } }
+      await store.update(job.id, { progress })
+      expect(await store.get(job.id)).toMatchObject({ kind: 'syqon', progress })
+    })
+
     it('[PRV-003] Given a stack run step by step, When its progress is saved and cleared, Then it comes back as saved', async () => {
       const store = make()
       const job = await store.add(newJob(), new Date('2026-09-30T20:00:00Z'))

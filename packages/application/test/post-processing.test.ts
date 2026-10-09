@@ -81,7 +81,7 @@ describe('PlanPostProcessing', () => {
 describe('ListTools', () => {
   it('[HUB-001] Given some tools found, When listed, Then every tool appears in catalogue order with where it was found or not', async () => {
     const report = await makeListTools({ tools: new FakeToolHub().install('siril', 'C:/Program Files/Siril/bin/siril-cli.exe') })()
-    expect(report.tools.map(t => t.id)).toEqual(['siril', 'siril-scripts', 'rc-astro', 'bash'])
+    expect(report.tools.map(t => t.id)).toEqual(['siril', 'siril-scripts', 'rc-astro', 'bash', 'syqon', 'astap'])
     expect(report.tools[0]).toMatchObject({ path: 'C:/Program Files/Siril/bin/siril-cli.exe', source: 'standard', warning: null, notNeeded: false })
     expect(report.tools[1]).toMatchObject({ path: null, source: null })
   })

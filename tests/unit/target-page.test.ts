@@ -59,8 +59,8 @@ describe("A target's page", () => {
     expect(at('1 · Grade the lights')).toBeLessThan(at('2 · Stack'))
     expect(at('2 · Stack')).toBeLessThan(at('3 · Post-process'))
     expect(at('3 · Post-process')).toBeLessThan(at('4 · Runs'))
-    // Both steps queue into the same runner and refresh the target's runs when they do.
-    expect(tab.match(/onQueued=\{onQueued\}/g)).toHaveLength(2)
+    // Every step (stack, post-process, SyQon) queues into the same runner and refreshes the target's runs when they do.
+    expect(tab.match(/onQueued=\{onQueued\}/g)).toHaveLength(3)
   })
 
   it('[UX-011] Given a step whose job is already on its way, When the step is drawn, Then it does not offer to queue that step again', () => {
@@ -99,7 +99,7 @@ describe("A target's page", () => {
     expect(runs.finished.map(j => j.id)).toEqual(['d0', 'd1', 'd2', 'd3', 'd4'])
     expect(runs.stack?.id).toBe('q')
     expect(runs.postProcess?.id).toBe('r')
-    expect(runsForTarget(null, 't-m31')).toEqual({ active: [], finished: [], stack: null, postProcess: null })
+    expect(runsForTarget(null, 't-m31')).toEqual({ active: [], finished: [], stack: null, postProcess: null, syqon: null })
   })
 
   it('[UX-011] Given a step whose job is on its way, When the step says so, Then it gives the job and why it waits, or that it runs', () => {

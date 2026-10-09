@@ -144,4 +144,16 @@ describe('IPC Zod Validation (Boundary Tests)', () => {
       })).toThrow()
     })
   })
+
+  describe('SyQon steps', () => {
+    it('[HUB-011] Given a SyQon step, When validated, Then the model must be a plain id and Replace it must be said outright', () => {
+      const ok = { target_id: 't', step: 'denoise', model: 'prism-essential', overwrite: false, timing: 'now' }
+      expect(schemas['jobs:queue-syqon'].parse(ok)).toMatchObject(ok)
+      for (const model of ['--overwrite', '../x', 'a b', '']) expect(() => schemas['jobs:queue-syqon'].parse({ ...ok, model })).toThrow()
+      expect(() => schemas['jobs:queue-syqon'].parse({ ...ok, overwrite: undefined })).toThrow()
+      expect(() => schemas['jobs:queue-syqon'].parse({ ...ok, step: 'stretch' })).toThrow()
+      expect(schemas['recipe:syqon'].parse({ target_id: 't' })).toEqual({ target_id: 't' })
+    })
+  })
 })
+

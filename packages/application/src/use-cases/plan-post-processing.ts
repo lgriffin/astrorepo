@@ -2,11 +2,26 @@ import { buildPostProcessRecipe, parentDir, type PostProcessRecipe, type Profile
 import type { SirilWorkspace } from '../ports/siril-workspace'
 import type { StackCatalogue, StackFile } from '../ports/stack-catalogue'
 import type { ToolHub } from '../ports/tool-hub'
+import { makeCheckCatalogues } from './check-tool-health'
 
 export interface PlanPostProcessingDeps {
   stacks: StackCatalogue
   tools: ToolHub
   workspace: SirilWorkspace
+}
+
+/**
+ * Every stack a target has, newest first: those the index holds, and the result*.fit a Siril run
+ * left in its work folder.
+ */
+export async function targetStacks(deps: { stacks: StackCatalogue; workspace: Pick<SirilWorkspace, 'stackResults'> }, targetId: string, workDir?: string): Promise<StackFile[]> {
+  const indexed = await deps.stacks.listStacks(targetId)
+  const results = workDir ? await deps.workspace.stackResults(workDir) : []
+  const known = new Set(indexed.map(s => s.path))
+  return [
+    ...indexed,
+    ...results.filter(r => !known.has(r.path)).map(r => ({ ...r, width: null, height: null, colour: true, focalMm: null, pixelUm: null }))
+  ].sort((a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0))
 }
 
 export interface PostProcessingOptions {
@@ -40,15 +55,7 @@ export function makePlanPostProcessing(deps: PlanPostProcessingDeps): PlanPostPr
     const target = await deps.stacks.describeTarget(targetId)
     if (!target) return { target: null, stacks: [], stack: null, recipe: null }
 
-    const indexed = await deps.stacks.listStacks(targetId)
-    const results = options.workDir ? await deps.workspace.stackResults(options.workDir) : []
-    const known = new Set(indexed.map(s => s.path))
-    const stacks: StackFile[] = [
-      ...indexed,
-      ...results
-        .filter(r => !known.has(r.path))
-        .map(r => ({ ...r, width: null, height: null, colour: true, focalMm: null, pixelUm: null }))
-    ].sort((a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0))
+    const stacks = await targetStacks(deps, targetId, options.workDir)
 
     const stack = stacks.find(s => s.path === options.stackPath) ?? stacks[0] ?? null
     if (!stack) return { target, stacks, stack: null, recipe: null }
@@ -61,6 +68,7 @@ export function makePlanPostProcessing(deps: PlanPostProcessingDeps): PlanPostPr
       deps.stacks.targetOptics(targetId)
     ])
     // A stack straight from Siril may carry no optics; the target's light subs fill each gap.
+    const catalogues = await makeCheckCatalogues(deps)(tools)
     const recipe = buildPostProcessRecipe({
       stack: { ...stack, focalMm: stack.focalMm ?? lightOptics?.focalMm ?? null, pixelUm: stack.pixelUm ?? lightOptics?.pixelUm ?? null },
       target,
@@ -69,7 +77,8 @@ export function makePlanPostProcessing(deps: PlanPostProcessingDeps): PlanPostPr
       profile: options.profile,
       quality: options.quality,
       freeBytes: space.freeBytes,
-      inReadOnlyFolder: readOnly.some(Boolean)
+      inReadOnlyFolder: readOnly.some(Boolean),
+      catalogues
     })
     return { target, stacks, stack, recipe }
   }

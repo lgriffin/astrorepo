@@ -26,15 +26,14 @@ export function SetupCard(): React.ReactElement | null {
       setting('home_folder_path'),
       setting('last_library_scan'),
       setting('last_library_scan_folder'),
-      invoke<ToolsView>('tools:list')
-        .then(v => v.tools.find(t => t.id === 'siril')?.found ?? null)
-        .catch(() => null),
+      invoke<ToolsView>('tools:list').catch(() => null),
       setting(SETUP_HIDDEN_KEY)
-    ]).then(([latitude, longitude, homeFolder, lastLibraryScan, lastLibraryScanFolder, sirilFound, hide]) => {
+    ]).then(([latitude, longitude, homeFolder, lastLibraryScan, lastLibraryScanFolder, tools, hide]) => {
       if (!current) return
       // A step the app could not read is not a step left to do, so the checklist stays away rather than nag.
       if (latitude === UNREAD || longitude === UNREAD || homeFolder === UNREAD || lastLibraryScan === UNREAD || lastLibraryScanFolder === UNREAD || hide === UNREAD) return
-      setSteps(setupSteps({ latitude, longitude, homeFolder, lastLibraryScan, lastLibraryScanFolder, sirilFound }))
+      const sirilFound = tools?.tools.find(t => t.id === 'siril')?.found ?? null
+      setSteps(setupSteps({ latitude, longitude, homeFolder, lastLibraryScan, lastLibraryScanFolder, sirilFound, missingCatalogues: tools?.missingCatalogues ?? null }))
       setHidden(hide === '1')
     })
     return () => {

@@ -3,7 +3,13 @@
  * Leigh's Siril_Scripts v2 expects them. Pure data and rules; finding files is an adapter's job.
  */
 
-export type ToolId = 'siril' | 'siril-scripts' | 'rc-astro' | 'bash'
+export type ToolId = 'siril' | 'siril-scripts' | 'rc-astro' | 'bash' | 'syqon' | 'astap'
+
+/**
+ * Where a tool can be found: the user's setting, an environment variable naming the program,
+ * PATH, a standard install folder, or the Windows App Paths registry key.
+ */
+export type ToolSource = 'setting' | 'env' | 'path' | 'standard' | 'registry'
 
 export interface ToolSpec {
   id: ToolId
@@ -18,7 +24,20 @@ export interface ToolSpec {
   standard: { windows: string[]; other: string[] }
   /** Only Windows needs it (Git Bash runs Siril_Scripts' shell script there). */
   windowsOnly?: boolean
+  /** Not needed by any step the app runs today; a missing optional tool is not reported as a gap. */
+  optional?: boolean
+  /** The order the places are tried in; setting, PATH, then standard folders when not given. */
+  order?: ToolSource[]
+  /** Environment variable that names the program (SyQon's SYQON_CLI_PATH). */
+  envVar?: string
+  /** Program name under HKLM and HKCU `Software\Microsoft\Windows\CurrentVersion\App Paths` (Windows). */
+  appPaths?: string
+  /** Arguments that make it print its version and exit; null when it has none the app trusts (specs/023). */
+  versionArgs: string[] | null
 }
+
+/** The order most tools are looked for in (HUB-002). */
+export const DEFAULT_TOOL_ORDER: readonly ToolSource[] = ['setting', 'path', 'standard']
 
 /** Siril_Scripts v2 is a folder; the hub reports its entry script inside it. */
 export const SIRIL_SCRIPTS_ENTRY = { windows: 'v2/postprocess.bat', other: 'v2/postprocess.sh' } as const
@@ -30,7 +49,8 @@ export const TOOLS: readonly ToolSpec[] = [
     purpose: 'Stacks frames and runs every Siril step of post-processing.',
     settingKey: 'tool_path_siril',
     onPath: { windows: ['siril-cli.exe'], other: ['siril-cli', 'siril'] },
-    standard: { windows: ['C:/Program Files/Siril/bin/siril-cli.exe'], other: ['/usr/bin/siril-cli', '/usr/local/bin/siril-cli', '/Applications/Siril.app/Contents/MacOS/siril-cli'] }
+    standard: { windows: ['C:/Program Files/Siril/bin/siril-cli.exe'], other: ['/usr/bin/siril-cli', '/usr/local/bin/siril-cli', '/Applications/Siril.app/Contents/MacOS/siril-cli'] },
+    versionArgs: ['--version']
   },
   {
     id: 'siril-scripts',
@@ -41,7 +61,9 @@ export const TOOLS: readonly ToolSpec[] = [
     standard: {
       windows: ['~/Siril_Scripts', '~/Documents/Siril_Scripts', '~/source/repos/Siril_Scripts', 'C:/Siril_Scripts'],
       other: ['~/Siril_Scripts', '~/src/Siril_Scripts']
-    }
+    },
+    // A shell script that starts processing: never run just to ask its version.
+    versionArgs: null
   },
   {
     id: 'rc-astro',
@@ -49,7 +71,9 @@ export const TOOLS: readonly ToolSpec[] = [
     purpose: 'BlurXTerminator, NoiseXTerminator and StarXTerminator.',
     settingKey: 'tool_path_rc_astro',
     onPath: { windows: ['rc-astro.exe'], other: ['rc-astro'] },
-    standard: { windows: ['C:/Program Files/RC-Astro/CLI/rc-astro.exe'], other: ['/usr/local/bin/rc-astro', '/opt/rc-astro/rc-astro'] }
+    standard: { windows: ['C:/Program Files/RC-Astro/CLI/rc-astro.exe'], other: ['/usr/local/bin/rc-astro', '/opt/rc-astro/rc-astro'] },
+    // No version flag is documented for the RC Astro CLI, so its version shows as unknown (an assumption to confirm).
+    versionArgs: null
   },
   {
     id: 'bash',
@@ -58,11 +82,39 @@ export const TOOLS: readonly ToolSpec[] = [
     settingKey: 'tool_path_bash',
     onPath: { windows: ['bash.exe'], other: ['bash'] },
     standard: { windows: ['C:/Program Files/Git/bin/bash.exe', 'C:/Program Files (x86)/Git/bin/bash.exe'], other: ['/bin/bash'] },
-    windowsOnly: true
+    windowsOnly: true,
+    versionArgs: ['--version']
+  },
+  {
+    id: 'syqon',
+    label: 'SyQon CLI',
+    purpose:
+      "Star separation, sharpening, denoise and gradient removal with SyQon Studio's models. The app runs the syqon-cli you installed and never ships it: SyQon's integration kit is licensed for noncommercial use only.",
+    settingKey: 'tool_path_syqon',
+    // SyQon's own discovery order (syqon.eu/develop): your path, SYQON_CLI_PATH, the install folder, then App Paths.
+    order: ['setting', 'env', 'standard', 'registry'],
+    envVar: 'SYQON_CLI_PATH',
+    appPaths: 'syqon-cli.exe',
+    onPath: { windows: [], other: [] },
+    standard: { windows: ['%LOCALAPPDATA%/Programs/SyQon Studio/syqon-cli.exe', '%ProgramFiles%/SyQon Studio/syqon-cli.exe'], other: [] },
+    versionArgs: ['--version'],
+    optional: true
+  },
+  {
+    id: 'astap',
+    label: 'ASTAP',
+    purpose: 'Plate solver. Checked here for where it is and whether its star database is installed.',
+    settingKey: 'tool_path_astap',
+    onPath: { windows: ['astap_cli.exe', 'astap.exe'], other: ['astap_cli', 'astap'] },
+    standard: {
+      windows: ['C:/Program Files/astap/astap_cli.exe', 'C:/Program Files/astap/astap.exe'],
+      other: ['/opt/astap/astap_cli', '/opt/astap/astap', '/usr/bin/astap', '/Applications/ASTAP.app/Contents/MacOS/astap']
+    },
+    // ASTAP's command line documents no version flag the app could rely on.
+    versionArgs: null,
+    optional: true
   }
 ]
-
-export type ToolSource = 'setting' | 'path' | 'standard'
 
 export interface ToolStatus {
   id: ToolId

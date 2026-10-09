@@ -38,6 +38,9 @@ flowchart LR
   UC -->|RunArea| A10[NodeRunArea]
   UC -->|ArchiveArea| A11[NodeArchiveArea]
   UC -->|ArchiveStore| A12[SqliteArchiveStore]
+  UC -->|ToolHub| A13[NodeToolHub]
+  A13 -->|AppPathsRegistry| A14[WindowsAppPathsRegistry]
+  UC -->|ToolProbe| A15[NodeToolProbe]
   A10 --> WA
   A11 --> WA
   A11 --> AR[(archive folder)]
@@ -64,10 +67,12 @@ flowchart LR
 | `findDuplicates` | `isHashCurrent`, `duplicateCandidates`, `groupDuplicates` | FileIndex, ContentHasher, FileHashStore | `ingest:find-duplicates` | 011 |
 | `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace (`place`, `remove`), FrameSelection (grading) | `home:prep-siril` | 011, 019 |
 | `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict`, `estimateStackMemory`, `memoryFit`, `drizzleAdvice`, `rejectionAdvice`, `checkCalibration`, `planNights` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`), FrameSelection (grading), MemoryProbe | `siril:estimate` | 014, 019, 020 |
-| `listTools` | `toolWarnings` | ToolHub | `tools:list` | 015 |
-| `planPostProcessing` | `buildPostProcessRecipe`, `profileForObjectType`, `formatCoords`, `postProcessingSpace` | StackCatalogue, ToolHub, SirilWorkspace (`stackResults`, `workAreaSpace`, `contains`) | `recipe:post-process` | 015 |
-| `queueStack`, `queuePostProcess` | `sirilStackCommand`, `postProcessCommand` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun` and `planPostProcessing`) | `jobs:queue-stack`, `jobs:queue-post-process` | 016 |
-| `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption`, `splitSirilScript`, `runKey`, `resumeFrom`, `newResults`, `stackManifest`, `explainSirilFailure` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`, `stackResults`), RunArea, Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016, 021 |
+| `listTools`, `checkCatalogues` | `toolWarnings`, `catalogueStatus`, `astapCatalogues`, `catalogueFiles` | ToolHub (`locate`, `catalogueFolders`), AppPathsRegistry (inside NodeToolHub) | `tools:list` | 015, 023 |
+| `checkToolHealth`, `listSyqonModels` | `parseToolVersion`, `parseSyqonModels`, `interpretExit` | ToolHub, ToolProbe | `tools:health` | 023 |
+| `planPostProcessing` | `buildPostProcessRecipe`, `profileForObjectType`, `formatCoords`, `postProcessingSpace`, `catalogueBlock`, `postProcessCatalogues` | StackCatalogue, ToolHub, SirilWorkspace (`stackResults`, `workAreaSpace`, `contains`) | `recipe:post-process` | 015, 023 |
+| `planSyqon` | `syqonModelsFor`, `syqonOutputPath`, `syqonCommand`, `syqonNeededBytes`, `spaceVerdict` | StackCatalogue, ToolHub (`listFolder`), SirilWorkspace, ToolProbe (through `listSyqonModels`) | `recipe:syqon` | 023 |
+| `queueStack`, `queuePostProcess`, `queueSyqon` | `sirilStackCommand`, `postProcessCommand`, `syqonCommand` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun`, `planPostProcessing` and `planSyqon`) | `jobs:queue-stack`, `jobs:queue-post-process`, `jobs:queue-syqon` | 016, 023 |
+| `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption`, `splitSirilScript`, `runKey`, `resumeFrom`, `newResults`, `stackManifest`, `explainSirilFailure`, `interpretExit`, `runToolOf`, `parseLiveProgress` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`, `stackResults`), RunArea, Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016, 021, 023 |
 | `makeFrameGrading` (`measureBatch`, `grade`, `setOverride`, `setNightOverride`, `exportCsv`, `rejected`, `reportFor`) | `measureFrame`, `binBayer`, `gradeFrames`, `rejectedPaths`, `gradesCsv` | FrameGradeStore, FrameMeasurer, GradeLimitsSource, Clock | `grades:target`, `grades:measure`, `grades:override`, `grades:override-night`, `grades:export`, `grades:limits` | 019, 020 |
 | `makeArchiveTarget` (`preview`, `archive`) | `summariseWorkFolder`, `freedBytes`, `parseStackManifest`, `namedFrames`, `planArchive`, `removalChoice`, `archiveFolderName`, `archiveSpace` | ArchiveArea, ArchiveStore, FrameCatalogue, StackCatalogue (`describeTarget`), JobStore (`list`), SirilWorkspace (`contains`), Clock | `archive:preview`, `archive:run` | 022 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |

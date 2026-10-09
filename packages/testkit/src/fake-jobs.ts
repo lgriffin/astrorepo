@@ -51,7 +51,7 @@ export class FakeMachine implements MachineMonitor {
 /** A run the test finishes by hand. */
 export interface FakeRun {
   command: JobCommand
-  output: (text: string) => void
+  output: (text: string, stream?: 'stdout' | 'stderr') => void
   exit: (exitCode: number | null, error?: string | null) => void
   cancelled: boolean
 }
@@ -60,7 +60,7 @@ export interface FakeRun {
 export class FakeProcessRunner implements ProcessRunner {
   readonly runs: FakeRun[] = []
 
-  run(command: JobCommand, onOutput: (text: string) => void): RunningProcess {
+  run(command: JobCommand, onOutput: (text: string, stream?: 'stdout' | 'stderr') => void): RunningProcess {
     let settle: (r: { exitCode: number | null; error: string | null }) => void = () => {}
     const done = new Promise<{ exitCode: number | null; error: string | null }>(resolve => (settle = resolve))
     const run: FakeRun = { command, output: onOutput, exit: (exitCode, error = null) => settle({ exitCode, error }), cancelled: false }

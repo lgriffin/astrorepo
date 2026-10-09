@@ -18,6 +18,8 @@ const relationshipTypes = [
 ] as const
 
 const id = z.string().min(1)
+/** A SyQon model id as `--list-models` prints it; never a flag or a path. */
+const syqonModel = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
 
 export const schemas = {
   'targets:search': z.object({
@@ -259,6 +261,14 @@ export const schemas = {
     profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']).optional(),
     quality: z.enum(['light', 'normal', 'strong']).optional()
   }),
+  'recipe:syqon': z.object({
+    target_id: id,
+    raw_path: z.string().min(1).optional(),
+    stack_path: z.string().min(1).optional(),
+    step: z.enum(['star-separation', 'sharpen', 'denoise', 'gradient']).optional(),
+    model: syqonModel.optional(),
+    overwrite: z.boolean().optional()
+  }),
   'jobs:list': z.object({ target_id: id.optional() }).optional(),
   'jobs:queue-stack': z.object({
     target_id: id,
@@ -277,6 +287,14 @@ export const schemas = {
     target_id: id,
     mode: z.enum(['linked', 'self-contained']),
     remove: z.array(z.enum(['lights', 'darks', 'flats', 'biases', 'process', 'failed', '.astrorepo'])).max(7)
+  }),
+  'jobs:queue-syqon': z.object({
+    target_id: id,
+    stack_path: z.string().min(1).optional(),
+    step: z.enum(['star-separation', 'sharpen', 'denoise', 'gradient']),
+    model: syqonModel,
+    overwrite: z.boolean(),
+    timing: z.enum(['window', 'now'])
   }),
   'jobs:cancel': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),
   'jobs:run-now': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),

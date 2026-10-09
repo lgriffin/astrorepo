@@ -6,7 +6,8 @@ import type { StepProgress } from './provenance'
  * runs. Pure rules; running programs and reading the machine's load are adapters' jobs.
  */
 
-export type JobKind = 'stack' | 'post-process'
+/** A Siril stack, a Siril_Scripts v2 run, or one SyQon CLI step (specs/023-hub-syqon). */
+export type JobKind = 'stack' | 'post-process' | 'syqon'
 export type JobState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 /** Waits for the run window and an idle PC, or starts as soon as nothing else is running. */
 export type JobTiming = 'window' | 'now'
@@ -140,9 +141,10 @@ export interface JobRun {
 
 /**
  * First-run guesses until the PC has a history: Siril stacking a colour target runs at roughly a
- * minute and a half per GB it writes; Siril_Scripts with RC Astro's AI tools runs far slower per GB.
+ * minute and a half per GB it writes; Siril_Scripts with RC Astro's AI tools runs far slower per GB;
+ * one SyQon model over one stack sits between the two.
  */
-export const GUESS_SECONDS_PER_GB: Record<JobKind, number> = { stack: 90, 'post-process': 900 }
+export const GUESS_SECONDS_PER_GB: Record<JobKind, number> = { stack: 90, 'post-process': 900, syqon: 600 }
 const MIN_SECONDS = 60
 const HISTORY_RUNS = 5
 const GB = 1024 ** 3

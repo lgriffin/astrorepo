@@ -1,5 +1,6 @@
-import { TOOLS, toolWarnings, type ToolSpec, type ToolStatus } from '@astro/domain'
+import { TOOLS, toolWarnings, type CatalogueStatus, type ToolSpec, type ToolStatus } from '@astro/domain'
 import type { ToolHub } from '../ports/tool-hub'
+import { makeCheckCatalogues } from './check-tool-health'
 
 export interface ListToolsDeps {
   tools: ToolHub
@@ -15,12 +16,15 @@ export interface ToolEntry extends ToolStatus {
 export interface ToolsReport {
   windows: boolean
   tools: ToolEntry[]
+  /** The catalogues each found tool needs, and whether they are installed (specs/023-hub-syqon). */
+  catalogues: CatalogueStatus[]
 }
 
 export type ListTools = () => Promise<ToolsReport>
 
-/** The tool hub as Settings shows it: every tool, where it was found or where the hub looked. */
+/** The tool hub as Settings shows it: every tool, where it was found or where the hub looked, and its catalogues. Runs nothing. */
 export function makeListTools(deps: ListToolsDeps): ListTools {
+  const checkCatalogues = makeCheckCatalogues(deps)
   return async () => {
     const statuses = await deps.tools.locate()
     const warnings = toolWarnings(statuses, deps.tools.windows)
@@ -34,7 +38,8 @@ export function makeListTools(deps: ListToolsDeps): ListTools {
           notNeeded: !!spec.windowsOnly && !deps.tools.windows,
           warning: warnings.find(w => w.id === spec.id)?.text ?? null
         }
-      })
+      }),
+      catalogues: await checkCatalogues(statuses)
     }
   }
 }

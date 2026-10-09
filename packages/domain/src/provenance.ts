@@ -141,6 +141,8 @@ export interface StepProgress {
   resumedFrom?: number
   /** Results in the work folder when the run first started, so only what it wrote is its own. */
   baseline?: StoredResult[]
+  /** A run that reports its own progress (SyQon's percentages, or its last line) (specs/023-hub-syqon). */
+  live?: { percent: number | null; line: string }
 }
 
 /** A result file as progress keeps it: dates as ISO text. */

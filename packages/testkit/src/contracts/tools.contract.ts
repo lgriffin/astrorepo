@@ -2,9 +2,29 @@ import { describe, it, expect } from 'vitest'
 import type { StackCatalogue, ToolHub } from '@astro/application'
 import { TOOLS, type RecipeTarget, type ToolId } from '@astro/domain'
 
-/** Every ToolHub adapter must pass this suite. `make` returns a Windows hub on which only `installed` exist. */
-export function toolHubContract(adapterName: string, make: (installed: ToolId[]) => ToolHub): void {
+/**
+ * Every ToolHub adapter must pass this suite. `make` returns a Windows hub on which only
+ * `installed` exist, each with the catalogues it needs beside it unless named in `withoutCatalogues`.
+ */
+export function toolHubContract(adapterName: string, make: (installed: ToolId[], withoutCatalogues?: ToolId[]) => ToolHub): void {
   describe(`ToolHub contract: ${adapterName}`, () => {
+    it('[HUB-009] Given ASTAP found with its star database beside it, When its catalogue folders are listed, Then the first holds the database files', async () => {
+      const hub = make(['astap'])
+      const astap = (await hub.locate()).find(s => s.id === 'astap')
+      expect(astap?.path).toBeTruthy()
+      const folders = await hub.catalogueFolders('astap-stars', astap?.path ?? null)
+      expect(folders.length).toBeGreaterThan(0)
+      expect(folders[0].names?.some(n => /\.1476$/.test(n))).toBe(true)
+    })
+
+    it('[HUB-009] Given ASTAP found without its database, When its catalogue folders are listed, Then none holds database files', async () => {
+      const hub = make(['astap'], ['astap'])
+      const astap = (await hub.locate()).find(s => s.id === 'astap')
+      const folders = await hub.catalogueFolders('astap-stars', astap?.path ?? null)
+      expect(folders.flatMap(f => f.names ?? []).filter(n => /\.1476$/.test(n))).toEqual([])
+      expect(await hub.listFolder('Z:/no/such/folder')).toBeNull()
+    })
+
     it('[HUB-001] Given some tools installed, When located, Then every tool comes back once, in catalogue order, found or with where it looked', async () => {
       const statuses = await make(['siril', 'rc-astro']).locate()
       expect(statuses.map(s => s.id)).toEqual(TOOLS.map(t => t.id))

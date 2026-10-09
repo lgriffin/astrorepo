@@ -14,7 +14,7 @@ import {
   type ToolStatus
 } from '@astro/domain'
 
-const STANDARD: Record<ToolId, string> = {
+const STANDARD: Partial<Record<ToolId, string>> = {
   siril: 'C:/Program Files/Siril/bin/siril-cli.exe',
   'siril-scripts': 'C:/Users/leigh/Siril_Scripts/v2/postprocess.bat',
   'rc-astro': 'C:/Program Files/RC-Astro/CLI/rc-astro.exe',
@@ -22,7 +22,7 @@ const STANDARD: Record<ToolId, string> = {
 }
 const tools = (except: ToolId[] = [], at: Partial<Record<ToolId, string>> = {}): ToolStatus[] =>
   TOOLS.map(t => {
-    const path = except.includes(t.id) ? null : (at[t.id] ?? STANDARD[t.id])
+    const path = except.includes(t.id) ? null : (at[t.id] ?? STANDARD[t.id] ?? null)
     return { id: t.id, path, source: path ? 'standard' : null, settingMissing: false, looked: [] }
   })
 
