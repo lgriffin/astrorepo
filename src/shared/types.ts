@@ -962,6 +962,32 @@ export interface SirilScriptView {
   /** The calibration folders it needs that the target lacks, as a sentence; null when none. */
   missing: string | null
   stages: { name: string; size: string; cumulative: string; files: number }[]
+  /** Memory the stack needs against the PC's (specs/020); null without a frame size. */
+  memory: { fit: 'one-pass' | 'blocks' | 'short' | 'unknown'; text: string } | null
+}
+
+/** One observing night of a stack's lights (ADV-007). */
+export interface StackNightView {
+  /** The night's key, for leaving it out or using it again. */
+  night: string
+  label: string
+  lights: number
+  kept: number
+  rejected: number
+  medianFwhm: string | null
+  flats: number
+}
+
+/** Advice beside the stacking plan (specs/020-stacking-advice). */
+export interface StackAdviceView {
+  /** "2.42\"/px", or null when the headers do not say. */
+  scale: string | null
+  drizzle: { suggest: boolean; text: string }
+  rejection: { method: string; siril: string; text: string }
+  calibration: { kind: 'dark' | 'flat' | 'bias'; status: 'matches' | 'mismatch' | 'none' | 'not-needed'; text: string }[]
+  /** Null when grading is not wired or the folder has no lights. */
+  nights: StackNightView[] | null
+  sharedFlatsNote: string | null
 }
 
 export interface SirilPlanView {
@@ -978,6 +1004,7 @@ export interface SirilPlanView {
   /** Set when grading leaves lights out of the stack (specs/019-frame-grading). */
   gradingNote: string | null
   scripts: SirilScriptView[]
+  advice: StackAdviceView
 }
 
 export interface CockpitOverview {

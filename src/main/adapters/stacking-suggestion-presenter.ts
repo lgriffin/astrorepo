@@ -49,12 +49,15 @@ export function toNextActionRecommendation(a: NextAction): Recommendation {
   const parts: string[] = []
   if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
   if (a.shortOfGoalSec !== null && a.shortOfGoalSec > 0) parts.push(`${formatDuration(a.shortOfGoalSec)} short of your goal.`)
+  if (a.channel) {
+    parts.push(`Capture ${a.channel.filter}: it has ${formatDuration(a.channel.haveSec)} against ${formatDuration(a.channel.leadSec)} of ${a.channel.leadFilter}.`)
+  }
   parts.push(a.moonSeparationDeg === null ? 'The moon is down while it is up.' : `The moon comes within ${a.moonSeparationDeg}°.`)
   return {
     id: a.id,
     category: 'capture',
     priority: a.closesInDays !== null ? 'high' : 'medium',
-    title: `${a.targetName} · shoot tonight, ${hours} above 30°`,
+    title: `${a.targetName} · shoot tonight${a.channel ? ` in ${a.channel.filter}` : ''}, ${hours} above 30°`,
     description: parts.join(' '),
     targetId: a.targetId,
     targetName: a.targetName,

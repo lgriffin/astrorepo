@@ -151,11 +151,26 @@ describe('NodeSirilWorkspace space', () => {
     header.run('h2', monoId, 'NAXIS', '2', 1)
 
     const details = await new NodeSirilWorkspace(db).frameDetails([colour, mono, unknown])
-    expect(details).toEqual([
+    expect(details).toMatchObject([
       { path: colour, sizeBytes: 100, width: 3840, height: 2160, colour: true },
       { path: mono, sizeBytes: 100, width: null, height: null, colour: false },
-      { path: unknown, sizeBytes: 100, width: null, height: null, colour: null }
+      { path: unknown, sizeBytes: 100, width: null, height: null, colour: null, settings: null }
     ])
+  })
+
+  it('[ADV-003] [ADV-005] Given an indexed light with capture settings and FOCALLEN, When details are read, Then the settings and optics come with it', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
+    tempDirs.push(root)
+    const file = path.join(root, 'Light_001.fit')
+    fs.writeFileSync(file, 'x')
+    const db = setupTestDb()
+    const id = seedFitsFile(db, seedFitsScan(db), { filePath: file, exposureSec: 10, gain: 80, ccdTemp: -2.5, filter: ' L ', dateObs: '2026-01-10T21:00:00', telescope: 'Seestar S50' })
+    db.prepare('UPDATE fits_files SET xpixsz = 2.9 WHERE id = ?').run(id)
+    db.prepare("INSERT INTO fits_headers (id, file_id, keyword, value, comment, ordinal) VALUES ('h', ?, 'FOCALLEN', '250', NULL, 1)").run(id)
+    const [detail] = await new NodeSirilWorkspace(db).frameDetails([file])
+    expect(detail.settings).toEqual({
+      exposureSec: 10, gain: 80, sensorTempC: -2.5, filter: 'L', capturedAt: new Date('2026-01-10T21:00:00Z'), focalMm: 250, pixelUm: 2.9, scope: 'Seestar S50'
+    })
   })
 
   it('[RCP-003] Given an earlier run left files in process and masters, When the space is read, Then they count as used and the disk reports free space', async () => {

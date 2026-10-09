@@ -1,5 +1,6 @@
-import type { SirilRunEstimate } from '@astro/application'
-import type { SirilPlanView } from '@shared/types'
+import type { SirilRunEstimate, StackAdvice } from '@astro/application'
+import type { SirilPlanView, StackAdviceView } from '@shared/types'
+import { nightLabel } from './grades-presenter'
 import { formatBytes } from './discovery-presenter'
 import { plural } from './stacking-suggestion-presenter'
 
@@ -53,7 +54,32 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
             ? `Fits, ${formatBytes(s.headroomBytes ?? 0)} to spare`
             : `Short by ${formatBytes(s.shortBytes ?? 0)}`,
       missing: s.missing.length > 0 ? `Needs ${LIST(s.missing)}, which this target does not have.` : null,
-      stages: s.stages.map(st => ({ name: st.name, size: formatBytes(st.bytes), cumulative: formatBytes(st.cumulativeBytes), files: st.files }))
-    }))
+      stages: s.stages.map(st => ({ name: st.name, size: formatBytes(st.bytes), cumulative: formatBytes(st.cumulativeBytes), files: st.files })),
+      memory: s.memory ? { fit: s.memory.fit, text: s.memory.text } : null
+    })),
+    advice: toAdviceView(e.advice)
+  }
+}
+
+/** Image scale, drizzle, rejection, calibration and nights, as sentences (specs/020-stacking-advice). */
+export function toAdviceView(a: StackAdvice): StackAdviceView {
+  const extra = a.drizzle.extraBytes !== null && a.drizzle.extraBytes > 0 ? ` It needs ${formatBytes(a.drizzle.extraBytes)} more disk than the recommended script.` : ''
+  return {
+    scale: a.scaleArcsec === null ? null : `${a.scaleArcsec.toFixed(2)}"/px`,
+    drizzle: { suggest: a.drizzle.suggest, text: a.drizzle.reason + (a.drizzle.suggest ? extra : '') },
+    rejection: { method: a.rejection.method, siril: a.rejection.siril, text: a.rejection.reason },
+    calibration: a.calibration.map(c => ({ kind: c.kind, status: c.status, text: c.text })),
+    nights: a.nights
+      ? a.nights.nights.map(n => ({
+          night: n.night,
+          label: nightLabel(n.night),
+          lights: n.lights,
+          kept: n.kept,
+          rejected: n.rejected,
+          medianFwhm: n.medianFwhm === null ? null : `${n.medianFwhm.toFixed(1)} px`,
+          flats: n.flats
+        }))
+      : null,
+    sharedFlatsNote: a.nights?.sharedFlatsNote ?? null
   }
 }

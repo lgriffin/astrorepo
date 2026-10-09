@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
-import { Card, EmptyState } from '../common/Card'
+import { Card, EmptyState, LinkButton } from '../common/Card'
 import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
 import { runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
-import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView } from '@shared/types'
+import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView } from '@shared/types'
 
 /**
  * Stack and process (UX-010): the steps from a target's raw frames to a processed image, in
@@ -152,10 +152,93 @@ const VERDICT_TONE: Record<SirilScriptView['verdict'], string> = {
   unknown: 'text-astro-muted'
 }
 
+const MEMORY_TONE: Record<NonNullable<SirilScriptView['memory']>['fit'], string> = {
+  'one-pass': 'text-astro-muted',
+  blocks: 'text-yellow-400',
+  short: 'text-red-400',
+  unknown: 'text-astro-muted'
+}
+
+const CALIBRATION_TONE: Record<StackAdviceView['calibration'][number]['status'], string> = {
+  matches: 'text-astro-muted',
+  'not-needed': 'text-astro-muted',
+  none: 'text-astro-muted',
+  mismatch: 'text-yellow-400'
+}
+
+/**
+ * Advice beside the plan (specs/020-stacking-advice): image scale and drizzle, the rejection that
+ * suits the lights, whether the calibration frames match, and each night with a way to leave it out.
+ */
+function StackAdvice({ targetId, advice, onChanged }: { targetId: string; advice: StackAdviceView; onChanged: () => void }): React.ReactElement {
+  const { addToast } = useToast()
+  async function setNight(night: string, override: 'reject' | null): Promise<void> {
+    try {
+      await invoke('grades:override-night', { target_id: targetId, night, override })
+    } catch {
+      addToast('That night could not be changed. Open the page again and retry.', 'error')
+    } finally {
+      onChanged()
+    }
+  }
+  return (
+    <details className="text-xs">
+      <summary className="cursor-pointer text-astro-accent">Stacking advice</summary>
+      <div className="mt-2 space-y-1.5 pl-2">
+        <p className={advice.drizzle.suggest ? 'text-astro-text' : 'text-astro-muted'}>
+          {advice.scale && <>Image scale {advice.scale}. </>}
+          {advice.drizzle.suggest ? 'Drizzle: ' : ''}
+          {advice.drizzle.text}
+        </p>
+        <p className="text-astro-muted">
+          Rejection: <span className="text-astro-text">{advice.rejection.method}</span> (<span className="font-mono">{advice.rejection.siril}</span>). {advice.rejection.text}
+        </p>
+        {advice.calibration.filter(c => c.status !== 'none').map(c => (
+          <p key={c.kind} className={CALIBRATION_TONE[c.status]}>{c.text}</p>
+        ))}
+        {advice.nights && advice.nights.length > 0 && (
+          <table className="text-astro-muted">
+            <thead>
+              <tr className="text-left">
+                <th className="pr-3 font-normal">Night</th>
+                <th className="pr-3 font-normal text-right">Lights</th>
+                <th className="pr-3 font-normal text-right">Kept</th>
+                <th className="pr-3 font-normal text-right">FWHM</th>
+                <th className="pr-3 font-normal text-right">Flats</th>
+                <th className="font-normal" />
+              </tr>
+            </thead>
+            <tbody>
+              {advice.nights.map(n => (
+                <tr key={n.night}>
+                  <td className="pr-3 text-astro-text">{n.label}</td>
+                  <td className="pr-3 text-right tabular-nums">{n.lights}</td>
+                  <td className="pr-3 text-right tabular-nums">{n.kept}</td>
+                  <td className="pr-3 text-right tabular-nums">{n.medianFwhm ?? '–'}</td>
+                  <td className="pr-3 text-right tabular-nums">{n.flats}</td>
+                  <td>
+                    {n.kept > 0 ? (
+                      <LinkButton onClick={() => void setNight(n.night, 'reject')}>Leave out</LinkButton>
+                    ) : (
+                      <LinkButton onClick={() => void setNight(n.night, null)}>Use again</LinkButton>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {advice.sharedFlatsNote && <p className="text-yellow-400">{advice.sharedFlatsNote}</p>}
+      </div>
+    </details>
+  )
+}
+
 /** Which stock Siril script fits the frames and whether the disk has room, before anything is written. */
 function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { targetId: string; rawPath: string; refreshKey: string | null; onQueued: () => void; queued: boolean }): React.ReactElement | null {
   const [plan, setPlan] = useState<SirilPlanView | null>(null)
   const [failed, setFailed] = useState(false)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     if (refreshKey === 'preparing') return
@@ -163,7 +246,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
     invoke<SirilPlanView>('siril:estimate', { raw_path: rawPath })
       .then(setPlan)
       .catch(() => setFailed(true))
-  }, [rawPath, refreshKey])
+  }, [rawPath, refreshKey, reload])
 
   if (failed) return <EmptyState>The stacking plan could not be worked out for this folder.</EmptyState>
   if (!plan) return <EmptyState>Working out which Siril script fits and the space it needs…</EmptyState>
@@ -189,6 +272,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
           <span className={VERDICT_TONE[chosen.verdict]}>{chosen.verdictText}.</span>
         </p>
       )}
+      {chosen?.memory && <p className={`text-xs ${MEMORY_TONE[chosen.memory.fit]}`}>{chosen.memory.text}</p>}
       <p className="text-xs text-astro-muted">{plan.prepNote}</p>
       {/* A stack already on its way is not offered again; the banner above says where it is. */}
       {chosen?.canQueue && !queued && (
@@ -207,6 +291,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
       {plan.gradingNote && <p className="text-xs text-astro-muted">{plan.gradingNote}</p>}
       {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
       {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
+      <StackAdvice targetId={targetId} advice={plan.advice} onChanged={() => setReload(n => n + 1)} />
       {plan.scripts.length > 0 && (
         <details className="text-xs">
           <summary className="cursor-pointer text-astro-accent">Every script and its stages</summary>
@@ -219,6 +304,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
                   <span className={VERDICT_TONE[script.verdict]}>{script.verdictText}</span>
                   {script.missing && <span className="text-yellow-400"> · {script.missing}</span>}
                 </summary>
+                {script.memory && <p className={`ml-2 mt-1 ${MEMORY_TONE[script.memory.fit]}`}>{script.memory.text}</p>}
                 <table className="mt-1 ml-2 text-astro-muted">
                   <tbody>
                     {script.stages.map(stage => (

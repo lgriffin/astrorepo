@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_GRADE_LIMITS, gradeFrames, type GradableLight } from '@astro/domain'
-import { measurement } from '@astro/testkit'
+import { measurement, stackAdvice } from '@astro/testkit'
 import { nightLabel, toGradesView } from '../../src/main/adapters/grades-presenter'
 import { toSirilPlanView } from '../../src/main/adapters/siril-plan-presenter'
 
@@ -45,7 +45,7 @@ describe('grades presenter', () => {
     const base = {
       counts: { lights: 10, darks: 0, flats: 0, biases: 0 }, rejectedLights: 2, sensor: 'colour' as const, sensorKnown: true,
       geometry: { width: 100, height: 100 }, geometryApproximate: false, geometryMixed: false, prepBytes: 0, freeBytes: 1e9, usedBytes: 0,
-      recommended: { script: 'OSC_Preprocessing_WithoutDBF' as const, reason: 'x' }, scripts: []
+      recommended: { script: 'OSC_Preprocessing_WithoutDBF' as const, reason: 'x' }, scripts: [], advice: stackAdvice()
     }
     expect(toSirilPlanView(base).gradingNote).toBe('2 lights rejected by frame grading are left out of the stack and the space.')
     expect(toSirilPlanView({ ...base, rejectedLights: 1 }).gradingNote).toBe('1 light rejected by frame grading is left out of the stack and the space.')

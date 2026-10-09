@@ -12,7 +12,7 @@ import {
   type SirilWorkspaceResult
 } from '@astro/application'
 import { DEFAULT_JOB_SETTINGS, type PostProcessRecipe } from '@astro/domain'
-import { FakeMachine, FakeProcessRunner, FakeToolHub, FixedClock, FixedJobSettings, InMemoryJobLogs, InMemoryJobStore, InMemoryStackCatalogue } from '@astro/testkit'
+import { FakeMachine, FakeProcessRunner, FakeToolHub, FixedClock, FixedJobSettings, InMemoryJobLogs, InMemoryJobStore, InMemoryStackCatalogue, stackAdvice } from '@astro/testkit'
 
 const GB = 1024 ** 3
 /** 02:30 local time on 30 September 2026: inside the default window. */
@@ -33,8 +33,9 @@ function estimate(over: Partial<SirilRunEstimate['scripts'][number]> = {}, light
     usedBytes: 0,
     recommended: { script: 'OSC_Preprocessing', reason: '' },
     scripts: [
-      { script: 'OSC_Preprocessing', label: 'Colour', missing: [], scriptBytes: 5 * GB, stages: [], neededBytes: 5 * GB, fits: true, headroomBytes: 95 * GB, shortBytes: null, ...over }
-    ]
+      { script: 'OSC_Preprocessing', label: 'Colour', missing: [], scriptBytes: 5 * GB, stages: [], neededBytes: 5 * GB, fits: true, headroomBytes: 95 * GB, shortBytes: null, memory: null, ...over }
+    ],
+    advice: stackAdvice()
   }
 }
 

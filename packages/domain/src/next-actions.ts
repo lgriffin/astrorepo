@@ -1,5 +1,6 @@
 import { unprocessedSec, type StackingSuggestion } from './stacking-readiness'
 import type { TonightPlan } from './sky'
+import type { ChannelGap } from './stacking-advice'
 
 /** Something worth doing next: capture a target tonight, or stack data already captured. */
 export type NextAction =
@@ -14,6 +15,8 @@ export type NextAction =
       /** Days until the target's season closes, when that is within the planning window. */
       closesInDays: number | null
       shortOfGoalSec: number | null
+      /** The filter to capture because it lags the others (ADV-010). */
+      channel: ChannelGap | null
     }
   | { kind: 'stack'; suggestion: StackingSuggestion }
 
@@ -44,7 +47,8 @@ export function rankNextActions(
     usableHours: c.usableHours,
     moonSeparationDeg: c.moonSeparationDeg,
     closesInDays: daysLeft.get(c.targetId) ?? null,
-    shortOfGoalSec: c.shortOfGoalSec
+    shortOfGoalSec: c.shortOfGoalSec,
+    channel: c.channel
   }))
   const urgency = (a: (typeof captures)[number]) => a.closesInDays ?? Number.POSITIVE_INFINITY
   captures.sort(

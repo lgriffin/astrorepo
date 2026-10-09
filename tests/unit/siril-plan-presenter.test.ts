@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { SirilRunEstimate } from '@astro/application'
+import { stackAdvice } from '@astro/testkit'
 import { toSirilPlanView } from '../../src/main/adapters/siril-plan-presenter'
 
 const GB = 1024 ** 3
@@ -26,7 +27,8 @@ const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
       neededBytes: 20 * GB,
       fits: true,
       headroomBytes: 80 * GB,
-      shortBytes: null
+      shortBytes: null,
+      memory: null
     },
     {
       script: 'OSC_Preprocessing',
@@ -37,9 +39,11 @@ const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
       neededBytes: 150 * GB,
       fits: false,
       headroomBytes: null,
-      shortBytes: 50 * GB
+      shortBytes: 50 * GB,
+      memory: null
     }
   ],
+  advice: stackAdvice(),
   ...over
 })
 
@@ -94,5 +98,34 @@ describe('Siril plan presenter', () => {
     const view = toSirilPlanView(estimate({ recommended: { script: null, reason: 'There are no light frames to stack.' } }))
     expect(view.recommended).toBeNull()
     expect(view.scripts.some(s => s.recommended)).toBe(false)
+  })
+
+  it('[ADV-002] Given a script\'s memory check, When presented, Then the plan carries its verdict and sentence', () => {
+    const e = estimate()
+    e.scripts[0].memory = { onePassBytes: 30 * GB, minimumBytes: 2 * GB, fit: 'blocks', text: 'Siril will stack in blocks, which is slower.' }
+    expect(toSirilPlanView(e).scripts[0].memory).toEqual({ fit: 'blocks', text: 'Siril will stack in blocks, which is slower.' })
+    expect(toSirilPlanView(estimate()).scripts[0].memory).toBeNull()
+  })
+
+  it('[ADV-004] [ADV-007] Given advice, When presented, Then scale, drizzle with its extra disk, rejection, calibration and labelled nights read as sentences', () => {
+    const view = toSirilPlanView(
+      estimate({
+        advice: stackAdvice({
+          scaleArcsec: 2.393,
+          drizzle: { suggest: true, reason: 'Bayer drizzle can recover finer detail.', extraBytes: 40 * GB },
+          calibration: [{ kind: 'dark', status: 'matches', count: 20, gaps: [], text: '20 darks match the lights.' }],
+          nights: { nights: [{ night: '2026-01-10', lights: 60, kept: 55, rejected: 5, medianFwhm: 2.84, flats: 0 }], sharedFlatsNote: 'Shared flats.' }
+        })
+      })
+    ).advice
+    expect(view.scale).toBe('2.39"/px')
+    expect(view.drizzle).toEqual({ suggest: true, text: 'Bayer drizzle can recover finer detail. It needs 40.0 GB more disk than the recommended script.' })
+    expect(view.rejection).toMatchObject({ siril: 'rej w 3 3' })
+    expect(view.calibration).toEqual([{ kind: 'dark', status: 'matches', text: '20 darks match the lights.' }])
+    expect(view.nights).toEqual([{ night: '2026-01-10', label: '10 Jan 2026', lights: 60, kept: 55, rejected: 5, medianFwhm: '2.8 px', flats: 0 }])
+    expect(view.sharedFlatsNote).toBe('Shared flats.')
+    const plain = toSirilPlanView(estimate()).advice
+    expect(plain).toMatchObject({ scale: null, nights: null, sharedFlatsNote: null })
+    expect(plain.drizzle.text).not.toMatch(/more disk/)
   })
 })

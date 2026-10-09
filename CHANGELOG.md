@@ -15,6 +15,10 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 - **Frame grading** (spec 019): every light measured for FWHM, eccentricity, stars, background,
   noise and SNR, graded against limits in Settings and its own night, kept or rejected by hand,
   exported as CSV; only kept lights go to Siril.
+- **Stacking advice** (spec 020): memory per Siril script against the PC's, image scale and
+  whether Bayer drizzle is worth it, the rejection that suits the kept lights, why calibration
+  frames do or do not match, each night with its flats and a way to leave it out, and planning
+  that suggests the filter a target is short of.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

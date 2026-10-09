@@ -35,6 +35,7 @@ import { FileJobLogs } from './adapters/file-job-logs'
 import { NodeMachineMonitor } from './adapters/node-machine-monitor'
 import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-frame-grades'
 import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
+import { NodeMemoryProbe } from './adapters/node-memory-probe'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -64,7 +65,7 @@ export function composeCore(db: Database.Database) {
   const stacks = new SqliteStackCatalogue(db)
   const jobStore = new SqliteJobStore(db)
   const grading = composeGrading(db)
-  const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading })
+  const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading, memory: new NodeMemoryProbe() })
   const planPostProcessing = makePlanPostProcessing({ stacks, tools, workspace: new NodeSirilWorkspace(db) })
   const planForward = makePlanForward({
     frames,

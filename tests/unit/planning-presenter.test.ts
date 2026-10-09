@@ -15,8 +15,8 @@ const tonight = (over: Partial<TonightPlan> = {}): TonightPlan => ({
   brightMoon: false,
   noFilterForBrightMoon: false,
   choices: [
-    { targetId: 'target-m-31', targetName: 'M 31', usableHours: 8.5, moonSeparationDeg: null, shortOfGoalSec: null },
-    { targetId: 'target-m-33', targetName: 'M 33', usableHours: 6, moonSeparationDeg: 41, shortOfGoalSec: null }
+    { targetId: 'target-m-31', targetName: 'M 31', usableHours: 8.5, moonSeparationDeg: null, shortOfGoalSec: null, channel: null },
+    { targetId: 'target-m-33', targetName: 'M 33', usableHours: 6, moonSeparationDeg: 41, shortOfGoalSec: null, channel: null }
   ],
   ...over
 })

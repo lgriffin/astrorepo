@@ -35,17 +35,27 @@ describe('Stacking suggestion presenter', () => {
   it('[DSC-016] Given a closing capture, When presented, Then it is high priority and states hours, days left, shortfall and moon', () => {
     const r = toNextActionRecommendation({
       kind: 'capture', id: 'capture:target-m-13:2026-09-29', targetId: 'target-m-13', targetName: 'M 13', night: '2026-09-29',
-      usableHours: 1.5, moonSeparationDeg: 64, closesInDays: 6, shortOfGoalSec: 3 * 3600
+      usableHours: 1.5, moonSeparationDeg: 64, closesInDays: 6, shortOfGoalSec: 3 * 3600, channel: null
     })
     expect(r).toMatchObject({ category: 'capture', priority: 'high', dismissible: false, targetId: 'target-m-13' })
     expect(r.title).toBe('M 13 · shoot tonight, 1 h 30 m above 30°')
     expect(r.description).toBe('Its season closes in 6 days. 3 h short of your goal. The moon comes within 64°.')
   })
 
+  it('[ADV-010] Given a capture whose target lags in one filter, When presented, Then the title names the filter and the line says why', () => {
+    const r = toNextActionRecommendation({
+      kind: 'capture', id: 'capture:target-m-27:2026-09-29', targetId: 'target-m-27', targetName: 'M 27', night: '2026-09-29',
+      usableHours: 4, moonSeparationDeg: null, closesInDays: null, shortOfGoalSec: null,
+      channel: { filter: 'OIII', haveSec: 40 * 60, leadFilter: 'Ha', leadSec: 6 * 3600 }
+    })
+    expect(r.title).toBe('M 27 · shoot tonight in OIII, 4 h above 30°')
+    expect(r.description).toBe('Capture OIII: it has 40 m against 6 h of Ha. The moon is down while it is up.')
+  })
+
   it('[DSC-016] Given an ordinary capture with no goal and the moon down, When presented, Then it is medium priority and says the moon is down', () => {
     const r = toNextActionRecommendation({
       kind: 'capture', id: 'capture:target-m-31:2026-09-29', targetId: 'target-m-31', targetName: 'M 31', night: '2026-09-29',
-      usableHours: 7, moonSeparationDeg: null, closesInDays: null, shortOfGoalSec: null
+      usableHours: 7, moonSeparationDeg: null, closesInDays: null, shortOfGoalSec: null, channel: null
     })
     expect(r.priority).toBe('medium')
     expect(r.description).toBe('The moon is down while it is up.')

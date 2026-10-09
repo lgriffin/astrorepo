@@ -2,10 +2,41 @@ import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { SirilFolder, SirilPlacement } from '@astro/domain'
+import type { FrameIndexSettings, SirilFolder, SirilPlacement } from '@astro/domain'
+import { parseUtc } from './sqlite-frame-catalogue'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
 const SIRIL_FOLDERS: SirilFolder[] = ['lights', 'darks', 'flats', 'biases']
+
+interface IndexedRow {
+  naxis1: number | null
+  naxis2: number | null
+  exposure_sec: number | null
+  gain: number | null
+  ccd_temp: number | null
+  filter: string | null
+  date_obs: string | null
+  xpixsz: number | null
+  scope: string | null
+  focallen: string | null
+  bayer: number
+  has_headers: number
+}
+
+/** FOCALLEN is kept as header text; a number in it is the focal length in millimetres. */
+function toSettings(r: IndexedRow): FrameIndexSettings {
+  const focal = r.focallen === null ? NaN : Number(String(r.focallen).replace(/'/g, '').trim())
+  return {
+    exposureSec: r.exposure_sec,
+    gain: r.gain,
+    sensorTempC: r.ccd_temp,
+    filter: r.filter?.trim() || null,
+    capturedAt: parseUtc(r.date_obs),
+    focalMm: Number.isFinite(focal) && focal > 0 ? focal : null,
+    pixelUm: r.xpixsz && r.xpixsz > 0 ? r.xpixsz : null,
+    scope: r.scope
+  }
+}
 /** A folder named for a frame type tells what its frames are when the header does not. */
 const FRAME_TYPE_FOLDER = /dark|flat|bias|offset/i
 /** Copies keep the source's modified time; some file systems store it to the second. */
@@ -90,7 +121,9 @@ export class NodeSirilWorkspace implements SirilWorkspace {
 
   async frameDetails(paths: string[]): Promise<FrameDetail[]> {
     const indexed = this.db?.prepare(
-      `SELECT f.naxis1, f.naxis2,
+      `SELECT f.naxis1, f.naxis2, f.exposure_sec, f.gain, f.ccd_temp, f.filter, f.date_obs, f.xpixsz,
+              COALESCE(NULLIF(TRIM(f.telescope), ''), NULLIF(TRIM(f.instrument), '')) AS scope,
+              (SELECT h.value FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = 'FOCALLEN' LIMIT 1) AS focallen,
               EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = 'BAYERPAT' AND TRIM(REPLACE(COALESCE(h.value, ''), '''', '')) <> '') AS bayer,
               EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id) AS has_headers
        FROM fits_files f WHERE f.file_path = ?`
@@ -98,13 +131,14 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     return Promise.all(
       paths.map(async p => {
         const stat = await fs.promises.stat(p).catch(() => null)
-        const row = indexed?.get(p) as { naxis1: number | null; naxis2: number | null; bayer: number; has_headers: number } | undefined
+        const row = indexed?.get(p) as IndexedRow | undefined
         return {
           path: p,
           sizeBytes: stat?.size ?? 0,
           width: row?.naxis1 ?? null,
           height: row?.naxis2 ?? null,
-          colour: row && row.has_headers ? row.bayer === 1 : null
+          colour: row && row.has_headers ? row.bayer === 1 : null,
+          settings: row ? toSettings(row) : null
         }
       })
     )
