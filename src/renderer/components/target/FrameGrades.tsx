@@ -13,6 +13,9 @@ const VERDICT_STYLE: Record<FrameGradeView['verdict'], string> = {
 }
 const VERDICT_LABEL: Record<FrameGradeView['verdict'], string> = { keep: 'Kept', reject: 'Rejected', unmeasured: 'Not measured' }
 
+/** The main process's reason, without Electron's wrapper. */
+const reasonOf = (e: unknown) => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '') : '')
+
 /**
  * Grade the lights (specs/019-frame-grading): measure every light, see each night's FWHM and
  * star count in capture order, keep or reject a frame by hand, and export the grades. Only kept
@@ -42,8 +45,10 @@ export function FrameGrades({ targetId, onChanged }: { targetId: string; onChang
     let done = 0
     setMeasuring({ done, left: view?.unmeasured ?? 0 })
     try {
-      for (let first = true; !stop.current; first = false) {
-        const batch = await invoke<MeasureBatchView>('grades:measure', { target_id: targetId, retry: retry && first })
+      let last: string | null = null
+      while (!stop.current) {
+        const batch: MeasureBatchView = await invoke<MeasureBatchView>('grades:measure', { target_id: targetId, retry, retry_after: last })
+        last = batch.last ?? last
         done += batch.measured + batch.failed
         setMeasuring({ done, left: batch.remaining })
         load()
@@ -60,14 +65,24 @@ export function FrameGrades({ targetId, onChanged }: { targetId: string; onChang
   }
 
   async function override(fileId: string, choice: 'keep' | 'reject' | null): Promise<void> {
-    await invoke('grades:override', { file_id: fileId, override: choice })
-    load()
-    onChanged?.()
+    try {
+      await invoke('grades:override', { file_id: fileId, override: choice })
+    } catch (error) {
+      addToast(`Your choice was not saved. ${reasonOf(error)}`.trim(), 'error')
+    } finally {
+      // Reload either way, so the choice shown is the one saved.
+      load()
+      onChanged?.()
+    }
   }
 
   async function exportCsv(): Promise<void> {
-    const result = await invoke<{ saved: boolean; path?: string }>('grades:export', { target_id: targetId })
-    if (result.saved) addToast(`Grades saved to ${result.path}`, 'success')
+    try {
+      const result = await invoke<{ saved: boolean; path?: string }>('grades:export', { target_id: targetId })
+      if (result.saved) addToast(`Grades saved to ${result.path}`, 'success')
+    } catch (error) {
+      addToast(`The grades were not saved. ${reasonOf(error)}`.trim(), 'error')
+    }
   }
 
   if (failed && !view) return <EmptyState>Could not read this target&apos;s frame grades. Open the page again to retry.</EmptyState>

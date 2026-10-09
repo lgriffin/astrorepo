@@ -248,7 +248,7 @@ export const schemas = {
   'siril:estimate': z.object({ raw_path: z.string().min(1) }),
   'grades:target': z.object({ target_id: id }),
   'grades:limits': z.object({}).optional(),
-  'grades:measure': z.object({ target_id: id, retry: z.boolean().optional() }),
+  'grades:measure': z.object({ target_id: id, retry: z.boolean().optional(), retry_after: id.nullable().optional() }),
   'grades:override': z.object({ file_id: id, override: z.enum(['keep', 'reject']).nullable() }),
   'grades:export': z.object({ target_id: id }),
   'recipe:post-process': z.object({

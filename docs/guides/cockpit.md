@@ -278,8 +278,8 @@ they are, 0 for round), how many stars it holds, the sky background and noise, a
 the stars stand out). A colour camera's frames are binned 2×2 first, so the Bayer pattern is not
 mistaken for stars. Your files are only read.
 
-**Measure lights** works through them a few at a time; **Stop** stops between batches and the next
-press carries on. Each night and filter then shows its median FWHM and stars, a trend line of
+**Measure lights** works through them a few at a time, away from the rest of the app so it stays
+responsive; **Stop** stops between batches and the next press carries on. Each night and filter then shows its median FWHM and stars, a trend line of
 FWHM over star-count bars in capture order (rejected frames in red), and every frame with its
 grade and the reasons for it.
 
@@ -291,6 +291,7 @@ you set it back to **By the limits**. A light that could not be read shows why a
 stack.
 
 Only kept lights go to Siril: the stacking plan counts them, and Prep for Siril and queued stacks
-place only them, removing any rejected light an earlier run left in the work area. Kept lights get
+place only them, removing any rejected light an earlier run left in the work area. Anything else
+in the work folders, such as frames you added by hand, stays. Kept lights get
 a weight (their SNR squared against the best one) for weighted stacking. **Export CSV** saves every
 measurement, grade and reason for a spreadsheet.

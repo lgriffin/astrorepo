@@ -16,7 +16,7 @@ export interface SirilWorkspaceResult {
   existing: number
   /** Lights grading rejected, left out of the work area. */
   rejected: number
-  /** Files an earlier run left in the work area that this plan no longer holds, removed. */
+  /** Rejected lights an earlier run placed in the work area, removed. */
   pruned: number
   byFolder: Record<SirilFolder, number>
 }
@@ -44,7 +44,7 @@ export function makePrepareSirilWorkspace(deps: PrepareSirilWorkspaceDeps): Prep
         throw new WorkAreaOverlapsSourceError(workDir, dir)
       }
     }
-    const { frames, rejected } = await selectFrames(deps, sourceDir)
+    const { frames, rejected, rejectedPaths } = await selectFrames(deps, sourceDir)
     await deps.workspace.prepareFolders(workDir)
     const result: SirilWorkspaceResult = {
       workDir,
@@ -55,17 +55,17 @@ export function makePrepareSirilWorkspace(deps: PrepareSirilWorkspaceDeps): Prep
       pruned: 0,
       byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 }
     }
-    const placements = planSirilWorkspace(frames)
-    for (const placement of placements) {
+    // Laid out with every frame, so a rejected light has the name an earlier run gave it.
+    const layout = planSirilWorkspace(frames)
+    for (const placement of layout.filter(p => !rejectedPaths.has(p.from))) {
       const outcome = await deps.workspace.place(placement, workDir)
       result[outcome]++
       result.byFolder[placement.folder]++
     }
-    // Siril stacks whatever is in the folders, so a frame rejected since an earlier run must go.
-    for (const folder of ['lights', 'darks', 'flats', 'biases'] as const) {
-      const keep = placements.filter(p => p.folder === folder).map(p => p.name)
-      result.pruned += (await deps.workspace.prune(workDir, folder, keep)).length
-    }
+    // Siril stacks whatever is in the folders, so a light rejected since an earlier run must go.
+    // Only those: anything else in the folders, such as frames the user added, stays.
+    const leftOut = layout.filter(p => rejectedPaths.has(p.from)).map(p => p.name)
+    result.pruned = (await deps.workspace.remove(workDir, 'lights', leftOut)).length
     return result
   }
 }

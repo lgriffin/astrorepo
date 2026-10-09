@@ -49,11 +49,12 @@ export interface SirilWorkspace {
    */
   copyBytes(placements: SirilPlacement[], workDir: string): Promise<number>
   /**
-   * Removes FITS files from one of the work folder's frame folders that are not named in `keep`
-   * (frames an earlier run placed that the plan no longer holds). Only ever touches the work area;
-   * a removed hard link leaves its source untouched. Returns the names removed.
+   * Removes the named entries from one of the work folder's frame folders (frames an earlier run
+   * placed that the plan now leaves out). Touches nothing else: files the user put there by hand
+   * stay. Only ever writes inside the work area, refusing a frame folder that links elsewhere; a
+   * removed hard link leaves its source untouched. Returns the names that were there and are gone.
    */
-  prune(workDir: string, folder: SirilFolder, keep: string[]): Promise<string[]>
+  remove(workDir: string, folder: SirilFolder, names: string[]): Promise<string[]>
   /** Stacks a Siril run left in `workDir` (its result*.fit files), newest first. Writes nothing. */
   stackResults(workDir: string): Promise<{ path: string; sizeBytes: number; modifiedAt: Date | null }[]>
 }

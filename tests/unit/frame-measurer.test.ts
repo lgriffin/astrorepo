@@ -3,7 +3,10 @@ import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { readFitsImage } from '../../src/main/fits/image-reader'
-import { NodeFrameMeasurer } from '../../src/main/adapters/node-frame-measurer'
+import { EventEmitter } from 'events'
+import type { Worker } from 'worker_threads'
+import { measurement } from '@astro/testkit'
+import { NodeFrameMeasurer, type MeasureReply, type MeasureRequest } from '../../src/main/adapters/node-frame-measurer'
 import { fitsBytes, fitsImage } from '../helpers/fits'
 
 const dirs: string[] = []
@@ -58,6 +61,32 @@ describe('readFitsImage', () => {
     await expect(readFitsImage(write('e.fit', truncated))).rejects.toThrow('The pixel data is truncated.')
     await expect(readFitsImage(write('f.fit', Buffer.alloc(100)))).rejects.toThrow('The header is truncated.')
   })
+
+  it('[GRD-011] Given a four-axis image with several slices, When read, Then it is refused rather than measured from its first slice', async () => {
+    const file = write('g.fit', fitsImage(2, 2, [[1, 2, 3, 4]], { cards: { NAXIS: 4, NAXIS3: 1, NAXIS4: 2 } }))
+    await expect(readFitsImage(file)).rejects.toThrow('The image has 4 axes; the app reads images of up to three.')
+    const single = write('h.fit', fitsImage(2, 2, [[1, 2, 3, 4]], { cards: { NAXIS: 4, NAXIS3: 1, NAXIS4: 1 } }))
+    expect([...(await readFitsImage(single)).planes[0]]).toEqual([1, 2, 3, 4])
+  })
+
+  it('[NFR-014] Given a header that declares an enormous image, When read, Then it is refused before any pixels are held', async () => {
+    const file = write('i.fit', fitsBytes({ BITPIX: 16, NAXIS: 2, NAXIS1: 100000, NAXIS2: 100000 }))
+    await expect(readFitsImage(file)).rejects.toThrow(/larger than the app measures \(200 megapixels\)/)
+  })
+
+  it('[GRD-001] Given more pixels than one read holds, When read, Then every pixel comes back across the reads', async () => {
+    const width = 1500
+    const pixels = Array.from({ length: width * width }, (_, i) => i % 60000)
+    const image = await readFitsImage(write('j.fit', fitsImage(width, width, [pixels])))
+    expect(image.planes[0][0]).toBe(0)
+    expect(image.planes[0][2_097_152]).toBe(2_097_152 % 60000)
+    expect(image.planes[0][width * width - 1]).toBe((width * width - 1) % 60000)
+  })
+
+  it('[GRD-001] Given integers stored with a negative BSCALE, When read, Then the saturation is the highest physical value', async () => {
+    const file = write('k.fit', fitsImage(2, 1, [[0, 65535]], { cards: { BSCALE: -1, BZERO: 32767 } }))
+    expect((await readFitsImage(file)).saturation).toBe(65535)
+  })
 })
 
 describe('NodeFrameMeasurer', () => {
@@ -80,5 +109,65 @@ describe('NodeFrameMeasurer', () => {
 
   it('[GRD-011] Given a file that is not FITS, When measured, Then it fails with the reason', async () => {
     await expect(new NodeFrameMeasurer().measure(write('x.fit', Buffer.from('hello')))).rejects.toThrow(/header is truncated/)
+  })
+})
+
+/** A stand-in worker thread: answers each request with what the reply function gives, or dies. */
+class FakeWorker extends EventEmitter {
+  readonly sent: MeasureRequest[] = []
+  terminated = false
+  refs = 0
+  constructor(private readonly reply: (r: MeasureRequest) => MeasureReply | 'die') {
+    super()
+  }
+  postMessage(r: MeasureRequest): void {
+    this.sent.push(r)
+    queueMicrotask(() => {
+      const answer = this.reply(r)
+      if (answer === 'die') this.emit('exit', 1)
+      else this.emit('message', answer)
+    })
+  }
+  ref(): void {
+    this.refs++
+  }
+  unref(): void {
+    this.refs = 0
+  }
+  async terminate(): Promise<number> {
+    this.terminated = true
+    return 0
+  }
+}
+
+describe('NodeFrameMeasurer on a worker thread', () => {
+  const asWorker = (w: FakeWorker) => w as unknown as Worker
+
+  it('[NFR-014] Given a worker, When frames are measured, Then each goes to the one worker and its answer comes back, and an idle worker lets the app quit', async () => {
+    const workers: FakeWorker[] = []
+    const measurer = new NodeFrameMeasurer(() => {
+      const w = new FakeWorker(r => (r.path === 'bad.fit' ? { id: r.id, error: 'The pixel data is truncated.' } : { id: r.id, measurement: measurement({ starCount: r.id }) }))
+      workers.push(w)
+      return asWorker(w)
+    })
+    const [a, b] = await Promise.all([measurer.measure('a.fit'), measurer.measure('b.fit')])
+    expect([a.starCount, b.starCount]).toEqual([1, 2])
+    await expect(measurer.measure('bad.fit')).rejects.toThrow('The pixel data is truncated.')
+    expect(workers).toHaveLength(1)
+    expect(workers[0].refs).toBe(0)
+    await measurer.dispose()
+    expect(workers[0].terminated).toBe(true)
+  })
+
+  it('[NFR-014] Given a worker that dies, When it was measuring, Then that frame fails and the next frame gets a new worker', async () => {
+    const workers: FakeWorker[] = []
+    const measurer = new NodeFrameMeasurer(() => {
+      const w = new FakeWorker(r => (workers.length === 1 ? 'die' : { id: r.id, measurement: measurement() }))
+      workers.push(w)
+      return asWorker(w)
+    })
+    await expect(measurer.measure('a.fit')).rejects.toThrow(/stopped unexpectedly/)
+    await expect(measurer.measure('a.fit')).resolves.toEqual(measurement())
+    expect(workers).toHaveLength(2)
   })
 })

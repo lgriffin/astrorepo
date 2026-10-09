@@ -1178,4 +1178,6 @@ export interface MeasureBatchView {
   measured: number
   failed: number
   remaining: number
+  /** The last light this batch tried; pass it back as retry_after to carry a retry on. */
+  last: string | null
 }

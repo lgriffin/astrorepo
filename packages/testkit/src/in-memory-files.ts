@@ -104,15 +104,11 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
     return this.otherVolume.has(p.from) ? 'copied' : 'linked'
   }
 
-  async prune(workDir: string, folder: SirilFolder, keep: string[]): Promise<string[]> {
-    const prefix = `${workDir}/${folder}/`
-    const wanted = new Set(keep)
+  async remove(workDir: string, folder: SirilFolder, names: string[]): Promise<string[]> {
     const removed: string[] = []
-    for (const dest of [...this.placed.keys()]) {
-      if (!dest.startsWith(prefix)) continue
-      const name = dest.slice(prefix.length)
-      if (name.includes('/') || wanted.has(name)) continue
-      this.placed.delete(dest)
+    for (const name of new Set(names)) {
+      const dest = `${workDir}/${folder}/${name}`
+      if (!this.placed.delete(dest)) continue
       this.placedVersion.delete(dest)
       removed.push(name)
     }

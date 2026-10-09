@@ -38,14 +38,14 @@ Leigh puts first: what is hidden in the files, frame by frame.
 | GRD-004 | Ubiquitous | The system shall judge FWHM, star count and background against the median of the light's own night and filter. |
 | GRD-005 | Event | When the user keeps or rejects a light by hand, the system shall use that choice over the limits until the user clears it. |
 | GRD-006 | Ubiquitous | The system shall weight each kept light by its SNR squared, relative to the target's best kept light. |
-| GRD-007 | Event | When a stack is estimated, laid out or queued, the system shall leave rejected lights out and remove any an earlier run left in the work area. |
+| GRD-007 | Event | When a stack is estimated, laid out or queued, the system shall grade each light with the rest of its target's lights, leave rejected lights out, and remove from the work area only the rejected lights an earlier run placed there, refusing a frame folder that links outside the work area. |
 | GRD-008 | Event | When the user exports grades, the system shall write one CSV row per light with every measurement, the verdict and its reasons. |
 | GRD-009 | Ubiquitous | The system shall show each night's FWHM and star count in capture order, as the first step of a target's Stack and process. |
 | GRD-010 | Event | When the user saves grading limits in Settings, the system shall grade every light again without measuring it again. |
-| GRD-011 | Unwanted | If a light cannot be measured, then the system shall show it as not measured with the reason and keep it in the stack. |
+| GRD-011 | Unwanted | If a light cannot be measured, then the system shall show it as not measured with the reason, keep it in the stack, and try every such light once when the user asks to try again. |
 
 ## Non-functional
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| NFR-014 | Ubiquitous | The system shall measure lights in small batches, so the app stays responsive and the user can stop between batches. |
+| NFR-014 | Ubiquitous | The system shall measure lights in small batches on a worker thread, refusing images over 200 megapixels, so the app stays responsive and the user can stop between batches. |

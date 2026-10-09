@@ -1,24 +1,70 @@
+import type { Worker } from 'worker_threads'
 import type { FrameMeasurer } from '@astro/application'
-import { binBayer, measureFrame, type FrameMeasurement, type Plane } from '@astro/domain'
-import { readFitsImage } from '../fits/image-reader'
+import type { FrameMeasurement } from '@astro/domain'
+import { measureFitsFile } from '../fits/measure-fits'
+
+export interface MeasureRequest {
+  id: number
+  path: string
+}
+export type MeasureReply = { id: number; measurement: FrameMeasurement } | { id: number; error: string }
 
 /**
- * FrameMeasurer over the FITS files on disk. A colour sensor's raw frame is binned 2×2 to
- * luminance before stars are found (GRD-002); a frame with three channels is summed to one.
+ * FrameMeasurer over the FITS files on disk. Given a worker factory, every frame is decoded and
+ * measured on one worker thread, so the main process keeps answering the window and the job
+ * scheduler while a target's lights are measured (NFR-014). Without one it measures in place, as
+ * tests do. A worker that dies fails what it was measuring and is replaced on the next frame.
  */
 export class NodeFrameMeasurer implements FrameMeasurer {
-  async measure(path: string): Promise<FrameMeasurement> {
-    const image = await readFitsImage(path)
-    let plane: Plane = { width: image.width, height: image.height, data: image.planes[0] }
-    if (image.planes.length > 1) {
-      const sum = new Float32Array(image.width * image.height)
-      for (const p of image.planes) for (let i = 0; i < sum.length; i++) sum[i] += p[i]
-      plane = { ...plane, data: sum }
+  private worker: Worker | null = null
+  private readonly pending = new Map<number, { resolve: (m: FrameMeasurement) => void; reject: (e: Error) => void }>()
+  private nextId = 1
+
+  constructor(private readonly createWorker?: () => Worker) {}
+
+  measure(path: string): Promise<FrameMeasurement> {
+    if (!this.createWorker) return measureFitsFile(path)
+    const worker = this.worker ?? this.start(this.createWorker)
+    const id = this.nextId++
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject })
+      worker.ref()
+      worker.postMessage({ id, path } satisfies MeasureRequest)
+    })
+  }
+
+  /** Stops the worker; anything still being measured fails. */
+  async dispose(): Promise<void> {
+    const worker = this.worker
+    this.worker = null
+    this.failAll('Measuring stopped because the app is closing.')
+    await worker?.terminate()
+  }
+
+  private start(createWorker: () => Worker): Worker {
+    const worker = createWorker()
+    worker.on('message', (reply: MeasureReply) => {
+      const waiting = this.pending.get(reply.id)
+      if (!waiting) return
+      this.pending.delete(reply.id)
+      if ('error' in reply) waiting.reject(new Error(reply.error))
+      else waiting.resolve(reply.measurement)
+      // An idle worker must not keep the app from quitting.
+      if (this.pending.size === 0) worker.unref()
+    })
+    const lost = (reason: string) => {
+      if (this.worker !== worker) return
+      this.worker = null
+      this.failAll(reason)
     }
-    const binned = image.bayer !== null && image.planes.length === 1
-    if (binned) plane = binBayer(plane)
-    // A binned pixel sums four: two at full scale is a star core that clipped.
-    const saturation = image.saturation === null ? null : 0.98 * image.saturation * (binned ? 2 : image.planes.length)
-    return measureFrame(plane, { binned, search: { saturation } })
+    worker.on('error', error => lost(`Measuring failed: ${error.message}`))
+    worker.on('exit', code => lost(`Measuring stopped unexpectedly (exit code ${code}). Try again.`))
+    this.worker = worker
+    return worker
+  }
+
+  private failAll(reason: string): void {
+    for (const waiting of this.pending.values()) waiting.reject(new Error(reason))
+    this.pending.clear()
   }
 }

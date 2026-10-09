@@ -24,7 +24,7 @@ interface LightRow {
 }
 
 const SELECT = `
-  SELECT f.id, f.file_path, f.date_obs, NULLIF(TRIM(f.filter), '') AS filter, f.file_size_bytes, f.file_modified_at,
+  SELECT f.id, f.file_path, f.target_id, f.date_obs, NULLIF(TRIM(f.filter), '') AS filter, f.file_size_bytes, f.file_modified_at,
          g.size_bytes AS g_size, g.modified_at AS g_modified, g.fwhm, g.eccentricity, g.star_count, g.background,
          g.noise, g.snr, g.measure_error, g.measured_at, g.override
   FROM fits_files f
@@ -59,17 +59,24 @@ export class SqliteFrameGradeStore implements FrameGradeStore {
     return rows.map(toLight)
   }
 
-  async lightsAt(paths: string[]): Promise<GradableLight[]> {
+  async lightsAlongside(paths: string[]): Promise<GradableLight[]> {
     const byPath = new Map<string, GradableLight>()
+    const targets = new Set<string>()
     // SQLite caps bound parameters; 500 a query stays well inside every build's limit.
     for (let i = 0; i < paths.length; i += 500) {
       const chunk = paths.slice(i, i + 500)
       const rows = this.db
         .prepare(`${SELECT} WHERE f.is_stacked = 0 AND ${IS_LIGHT} AND f.file_path IN (${chunk.map(() => '?').join(',')})`)
-        .all(...chunk) as LightRow[]
-      for (const r of rows) byPath.set(r.file_path, toLight(r))
+        .all(...chunk) as (LightRow & { target_id: string | null })[]
+      for (const r of rows) {
+        byPath.set(r.file_path, toLight(r))
+        if (r.target_id) targets.add(r.target_id)
+      }
     }
-    return paths.flatMap(p => byPath.get(p) ?? [])
+    const asked = paths.flatMap(p => byPath.get(p) ?? [])
+    const peers: GradableLight[] = []
+    for (const target of targets) for (const l of await this.lightsOf(target)) if (!byPath.has(l.path)) peers.push(l)
+    return [...asked, ...peers]
   }
 
   async saveMeasurement(fileId: string, result: { measurement: FrameMeasurement } | { error: string }, at: Date): Promise<void> {

@@ -49,7 +49,7 @@ describe('SqliteFrameGradeStore', () => {
     const scan = seedFitsScan(db)
     const paths = Array.from({ length: 1200 }, (_, i) => `/data/L_${i}.fit`)
     db.transaction(() => paths.forEach((p, i) => seedFitsFile(db, scan, { id: `f${i}`, filePath: p, imageType: 'Light' })))()
-    expect(await new SqliteFrameGradeStore(db).lightsAt(paths)).toHaveLength(1200)
+    expect(await new SqliteFrameGradeStore(db).lightsAlongside(paths)).toHaveLength(1200)
   })
 
   it('[GRD-010] Given limits saved in Settings, some out of range, When read, Then valid ones are used and the rest fall back', async () => {

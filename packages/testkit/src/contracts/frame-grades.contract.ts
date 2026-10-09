@@ -57,10 +57,15 @@ export function frameGradeStoreContract(adapterName: string, setup: (lights: See
       expect((await store.lightsOf('m31'))[0]).toMatchObject({ override: 'keep', measurement: null })
     })
 
-    it('[GRD-007] Given paths from a source folder, When lights are looked up by path, Then known ones come back in the order asked', async () => {
+    it('[GRD-007] Given paths from a source folder, When lights are looked up by path, Then known ones come back in the order asked, then the rest of their targets', async () => {
       const store = await setup(seed)
-      const found = await store.lightsAt(['/data/m31/Light_001.fit', '/nowhere/x.fit', '/data/m42/Light_002.fit'])
-      expect(found.map(l => l.fileId)).toEqual(['c', 'b'])
+      const found = await store.lightsAlongside(['/data/m31/Light_001.fit', '/nowhere/x.fit', '/data/m42/Light_002.fit'])
+      expect(found.map(l => l.fileId)).toEqual(['c', 'b', 'a'])
+    })
+
+    it('[GRD-007] Given one light of a target, When looked up, Then its target\'s other lights come along and other targets do not', async () => {
+      const store = await setup(seed)
+      expect((await store.lightsAlongside(['/data/m42/Light_001.fit'])).map(l => l.fileId)).toEqual(['a', 'b'])
     })
 
     it('[GRD-005] Given a frame the index no longer holds, When it is overridden, Then it fails with a reason', async () => {

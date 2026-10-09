@@ -20,9 +20,13 @@ export class InMemoryFrameGradeStore implements FrameGradeStore {
       .map(this.copy)
   }
 
-  async lightsAt(paths: string[]): Promise<GradableLight[]> {
+  async lightsAlongside(paths: string[]): Promise<GradableLight[]> {
     const byPath = new Map([...this.lights.values()].map(l => [l.path, l]))
-    return paths.flatMap(p => (byPath.has(p) ? [this.copy(byPath.get(p) as GradableLight & { targetId: string })] : []))
+    const asked = paths.flatMap(p => byPath.get(p) ?? [])
+    const targets = new Set(asked.map(l => l.targetId))
+    const seen = new Set(asked.map(l => l.path))
+    const peers = [...this.lights.values()].filter(l => targets.has(l.targetId) && !seen.has(l.path))
+    return [...asked, ...peers].map(this.copy)
   }
 
   async saveMeasurement(fileId: string, result: { measurement: FrameMeasurement } | { error: string }, at: Date): Promise<void> {

@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3'
+import type { Worker } from 'worker_threads'
 import {
   makeDiscoverTarget,
   makeDiscoverTargets,
@@ -35,9 +36,18 @@ import { NodeMachineMonitor } from './adapters/node-machine-monitor'
 import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-frame-grades'
 import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
 
+/** One measurer for the app, so every request shares its worker thread. */
+let frameMeasurer = new NodeFrameMeasurer()
+
+/** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
+export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
+  frameMeasurer = new NodeFrameMeasurer(createWorker)
+  return frameMeasurer
+}
+
 /** Frame grading over the index and the FITS files (spec 019). */
 export function composeGrading(db: Database.Database) {
-  return makeFrameGrading({ store: new SqliteFrameGradeStore(db), measurer: new NodeFrameMeasurer(), limits: new SqliteGradeLimits(db), clock: systemClock })
+  return makeFrameGrading({ store: new SqliteFrameGradeStore(db), measurer: frameMeasurer, limits: new SqliteGradeLimits(db), clock: systemClock })
 }
 
 /**

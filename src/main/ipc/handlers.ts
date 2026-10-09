@@ -454,7 +454,7 @@ export function registerIpcHandlers(): void {
   handle('grades:target', validated('grades:target', async args => toGradesView(await composeGrading(getSqlite()).grade(args.target_id))))
 
   // One batch a call (NFR-014): the page asks again while frames remain, and stops when told to.
-  handle('grades:measure', validated('grades:measure', args => composeGrading(getSqlite()).measureBatch(args.target_id, { retry: args.retry })))
+  handle('grades:measure', validated('grades:measure', args => composeGrading(getSqlite()).measureBatch(args.target_id, { retry: args.retry, retryAfter: args.retry_after ?? null })))
 
   handle('grades:override', validated('grades:override', async args => {
     await composeGrading(getSqlite()).setOverride(args.file_id, args.override)

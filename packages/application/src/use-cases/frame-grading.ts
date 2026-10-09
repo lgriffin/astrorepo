@@ -12,8 +12,10 @@ export interface FrameGradingDeps {
 export interface MeasureBatchResult {
   measured: number
   failed: number
-  /** Lights still unmeasured after this batch; the caller asks again while this is above zero. */
+  /** Lights still to try after this batch; the caller asks again while this is above zero. */
   remaining: number
+  /** The last light this batch tried, so a retry can carry on after it. */
+  last: string | null
 }
 
 /** Frames measured per call, so the app stays responsive and the user can stop between batches. */
@@ -32,12 +34,18 @@ export function makeFrameGrading(deps: FrameGradingDeps) {
 
   return {
     /**
-     * Measures the next few lights that have never been measured (or, with `retry`, those that
-     * failed before). Each frame's result is saved as soon as it is known.
+     * Measures the next few lights that have never been measured. With `retry` it also tries
+     * again those that failed before, in capture order after `retryAfter` (the `last` of the
+     * previous batch), so a retry reaches every failed light once even when many still fail.
+     * Each frame's result is saved as soon as it is known.
      */
-    async measureBatch(targetId: string, options: { retry?: boolean; batch?: number } = {}): Promise<MeasureBatchResult> {
+    async measureBatch(
+      targetId: string,
+      options: { retry?: boolean; retryAfter?: string | null; batch?: number } = {}
+    ): Promise<MeasureBatchResult> {
       const lights = await deps.store.lightsOf(targetId)
-      const pending = lights.filter(l => !l.measurement && (options.retry || !l.measureError))
+      const from = options.retryAfter ? lights.findIndex(l => l.fileId === options.retryAfter) + 1 : 0
+      const pending = lights.filter((l, i) => !l.measurement && (!l.measureError || (options.retry && i >= from)))
       const batch = pending.slice(0, options.batch ?? MEASURE_BATCH)
       let measured = 0
       let failed = 0
@@ -51,7 +59,7 @@ export function makeFrameGrading(deps: FrameGradingDeps) {
           failed++
         }
       }
-      return { measured, failed, remaining: pending.length - batch.length }
+      return { measured, failed, remaining: pending.length - batch.length, last: batch.length > 0 ? batch[batch.length - 1].fileId : null }
     },
 
     grade,
@@ -66,10 +74,14 @@ export function makeFrameGrading(deps: FrameGradingDeps) {
       return gradesCsv(await grade(targetId))
     },
 
-    /** The lights among these paths that grading rejects, judged among themselves. */
+    /**
+     * The lights among these paths that grading rejects, judged with the rest of their target's
+     * lights exactly as the grading page judges them.
+     */
     async rejected(paths: string[]): Promise<Set<string>> {
-      const [lights, limits] = await Promise.all([deps.store.lightsAt(paths), deps.limits.read()])
-      return rejectedPaths(gradeFrames(lights, limits))
+      const [lights, limits] = await Promise.all([deps.store.lightsAlongside(paths), deps.limits.read()])
+      const asked = new Set(paths)
+      return new Set([...rejectedPaths(gradeFrames(lights, limits))].filter(p => asked.has(p)))
     }
   }
 }

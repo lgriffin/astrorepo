@@ -7,8 +7,12 @@ import type { FrameMeasurement, GradableLight, GradeLimits, GradeOverride } from
 export interface FrameGradeStore {
   /** A target's lights, oldest capture first. */
   lightsOf(targetId: string): Promise<GradableLight[]>
-  /** The indexed lights among these paths, in the order given; paths the index does not know are left out. */
-  lightsAt(paths: string[]): Promise<GradableLight[]>
+  /**
+   * The indexed lights among these paths, then every other light of the targets they belong to,
+   * so each is graded against the same nights as on its target's page. Paths the index does not
+   * know are left out.
+   */
+  lightsAlongside(paths: string[]): Promise<GradableLight[]>
   /** Saves a measurement, or why the frame could not be measured. */
   saveMeasurement(fileId: string, result: { measurement: FrameMeasurement } | { error: string }, at: Date): Promise<void>
   /** Sets or clears the user's keep or reject. */

@@ -66,6 +66,15 @@ async function readHeader(handle: fs.promises.FileHandle): Promise<{ headers: Ma
 const INTEGER_RANGE: Record<number, [number, number]> = { 8: [0, 255], 16: [-32768, 32767], 32: [-2147483648, 2147483647] }
 
 /**
+ * The most samples the app decodes from one image: 200 megapixels, already more than any
+ * astronomy camera's frame in three channels. Each sample is held as a 32-bit float, so this
+ * bounds the memory a malformed or unusually large header can ask for.
+ */
+export const MAX_SAMPLES = 200_000_000
+/** Pixel data is read and decoded this many bytes at a time, so the raw bytes are never held whole. */
+const READ_CHUNK = 4 * 1024 * 1024
+
+/**
  * The primary image of a FITS file as floating-point planes, with BSCALE and BZERO applied. Reads
  * the file; never writes it. Throws with a reason the user can act on.
  */
@@ -79,32 +88,47 @@ export async function readFitsImage(filePath: string): Promise<FitsImage> {
     const width = num('NAXIS1', 0)
     const height = num('NAXIS2', 0)
     const channels = naxis >= 3 ? num('NAXIS3', 1) : 1
-    if (naxis < 2 || width <= 0 || height <= 0) throw new Error('The file has no image in its primary header.')
+    if (naxis < 2 || !Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+      throw new Error('The file has no image in its primary header.')
+    }
+    // A fourth axis or more would hold further images; the app reads one image of up to four channels.
+    for (let axis = 4; axis <= naxis; axis++) {
+      if (num(`NAXIS${axis}`, 1) !== 1) throw new Error(`The image has ${naxis} axes; the app reads images of up to three.`)
+    }
     if (![8, 16, 32, -32, -64].includes(bitpix)) throw new Error(`BITPIX ${bitpix} is not a pixel format the app reads.`)
-    if (channels < 1 || channels > 4) throw new Error(`${channels} channels is more than the app reads.`)
-    const bytes = Math.abs(bitpix) / 8
-    const length = width * height * channels * bytes
-    const data = Buffer.alloc(length)
-    const { bytesRead } = await handle.read(data, 0, length, dataOffset)
-    if (bytesRead < length) throw new Error('The pixel data is truncated.')
+    if (!Number.isInteger(channels) || channels < 1 || channels > 4) throw new Error(`${channels} channels is more than the app reads.`)
+    const planeSize = width * height
+    if (planeSize * channels > MAX_SAMPLES) {
+      throw new Error(`The image is ${width} × ${height}${channels > 1 ? ` × ${channels}` : ''}, larger than the app measures (${MAX_SAMPLES / 1e6} megapixels).`)
+    }
 
+    const bytes = Math.abs(bitpix) / 8
     const bscale = num('BSCALE', 1)
     const bzero = num('BZERO', 0)
-    const planeSize = width * height
     const planes = Array.from({ length: channels }, () => new Float32Array(planeSize))
-    for (let i = 0; i < planeSize * channels; i++) {
-      const o = i * bytes
-      const raw =
-        bitpix === 8 ? data.readUInt8(o)
-        : bitpix === 16 ? data.readInt16BE(o)
-        : bitpix === 32 ? data.readInt32BE(o)
-        : bitpix === -32 ? data.readFloatBE(o)
-        : data.readDoubleBE(o)
-      planes[Math.floor(i / planeSize)][i % planeSize] = raw * bscale + bzero
+    const total = planeSize * channels
+    const perChunk = Math.floor(READ_CHUNK / bytes)
+    const chunk = Buffer.alloc(Math.min(total, perChunk) * bytes)
+    for (let first = 0; first < total; first += perChunk) {
+      const count = Math.min(perChunk, total - first)
+      const { bytesRead } = await handle.read(chunk, 0, count * bytes, dataOffset + first * bytes)
+      if (bytesRead < count * bytes) throw new Error('The pixel data is truncated.')
+      for (let k = 0; k < count; k++) {
+        const o = k * bytes
+        const raw =
+          bitpix === 8 ? chunk.readUInt8(o)
+          : bitpix === 16 ? chunk.readInt16BE(o)
+          : bitpix === 32 ? chunk.readInt32BE(o)
+          : bitpix === -32 ? chunk.readFloatBE(o)
+          : chunk.readDoubleBE(o)
+        const i = first + k
+        planes[Math.floor(i / planeSize)][i % planeSize] = raw * bscale + bzero
+      }
     }
     const range = INTEGER_RANGE[bitpix]
     const dataMax = headers.get('DATAMAX')
-    const saturation = typeof dataMax === 'number' ? dataMax : range ? range[1] * bscale + bzero : null
+    // A negative BSCALE turns the type's lowest raw value into the highest physical one.
+    const saturation = typeof dataMax === 'number' ? dataMax : range ? Math.max(range[0] * bscale + bzero, range[1] * bscale + bzero) : null
     const bayer = headers.get('BAYERPAT')
     return {
       width,

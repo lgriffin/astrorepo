@@ -37,21 +37,22 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
       expect(await f.workHas('lights/Light_001.fit')).toBe(true)
     })
 
-    it('[GRD-007] Given frames placed by an earlier run, When the lights folder is pruned to a smaller plan, Then only the others are removed and the source keeps every frame', async () => {
+    it('[GRD-007] Given frames placed by an earlier run, When rejected ones are removed, Then only those go and the source keeps every frame', async () => {
       const f = await setup(['Light_001.fit', 'Light_002.fit', 'Light_003.fit'])
       await f.workspace.prepareFolders(f.workDir)
       for (const frame of await f.workspace.listSourceFrames(f.sourceDir)) {
         await f.workspace.place({ from: frame.path, folder: 'lights', name: frame.name }, f.workDir)
       }
-      expect(await f.workspace.prune(f.workDir, 'lights', ['Light_001.fit', 'Light_003.fit'])).toEqual(['Light_002.fit'])
+      expect(await f.workspace.remove(f.workDir, 'lights', ['Light_002.fit', 'Light_009.fit'])).toEqual(['Light_002.fit'])
       expect(await f.workHas('lights/Light_002.fit')).toBe(false)
       expect(await f.workHas('lights/Light_001.fit')).toBe(true)
+      expect(await f.workHas('lights/Light_003.fit')).toBe(true)
       expect(await f.sourceListing()).toEqual(['Light_001.fit', 'Light_002.fit', 'Light_003.fit'])
     })
 
-    it('[GRD-007] Given a work folder not made yet, When pruned, Then nothing is removed and nothing is created', async () => {
+    it('[GRD-007] Given a work folder not made yet, When removing from it, Then nothing is removed and nothing is created', async () => {
       const f = await setup(['Light_001.fit'])
-      expect(await f.workspace.prune(f.join(f.workDir, 'never'), 'lights', [])).toEqual([])
+      expect(await f.workspace.remove(f.join(f.workDir, 'never'), 'lights', ['Light_001.fit'])).toEqual([])
       expect(await f.workHas('never')).toBe(false)
     })
 

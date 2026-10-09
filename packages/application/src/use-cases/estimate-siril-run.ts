@@ -64,8 +64,10 @@ export type EstimateSirilRun = (sourceDir: string, workDir: string) => Promise<S
  */
 export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilRun {
   return async (sourceDir, workDir) => {
-    const { frames, rejected } = await selectFrames(deps, sourceDir)
-    const placements = planSirilWorkspace(frames)
+    const selected = await selectFrames(deps, sourceDir)
+    const rejected = selected.rejected
+    const frames = selected.frames.filter(f => !selected.rejectedPaths.has(f.path))
+    const placements = planSirilWorkspace(selected.frames).filter(p => !selected.rejectedPaths.has(p.from))
     const counts: FrameCounts = { lights: 0, darks: 0, flats: 0, biases: 0 }
     for (const p of placements) counts[p.folder]++
 
@@ -121,16 +123,18 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
 }
 
 /**
- * The source folder's frames as a stack will use them: every frame, less the lights grading
- * rejected. Calibration frames are never graded, so never left out.
+ * The source folder's frames and the lights grading rejects among them. Calibration frames are
+ * never graded, so never left out. `frames` holds every frame, so its layout names each light the
+ * way an earlier run did; leave `rejectedPaths` out of it to get what a stack uses.
  */
 export async function selectFrames(
   deps: { workspace: Pick<SirilWorkspace, 'listSourceFrames'>; selection?: FrameSelection },
   sourceDir: string
-): Promise<{ frames: { path: string; name: string; imageType: string | null }[]; rejected: number }> {
+): Promise<{ frames: { path: string; name: string; imageType: string | null }[]; rejected: number; rejectedPaths: Set<string> }> {
   const all = await deps.workspace.listSourceFrames(sourceDir)
-  if (!deps.selection) return { frames: all, rejected: 0 }
+  if (!deps.selection) return { frames: all, rejected: 0, rejectedPaths: new Set() }
   const lights = planSirilWorkspace(all).filter(p => p.folder === 'lights').map(p => p.from)
-  const rejected = await deps.selection.rejected(lights)
-  return { frames: all.filter(f => !rejected.has(f.path)), rejected: lights.filter(p => rejected.has(p)).length }
+  const flagged = await deps.selection.rejected(lights)
+  const rejectedPaths = new Set(lights.filter(p => flagged.has(p)))
+  return { frames: all, rejected: rejectedPaths.size, rejectedPaths }
 }

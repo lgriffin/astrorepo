@@ -55,6 +55,36 @@ sirilWorkspaceContract('Node', async frames => {
 })
 
 describe('NodeSirilWorkspace on disk', () => {
+  it('[GRD-007] Given a lights folder that links to the source, When folders are prepared or a frame removed, Then it is refused and the source keeps every frame', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
+    tempDirs.push(root)
+    const source = path.join(root, 'source')
+    const work = path.join(root, 'work')
+    fs.mkdirSync(source)
+    fs.mkdirSync(work)
+    fs.writeFileSync(path.join(source, 'Light_001.fit'), 'pixels')
+    fs.symlinkSync(source, path.join(work, 'lights'), process.platform === 'win32' ? 'junction' : 'dir')
+    const ws = new NodeSirilWorkspace()
+    await expect(ws.prepareFolders(work)).rejects.toThrow(/links to a folder outside the work area/)
+    await expect(ws.remove(work, 'lights', ['Light_001.fit'])).rejects.toThrow(/links to a folder outside the work area/)
+    expect(fs.readdirSync(source)).toEqual(['Light_001.fit'])
+  })
+
+  it('[GRD-007] Given a frame the user put in the work area by hand, When rejected lights are removed, Then it stays, and names that are not plain FITS files are ignored', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
+    tempDirs.push(root)
+    const work = path.join(root, 'work')
+    const ws = new NodeSirilWorkspace()
+    await ws.prepareFolders(work)
+    fs.writeFileSync(path.join(work, 'lights', 'mine.fit'), 'kept')
+    fs.writeFileSync(path.join(work, 'lights', 'Light_002.fit'), 'rejected')
+    fs.writeFileSync(path.join(work, 'notes.fit'), 'outside')
+    expect(await ws.remove(work, 'lights', ['Light_002.fit', '../notes.fit', 'Light_002.txt'])).toEqual(['Light_002.fit'])
+    expect(fs.readdirSync(path.join(work, 'lights'))).toEqual(['mine.fit'])
+    expect(fs.existsSync(path.join(work, 'notes.fit'))).toBe(true)
+    expect(await ws.remove(work, 'lights', [])).toEqual([])
+  })
+
   it('[ING-013] Given a stale frame in the work area, When placed again, Then the work area gets the new bytes and the source is untouched', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-siril-'))
     tempDirs.push(root)
