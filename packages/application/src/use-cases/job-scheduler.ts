@@ -89,7 +89,9 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     if (job.prepare) {
       try {
         const prep = await deps.prepare(job.prepare.sourceDir, job.prepare.workDir, await deps.readOnlyDirs())
-        deps.logs.append(job.id, `Prep for Siril: ${prep.linked} linked, ${prep.copied} copied, ${prep.existing} already in place.\n\n`)
+        const graded = prep.rejected > 0 ? ` ${prep.rejected} ${prep.rejected === 1 ? 'light' : 'lights'} rejected by frame grading left out.` : ''
+        const pruned = prep.pruned > 0 ? ` ${prep.pruned} ${prep.pruned === 1 ? 'file' : 'files'} from an earlier run removed from the work area.` : ''
+        deps.logs.append(job.id, `Prep for Siril: ${prep.linked} linked, ${prep.copied} copied, ${prep.existing} already in place.${graded}${pruned}\n\n`)
       } catch (error) {
         if (!stopping) await finish(job.id, entry.cancelled ? 'cancelled' : 'failed', null, error instanceof Error ? error.message : String(error))
         return

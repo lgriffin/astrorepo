@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { SirilPlacement } from '@astro/domain'
+import type { SirilFolder, SirilPlacement } from '@astro/domain'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
 const SIRIL_FOLDERS = ['lights', 'darks', 'flats', 'biases']
@@ -60,6 +60,20 @@ export class NodeSirilWorkspace implements SirilWorkspace {
       await fs.promises.utimes(dest, source.atime, source.mtime)
       return 'copied'
     }
+  }
+
+  async prune(workDir: string, folder: SirilFolder, keep: string[]): Promise<string[]> {
+    const dir = path.join(workDir, folder)
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
+    const wanted = new Set(keep.map(n => (process.platform === 'win32' ? n.toLowerCase() : n)))
+    const removed: string[] = []
+    for (const e of entries) {
+      if (!e.isFile() || !FITS_EXTENSIONS.has(path.extname(e.name).toLowerCase())) continue
+      if (wanted.has(process.platform === 'win32' ? e.name.toLowerCase() : e.name)) continue
+      await fs.promises.unlink(path.join(dir, e.name))
+      removed.push(e.name)
+    }
+    return removed.sort()
   }
 
   async contains(dir: string, candidate: string): Promise<boolean> {

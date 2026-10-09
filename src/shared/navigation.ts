@@ -95,6 +95,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'folders', label: 'Folders' },
   { id: 'tools', label: 'Tools' },
   { id: 'run-window', label: 'Run window' },
+  { id: 'grading', label: 'Frame grading' },
   { id: 'import', label: 'Import and export' },
   { id: 'reset', label: 'Start again' }
 ] as const

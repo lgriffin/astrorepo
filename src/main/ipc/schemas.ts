@@ -246,6 +246,11 @@ export const schemas = {
   'home:scan-cancel': z.object({}).optional(),
   'home:prep-siril': z.object({ raw_path: z.string().min(1) }),
   'siril:estimate': z.object({ raw_path: z.string().min(1) }),
+  'grades:target': z.object({ target_id: id }),
+  'grades:limits': z.object({}).optional(),
+  'grades:measure': z.object({ target_id: id, retry: z.boolean().optional() }),
+  'grades:override': z.object({ file_id: id, override: z.enum(['keep', 'reject']).nullable() }),
+  'grades:export': z.object({ target_id: id }),
   'recipe:post-process': z.object({
     target_id: id,
     raw_path: z.string().min(1).optional(),

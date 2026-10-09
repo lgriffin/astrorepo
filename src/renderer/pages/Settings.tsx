@@ -3,6 +3,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import type { ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
+import { GradingSettings } from '../components/target/GradingSettings'
 import { useLocation } from 'react-router-dom'
 import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
@@ -221,6 +222,9 @@ export function Settings(): React.ReactElement {
         </div>
         <div id="settings-run-window" className="scroll-mt-6">
           <RunWindowSettings />
+        </div>
+        <div id="settings-grading" className="scroll-mt-6">
+          <GradingSettings />
         </div>
 
         <div id="settings-import" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">

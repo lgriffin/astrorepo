@@ -50,12 +50,13 @@ describe("A target's page", () => {
     expect(targetTabFrom('')).toBe('overview')
   })
 
-  it('[UX-010] Given Stack and process, When it is drawn, Then stacking, post-processing and runs are numbered steps in that order', () => {
+  it('[UX-010] [GRD-009] Given Stack and process, When it is drawn, Then grading, stacking, post-processing and runs are numbered steps in that order', () => {
     const tab = read('components/target/ProcessTab.tsx')
     const at = (title: string) => tab.indexOf(`title="${title}"`)
-    expect(at('1 · Stack')).toBeGreaterThan(-1)
-    expect(at('1 · Stack')).toBeLessThan(at('2 · Post-process'))
-    expect(at('2 · Post-process')).toBeLessThan(at('3 · Runs'))
+    expect(at('1 · Grade the lights')).toBeGreaterThan(-1)
+    expect(at('1 · Grade the lights')).toBeLessThan(at('2 · Stack'))
+    expect(at('2 · Stack')).toBeLessThan(at('3 · Post-process'))
+    expect(at('3 · Post-process')).toBeLessThan(at('4 · Runs'))
     // Both steps queue into the same runner and refresh the target's runs when they do.
     expect(tab.match(/onQueued=\{onQueued\}/g)).toHaveLength(2)
   })

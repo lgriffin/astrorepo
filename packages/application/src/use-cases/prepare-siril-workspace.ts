@@ -1,8 +1,12 @@
 import { planSirilWorkspace, type SirilFolder } from '@astro/domain'
 import type { SirilWorkspace } from '../ports/siril-workspace'
+import { selectFrames } from './estimate-siril-run'
+import type { FrameSelection } from './frame-grading'
 
 export interface PrepareSirilWorkspaceDeps {
   workspace: SirilWorkspace
+  /** Grading, when wired: rejected lights are not placed, and any an earlier run placed are removed. */
+  selection?: FrameSelection
 }
 
 export interface SirilWorkspaceResult {
@@ -10,6 +14,10 @@ export interface SirilWorkspaceResult {
   linked: number
   copied: number
   existing: number
+  /** Lights grading rejected, left out of the work area. */
+  rejected: number
+  /** Files an earlier run left in the work area that this plan no longer holds, removed. */
+  pruned: number
   byFolder: Record<SirilFolder, number>
 }
 
@@ -36,19 +44,27 @@ export function makePrepareSirilWorkspace(deps: PrepareSirilWorkspaceDeps): Prep
         throw new WorkAreaOverlapsSourceError(workDir, dir)
       }
     }
-    const frames = await deps.workspace.listSourceFrames(sourceDir)
+    const { frames, rejected } = await selectFrames(deps, sourceDir)
     await deps.workspace.prepareFolders(workDir)
     const result: SirilWorkspaceResult = {
       workDir,
       linked: 0,
       copied: 0,
       existing: 0,
+      rejected,
+      pruned: 0,
       byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 }
     }
-    for (const placement of planSirilWorkspace(frames)) {
+    const placements = planSirilWorkspace(frames)
+    for (const placement of placements) {
       const outcome = await deps.workspace.place(placement, workDir)
       result[outcome]++
       result.byFolder[placement.folder]++
+    }
+    // Siril stacks whatever is in the folders, so a frame rejected since an earlier run must go.
+    for (const folder of ['lights', 'darks', 'flats', 'biases'] as const) {
+      const keep = placements.filter(p => p.folder === folder).map(p => p.name)
+      result.pruned += (await deps.workspace.prune(workDir, folder, keep)).length
     }
     return result
   }

@@ -4,6 +4,7 @@ import {
   makeDiscoverTargets,
   makeDismissSuggestion,
   makeEstimateSirilRun,
+  makeFrameGrading,
   makeFindDuplicates,
   makeJobScheduler,
   makeListNextActions,
@@ -31,6 +32,13 @@ import { SqliteJobSettings, SqliteJobStore } from './adapters/sqlite-jobs'
 import { NodeProcessRunner } from './adapters/node-process-runner'
 import { FileJobLogs } from './adapters/file-job-logs'
 import { NodeMachineMonitor } from './adapters/node-machine-monitor'
+import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-frame-grades'
+import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
+
+/** Frame grading over the index and the FITS files (spec 019). */
+export function composeGrading(db: Database.Database) {
+  return makeFrameGrading({ store: new SqliteFrameGradeStore(db), measurer: new NodeFrameMeasurer(), limits: new SqliteGradeLimits(db), clock: systemClock })
+}
 
 /**
  * Composition root for the hexagonal core inside the desktop app. IPC handlers call these use
@@ -45,7 +53,8 @@ export function composeCore(db: Database.Database) {
   const tools = new NodeToolHub({ setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null })
   const stacks = new SqliteStackCatalogue(db)
   const jobStore = new SqliteJobStore(db)
-  const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db) })
+  const grading = composeGrading(db)
+  const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading })
   const planPostProcessing = makePlanPostProcessing({ stacks, tools, workspace: new NodeSirilWorkspace(db) })
   const planForward = makePlanForward({
     frames,
@@ -66,7 +75,8 @@ export function composeCore(db: Database.Database) {
     discoverTarget: makeDiscoverTarget({ frames }),
     reportHiddenData: makeReportHiddenData({ frames, hashes }),
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
-    prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db) }),
+    prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db), selection: grading }),
+    grading,
     estimateSirilRun,
     planForward,
     listTools: makeListTools({ tools }),
@@ -95,7 +105,7 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     runner: new NodeProcessRunner(),
     logs: new FileJobLogs(options.logsDir),
     workspace,
-    prepare: makePrepareSirilWorkspace({ workspace }),
+    prepare: makePrepareSirilWorkspace({ workspace, selection: composeGrading(db) }),
     readOnlyDirs: options.readOnlyDirs,
     clock: systemClock,
     onChange: options.onChange

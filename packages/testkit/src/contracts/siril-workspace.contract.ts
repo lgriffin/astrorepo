@@ -37,6 +37,24 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
       expect(await f.workHas('lights/Light_001.fit')).toBe(true)
     })
 
+    it('[GRD-007] Given frames placed by an earlier run, When the lights folder is pruned to a smaller plan, Then only the others are removed and the source keeps every frame', async () => {
+      const f = await setup(['Light_001.fit', 'Light_002.fit', 'Light_003.fit'])
+      await f.workspace.prepareFolders(f.workDir)
+      for (const frame of await f.workspace.listSourceFrames(f.sourceDir)) {
+        await f.workspace.place({ from: frame.path, folder: 'lights', name: frame.name }, f.workDir)
+      }
+      expect(await f.workspace.prune(f.workDir, 'lights', ['Light_001.fit', 'Light_003.fit'])).toEqual(['Light_002.fit'])
+      expect(await f.workHas('lights/Light_002.fit')).toBe(false)
+      expect(await f.workHas('lights/Light_001.fit')).toBe(true)
+      expect(await f.sourceListing()).toEqual(['Light_001.fit', 'Light_002.fit', 'Light_003.fit'])
+    })
+
+    it('[GRD-007] Given a work folder not made yet, When pruned, Then nothing is removed and nothing is created', async () => {
+      const f = await setup(['Light_001.fit'])
+      expect(await f.workspace.prune(f.join(f.workDir, 'never'), 'lights', [])).toEqual([])
+      expect(await f.workHas('never')).toBe(false)
+    })
+
     it('[ING-013] Given frames in session subfolders, When listed, Then they are found, and a darks folder marks its frames as darks', async () => {
       const f = await setup(['night1/Light_001.fit', 'night2/Light_001.fit', 'night2/darks/d1.fit'])
       const frames = await f.workspace.listSourceFrames(f.sourceDir)

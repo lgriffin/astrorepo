@@ -938,6 +938,10 @@ export interface SirilWorkspaceView {
   linked: number
   copied: number
   existing: number
+  /** Lights grading rejected, left out of the work area. */
+  rejected: number
+  /** Files an earlier run left that the plan no longer holds, removed from the work area. */
+  pruned: number
   byFolder: { lights: number; darks: number; flats: number; biases: number }
 }
 
@@ -971,6 +975,8 @@ export interface SirilPlanView {
   approximateNote: string | null
   /** Set when an earlier run left files in the work folder, which the plan does not count as free. */
   leftoverNote: string | null
+  /** Set when grading leaves lights out of the stack (specs/019-frame-grading). */
+  gradingNote: string | null
   scripts: SirilScriptView[]
 }
 
@@ -1117,4 +1123,59 @@ export interface JobsView {
   /** Finished jobs, newest first. */
   history: JobView[]
   settings: { windowStart: string; windowEnd: string; idleMinutes: number; maxCpuPercent: number }
+}
+
+/** One light's grade on a target's page (specs/019-frame-grading). */
+export interface FrameGradeView {
+  fileId: string
+  fileName: string
+  path: string
+  /** ISO instant; the renderer shows it in local time. */
+  capturedAt: string | null
+  verdict: 'keep' | 'reject' | 'unmeasured'
+  override: 'keep' | 'reject' | null
+  fwhm: number | null
+  eccentricity: number | null
+  stars: number | null
+  background: number | null
+  snr: number | null
+  weight: number | null
+  reasons: string[]
+}
+
+/** One night and filter: its frames in capture order, for the trend. */
+export interface NightGradeView {
+  key: string
+  label: string
+  frames: number
+  kept: number
+  rejected: number
+  medianFwhm: string | null
+  medianStars: string | null
+  trend: FrameGradeView[]
+}
+
+export interface GradeLimitsView {
+  maxEccentricity: number
+  maxFwhmRatio: number
+  minStarRatio: number
+  maxBackgroundRatio: number
+  maxFwhmPixels: number | null
+}
+
+export interface GradesView {
+  total: number
+  kept: number
+  rejected: number
+  unmeasured: number
+  /** One sentence for the top of the section. */
+  summary: string
+  limits: GradeLimitsView
+  nights: NightGradeView[]
+}
+
+export interface MeasureBatchView {
+  measured: number
+  failed: number
+  remaining: number
 }

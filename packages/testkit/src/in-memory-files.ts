@@ -1,5 +1,5 @@
 import type { ContentHasher, FileHashStore, FileIndex, FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { FileHash, FileStamp, SirilPlacement } from '@astro/domain'
+import type { FileHash, FileStamp, SirilFolder, SirilPlacement } from '@astro/domain'
 
 /**
  * A pretend disk: paths map to text content with a size and a modified time. Tests use it to drive
@@ -102,6 +102,21 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
     this.placed.set(dest, p.from)
     this.placedVersion.set(dest, version)
     return this.otherVolume.has(p.from) ? 'copied' : 'linked'
+  }
+
+  async prune(workDir: string, folder: SirilFolder, keep: string[]): Promise<string[]> {
+    const prefix = `${workDir}/${folder}/`
+    const wanted = new Set(keep)
+    const removed: string[] = []
+    for (const dest of [...this.placed.keys()]) {
+      if (!dest.startsWith(prefix)) continue
+      const name = dest.slice(prefix.length)
+      if (name.includes('/') || wanted.has(name)) continue
+      this.placed.delete(dest)
+      this.placedVersion.delete(dest)
+      removed.push(name)
+    }
+    return removed.sort()
   }
 
   async contains(dir: string, candidate: string): Promise<boolean> {

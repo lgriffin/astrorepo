@@ -22,6 +22,7 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 function estimate(over: Partial<SirilRunEstimate['scripts'][number]> = {}, lights = 40): SirilRunEstimate {
   return {
     counts: { lights, darks: 10, flats: 10, biases: 10 },
+    rejectedLights: 0,
     sensor: 'colour',
     sensorKnown: true,
     geometry: { width: 1080, height: 1920 },
@@ -196,7 +197,7 @@ function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWo
       over.prepare ??
       (async (sourceDir, workDir, protectedDirs) => {
         prepared.push({ sourceDir, workDir, protectedDirs })
-        return { workDir, linked: 30, copied: 2, existing: 1, byFolder: { lights: 30, darks: 1, flats: 1, biases: 1 } }
+        return { workDir, linked: 30, copied: 2, existing: 1, rejected: 0, pruned: 0, byFolder: { lights: 30, darks: 1, flats: 1, biases: 1 } }
       }),
     readOnlyDirs: () => ['D:/astro'],
     clock,
@@ -232,6 +233,18 @@ describe('the job runner', () => {
     expect((await t.s.list()).map(j => j.id)).toEqual([job.id])
     expect(sampled).toBe(0)
     expect(t.runner.runs).toHaveLength(0)
+  })
+
+  it('[GRD-007] Given grading rejected lights, When a stack job lays out its frames, Then its log says how many were left out and removed', async () => {
+    const t = scheduler({ prepare: async () => ({ workDir: '/work', linked: 30, copied: 0, existing: 0, rejected: 3, pruned: 1, byFolder: { lights: 30, darks: 0, flats: 0, biases: 0 } }) })
+    const job = await t.add()
+    await t.s.tick()
+    await flush()
+    t.runner.last?.exit(0)
+    await t.s.idle()
+    const log = await t.s.log(job.id)
+    expect(log).toContain('3 lights rejected by frame grading left out.')
+    expect(log).toContain('1 file from an earlier run removed from the work area.')
   })
 
   it('[JOB-004] Given a window job and an idle PC in the window, When ticked, Then it lays out the frames, runs Siril and succeeds on exit code 0', async () => {
@@ -410,7 +423,7 @@ describe('the job runner', () => {
     const t = scheduler({
       prepare: () =>
         new Promise(resolve => {
-          release = () => resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 } })
+          release = () => resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 } })
         })
     })
     const job = await t.add()
@@ -513,7 +526,7 @@ describe('the job runner', () => {
       const t = scheduler({
         prepare: () =>
           new Promise((resolve, reject) => {
-            release = () => (fail ? reject(new Error('stopped')) : resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 } }))
+            release = () => (fail ? reject(new Error('stopped')) : resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 } }))
           })
       })
       const job = await t.add()

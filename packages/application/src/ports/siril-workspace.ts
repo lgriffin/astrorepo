@@ -1,4 +1,4 @@
-import type { SirilPlacement } from '@astro/domain'
+import type { SirilFolder, SirilPlacement } from '@astro/domain'
 
 export type PlacementResult = 'linked' | 'copied' | 'existing'
 
@@ -48,6 +48,12 @@ export interface SirilWorkspace {
    * area or one it can hard-link (on the same volume as the work area). Writes nothing.
    */
   copyBytes(placements: SirilPlacement[], workDir: string): Promise<number>
+  /**
+   * Removes FITS files from one of the work folder's frame folders that are not named in `keep`
+   * (frames an earlier run placed that the plan no longer holds). Only ever touches the work area;
+   * a removed hard link leaves its source untouched. Returns the names removed.
+   */
+  prune(workDir: string, folder: SirilFolder, keep: string[]): Promise<string[]>
   /** Stacks a Siril run left in `workDir` (its result*.fit files), newest first. Writes nothing. */
   stackResults(workDir: string): Promise<{ path: string; sizeBytes: number; modifiedAt: Date | null }[]>
 }

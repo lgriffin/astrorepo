@@ -32,6 +32,10 @@ flowchart LR
   UC -->|FileIndex, FileHashStore| A4[sqlite-file-hashing]
   UC -->|ContentHasher| A5[NodeContentHasher]
   UC -->|SirilWorkspace| A6[NodeSirilWorkspace]
+  UC -->|FrameGradeStore, GradeLimitsSource| A7[SqliteFrameGradeStore]
+  UC -->|FrameMeasurer| A8[NodeFrameMeasurer]
+  A8 --> FS
+  A7 --> DB
   A5 --> FS[(source files, read-only)]
   A6 --> WA[(work area)]
   A1 --> DB[(SQLite)]
@@ -50,12 +54,13 @@ flowchart LR
 | `discoverTargets`, `discoverTarget` | `discoverTarget`, `deriveProgress` | FrameCatalogue | `cockpit:overview`, `discovery:target` | 010 |
 | `reportHiddenData` | `reportHiddenData`, `calibrates`, `groupDuplicates` | FrameCatalogue, FileHashStore | `cockpit:overview` | 010, 011 |
 | `findDuplicates` | `isHashCurrent`, `duplicateCandidates`, `groupDuplicates` | FileIndex, ContentHasher, FileHashStore | `ingest:find-duplicates` | 011 |
-| `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace | `home:prep-siril` | 011 |
-| `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`) | `siril:estimate` | 014 |
+| `prepareSirilWorkspace` | `planSirilWorkspace`, `sirilFolderFor` | SirilWorkspace (`place`, `prune`), FrameSelection (grading) | `home:prep-siril` | 011, 019 |
+| `estimateSirilRun` | `planSirilWorkspace`, `recommendSirilScript`, `estimateSirilSpace`, `spaceVerdict` | SirilWorkspace (`frameDetails`, `workAreaSpace`, `copyBytes`), FrameSelection (grading) | `siril:estimate` | 014, 019 |
 | `listTools` | `toolWarnings` | ToolHub | `tools:list` | 015 |
 | `planPostProcessing` | `buildPostProcessRecipe`, `profileForObjectType`, `formatCoords`, `postProcessingSpace` | StackCatalogue, ToolHub, SirilWorkspace (`stackResults`, `workAreaSpace`, `contains`) | `recipe:post-process` | 015 |
 | `queueStack`, `queuePostProcess` | `sirilStackCommand`, `postProcessCommand` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun` and `planPostProcessing`) | `jobs:queue-stack`, `jobs:queue-post-process` | 016 |
 | `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`), Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016 |
+| `makeFrameGrading` (`measureBatch`, `grade`, `setOverride`, `exportCsv`, `rejected`) | `measureFrame`, `binBayer`, `gradeFrames`, `rejectedPaths`, `gradesCsv` | FrameGradeStore, FrameMeasurer, GradeLimitsSource, Clock | `grades:target`, `grades:measure`, `grades:override`, `grades:export`, `grades:limits` | 019 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 
