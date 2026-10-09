@@ -144,6 +144,16 @@ export function targetLink(targetId: string, tab: TargetTab = 'overview'): strin
   return tab === 'overview' ? path : `${path}?tab=${tab}`
 }
 
+/** The Sky planner opened on a target's mosaic plan (specs/024-sky-geometry). */
+export function mosaicPlannerLink(targetId: string): string {
+  return `/sky-planner?mosaic=${encodeURIComponent(targetId)}#mosaic`
+}
+
+/** The target a Sky planner link asks to plan a mosaic for, or null. */
+export function mosaicTargetFrom(search: string): string | null {
+  return new URLSearchParams(search).get('mosaic')
+}
+
 /** The part of a target's page a link asks for; Overview when it names none. */
 export function targetTabFrom(search: string): TargetTab {
   const wanted = new URLSearchParams(search).get('tab')
@@ -162,9 +172,9 @@ export interface TargetRuns {
   syqon: JobView | null
 }
 
-/** One target's jobs out of the whole queue (UX-011). */
+/** One target's stack and post-processing jobs out of the whole queue (UX-011); plate solves are not runs. */
 export function runsForTarget(view: Pick<JobsView, 'running' | 'queue' | 'history'> | null, targetId: string, keep = 5): TargetRuns {
-  const mine = (j: JobView) => j.targetId === targetId
+  const mine = (j: JobView) => j.targetId === targetId && j.kind !== 'solve'
   const active = view ? [...(view.running ? [view.running] : []), ...view.queue].filter(mine) : []
   const finished = view ? view.history.filter(mine).slice(0, keep) : []
   return {

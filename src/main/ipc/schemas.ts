@@ -21,6 +21,15 @@ const id = z.string().min(1)
 /** A SyQon model id as `--list-models` prints it; never a flag or a path. */
 const syqonModel = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
 
+/** A mosaic plan for a target: one panel's field in degrees, its rotation and the overlap (specs/024-sky-geometry). */
+const mosaicRequest = z.object({
+  target_id: id,
+  field_width_deg: z.number().positive().max(60).optional(),
+  field_height_deg: z.number().positive().max(60).optional(),
+  rotation_deg: z.number().min(-360).max(360).optional(),
+  overlap: z.number().min(0).max(0.5).optional()
+})
+
 export const schemas = {
   'targets:search': z.object({
     query: z.string(),
@@ -345,6 +354,11 @@ export const schemas = {
   'cockpit:dismiss': z.object({ suggestion_id: id }),
   'discovery:target': z.object({ target_id: id }),
   'planning:forward': z.object({}).optional(),
+  'sky:solve-target': z.object({ target_id: id, timing: z.enum(['window', 'now']).optional() }),
+  'sky:target-geometry': z.object({ target_id: id }),
+  'mosaic:plan': mosaicRequest,
+  'mosaic:save': mosaicRequest.extend({ field_width_deg: z.number().positive().max(60), field_height_deg: z.number().positive().max(60), rotation_deg: z.number().min(-360).max(360), overlap: z.number().min(0).max(0.5) }),
+  'mosaic:export': mosaicRequest,
 
   'db:reset': z.object({}).optional(),
 

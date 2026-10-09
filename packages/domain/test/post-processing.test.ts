@@ -18,6 +18,7 @@ const STANDARD: Partial<Record<ToolId, string>> = {
   siril: 'C:/Program Files/Siril/bin/siril-cli.exe',
   'siril-scripts': 'C:/Users/leigh/Siril_Scripts/v2/postprocess.bat',
   'rc-astro': 'C:/Program Files/RC-Astro/CLI/rc-astro.exe',
+  astap: 'C:/Program Files/astap/astap_cli.exe',
   bash: 'C:/Program Files/Git/bin/bash.exe'
 }
 const tools = (except: ToolId[] = [], at: Partial<Record<ToolId, string>> = {}): ToolStatus[] =>

@@ -1,3 +1,5 @@
+import os from 'os'
+import path from 'path'
 import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
 import {
@@ -25,6 +27,14 @@ import {
   makeQueueStack,
   makeQueueSyqon,
   makeReportHiddenData,
+  makeDescribeTargetGeometry,
+  makeExportMosaicCsv,
+  makeListMosaicGaps,
+  makePlanMosaic,
+  makePreferredSolver,
+  makeQueueSolves,
+  makeRunSolveJob,
+  makeSaveMosaicPlan,
   type JobScheduler
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
@@ -49,6 +59,16 @@ import { NodeArchiveArea } from './adapters/node-archive-area'
 import { SqliteArchiveStore } from './adapters/sqlite-archive-store'
 import { NodeToolProbe } from './adapters/node-tool-probe'
 import { WindowsAppPathsRegistry } from './adapters/windows-app-paths'
+import { SqliteMosaicStore, SqliteSolveStore } from './adapters/sqlite-sky-geometry'
+import { AstapPlateSolver, SirilPlateSolver } from './adapters/node-plate-solvers'
+
+/** ASTAP first, Siril's own solver as the fallback (specs/024-sky-geometry). */
+const plateSolvers = () => [new AstapPlateSolver(), new SirilPlateSolver()]
+
+/** The folder a target's plate solves run in, inside the work area (NFR-018). */
+export function solveWorkDir(workArea: string, targetId: string): string {
+  return path.join(workArea, 'solve', targetId.replace(/[^\w.-]+/g, '_') || 'target')
+}
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -77,7 +97,7 @@ export function composeGrading(db: Database.Database) {
  * Composition root for the hexagonal core inside the desktop app. IPC handlers call these use
  * cases instead of services as each service is strangled out of src/main/services.
  */
-export function composeCore(db: Database.Database) {
+export function composeCore(db: Database.Database, options: { workArea?: string } = {}) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
   const hashes = new SqliteFileHashStore(db, () => systemClock.now())
@@ -95,18 +115,26 @@ export function composeCore(db: Database.Database) {
   const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading, memory: new NodeMemoryProbe() })
   const planPostProcessing = makePlanPostProcessing({ stacks, tools, workspace: new NodeSirilWorkspace(db) })
   const planSyqon = makePlanSyqon({ stacks, tools, workspace: new NodeSirilWorkspace(db), models: makeListSyqonModels({ tools, probe, cache: syqonModels }) })
+  const planningSettings = new SqlitePlanningSettings(db)
+  const ephemeris = new AstronomyEngineEphemeris()
   const planForward = makePlanForward({
     frames,
     positions: new SqliteTargetPositions(db),
-    settings: new SqlitePlanningSettings(db),
-    ephemeris: new AstronomyEngineEphemeris(),
+    settings: planningSettings,
+    ephemeris,
     clock: systemClock
   })
+  const solves = new SqliteSolveStore(db)
+  const mosaics = new SqliteMosaicStore(db)
+  const sky = { store: solves, mosaics, settings: planningSettings, ephemeris, clock: systemClock }
+  const workArea = options.workArea ?? ((readSetting.get('work_area_path') as { value: string } | undefined)?.value || path.join(os.tmpdir(), 'astrorepo-work'))
+  const planMosaic = makePlanMosaic(sky)
   return {
     listStackingSuggestions,
     listNextActions: makeListNextActions({
       listStackingSuggestions,
       planForward,
+      listMosaicGaps: makeListMosaicGaps(sky),
       onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error)
     }),
     dismissSuggestion: makeDismissSuggestion({ frames, dismissals, clock: systemClock }),
@@ -139,7 +167,19 @@ export function composeCore(db: Database.Database) {
       workspace: new NodeSirilWorkspace(db),
       clock: systemClock
     }),
-    queueSyqon: makeQueueSyqon({ plan: planSyqon, store: jobStore, clock: systemClock })
+    queueSyqon: makeQueueSyqon({ plan: planSyqon, store: jobStore, clock: systemClock }),
+    queueSolves: makeQueueSolves({
+      store: solves,
+      mosaics,
+      preferred: makePreferredSolver({ tools, solvers: plateSolvers() }),
+      jobs: jobStore,
+      clock: systemClock,
+      workDir: id => solveWorkDir(workArea, id)
+    }),
+    describeTargetGeometry: makeDescribeTargetGeometry({ store: solves, mosaics }),
+    planMosaic,
+    saveMosaicPlan: makeSaveMosaicPlan({ mosaics, clock: systemClock }),
+    exportMosaicCsv: makeExportMosaicCsv(planMosaic)
   }
 }
 
@@ -167,6 +207,7 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     targetName: async id => (await new SqliteStackCatalogue(db).describeTarget(id))?.name ?? null,
     readOnlyDirs: options.readOnlyDirs,
     clock: systemClock,
+    solve: makeRunSolveJob({ solvers: plateSolvers(), store: new SqliteSolveStore(db), clock: systemClock }),
     onChange: options.onChange,
     holds: targetHolds
   })

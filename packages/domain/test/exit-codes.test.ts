@@ -26,9 +26,12 @@ describe('Exit codes', () => {
     expect(interpretExit('siril', 1, { cancelled: true })).toEqual({ outcome: 'cancelled', message: 'Cancelled while it ran.', retryable: true })
   })
 
-  it('[HUB-012] Given each kind of job, When its tool is picked, Then a stack reads Siril, post-processing Siril_Scripts and a SyQon step SyQon', () => {
+  it('[HUB-012] Given each kind of job, When its tool is picked, Then a stack reads Siril, post-processing Siril_Scripts, a SyQon step SyQon and a plate solve its solver', () => {
     expect(runToolOf('stack')).toBe('siril')
     expect(runToolOf('post-process')).toBe('siril-scripts')
     expect(runToolOf('syqon')).toBe('syqon')
+    expect(runToolOf('solve', 'astap')).toBe('astap')
+    expect(runToolOf('solve', 'siril')).toBe('siril')
+    expect(runToolOf('solve')).toBe('astap')
   })
 })

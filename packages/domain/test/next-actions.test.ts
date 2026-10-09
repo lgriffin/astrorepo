@@ -41,7 +41,7 @@ const tonight = (...choices: [string, number][]): TonightPlan => ({
 })
 
 const labels = (actions: ReturnType<typeof rankNextActions>) =>
-  actions.map(a => (a.kind === 'capture' ? `shoot ${a.targetName}` : `stack ${a.suggestion.targetName}`))
+  actions.map(a => (a.kind === 'capture' ? `shoot ${a.targetName}` : a.kind === 'stack' ? `stack ${a.suggestion.targetName}` : `tile ${a.tile}`))
 
 describe('rankNextActions', () => {
   it('[DSC-007] Given captures and stacks, When ranked, Then closing seasons lead, then other captures by hours, then stacks by waiting integration', () => {

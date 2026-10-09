@@ -75,5 +75,18 @@ export function jobStoreContract(adapterName: string, make: () => JobStore): voi
       expect((await store.update(job.id, { note: 'x' })).progress).toEqual(progress)
       expect((await store.update(job.id, { progress: null })).progress).toBeNull()
     })
+
+    it('[SKY-003] Given a plate solve job, When added, Then its solver and files come back with it', async () => {
+      const store = make()
+      const solve = {
+        solver: 'astap' as const,
+        program: 'C:/Program Files/astap/astap_cli.exe',
+        workDir: 'D:/work/solve/m31',
+        files: [{ path: 'D:/astro/M31/L_0001.fit', widthPx: 1080, heightPx: 1920, hint: { raDeg: 10.68, decDeg: 41.27 }, optics: { focalMm: 250, pixelUm: 2.9 } }]
+      }
+      const job = await store.add(newJob({ kind: 'solve', prepare: null, solve }), new Date('2026-09-30T20:00:00Z'))
+      expect((await store.get(job.id))?.solve).toEqual(solve)
+      expect((await store.add(newJob(), new Date('2026-09-30T20:00:00Z'))).solve ?? null).toBeNull()
+    })
   })
 }

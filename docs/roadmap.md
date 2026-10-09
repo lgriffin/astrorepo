@@ -27,7 +27,7 @@ when the code says otherwise, and the reasons are recorded here.
 | P1 · Provenance | A manifest beside every master; outputs staged and published only on success; long stacks resume by stage; a processing timeline per target; known Siril failures explained | [021](../specs/021-provenance/requirements.md) | Done |
 | P2 · Archive | Archive a finished target, linked or self-contained, with the space each intermediate frees shown first | [022](../specs/022-archive/requirements.md) | Done |
 | N · Hub: SyQon CLI and tool health | SyQon CLI found and run like RC Astro; tool versions and the catalogues each needs; one exit-code contract for every tool | [023](../specs/023-hub-syqon/requirements.md) | Done |
-| D · Sky geometry | Plate solving with ASTAP, Siril as fallback; a mosaic planner on the Sky planner; panels grouped from their solves | [024](../specs/024-sky-geometry/requirements.md) | Planned |
+| D · Sky geometry | Plate solving with ASTAP, Siril as fallback, one light per folder per night and every master as a background job; "may be filed under the wrong name" and rotation by night on each target; a mosaic planner on the Sky planner with tiles, hours, clear nights and CSV; panels grouped from their solves and empty tiles in Next actions | [024](../specs/024-sky-geometry/requirements.md) | Done |
 | H1 · Gallery inspector | Histogram and clipping per file; palette suggestions with a preview; compare two images; a coordinate grid and catalogue labels on solved images | [025](../specs/025-gallery-inspector/requirements.md) | Planned |
 | O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels planned per filter; comets stacked on their motion | [026](../specs/026-other-rigs/requirements.md) | Planned |
 | E, F, H2, I, J, K, M | Seestar and Vespera adapters, the rest of the gallery, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: H2, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
@@ -104,6 +104,11 @@ app has run on real data on the Windows PC and the licence is settled.
   for health only; plate solving stays in slice D, which reuses `astapCatalogues`. Several SyQon
   details the developer pages do not name (exit codes 1 to 3 and 5 to 7, the run flags) are
   assumptions listed in spec 023 to confirm.
+- **Sky geometry solves copies, per folder** (spec 024). ASTAP and Siril both write beside the
+  image they solve, so each file is hard linked or copied into the work area first. One light is
+  solved per folder per night rather than per night, because a mosaic's panels are captured into
+  folders of their own, and a target's files are solved by one background job rather than one
+  job each. Catalogue health for ASTAP stays with slice N.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
   index and plate solves; browsing finished images across the NAS (H2) waits for where files live
   ([#38](https://github.com/lgriffin/astrorepo/issues/38)).

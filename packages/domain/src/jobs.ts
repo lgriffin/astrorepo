@@ -1,4 +1,5 @@
 import type { StepProgress } from './provenance'
+import type { SolveTask } from './sky-geometry'
 
 /**
  * The job queue: Siril and Siril_Scripts runs the user confirmed, started one at a time inside a
@@ -6,8 +7,11 @@ import type { StepProgress } from './provenance'
  * runs. Pure rules; running programs and reading the machine's load are adapters' jobs.
  */
 
-/** A Siril stack, a Siril_Scripts v2 run, or one SyQon CLI step (specs/023-hub-syqon). */
-export type JobKind = 'stack' | 'post-process' | 'syqon'
+/**
+ * A Siril stack, a Siril_Scripts v2 run, one SyQon CLI step (specs/023-hub-syqon), or a plate
+ * solve (specs/024-sky-geometry).
+ */
+export type JobKind = 'stack' | 'post-process' | 'syqon' | 'solve'
 export type JobState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 /** Waits for the run window and an idle PC, or starts as soon as nothing else is running. */
 export type JobTiming = 'window' | 'now'
@@ -43,9 +47,11 @@ export interface Job {
   attempts: number
   /** A stack run step by step: how far it got, so it can carry on (specs/021-provenance). */
   progress: StepProgress | null
+  /** A plate solve job: the files it solves and with what (specs/024-sky-geometry). */
+  solve?: SolveTask | null
 }
 
-export type NewJob = Pick<Job, 'kind' | 'targetId' | 'title' | 'timing' | 'command' | 'prepare' | 'spaceDir' | 'neededBytes'>
+export type NewJob = Pick<Job, 'kind' | 'targetId' | 'title' | 'timing' | 'command' | 'prepare' | 'spaceDir' | 'neededBytes' | 'solve'>
 
 // ── Settings ────────────────────────────────────────────────────────────
 
@@ -142,9 +148,10 @@ export interface JobRun {
 /**
  * First-run guesses until the PC has a history: Siril stacking a colour target runs at roughly a
  * minute and a half per GB it writes; Siril_Scripts with RC Astro's AI tools runs far slower per GB;
- * one SyQon model over one stack sits between the two.
+ * one SyQon model over one stack sits between the two; a plate solve takes a few seconds per file it
+ * copies.
  */
-export const GUESS_SECONDS_PER_GB: Record<JobKind, number> = { stack: 90, 'post-process': 900, syqon: 600 }
+export const GUESS_SECONDS_PER_GB: Record<JobKind, number> = { stack: 90, 'post-process': 900, syqon: 600, solve: 120 }
 const MIN_SECONDS = 60
 const HISTORY_RUNS = 5
 const GB = 1024 ** 3

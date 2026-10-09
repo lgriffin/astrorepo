@@ -136,8 +136,15 @@ describe('Archive this target', () => {
   it('[ARC-008] Given a stack queued for the target, When archived, Then it is refused and nothing is copied', async () => {
     const w = world()
     await w.jobs.add({ kind: 'stack', targetId: 'target-m-42', title: 'Stack M 42', timing: 'window', command: { program: 'siril-cli', args: [], cwd: WORK }, prepare: null, spaceDir: WORK, neededBytes: 0 }, new Date())
-    expect((await w.archive.preview(w.request)).blocked).toMatch(/queued or running/)
+    expect((await w.archive.preview(w.request)).blocked).toBe('A job for this target is queued or running. Let it finish, or cancel it in Jobs, then archive.')
     await expect(w.archive.archive({ ...w.request, mode: 'linked', remove: [] })).rejects.toThrow(/queued or running/)
+    expect(w.area.listing('/archive')).toEqual([])
+  })
+
+  it('[ARC-008] Given a plate solve queued for the target, When archived, Then it is refused in words that fit any job', async () => {
+    const w = world()
+    await w.jobs.add({ kind: 'solve', targetId: 'target-m-42', title: 'Plate solve M 42', timing: 'now', command: { program: 'astap_cli', args: [], cwd: WORK }, prepare: null, spaceDir: WORK, neededBytes: 0 }, new Date())
+    await expect(w.archive.archive({ ...w.request, mode: 'linked', remove: [] })).rejects.toThrow('A job for this target is queued or running.')
     expect(w.area.listing('/archive')).toEqual([])
   })
 

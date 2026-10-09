@@ -146,7 +146,7 @@ export function makeArchiveTarget(deps: ArchiveTargetDeps): ArchiveTarget {
   async function blockedBy(request: ArchiveRequest, workDir: string, files: WorkAreaFile[], destination: string): Promise<string | null> {
     if (files.length === 0) return `The work folder ${workDir} is empty or missing, so there is nothing to archive. Stack the target first.`
     const active = (await deps.jobs.list()).some(j => j.targetId === request.targetId && (j.state === 'queued' || j.state === 'running'))
-    if (active) return 'A stack or post-processing run for this target is queued or running. Let it finish, or cancel it in Jobs, then archive.'
+    if (active) return 'A job for this target is queued or running. Let it finish, or cancel it in Jobs, then archive.'
     for (const dir of request.readOnlyDirs) {
       if (await deps.workspace.contains(dir, request.archiveRoot)) {
         return `The archive folder ${request.archiveRoot} is inside ${dir}, which the app only reads. Choose another archive folder in Settings → Folders.`

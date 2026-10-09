@@ -41,6 +41,10 @@ flowchart LR
   UC -->|ToolHub| A13[NodeToolHub]
   A13 -->|AppPathsRegistry| A14[WindowsAppPathsRegistry]
   UC -->|ToolProbe| A15[NodeToolProbe]
+  UC -->|PlateSolver| A16[AstapPlateSolver, SirilPlateSolver]
+  UC -->|SolveStore, MosaicStore| A17[SqliteSolveStore, SqliteMosaicStore]
+  A16 --> WA
+  A17 --> DB
   A10 --> WA
   A11 --> WA
   A11 --> AR[(archive folder)]
@@ -77,6 +81,9 @@ flowchart LR
 | `makeArchiveTarget` (`preview`, `archive`) | `summariseWorkFolder`, `freedBytes`, `parseStackManifest`, `namedFrames`, `planArchive`, `removalChoice`, `archiveFolderName`, `archiveSpace` | ArchiveArea, ArchiveStore, FrameCatalogue, StackCatalogue (`describeTarget`), JobStore (`list`), SirilWorkspace (`contains`), Clock | `archive:preview`, `archive:run` | 022 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours`, `channelGap` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
+| `makePreferredSolver`, `queueSolves`, `runSolveJob` (inside the job runner) | `chooseSolver`, `planSolves`, `fieldFromWcs`, `astapCommand`, `parseAstapResult`, `sirilSolveScript`, `parseSirilSolve`, `solveJobCommand` | PlateSolver, SolveStore, MosaicStore, ToolHub, JobStore, Clock | `sky:solve-target` | 024 |
+| `describeTargetGeometry` | `misfiledCheck`, `rotationByNight`, `groupPanels`, `overlapsAny` | SolveStore, MosaicStore (`linkPanels`) | `sky:target-geometry` | 024 |
+| `planMosaic`, `saveMosaicPlan`, `exportMosaicCsv`, `listMosaicGaps` | `planMosaic`, `offsetPosition`, `mosaicNights`, `mosaicCsv`, `groupPanels`, `rankNextActions` | MosaicStore, SolveStore, PlanningSettings, Ephemeris, Clock | `mosaic:plan`, `mosaic:save`, `mosaic:export`, `recommendations:list` | 024 |
 
 The legacy FITS scan (`services/fits-analyzer.ts`) uses the domain's `planRescan` for its fast
 path and writes unreadable files to `quarantined_files`. It is paced by the domain's `restAfter`
@@ -91,8 +98,10 @@ service still answers its own channels; it moves behind the same port next.
 
 The job runner is the one use case that lives for the whole session: `src/main/jobs-host.ts`
 creates it once, checks the queue every minute and whenever a job is queued or ends, keeps the PC
-awake while a job runs, and stops the running job when the app quits. Every other use case is
-composed per request in `composeCore`.
+awake while a job runs, and stops the running job when the app quits. A plate solve job runs
+through the same scheduler: `runSolveJob` hands each file to the solver the job was queued with,
+lending it the scheduler's runner so the solve is logged and can be cancelled. Every other use
+case is composed per request in `composeCore`.
 
 Presenters in `src/main/adapters/*-presenter.ts` turn domain results into the plain shapes in
 `src/shared/types.ts` (ISO date strings, human sentences) that the renderer shows. Rules never

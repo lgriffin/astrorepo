@@ -495,6 +495,35 @@ export function runMigrations(sqlite: Database.Database): void {
       freed_bytes INTEGER NOT NULL DEFAULT 0
     );
   `)
+  // Migration: where each light and master points, from a plate solve or its own WCS, or why the
+  // solve failed (SKY-001, SKY-004). Keyed by path, like grades, so a rescan keeps them.
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS plate_solves (
+      file_path TEXT PRIMARY KEY,
+      ra_deg REAL,
+      dec_deg REAL,
+      rotation_deg REAL,
+      scale_arcsec REAL,
+      width_px INTEGER,
+      height_px INTEGER,
+      solver TEXT NOT NULL,
+      solved_at TEXT NOT NULL,
+      error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS mosaic_plans (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      field_width_deg REAL NOT NULL,
+      field_height_deg REAL NOT NULL,
+      rotation_deg REAL NOT NULL,
+      overlap REAL NOT NULL,
+      saved_at TEXT NOT NULL
+    );
+  `)
+
+  // Migration: the files a plate solve job places and the solver it runs (SKY-003)
+  const hasSolve = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('jobs') WHERE name='solve'").get() as { cnt: number }
+  if (hasSolve.cnt === 0) sqlite.exec('ALTER TABLE jobs ADD COLUMN solve TEXT')
 }
 
 function getSchemaVersion(db: Database.Database): number {

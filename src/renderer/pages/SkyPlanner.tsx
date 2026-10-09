@@ -6,6 +6,7 @@ import { settingsLink } from '@shared/navigation'
 import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { SeasonsTable } from '../components/cockpit/SeasonsTable'
+import { MosaicPlanner } from '../components/sky/MosaicPlanner'
 import type { AltitudePoint, BestTargetTonight, ForwardPlanView, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
 
 function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement {
@@ -215,6 +216,9 @@ export function SkyPlanner(): React.ReactElement {
             longitude once in Settings and every page uses it.
           </EmptyState>
         </Card>
+        <div className="mt-6">
+          <MosaicPlanner />
+        </div>
       </PageContainer>
     )
   }
@@ -405,6 +409,10 @@ export function SkyPlanner(): React.ReactElement {
           </div>
         </div>
       )}
+
+      <div className="mt-6">
+        <MosaicPlanner />
+      </div>
     </PageContainer>
   )
 }

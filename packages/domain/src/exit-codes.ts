@@ -1,4 +1,5 @@
 import type { JobKind } from './jobs'
+import type { SolverId } from './sky-geometry'
 import type { ToolId } from './tools'
 
 /**
@@ -65,19 +66,43 @@ const SIRIL_SCRIPTS: ExitCodeTable = { tool: 'siril-scripts', label: 'Siril_Scri
 /** The RC Astro CLI documents no codes beyond 0, so every other is generic (an assumption to confirm). */
 const RC_ASTRO: ExitCodeTable = { tool: 'rc-astro', label: 'RC Astro CLI', codes: { 0: { outcome: 'succeeded', message: '', retryable: false } } }
 
+/** ASTAP's command line documents these codes for when it leaves no result file (specs/024-sky-geometry). */
+const ASTAP: ExitCodeTable = {
+  tool: 'astap',
+  label: 'ASTAP',
+  codes: {
+    0: { outcome: 'succeeded', message: '', retryable: false },
+    1: { outcome: 'failed', message: 'ASTAP found no solution.', retryable: false },
+    2: { outcome: 'failed', message: 'ASTAP found too few stars to solve it.', retryable: false },
+    16: { outcome: 'failed', message: 'ASTAP could not read the image.', retryable: true },
+    32: { outcome: 'failed', message: 'ASTAP found no star database. Install one beside ASTAP and solve again.', retryable: false },
+    33: { outcome: 'failed', message: 'ASTAP could not read its star database.', retryable: false }
+  }
+}
+
 /** Every tool the job runner starts, directly or (RC Astro) through Siril_Scripts. */
-export const EXIT_CODES: Readonly<Record<'siril' | 'siril-scripts' | 'rc-astro' | 'syqon', ExitCodeTable>> = {
+export const EXIT_CODES: Readonly<Record<'siril' | 'siril-scripts' | 'rc-astro' | 'syqon' | 'astap', ExitCodeTable>> = {
   siril: SIRIL,
   'siril-scripts': SIRIL_SCRIPTS,
   'rc-astro': RC_ASTRO,
-  syqon: SYQON
+  syqon: SYQON,
+  astap: ASTAP
 }
 
 export type RunTool = keyof typeof EXIT_CODES
 
-/** The tool a job's program is, for reading its exit code. */
-export function runToolOf(kind: JobKind): RunTool {
-  return kind === 'stack' ? 'siril' : kind === 'syqon' ? 'syqon' : 'siril-scripts'
+/** The tool a job's program is, for reading its exit code; a plate solve reads its solver's (ASTAP unless Siril is named). */
+export function runToolOf(kind: JobKind, solver?: SolverId): RunTool {
+  switch (kind) {
+    case 'stack':
+      return 'siril'
+    case 'post-process':
+      return 'siril-scripts'
+    case 'syqon':
+      return 'syqon'
+    case 'solve':
+      return solver === 'siril' ? 'siril' : 'astap'
+  }
 }
 
 export interface ExitContext {

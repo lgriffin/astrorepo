@@ -105,7 +105,7 @@ the app relies on. Each is coded so that it can be changed in one place.
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| HUB-012 | Ubiquitous | The system shall read the exit code of every program the job runner starts (Siril, Siril_Scripts with the RC Astro CLI, and the SyQon CLI) through one contract that gives an outcome, a plain message and whether running it again could help, treating SyQon's code 130 as cancelled. |
+| HUB-012 | Ubiquitous | The system shall read the exit code of every program the job runner starts (Siril, Siril_Scripts with the RC Astro CLI, the SyQon CLI, and ASTAP for a plate solve) through one contract that gives an outcome, a plain message and whether running it again could help, treating SyQon's code 130 as cancelled. |
 
 ## Quality
 

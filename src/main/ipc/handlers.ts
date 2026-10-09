@@ -31,6 +31,7 @@ import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
+import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
 import { ArchiveRefusedError, ArchiveRemovalError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
@@ -58,6 +59,7 @@ export function readOnlyDirs(): string[] {
   return [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
 }
 
+/** The work area: the user's setting, else the app's data folder. */
 function workAreaPath(): string {
   return getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
 }
@@ -69,6 +71,16 @@ function sirilWorkDir(sourceDir: string): string {
 /** Where archives go: the archive folder setting, else the work area's archive folder (ARC-012). */
 function archiveRoot(): string {
   return getSetting('archive_root') || path.join(workAreaPath(), 'archive')
+}
+
+/** A mosaic request from the renderer, in the core's shape. */
+function mosaicOptions(args: { target_id: string; field_width_deg?: number; field_height_deg?: number; rotation_deg?: number; overlap?: number }) {
+  return {
+    targetId: args.target_id,
+    field: args.field_width_deg && args.field_height_deg ? { widthDeg: args.field_width_deg, heightDeg: args.field_height_deg } : undefined,
+    rotationDeg: args.rotation_deg,
+    overlap: args.overlap
+  }
 }
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
@@ -792,6 +804,38 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('planning:forward', async () => toForwardPlanView(await composeCore(getSqlite()).planForward()))
+
+  handle('sky:solve-target', validated('sky:solve-target', async (args) => {
+    const result = await composeCore(getSqlite(), { workArea: workAreaPath() }).queueSolves(args.target_id, args.timing ?? 'now')
+    if (result.job) kickJobs()
+    return toSolveQueuedView(result)
+  }))
+
+  handle('sky:target-geometry', validated('sky:target-geometry', async (args) => {
+    const g = await composeCore(getSqlite()).describeTargetGeometry(args.target_id)
+    return g ? toTargetGeometryView(g) : null
+  }))
+
+  handle('mosaic:plan', validated('mosaic:plan', async (args) => toMosaicPlanView(await composeCore(getSqlite()).planMosaic(mosaicOptions(args)))))
+
+  handle('mosaic:save', validated('mosaic:save', async (args) => {
+    const core = composeCore(getSqlite())
+    await core.saveMosaicPlan(args.target_id, {
+      field: { widthDeg: args.field_width_deg, heightDeg: args.field_height_deg },
+      rotationDeg: args.rotation_deg,
+      overlap: args.overlap
+    })
+    return toMosaicPlanView(await core.planMosaic({ targetId: args.target_id }))
+  }))
+
+  handle('mosaic:export', validated('mosaic:export', async (args) => {
+    const exported = await composeCore(getSqlite()).exportMosaicCsv(mosaicOptions(args))
+    if (!exported) return { saved: false }
+    const result = await dialog.showSaveDialog({ defaultPath: exported.fileName, filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, exported.csv, 'utf-8')
+    return { saved: true, path: result.filePath }
+  }))
 
   handle('discovery:target', validated('discovery:target', async (args) => {
     const d = await composeCore(getSqlite()).discoverTarget(args.target_id)

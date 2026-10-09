@@ -33,7 +33,7 @@ describe('ListNextActions', () => {
   it('[DSC-007] Given a site and targets, When next actions are listed, Then tonight’s capture comes before stacking', async () => {
     const deps = setup({ latitudeDeg: 51.5, longitudeDeg: -0.13, elevationM: 0 })
     const actions = await makeListNextActions(deps)()
-    expect(actions.map(a => (a.kind === 'capture' ? `shoot ${a.targetName}` : `stack ${a.suggestion.targetName}`))).toEqual([
+    expect(actions.map(a => (a.kind === 'capture' ? `shoot ${a.targetName}` : a.kind === 'stack' ? `stack ${a.suggestion.targetName}` : `tile ${a.tile}`))).toEqual([
       'shoot M 31',
       'stack M 42'
     ])
