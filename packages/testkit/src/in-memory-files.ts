@@ -125,12 +125,12 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
   space: WorkAreaSpace = { freeBytes: null, usedBytes: 0 }
 
   describe(path: string, detail: Partial<Omit<FrameDetail, 'path'>>): this {
-    this.details.set(path, { sizeBytes: 50_000_000, width: null, height: null, colour: null, ...this.details.get(path), ...detail })
+    this.details.set(path, { sizeBytes: 50_000_000, width: null, height: null, colour: null, settings: null, ...this.details.get(path), ...detail })
     return this
   }
 
   async frameDetails(paths: string[]): Promise<FrameDetail[]> {
-    return paths.map(path => ({ path, ...(this.details.get(path) ?? { sizeBytes: 50_000_000, width: null, height: null, colour: null }) }))
+    return paths.map(path => ({ path, ...(this.details.get(path) ?? { sizeBytes: 50_000_000, width: null, height: null, colour: null, settings: null }) }))
   }
 
   /** Every folder whose space was asked for, in order. */

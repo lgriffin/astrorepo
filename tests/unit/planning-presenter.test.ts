@@ -15,8 +15,8 @@ const tonight = (over: Partial<TonightPlan> = {}): TonightPlan => ({
   brightMoon: false,
   noFilterForBrightMoon: false,
   choices: [
-    { targetId: 'target-m-31', targetName: 'M 31', usableHours: 8.5, moonSeparationDeg: null, shortOfGoalSec: null },
-    { targetId: 'target-m-33', targetName: 'M 33', usableHours: 6, moonSeparationDeg: 41, shortOfGoalSec: null }
+    { targetId: 'target-m-31', targetName: 'M 31', usableHours: 8.5, moonSeparationDeg: null, shortOfGoalSec: null, channel: null },
+    { targetId: 'target-m-33', targetName: 'M 33', usableHours: 6, moonSeparationDeg: 41, shortOfGoalSec: null, channel: null }
   ],
   ...over
 })
@@ -35,6 +35,11 @@ describe('planning presenter', () => {
   it('[FWD-007] Given no site, When presented, Then the view says what to set', () => {
     expect(toForwardPlanView({ status: 'no-site' })).toEqual({ status: 'no-site', message: NO_SITE_MESSAGE })
     expect(NO_SITE_MESSAGE).toMatch(/latitude and longitude in Settings/)
+  })
+
+  it('[ADV-010] Given a tonight choice that lags in one filter, When presented, Then its detail says which to capture', () => {
+    const view = toForwardPlanView(plan({ tonight: tonight({ choices: [{ targetId: 'target-ngc-7000', targetName: 'NGC 7000', usableHours: 6, moonSeparationDeg: null, shortOfGoalSec: null, channel: { filter: 'OIII', haveSec: 40 * 60, leadFilter: 'Ha', leadSec: 6 * 3600 } }] }) }))
+    expect(view.status === 'ok' && view.tonight?.choices[0].detail).toMatch(/moon down\. Capture OIII: it has 40 m against 6 h of Ha\.$/)
   })
 
   it('[FWD-006] Given tonight choices, When presented, Then each says its hours above 30° and where the moon is', () => {

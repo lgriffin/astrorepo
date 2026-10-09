@@ -473,6 +473,10 @@ export function runMigrations(sqlite: Database.Database): void {
       override_at TEXT
     );
   `)
+
+  // Migration: whether an override was made on the frame or by leaving out its night (ADV-008)
+  const hasOverrideBy = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('frame_grades') WHERE name='override_by'").get() as { cnt: number }
+  if (hasOverrideBy.cnt === 0) sqlite.exec('ALTER TABLE frame_grades ADD COLUMN override_by TEXT')
 }
 
 function getSchemaVersion(db: Database.Database): number {

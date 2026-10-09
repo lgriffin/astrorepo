@@ -4,6 +4,8 @@
  * and everything here is trigonometry and counting.
  */
 
+import type { ChannelGap } from './stacking-advice'
+
 export interface Site {
   latitudeDeg: number
   longitudeDeg: number
@@ -22,6 +24,8 @@ export interface SkyTarget {
   shortOfGoalSec: number | null
   /** A finished image (JPEG or PNG) exists for the target. */
   hasFinal: boolean
+  /** A filter far behind the target's best (ADV-010); absent or null when balanced. */
+  channel?: ChannelGap | null
 }
 
 /** One moment inside a night's dark window. */
@@ -213,6 +217,8 @@ export interface TonightChoice {
   moonSeparationDeg: number | null
   /** Integration still needed to reach the goal; null when no goal is set. */
   shortOfGoalSec: number | null
+  /** The filter to capture tonight because it lags the others (ADV-010). */
+  channel: ChannelGap | null
 }
 
 export interface TonightPlan {
@@ -261,7 +267,8 @@ export function planTonight(
       targetName: t.targetName,
       usableHours: hours,
       moonSeparationDeg: closest === null ? null : Math.round(closest),
-      shortOfGoalSec: t.shortOfGoalSec
+      shortOfGoalSec: t.shortOfGoalSec,
+      channel: t.channel ?? null
     })
   }
   choices.sort((a, b) => b.usableHours - a.usableHours || a.targetName.localeCompare(b.targetName))

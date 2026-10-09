@@ -1,4 +1,4 @@
-import type { SirilFolder, SirilPlacement } from '@astro/domain'
+import type { FrameIndexSettings, SirilFolder, SirilPlacement } from '@astro/domain'
 
 export type PlacementResult = 'linked' | 'copied' | 'existing'
 
@@ -11,6 +11,8 @@ export interface FrameDetail {
   height: number | null
   /** True when the header names a Bayer pattern (a colour sensor), false when indexed without one, null when unknown. */
   colour: boolean | null
+  /** Capture settings the index holds (exposure, gain, temperature, filter, time, optics); null when never indexed. */
+  settings: FrameIndexSettings | null
 }
 
 export interface WorkAreaSpace {

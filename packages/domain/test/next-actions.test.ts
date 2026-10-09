@@ -35,7 +35,8 @@ const tonight = (...choices: [string, number][]): TonightPlan => ({
     targetName: name,
     usableHours: hours,
     moonSeparationDeg: null,
-    shortOfGoalSec: name === 'M31' ? 7200 : null
+    shortOfGoalSec: name === 'M31' ? 7200 : null,
+    channel: name === 'M31' ? { filter: 'OIII', haveSec: 600, leadFilter: 'Ha', leadSec: 7200 } : null
   }))
 })
 
@@ -66,7 +67,8 @@ describe('rankNextActions', () => {
       usableHours: 7,
       moonSeparationDeg: null,
       closesInDays: 25,
-      shortOfGoalSec: 7200
+      shortOfGoalSec: 7200,
+      channel: { filter: 'OIII', haveSec: 600, leadFilter: 'Ha', leadSec: 7200 }
     })
     expect(m31.kind === 'capture' && m31.id).toBe('capture:target-M31:2026-09-29')
   })

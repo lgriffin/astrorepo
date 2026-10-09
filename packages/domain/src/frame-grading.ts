@@ -308,7 +308,12 @@ export interface GradableLight {
   /** Why the frame could not be measured, when it was tried and failed. */
   measureError: string | null
   override: GradeOverride | null
+  /** Who set the override: the user on this frame, or leaving out its whole night (ADV-008). Absent: by frame. */
+  overrideBy?: OverrideScope | null
 }
+
+/** A keep or reject made on one frame, or a reject made by leaving out its night. */
+export type OverrideScope = 'frame' | 'night'
 
 export interface FrameGrade {
   fileId: string
@@ -321,6 +326,7 @@ export interface FrameGrade {
   /** Each limit the frame failed, in the user's words; or why it is unmeasured, or that the user chose. */
   reasons: string[]
   override: GradeOverride | null
+  overrideBy: OverrideScope | null
   /** SNR squared relative to the best kept frame (0 to 1); null for a frame not kept or without SNR. */
   weight: number | null
 }
@@ -377,7 +383,7 @@ export function gradeFrames(lights: GradableLight[], limits: GradeLimits): Grade
   }
 
   const grades: FrameGrade[] = lights.map(l => {
-    const base = { fileId: l.fileId, path: l.path, capturedAt: l.capturedAt, night: night(l), filter: l.filter, measurement: l.measurement, override: l.override, weight: null }
+    const base = { fileId: l.fileId, path: l.path, capturedAt: l.capturedAt, night: night(l), filter: l.filter, measurement: l.measurement, override: l.override, overrideBy: l.override ? (l.overrideBy ?? 'frame') : null, weight: null }
     const m = l.measurement
     const failed: string[] = []
     if (m) {
@@ -399,7 +405,7 @@ export function gradeFrames(lights: GradableLight[], limits: GradeLimits): Grade
       }
     }
     if (l.override) {
-      const reasons = [l.override === 'keep' ? 'Kept by hand.' : 'Rejected by hand.', ...failed]
+      const reasons = [l.override === 'keep' ? 'Kept by hand.' : base.overrideBy === 'night' ? 'Left out with its night.' : 'Rejected by hand.', ...failed]
       return { ...base, verdict: l.override, reasons }
     }
     if (!m) return { ...base, verdict: 'unmeasured', reasons: [l.measureError ? `Not measured: ${l.measureError}` : 'Not measured yet.'] }

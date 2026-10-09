@@ -5,6 +5,7 @@ import {
   makeDiscoverTargets,
   makeDismissSuggestion,
   makeEstimateSirilRun,
+  sourceLightPaths,
   makeFrameGrading,
   makeFindDuplicates,
   makeJobScheduler,
@@ -35,6 +36,7 @@ import { FileJobLogs } from './adapters/file-job-logs'
 import { NodeMachineMonitor } from './adapters/node-machine-monitor'
 import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-frame-grades'
 import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
+import { NodeMemoryProbe } from './adapters/node-memory-probe'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -64,7 +66,7 @@ export function composeCore(db: Database.Database) {
   const stacks = new SqliteStackCatalogue(db)
   const jobStore = new SqliteJobStore(db)
   const grading = composeGrading(db)
-  const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading })
+  const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading, memory: new NodeMemoryProbe() })
   const planPostProcessing = makePlanPostProcessing({ stacks, tools, workspace: new NodeSirilWorkspace(db) })
   const planForward = makePlanForward({
     frames,
@@ -87,6 +89,9 @@ export function composeCore(db: Database.Database) {
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
     prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db), selection: grading }),
     grading,
+    /** Leaves one night of a stack's source folder out, or uses it again (ADV-008). */
+    leaveOutNight: async (sourceDir: string, night: string, leftOut: boolean) =>
+      grading.setNightLeftOut(await sourceLightPaths(new NodeSirilWorkspace(db), sourceDir), night, leftOut),
     estimateSirilRun,
     planForward,
     listTools: makeListTools({ tools }),

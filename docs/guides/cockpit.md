@@ -295,3 +295,35 @@ place only them, removing any rejected light an earlier run left in the work are
 in the work folders, such as frames you added by hand, stays. Kept lights get
 a weight (their SNR squared against the best one) for weighted stacking. **Export CSV** saves every
 measurement, grade and reason for a spreadsheet.
+
+### Stacking advice
+
+Under the stacking plan, each script says how much memory it needs. When the PC has less free
+than one pass needs, Siril stacks in blocks, which is slower. When it has less than the least it
+can work with, the plan says whether closing other programs (or leaving it for the night window)
+will do, or whether to stack fewer lights at a time.
+
+**Stacking advice** opens below the plan:
+
+- **Image scale and drizzle.** The scale in arc seconds per pixel comes from the lights' focal
+  length and pixel size. Bayer drizzle is suggested only for colour lights coarser than 2"/px
+  with at least 100 kept, and it shows how much more disk it needs. When the folder lacks
+  calibration frames the drizzle script needs, it says which instead. Drizzle also needs frames
+  that were dithered.
+- **Rejection.** The method that suits how many lights are kept, with the `rej` arguments to use
+  in Siril.
+- **Calibration.** Whether the darks, flats and biases in the folder match the lights. When they
+  do not, it says what differs on the nearest frame (a warmer sensor, another exposure, gain or
+  filter). When a few frames match no light beside ones that do, it counts them and asks you to
+  move them out. Siril's stock scripts use every frame in the folder either way. A Seestar target is
+  told it needs no calibration frames, because the Seestar calibrates on board.
+- **Nights.** Each night's lights, how many grading kept, their median FWHM and the flats taken
+  that night. **Leave out** rejects a whole night's lights in this folder, and **Use again** hands
+  them back to the grading limits. A frame you kept or rejected by hand keeps your choice either
+  way. When some nights have no flats of their own, the plan warns that one master flat
+  will calibrate every night.
+
+Tonight's plan and the next actions also watch the balance of narrowband targets. When a filter
+has under a third of the integration of the target's best-covered filter, they suggest capturing
+it, for example: "Capture OIII: it has 40 m against 6 h of Ha." Luminance is left out of the
+balance, and a filter you set a goal for counts before its first frame ("it has nothing yet").

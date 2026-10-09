@@ -37,7 +37,26 @@ export class InMemoryFrameGradeStore implements FrameGradeStore {
   }
 
   async setOverride(fileId: string, override: GradeOverride | null): Promise<void> {
-    this.require(fileId).override = override
+    const l = this.require(fileId)
+    l.override = override
+    l.overrideBy = override ? 'frame' : null
+  }
+
+  async setNightLeftOut(fileIds: string[], leftOut: boolean): Promise<number> {
+    const lights = fileIds.map(id => this.require(id))
+    let changed = 0
+    for (const l of lights) {
+      if (leftOut && (l.override === null || l.overrideBy === 'night')) {
+        l.override = 'reject'
+        l.overrideBy = 'night'
+        changed++
+      } else if (!leftOut && l.overrideBy === 'night') {
+        l.override = null
+        l.overrideBy = null
+        changed++
+      }
+    }
+    return changed
   }
 
   private require(fileId: string) {

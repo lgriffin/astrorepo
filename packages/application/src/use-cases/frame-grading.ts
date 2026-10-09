@@ -32,6 +32,16 @@ export function makeFrameGrading(deps: FrameGradingDeps) {
     return { ...gradeFrames(lights, limits), limits }
   }
 
+  /** Grades for the lights among these paths, judged with the rest of their target's lights as the grading page judges them. */
+  const reportFor = async (paths: string[]): Promise<GradeReport> => {
+    const [lights, limits] = await Promise.all([deps.store.lightsAlongside(paths), deps.limits.read()])
+    const report = gradeFrames(lights, limits)
+    const asked = new Set(paths)
+    const grades = report.grades.filter(g => asked.has(g.path))
+    const count = (v: string) => grades.filter(g => g.verdict === v).length
+    return { ...report, grades, kept: count('keep'), rejected: count('reject'), unmeasured: count('unmeasured') }
+  }
+
   return {
     /**
      * Measures the next few lights that have never been measured. With `retry` it also tries
@@ -74,19 +84,27 @@ export function makeFrameGrading(deps: FrameGradingDeps) {
       return gradesCsv(await grade(targetId))
     },
 
-    /**
-     * The lights among these paths that grading rejects, judged with the rest of their target's
-     * lights exactly as the grading page judges them.
-     */
+    /** Grades for the lights among these paths (a stack's source folder). */
+    reportFor,
+
+    /** The lights among these paths that grading rejects, exactly as the grading page shows them. */
     async rejected(paths: string[]): Promise<Set<string>> {
-      const [lights, limits] = await Promise.all([deps.store.lightsAlongside(paths), deps.limits.read()])
-      const asked = new Set(paths)
-      return new Set([...rejectedPaths(gradeFrames(lights, limits))].filter(p => asked.has(p)))
+      return rejectedPaths(await reportFor(paths))
+    },
+
+    /**
+     * Leaves one night of a stack's lights out, or uses it again (ADV-008). Only these lights are
+     * touched, and a keep or reject the user made on a frame stays. Returns how many changed.
+     */
+    async setNightLeftOut(paths: string[], night: string, leftOut: boolean): Promise<number> {
+      const { grades } = await reportFor(paths)
+      const ofNight = grades.filter(g => (g.night ?? 'Unknown date') === night).map(g => g.fileId)
+      return ofNight.length === 0 ? 0 : deps.store.setNightLeftOut(ofNight, leftOut, deps.clock.now())
     }
   }
 }
 
 export type FrameGrading = ReturnType<typeof makeFrameGrading>
 
-/** What a stack needs from grading: which lights to leave out. */
-export type FrameSelection = Pick<FrameGrading, 'rejected'>
+/** What a stack needs from grading: which lights to leave out, and how each night graded. */
+export type FrameSelection = Pick<FrameGrading, 'rejected' | 'reportFor'>

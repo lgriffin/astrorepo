@@ -456,6 +456,10 @@ export function registerIpcHandlers(): void {
   // One batch a call (NFR-014): the page asks again while frames remain, and stops when told to.
   handle('grades:measure', validated('grades:measure', args => composeGrading(getSqlite()).measureBatch(args.target_id, { retry: args.retry, retryAfter: args.retry_after ?? null })))
 
+  handle('grades:leave-out-night', validated('grades:leave-out-night', async args => ({
+    changed: await composeCore(getSqlite()).leaveOutNight(args.raw_path, args.night, args.left_out)
+  })))
+
   handle('grades:override', validated('grades:override', async args => {
     await composeGrading(getSqlite()).setOverride(args.file_id, args.override)
     return { ok: true }
