@@ -22,7 +22,15 @@ when the code says otherwise, and the reasons are recorded here.
 | U3 · A target in one flow (UX overhaul) | A target's page in four parts (Overview, Stack and process, Files, Notes and nights); stack, post-process and runs as numbered steps that say when a job is already queued; suggestions and jobs open the target at Stack and process | [017](../specs/017-unified-ux/requirements.md) | Done (PR #28) |
 | U4 · Setup once (UX overhaul) | The site set only in Settings; a Get set up checklist on Home until the site, home folder, a scan and Siril are there; empty pages link to the step that fills them | [017](../specs/017-unified-ux/requirements.md) | Done (PR #29) |
 | U5 · Consistent words (UX overhaul) | Every button, figure label, card title and suggestion action in sentence case; messages name places as the sidebar does; a test fails on new title-case labels | [017](../specs/017-unified-ux/requirements.md) | Done (PR #30) |
-| D, E, F, H, I, J, K, M | Sky geometry, Seestar and Vespera adapters, gallery, store parity, poster, NAS deploy, describe-a-capture. Proposed order: H, D, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
+| Q1 · Frame grading | Every light measured for FWHM, eccentricity, noise, background, star count and SNR weight; graded against limits in Settings; trend per night; manual keep or reject; CSV export; only kept lights go to Siril | [019](../specs/019-frame-grading/requirements.md) | Planned |
+| Q2 · Stacking advice | Memory beside the disk estimate; drizzle and rejection advice from image scale and frame count; calibration gaps explained; one stacking plan across nights; channel balance suggestions | [020](../specs/020-stacking-advice/requirements.md) | Planned |
+| P1 · Provenance | A manifest beside every master; outputs staged and published only on success; long stacks resume by stage; a processing timeline per target; known Siril failures explained | [021](../specs/021-provenance/requirements.md) | Planned |
+| P2 · Archive | Archive a finished target, linked or self-contained, with the space each intermediate frees shown first | [022](../specs/022-archive/requirements.md) | Planned |
+| N · Hub: SyQon CLI and tool health | SyQon CLI found and run like RC Astro; tool versions and the catalogues each needs; one exit-code contract for every tool | [023](../specs/023-hub-syqon/requirements.md) | Planned |
+| D · Sky geometry | Plate solving with ASTAP, Siril as fallback; a mosaic planner on the Sky planner; panels grouped from their solves | [024](../specs/024-sky-geometry/requirements.md) | Planned |
+| H1 · Gallery inspector | Histogram and clipping per file; palette suggestions with a preview; compare two images; a coordinate grid and catalogue labels on solved images | [025](../specs/025-gallery-inspector/requirements.md) | Planned |
+| O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels planned per filter; comets stacked on their motion | [026](../specs/026-other-rigs/requirements.md) | Planned |
+| E, F, H2, I, J, K, M | Seestar and Vespera adapters, the rest of the gallery, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: H2, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
 
@@ -73,6 +81,19 @@ app has run on real data on the Windows PC and the licence is settled.
   first screen's to-do list at the bottom of the page and a target's page built as eleven stacked
   panels, so slices U1 to U5 unify the shell, Home, the target page, setup and wording before the
   remaining adapters add more pages.
+- **SyQon Studio's habits join the plan (October 2026).** Leigh asked which of SyQon Studio's
+  58 functions astrorepo should replicate ([comparison](https://claude.ai/artifact/Wkr1DN98RMjfouXZ772rZY)).
+  Its editing tools stay in Siril, RC Astro and SyQon; what moves in is the discipline around the
+  pixels: grade every subframe before stacking (Q1), advise on the stack (Q2), record what made
+  every master and never publish a partial one (P1), archive finished targets (P2), and plate solve
+  and plan mosaics (D, reshaped around ASTAP). Leigh answered: SyQon's CLI joins the tool hub like
+  RC Astro (N), Q comes first, plate solving supports both ASTAP and Siril, and other people's rigs
+  (DSLRs, mono cameras with filters, comets) come after his own needs (O).
+- **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
+  index and plate solves; browsing finished images across the NAS (H2) waits for where files live
+  ([#38](https://github.com/lgriffin/astrorepo/issues/38)).
+- **C4 diagrams** live in [architecture/c4.md](architecture/c4.md) and are updated by every slice
+  that adds a port, an adapter or an external tool.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
   packages. Until then the core runs inside the Electron main process over SQLite, which keeps the
   app shippable at every step.

@@ -1,5 +1,7 @@
 # Hexagonal core and EARS traceability
 
+The C4 diagrams in [c4.md](c4.md) show the same core from the outside in.
+
 This is how the app moves to a hexagonal architecture without a rewrite. The existing Electron app
 keeps working; logic moves out of `src/main/services` into a core one use case at a time
 (the strangler pattern), and each moved piece is reachable through the same IPC channel as before.
