@@ -93,14 +93,13 @@ export function makeFrameGrading(deps: FrameGradingDeps) {
     },
 
     /**
-     * Keeps or rejects every light of one night by hand (ADV-008), or hands them all back to the
-     * limits. Returns how many lights it changed.
+     * Leaves one night of a stack's lights out, or uses it again (ADV-008). Only these lights are
+     * touched, and a keep or reject the user made on a frame stays. Returns how many changed.
      */
-    async setNightOverride(targetId: string, night: string, override: GradeOverride | null): Promise<number> {
-      const { grades } = gradeFrames(await deps.store.lightsOf(targetId), await deps.limits.read())
-      const ofNight = grades.filter(g => (g.night ?? 'Unknown date') === night)
-      for (const g of ofNight) await deps.store.setOverride(g.fileId, override, deps.clock.now())
-      return ofNight.length
+    async setNightLeftOut(paths: string[], night: string, leftOut: boolean): Promise<number> {
+      const { grades } = await reportFor(paths)
+      const ofNight = grades.filter(g => (g.night ?? 'Unknown date') === night).map(g => g.fileId)
+      return ofNight.length === 0 ? 0 : deps.store.setNightLeftOut(ofNight, leftOut, deps.clock.now())
     }
   }
 }

@@ -48,15 +48,15 @@ a narrowband target is short of.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | ADV-003 | Ubiquitous | The system shall work out the image scale in arc seconds per pixel from the lights' FOCALLEN and XPIXSZ, using the scale most lights share. |
-| ADV-004 | Optional | Where the lights are colour, coarser than 2"/px and at least 100 are kept, the system shall suggest the Bayer drizzle script with the extra disk it needs; otherwise it shall say why not. |
-| ADV-005 | Ubiquitous | The system shall check each kind of calibration frame in a stack's folder against its lights' exposure, gain, sensor temperature and filter, and, when no frame of a kind matches, name what differs on the nearest one. |
+| ADV-004 | Optional | Where the lights are colour, coarser than 2"/px and at least 100 are kept, the system shall suggest the Bayer drizzle script with the extra disk it needs; otherwise, including when the drizzle script lacks calibration frames it needs, it shall say why not. |
+| ADV-005 | Ubiquitous | The system shall check each kind of calibration frame in a stack's folder against its lights' exposure, gain, sensor temperature and filter, and, when no frame of a kind matches, name what differs on the nearest one; when some frames of a kind match no light, it shall say how many and what differs on the first. |
 | ADV-006 | State | While every light comes from a Seestar, the system shall say no darks, flats or biases are needed rather than that they are missing. |
 | ADV-007 | Event | When grading is available, the system shall list each observing night's lights, kept lights, median FWHM and flats, and say when some nights have no flats of their own. |
-| ADV-008 | Event | When the user leaves a night out, the system shall reject its lights by hand; when the user uses it again, the system shall hand them back to the grading limits. |
+| ADV-008 | Event | When the user leaves a night out, the system shall reject the lights of that night in the stack's folder that the user has not kept or rejected by hand; when the user uses it again, the system shall hand only those lights back to the grading limits, in one change that either all happens or none does. |
 | ADV-009 | Ubiquitous | The system shall advise the rejection that suits the number of kept lights: none under 3, percentile under 10, Winsorized sigma under 50, and generalized ESD from 50, with Siril's `rej` arguments. |
 
 ## Planning
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| ADV-010 | Event | When a target's least-captured filter has under a third of the integration of its most-captured filter, the system shall suggest capturing that filter next, with both totals. |
+| ADV-010 | Event | When a target's least-captured filter has under a third of the integration of its most-captured filter, the system shall suggest capturing that filter next, with both totals; luminance is left out of the balance, and a filter with a goal and no frames counts as having nothing yet. |

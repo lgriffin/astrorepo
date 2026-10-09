@@ -114,7 +114,7 @@ describe('Siril plan presenter', () => {
           scaleArcsec: 2.393,
           drizzle: { suggest: true, reason: 'Bayer drizzle can recover finer detail.', extraBytes: 40 * GB },
           calibration: [{ kind: 'dark', status: 'matches', count: 20, gaps: [], text: '20 darks match the lights.' }],
-          nights: { nights: [{ night: '2026-01-10', lights: 60, kept: 55, rejected: 5, medianFwhm: 2.84, flats: 0 }], sharedFlatsNote: 'Shared flats.' }
+          nights: { nights: [{ night: '2026-01-10', lights: 60, kept: 55, rejected: 5, medianFwhm: 2.84, flats: 0, leftOut: true }], sharedFlatsNote: 'Shared flats.' }
         })
       })
     ).advice
@@ -122,7 +122,7 @@ describe('Siril plan presenter', () => {
     expect(view.drizzle).toEqual({ suggest: true, text: 'Bayer drizzle can recover finer detail. It needs 40.0 GB more disk than the recommended script.' })
     expect(view.rejection).toMatchObject({ siril: 'rej w 3 3' })
     expect(view.calibration).toEqual([{ kind: 'dark', status: 'matches', text: '20 darks match the lights.' }])
-    expect(view.nights).toEqual([{ night: '2026-01-10', label: '10 Jan 2026', lights: 60, kept: 55, rejected: 5, medianFwhm: '2.8 px', flats: 0 }])
+    expect(view.nights).toEqual([{ night: '2026-01-10', label: '10 Jan 2026', lights: 60, kept: 55, rejected: 5, medianFwhm: '2.8 px', flats: 0, leftOut: true }])
     expect(view.sharedFlatsNote).toBe('Shared flats.')
     const plain = toSirilPlanView(estimate()).advice
     expect(plain).toMatchObject({ scale: null, nights: null, sharedFlatsNote: null })

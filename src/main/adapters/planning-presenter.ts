@@ -1,7 +1,7 @@
 import type { ForwardPlan } from '@astro/application'
 import type { TonightPlan } from '@astro/domain'
 import type { ForwardPlanView, TonightView } from '@shared/types'
-import { formatDuration, plural } from './stacking-suggestion-presenter'
+import { channelLine, formatDuration, plural } from './stacking-suggestion-presenter'
 
 const hours = (h: number) => formatDuration(Math.round(h * 3600))
 
@@ -37,7 +37,9 @@ function toTonightView(t: TonightPlan): TonightView {
       targetId: c.targetId,
       targetName: c.targetName,
       detail:
-        `${hours(c.usableHours)} above 30°` + (c.moonSeparationDeg === null ? ', moon down' : `, moon ${c.moonSeparationDeg}° away`)
+        `${hours(c.usableHours)} above 30°` +
+        (c.moonSeparationDeg === null ? ', moon down' : `, moon ${c.moonSeparationDeg}° away`) +
+        (c.channel ? `. ${channelLine(c.channel)}` : '')
     }))
   }
 }

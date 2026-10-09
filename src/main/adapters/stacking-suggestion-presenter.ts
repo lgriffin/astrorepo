@@ -1,4 +1,4 @@
-import type { Job, NextAction, StackingSuggestion } from '@astro/domain'
+import type { ChannelGap, Job, NextAction, StackingSuggestion } from '@astro/domain'
 import type { Recommendation } from '@shared/types'
 import { targetLink } from '@shared/navigation'
 
@@ -11,6 +11,12 @@ export function formatDuration(sec: number): string {
 }
 
 export const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`
+
+/** "Capture OIII: it has 40 m against 6 h of Ha." (ADV-010) */
+export function channelLine(gap: ChannelGap): string {
+  const have = gap.haveSec > 0 ? formatDuration(gap.haveSec) : 'nothing yet'
+  return `Capture ${gap.filter}: it has ${have} against ${formatDuration(gap.leadSec)} of ${gap.leadFilter}.`
+}
 
 /** Presents a core suggestion in the shape the existing Dashboard already renders. */
 export function toRecommendation(s: StackingSuggestion): Recommendation {
@@ -49,9 +55,7 @@ export function toNextActionRecommendation(a: NextAction): Recommendation {
   const parts: string[] = []
   if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
   if (a.shortOfGoalSec !== null && a.shortOfGoalSec > 0) parts.push(`${formatDuration(a.shortOfGoalSec)} short of your goal.`)
-  if (a.channel) {
-    parts.push(`Capture ${a.channel.filter}: it has ${formatDuration(a.channel.haveSec)} against ${formatDuration(a.channel.leadSec)} of ${a.channel.leadFilter}.`)
-  }
+  if (a.channel) parts.push(channelLine(a.channel))
   parts.push(a.moonSeparationDeg === null ? 'The moon is down while it is up.' : `The moon comes within ${a.moonSeparationDeg}°.`)
   return {
     id: a.id,

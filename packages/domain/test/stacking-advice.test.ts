@@ -139,10 +139,22 @@ describe('nights', () => {
     )
     const plan = planNights(report, [{ capturedAt: new Date('2026-01-10T21:00:00Z') }, { capturedAt: null }])
     expect(plan.nights).toEqual([
-      { night: '2026-01-10', lights: 3, kept: 3, rejected: 0, medianFwhm: 3, flats: 1 },
-      { night: '2026-01-11', lights: 1, kept: 1, rejected: 0, medianFwhm: 3, flats: 0 }
+      { night: '2026-01-10', lights: 3, kept: 3, rejected: 0, medianFwhm: 3, flats: 1, leftOut: false },
+      { night: '2026-01-11', lights: 1, kept: 1, rejected: 0, medianFwhm: 3, flats: 0, leftOut: false }
     ])
     expect(plan.sharedFlatsNote).toMatch(/^1 of 2 nights have no flats of their own/)
+  })
+
+  it('[ADV-008] Given a night left out, When nights are planned, Then it says so; a frame rejected by hand does not', () => {
+    const report = gradeFrames(
+      [
+        { ...lightOn('a', '2026-01-10T22:00:00Z', 2), override: 'reject' },
+        { ...lightOn('d', '2026-01-12T01:00:00Z', 3), override: 'reject', overrideBy: 'night' }
+      ],
+      DEFAULT_GRADE_LIMITS
+    )
+    expect(planNights(report, []).nights.map(n => [n.night, n.leftOut])).toEqual([['2026-01-10', false], ['2026-01-11', true]])
+    expect(report.grades.find(g => g.fileId === 'd')?.reasons[0]).toBe('Left out with its night.')
   })
 
   it('[ADV-007] Given one night, or no flats at all, When nights are planned, Then there is no shared flats note; undated lights group as unknown', () => {
@@ -163,5 +175,15 @@ describe('channel balance', () => {
     expect(channelGap(target('NGC 7000', { subs: [...ha, ...subs(40, 300, '2026-01-11T21:00:00Z', { filter: 'OIII' })] }))).toBeNull()
     expect(channelGap(target('M 42', { subs: subs(40, 10, '2026-01-11T21:00:00Z') }))).toBeNull()
     expect(channelGap(target('NGC 7000', { subs: [...ha, ...subs(8, 300, '2026-01-11T21:00:00Z', { filter: 'OIII', rejected: true })] }))).toBeNull()
+  })
+
+  it('[ADV-010] Given LRGB with far more luminance than colour, When weighed, Then luminance is not the lead', () => {
+    const lrgb = ['R', 'G', 'B'].flatMap(f => subs(20, 300, '2026-01-10T21:00:00Z', { filter: f }))
+    expect(channelGap(target('M 101', { subs: [...subs(200, 300, '2026-01-10T21:00:00Z', { filter: 'L' }), ...lrgb] }))).toBeNull()
+  })
+
+  it('[ADV-010] Given a filter with a goal and no frames yet, When weighed, Then it is the gap at nothing', () => {
+    const t = target('NGC 7000', { subs: subs(72, 300, '2026-01-10T21:00:00Z', { filter: 'Ha' }), filterGoals: [{ filter: 'Ha', goalSec: 21600 }, { filter: 'OIII', goalSec: 21600 }] })
+    expect(channelGap(t)).toEqual({ filter: 'OIII', haveSec: 0, leadFilter: 'Ha', leadSec: 21600 })
   })
 })

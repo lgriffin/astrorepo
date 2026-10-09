@@ -68,6 +68,22 @@ export function frameGradeStoreContract(adapterName: string, setup: (lights: See
       expect((await store.lightsAlongside(['/data/m42/Light_001.fit'])).map(l => l.fileId)).toEqual(['a', 'b'])
     })
 
+    it('[ADV-008] Given a night left out, When used again, Then only frames it left out come back and a hand-made choice stays', async () => {
+      const store = await setup(seed)
+      await store.setOverride('a', 'keep', at)
+      expect(await store.setNightLeftOut(['a', 'b'], true, at)).toBe(1)
+      expect((await store.lightsOf('m42')).map(l => [l.fileId, l.override, l.overrideBy])).toEqual([['a', 'keep', 'frame'], ['b', 'reject', 'night']])
+      expect((await store.lightsOf('m31'))[0].override).toBeNull()
+      expect(await store.setNightLeftOut(['a', 'b'], false, at)).toBe(1)
+      expect((await store.lightsOf('m42')).map(l => [l.fileId, l.override])).toEqual([['a', 'keep'], ['b', null]])
+    })
+
+    it('[ADV-008] Given a night with a frame the index no longer holds, When it is left out, Then it fails and nothing changes', async () => {
+      const store = await setup(seed)
+      await expect(store.setNightLeftOut(['b', 'gone'], true, at)).rejects.toThrow(/no longer in the index/)
+      expect((await store.lightsOf('m42')).every(l => l.override === null)).toBe(true)
+    })
+
     it('[GRD-005] Given a frame the index no longer holds, When it is overridden, Then it fails with a reason', async () => {
       const store = await setup(seed)
       await expect(store.setOverride('gone', 'keep', at)).rejects.toThrow(/no longer in the index/)

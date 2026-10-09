@@ -976,6 +976,8 @@ export interface StackNightView {
   rejected: number
   medianFwhm: string | null
   flats: number
+  /** The user left this night out; frames kept by hand stay in. */
+  leftOut: boolean
 }
 
 /** Advice beside the stacking plan (specs/020-stacking-advice). */

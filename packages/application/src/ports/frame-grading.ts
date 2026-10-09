@@ -15,8 +15,13 @@ export interface FrameGradeStore {
   lightsAlongside(paths: string[]): Promise<GradableLight[]>
   /** Saves a measurement, or why the frame could not be measured. */
   saveMeasurement(fileId: string, result: { measurement: FrameMeasurement } | { error: string }, at: Date): Promise<void>
-  /** Sets or clears the user's keep or reject. */
+  /** Sets or clears the user's keep or reject on one frame. */
   setOverride(fileId: string, override: GradeOverride | null, at: Date): Promise<void>
+  /**
+   * In one step: leaving out rejects each of these lights that has no keep or reject of its own;
+   * using them again clears only the rejects leaving out made. Returns how many changed.
+   */
+  setNightLeftOut(fileIds: string[], leftOut: boolean, at: Date): Promise<number>
 }
 
 /** Driven port: measures one light from its pixels. Reads the file; never writes it. */

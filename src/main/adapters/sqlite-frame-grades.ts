@@ -21,12 +21,13 @@ interface LightRow {
   measure_error: string | null
   measured_at: string | null
   override: string | null
+  override_by: string | null
 }
 
 const SELECT = `
   SELECT f.id, f.file_path, f.target_id, f.date_obs, NULLIF(TRIM(f.filter), '') AS filter, f.file_size_bytes, f.file_modified_at,
          g.size_bytes AS g_size, g.modified_at AS g_modified, g.fwhm, g.eccentricity, g.star_count, g.background,
-         g.noise, g.snr, g.measure_error, g.measured_at, g.override
+         g.noise, g.snr, g.measure_error, g.measured_at, g.override, g.override_by
   FROM fits_files f
   LEFT JOIN frame_grades g ON g.file_path = f.file_path`
 
@@ -44,7 +45,8 @@ function toLight(r: LightRow): GradableLight {
     filter: r.filter,
     measurement,
     measureError: current ? r.measure_error : null,
-    override: r.override === 'keep' || r.override === 'reject' ? r.override : null
+    override: r.override === 'keep' || r.override === 'reject' ? r.override : null,
+    overrideBy: r.override_by === 'night' ? 'night' : r.override ? 'frame' : null
   }
 }
 
@@ -102,10 +104,28 @@ export class SqliteFrameGradeStore implements FrameGradeStore {
     const file = this.file(fileId)
     this.db
       .prepare(
-        `INSERT INTO frame_grades (file_path, override, override_at) VALUES (?, ?, ?)
-         ON CONFLICT(file_path) DO UPDATE SET override = excluded.override, override_at = excluded.override_at`
+        `INSERT INTO frame_grades (file_path, override, override_by, override_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(file_path) DO UPDATE SET override = excluded.override, override_by = excluded.override_by, override_at = excluded.override_at`
       )
-      .run(file.file_path, override, override ? at.toISOString() : null)
+      .run(file.file_path, override, override ? 'frame' : null, override ? at.toISOString() : null)
+  }
+
+  async setNightLeftOut(fileIds: string[], leftOut: boolean, at: Date): Promise<number> {
+    const leave = this.db.prepare(
+      `INSERT INTO frame_grades (file_path, override, override_by, override_at) VALUES (?, 'reject', 'night', ?)
+       ON CONFLICT(file_path) DO UPDATE SET override = 'reject', override_by = 'night', override_at = excluded.override_at
+       WHERE frame_grades.override IS NULL OR frame_grades.override_by = 'night'`
+    )
+    const restore = this.db.prepare(`UPDATE frame_grades SET override = NULL, override_by = NULL, override_at = NULL WHERE file_path = ? AND override_by = 'night'`)
+    // One transaction: a frame missing from the index undoes the whole change.
+    return this.db.transaction(() => {
+      let changed = 0
+      for (const id of fileIds) {
+        const { file_path } = this.file(id)
+        changed += (leftOut ? leave.run(file_path, at.toISOString()) : restore.run(file_path)).changes
+      }
+      return changed
+    })()
   }
 
   private file(fileId: string) {

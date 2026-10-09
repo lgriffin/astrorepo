@@ -217,7 +217,24 @@ export function checkCalibration(lights: FrameIndexSettings[], frames: Calibrati
           .sort((a, b) => a.m.length - b.m.length)[0]
         return { light, mismatches: nearest.m }
       })
-    if (gaps.length === 0) return { kind, status: 'matches', count: own.length, gaps, text: `${own.length} ${KIND_NAME[kind]} match the lights.` }
+    if (gaps.length === 0) {
+      // Siril's stock scripts use every frame in the folder, so one that suits no light still goes in.
+      // Lights with no settings read give nothing to compare against.
+      const strays = settings.size === 0 ? [] : own.filter(f => ![...settings.values()].some(light => calibrates(f, light)))
+      if (strays.length === 0) return { kind, status: 'matches', count: own.length, gaps, text: `${own.length} ${KIND_NAME[kind]} match the lights.` }
+      const nearest = [...settings.values()]
+        .map(light => calibrationMismatches(strays[0], light))
+        .sort((a, b) => a.length - b.length)[0]
+      return {
+        kind,
+        status: 'mismatch',
+        count: own.length,
+        gaps,
+        text:
+          `${strays.length} of ${own.length} ${KIND_NAME[kind]} match no lights: the first has ${LIST(nearest)}.` +
+          ' Siril will use them with the rest; move them out of the folder.'
+      }
+    }
     const first = gaps[0].mismatches
     return {
       kind,
@@ -241,6 +258,8 @@ export interface NightRow {
   medianFwhm: number | null
   /** Flats captured on this observing night. */
   flats: number
+  /** The user left this night out (ADV-008). */
+  leftOut: boolean
 }
 
 export interface NightsPlan {
@@ -265,7 +284,12 @@ export function planNights(report: GradeReport, flats: { capturedAt: Date | null
   const flatNights = new Map<string, number>()
   for (const f of flats) if (f.capturedAt) flatNights.set(observingNightOf(f.capturedAt), (flatNights.get(observingNightOf(f.capturedAt)) ?? 0) + 1)
   const byNight = new Map<string, typeof report.grades>()
-  for (const g of report.grades) byNight.set(g.night ?? 'Unknown date', [...(byNight.get(g.night ?? 'Unknown date') ?? []), g])
+  for (const g of report.grades) {
+    const key = g.night ?? 'Unknown date'
+    const list = byNight.get(key)
+    if (list) list.push(g)
+    else byNight.set(key, [g])
+  }
   const nights: NightRow[] = [...byNight.entries()]
     .map(([night, grades]) => ({
       night,
@@ -273,7 +297,8 @@ export function planNights(report: GradeReport, flats: { capturedAt: Date | null
       kept: grades.filter(g => g.verdict !== 'reject').length,
       rejected: grades.filter(g => g.verdict === 'reject').length,
       medianFwhm: medianOf(grades.filter(g => g.verdict !== 'reject' && g.measurement?.fwhm != null).map(g => g.measurement?.fwhm as number)),
-      flats: flatNights.get(night) ?? 0
+      flats: flatNights.get(night) ?? 0,
+      leftOut: grades.some(g => g.overrideBy === 'night')
     }))
     .sort((a, b) => a.night.localeCompare(b.night))
   const withFlats = nights.filter(n => n.flats > 0).length
@@ -293,23 +318,31 @@ export interface ChannelGap {
   leadSec: number
 }
 
+/** Luminance and clear filters, which LRGB imaging captures far longer than colour on purpose. */
+const LUMINANCE = /^(l|lum|luminance|clear|c)$/i
+
 /** The least-captured filter falls short when it has under this share of the most-captured. */
 export const CHANNEL_BALANCE_RATIO = 1 / 3
 
 /**
- * A target's filter that lags far behind its best, among the filters it has been captured with.
- * Frames with no filter are a one-shot-colour target and have no channels to balance.
+ * A target's filter that lags far behind its best, among the filters it has been captured with
+ * or has a goal for. Frames with no filter are a one-shot-colour target and luminance is meant to
+ * lead, so neither is balanced.
  */
 export function channelGap(target: TargetFrames): ChannelGap | null {
   const byFilter = new Map<string, { name: string; sec: number }>()
-  for (const s of usableSubs(target)) {
-    const name = s.filter?.trim()
-    if (!name) continue
+  const add = (filter: string | null | undefined, sec: number) => {
+    const name = filter?.trim()
+    // Luminance is meant to run far longer than colour, so it is never part of the balance.
+    if (!name || LUMINANCE.test(name)) return
     const key = name.toLowerCase()
     const entry = byFilter.get(key) ?? { name, sec: 0 }
-    entry.sec += s.exposureSec
+    entry.sec += sec
     byFilter.set(key, entry)
   }
+  for (const s of usableSubs(target)) add(s.filter, s.exposureSec)
+  // A filter the user set a goal for counts even before its first frame.
+  for (const g of target.filterGoals ?? []) add(g.filter, 0)
   if (byFilter.size < 2) return null
   const sorted = [...byFilter.values()].sort((a, b) => a.sec - b.sec || a.name.localeCompare(b.name))
   const low = sorted[0]

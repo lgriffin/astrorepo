@@ -170,11 +170,11 @@ const CALIBRATION_TONE: Record<StackAdviceView['calibration'][number]['status'],
  * Advice beside the plan (specs/020-stacking-advice): image scale and drizzle, the rejection that
  * suits the lights, whether the calibration frames match, and each night with a way to leave it out.
  */
-function StackAdvice({ targetId, advice, onChanged }: { targetId: string; advice: StackAdviceView; onChanged: () => void }): React.ReactElement {
+function StackAdvice({ rawPath, advice, onChanged }: { rawPath: string; advice: StackAdviceView; onChanged: () => void }): React.ReactElement {
   const { addToast } = useToast()
-  async function setNight(night: string, override: 'reject' | null): Promise<void> {
+  async function setNight(night: string, leftOut: boolean): Promise<void> {
     try {
-      await invoke('grades:override-night', { target_id: targetId, night, override })
+      await invoke('grades:leave-out-night', { raw_path: rawPath, night, left_out: leftOut })
     } catch {
       addToast('That night could not be changed. Open the page again and retry.', 'error')
     } finally {
@@ -193,7 +193,7 @@ function StackAdvice({ targetId, advice, onChanged }: { targetId: string; advice
         <p className="text-astro-muted">
           Rejection: <span className="text-astro-text">{advice.rejection.method}</span> (<span className="font-mono">{advice.rejection.siril}</span>). {advice.rejection.text}
         </p>
-        {advice.calibration.filter(c => c.status !== 'none').map(c => (
+        {advice.calibration.map(c => (
           <p key={c.kind} className={CALIBRATION_TONE[c.status]}>{c.text}</p>
         ))}
         {advice.nights && advice.nights.length > 0 && (
@@ -217,10 +217,10 @@ function StackAdvice({ targetId, advice, onChanged }: { targetId: string; advice
                   <td className="pr-3 text-right tabular-nums">{n.medianFwhm ?? '–'}</td>
                   <td className="pr-3 text-right tabular-nums">{n.flats}</td>
                   <td>
-                    {n.kept > 0 ? (
-                      <LinkButton onClick={() => void setNight(n.night, 'reject')}>Leave out</LinkButton>
+                    {n.leftOut ? (
+                      <LinkButton onClick={() => void setNight(n.night, false)}>Use again</LinkButton>
                     ) : (
-                      <LinkButton onClick={() => void setNight(n.night, null)}>Use again</LinkButton>
+                      <LinkButton onClick={() => void setNight(n.night, true)}>Leave out</LinkButton>
                     )}
                   </td>
                 </tr>
@@ -291,7 +291,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
       {plan.gradingNote && <p className="text-xs text-astro-muted">{plan.gradingNote}</p>}
       {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
       {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
-      <StackAdvice targetId={targetId} advice={plan.advice} onChanged={() => setReload(n => n + 1)} />
+      <StackAdvice rawPath={rawPath} advice={plan.advice} onChanged={() => setReload(n => n + 1)} />
       {plan.scripts.length > 0 && (
         <details className="text-xs">
           <summary className="cursor-pointer text-astro-accent">Every script and its stages</summary>

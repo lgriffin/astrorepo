@@ -5,6 +5,7 @@ import {
   makeDiscoverTargets,
   makeDismissSuggestion,
   makeEstimateSirilRun,
+  sourceLightPaths,
   makeFrameGrading,
   makeFindDuplicates,
   makeJobScheduler,
@@ -88,6 +89,9 @@ export function composeCore(db: Database.Database) {
     findDuplicates: makeFindDuplicates({ files: new SqliteFileIndex(db), hasher: new NodeContentHasher(), hashes }),
     prepareSirilWorkspace: makePrepareSirilWorkspace({ workspace: new NodeSirilWorkspace(db), selection: grading }),
     grading,
+    /** Leaves one night of a stack's source folder out, or uses it again (ADV-008). */
+    leaveOutNight: async (sourceDir: string, night: string, leftOut: boolean) =>
+      grading.setNightLeftOut(await sourceLightPaths(new NodeSirilWorkspace(db), sourceDir), night, leftOut),
     estimateSirilRun,
     planForward,
     listTools: makeListTools({ tools }),

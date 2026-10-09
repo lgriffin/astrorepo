@@ -18,7 +18,7 @@ const settings = (over: Partial<FrameIndexSettings> = {}): FrameIndexSettings =>
 })
 
 /** A colour target with lights over two nights, darks, and flats from the first night only. */
-function target(lights = 3) {
+function target(lights = 3, extra: { name: string; imageType?: string }[] = []) {
   const store = new InMemoryFrameGradeStore()
   const measurer = new FakeFrameMeasurer()
   const workspace = new InMemorySirilWorkspace()
@@ -33,7 +33,7 @@ function target(lights = 3) {
     measurer.set(path, measurement())
     workspace.describe(path, { width: 1000, height: 1000, colour: true, settings: settings({ capturedAt: at }) })
   }
-  names.push({ name: 'Dark_001.fit', imageType: 'Dark' }, { name: 'Flat_001.fit', imageType: 'Flat' })
+  names.push({ name: 'Dark_001.fit', imageType: 'Dark' }, { name: 'Flat_001.fit', imageType: 'Flat' }, ...extra)
   workspace.addSource('/data/NGC 7000', ...names)
   workspace.describe('/data/NGC 7000/Dark_001.fit', { width: 1000, height: 1000, colour: true, settings: settings({ sensorTempC: 5 }) })
   workspace.describe('/data/NGC 7000/Flat_001.fit', { width: 1000, height: 1000, colour: true, settings: settings({ exposureSec: 1, capturedAt: new Date('2026-01-10T21:00:00Z') }) })
@@ -66,10 +66,27 @@ describe('estimating a stack with advice', () => {
   })
 
   it('[ADV-004] Given enough lights to drizzle, When estimated, Then drizzle is suggested with its extra disk over the recommended script', async () => {
-    const { workspace } = target(120)
+    const { workspace } = target(120, [{ name: 'Bias_001.fit', imageType: 'Bias' }])
     const e = await makeEstimateSirilRun({ workspace })('/data/NGC 7000', '/work')
     expect(e.advice.drizzle.suggest).toBe(true)
     expect(e.recommended.script).not.toBe('OSC_Preprocessing_BayerDrizzle')
+  })
+
+  it('[ADV-004] Given enough lights to drizzle but no biases, When estimated, Then drizzle is not suggested and the missing frames are named', async () => {
+    const { workspace } = target(120)
+    const e = await makeEstimateSirilRun({ workspace })('/data/NGC 7000', '/work')
+    expect(e.advice.drizzle).toMatchObject({ suggest: false, reason: expect.stringMatching(/but its script needs biases, which this folder lacks\.$/) })
+  })
+
+  it('[ADV-005] Given a dark that suits no light beside ones that do, When estimated, Then the stray is called out', async () => {
+    const { workspace } = target(3, [{ name: 'Dark_002.fit', imageType: 'Dark' }])
+    workspace.describe('/data/NGC 7000/Dark_001.fit', { width: 1000, height: 1000, colour: true, settings: settings() })
+    workspace.describe('/data/NGC 7000/Dark_002.fit', { width: 1000, height: 1000, colour: true, settings: settings({ exposureSec: 60 }) })
+    const e = await makeEstimateSirilRun({ workspace })('/data/NGC 7000', '/work')
+    expect(e.advice.calibration.find(c => c.kind === 'dark')).toMatchObject({
+      status: 'mismatch',
+      text: "1 of 2 darks match no lights: the first has 60 s exposures against the lights' 300 s. Siril will use them with the rest; move them out of the folder."
+    })
   })
 
   it('[ADV-005] Given darks warmer than the lights, When estimated, Then the calibration check says what differs', async () => {
@@ -91,13 +108,17 @@ describe('estimating a stack with advice', () => {
   it('[ADV-008] Given a night left out, When estimated again, Then its lights leave the stack; used again, Then they return', async () => {
     const { workspace, grading } = target(4)
     await grading.measureBatch('ngc7000')
-    expect(await grading.setNightOverride('ngc7000', '2026-01-12', 'reject')).toBe(2)
+    const paths = [1, 2, 3, 4].map(i => `/data/NGC 7000/Light_00${i}.fit`)
+    await grading.setOverride('l4', 'keep')
+    expect(await grading.setNightLeftOut(paths, '2026-01-12', true)).toBe(1)
     const estimate = makeEstimateSirilRun({ workspace, selection: grading })
     const without = await estimate('/data/NGC 7000', '/work')
-    expect(without.counts.lights).toBe(2)
-    expect(without.advice.nights?.nights.find(n => n.night === '2026-01-12')).toMatchObject({ lights: 2, kept: 0, rejected: 2 })
-    await grading.setNightOverride('ngc7000', '2026-01-12', null)
-    expect((await estimate('/data/NGC 7000', '/work')).counts.lights).toBe(4)
-    expect(await grading.setNightOverride('ngc7000', '1999-01-01', 'reject')).toBe(0)
+    expect(without.counts.lights).toBe(3)
+    expect(without.advice.nights?.nights.find(n => n.night === '2026-01-12')).toMatchObject({ lights: 2, kept: 1, rejected: 1, leftOut: true })
+    await grading.setNightLeftOut(paths, '2026-01-12', false)
+    const back = await estimate('/data/NGC 7000', '/work')
+    expect(back.counts.lights).toBe(4)
+    expect(back.advice.nights?.nights.find(n => n.night === '2026-01-12')?.leftOut).toBe(false)
+    expect(await grading.setNightLeftOut(paths, '1999-01-01', true)).toBe(0)
   })
 })

@@ -142,7 +142,7 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
       })
       .sort((a, b) => Number(b.script === recommended.script) - Number(a.script === recommended.script))
 
-    const advice = await adviseStack({ deps, lights, details, placements, sensor, keptLights: counts.lights, scripts, recommended: recommended.script, allLights: lightPathsOf(await deps.workspace.listSourceFrames(sourceDir)) })
+    const advice = await adviseStack({ deps, lights, details, placements, sensor, keptLights: counts.lights, scripts, recommended: recommended.script, allLights: lightPathsOf(selected.frames) })
 
     return {
       advice,
@@ -182,7 +182,13 @@ export async function selectFrames(
 const lightPathsOf = (frames: { path: string; name: string; imageType: string | null }[]) =>
   frames.filter(f => sirilFolderFor(f.name, f.imageType) === 'lights').map(f => f.path)
 
+/** Every light in a stack's source folder, rejected or not: the lights its nights table counts. */
+export async function sourceLightPaths(workspace: Pick<SirilWorkspace, 'listSourceFrames'>, sourceDir: string): Promise<string[]> {
+  return lightPathsOf(await workspace.listSourceFrames(sourceDir))
+}
+
 const KIND_OF = { darks: 'dark', flats: 'flat', biases: 'bias' } as const
+const LIST = (items: string[]) => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
 
 /** Advice beside the plan: image scale, drizzle, rejection, calibration and nights. */
 async function adviseStack(input: {
@@ -211,10 +217,15 @@ async function adviseStack(input: {
   const drizzleScript = input.scripts.find(s => s.script === 'OSC_Preprocessing_BayerDrizzle')
   const chosen = input.scripts.find(s => s.script === input.recommended)
   const nights = input.deps.selection && input.allLights.length > 0 ? planNights(await input.deps.selection.reportFor(input.allLights), flats) : null
+  const drizzle = drizzleAdvice(input.sensor, scaleArcsec, input.keptLights)
+  // Only a script that can run is worth suggesting.
+  const blocked = drizzle.suggest && drizzleScript && drizzleScript.missing.length > 0
   return {
     scaleArcsec,
     drizzle: {
-      ...drizzleAdvice(input.sensor, scaleArcsec, input.keptLights),
+      ...(blocked
+        ? { suggest: false, reason: `${drizzle.reason.replace(/\.$/, '')}, but its script needs ${LIST(drizzleScript.missing)}, which this folder lacks.` }
+        : drizzle),
       extraBytes: drizzleScript && chosen && chosen !== drizzleScript ? Math.max(0, drizzleScript.neededBytes - chosen.neededBytes) : null
     },
     rejection: rejectionAdvice(input.keptLights),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDuration, toNextActionRecommendation, toRecommendation } from '../../src/main/adapters/stacking-suggestion-presenter'
+import { channelLine, formatDuration, toNextActionRecommendation, toRecommendation } from '../../src/main/adapters/stacking-suggestion-presenter'
 
 describe('Stacking suggestion presenter', () => {
   it('[DSC-010] Given a ready-to-stack suggestion, When presented, Then it states integration, subs and nights', () => {
@@ -50,6 +50,10 @@ describe('Stacking suggestion presenter', () => {
     })
     expect(r.title).toBe('M 27 · shoot tonight in OIII, 4 h above 30°')
     expect(r.description).toBe('Capture OIII: it has 40 m against 6 h of Ha. The moon is down while it is up.')
+  })
+
+  it('[ADV-010] Given a filter with a goal and no frames yet, When presented, Then the line says it has nothing yet', () => {
+    expect(channelLine({ filter: 'OIII', haveSec: 0, leadFilter: 'Ha', leadSec: 6 * 3600 })).toBe('Capture OIII: it has nothing yet against 6 h of Ha.')
   })
 
   it('[DSC-016] Given an ordinary capture with no goal and the moon down, When presented, Then it is medium priority and says the moon is down', () => {

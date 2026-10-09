@@ -77,7 +77,8 @@ export function toAdviceView(a: StackAdvice): StackAdviceView {
           kept: n.kept,
           rejected: n.rejected,
           medianFwhm: n.medianFwhm === null ? null : `${n.medianFwhm.toFixed(1)} px`,
-          flats: n.flats
+          flats: n.flats,
+          leftOut: n.leftOut
         }))
       : null,
     sharedFlatsNote: a.nights?.sharedFlatsNote ?? null
