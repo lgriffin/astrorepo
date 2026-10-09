@@ -249,6 +249,29 @@ describe('stacks run step by step', () => {
     expect(await t.world.store.get(job.id)).toMatchObject({ state: 'cancelled', note: 'Cancelled before step 2 of 4 (register light).' })
   })
 
+  it('[PRV-002] Given a cancel that arrives while the result is being published, When publishing ends, Then the stack is cancelled and the result set aside', async () => {
+    const t = harness()
+    const job = await t.add()
+    const write = t.world.area.writeManifest.bind(t.world.area)
+    let cancelling: Promise<unknown> | null = null
+    t.world.area.writeManifest = async (resultPath, manifest) => {
+      cancelling = t.s.cancel(job.id)
+      await flush()
+      return write(resultPath, manifest)
+    }
+    await t.s.tick()
+    for (let i = 0; i < 3; i++) await t.step(0)
+    t.world.results.push({ path: '/work/result_120s.fit', sizeBytes: 5000, modifiedAt: new Date() })
+    await t.step(0)
+    await t.s.idle()
+    await cancelling
+    const done = await t.world.store.get(job.id)
+    expect(done).toMatchObject({ state: 'cancelled', progress: { step: 4 } })
+    expect(done?.note).toMatch(/^Cancelled while its result was being published\. What it wrote is in the work folder's failed folder\.$/)
+    expect(done?.progress?.published).toBeUndefined()
+    expect(t.world.area.setAsideFiles).toEqual(['/work/result_120s.fit'])
+  })
+
   it('[PRV-001] [PRV-002] Given every step succeeds but the manifest cannot be written, When the stack ends, Then it fails and the result is set aside', async () => {
     const t = harness()
     t.world.area.writeManifest = async () => {

@@ -261,6 +261,12 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
         })
         deps.logs.append(job.id, `\nPublished ${result.path} with its manifest ${await area.writeManifest(result.path, manifest)}.\n`)
       }
+      // A cancel that came while publishing wins: the result and its manifest are set aside.
+      if (entry.cancelled) {
+        await deps.store.update(job.id, { progress: progress(run.steps.length) })
+        return cancelled('while its result was being published')
+      }
+      if (stopping) return
       await deps.store.update(job.id, { progress: progress(run.steps.length, { published: published.map(r => r.path) }) })
     } catch (error) {
       // Never a result without its manifest: set it aside with whatever was written beside it.
