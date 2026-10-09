@@ -141,6 +141,16 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
     return { ...this.space }
   }
 
+  /** Text files written into work folders, by full path. */
+  readonly written = new Map<string, string>()
+
+  async writeText(workDir: string, name: string, text: string): Promise<string> {
+    if (!name || /[\\/]/.test(name) || name === '.' || name === '..') throw new Error(`${name} is not a bare file name.`)
+    const path = `${workDir}/${name}`
+    this.written.set(path, text)
+    return path
+  }
+
   /** Stack results per work folder, as a Siril run would leave them. */
   readonly results = new Map<string, { path: string; sizeBytes: number; modifiedAt: Date | null }[]>()
 

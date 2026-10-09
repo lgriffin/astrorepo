@@ -29,7 +29,7 @@ when the code says otherwise, and the reasons are recorded here.
 | N · Hub: SyQon CLI and tool health | SyQon CLI found and run like RC Astro; tool versions and the catalogues each needs; one exit-code contract for every tool | [023](../specs/023-hub-syqon/requirements.md) | Done |
 | D · Sky geometry | Plate solving with ASTAP, Siril as fallback, one light per folder per night and every master as a background job; "may be filed under the wrong name" and rotation by night on each target; a mosaic planner on the Sky planner with tiles, hours, clear nights and CSV; panels grouped from their solves and empty tiles in Next actions | [024](../specs/024-sky-geometry/requirements.md) | Done |
 | H1 · Gallery inspector | Histogram, noise, clipping and the brightest star per file; palette suggestions with a preview, the choice shown beside post-processing; compare two images side by side or with a slider; a coordinate grid and catalogue labels on images whose header is solved or that were plate solved | [025](../specs/025-gallery-inspector/requirements.md) | Done |
-| O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels planned per filter; comets stacked on their motion | [026](../specs/026-other-rigs/requirements.md) | Planned |
+| O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels stacked per filter, with the filter to shoot tonight; comets placed in every light and stacked on their motion. Each part shows only when such frames or settings exist | [026](../specs/026-other-rigs/requirements.md) | Done |
 | E, F, H2, I, J, K, M | Seestar and Vespera adapters, the rest of the gallery, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: H2, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
@@ -112,6 +112,13 @@ app has run on real data on the Windows PC and the licence is settled.
   misfiled target is placed and flagged rather than failing; a failed solve is retried the next
   time. Panels are linked to a mosaic only when its plan is saved, never just by viewing.
   Catalogue health for ASTAP stays with slice N.
+- **Other rigs stay out of Leigh's way** (spec 026). DSLR RAW, filter wheels and comets are for
+  other people's rigs, so each part shows only when such frames or settings exist. RAW tags are
+  read by a small TIFF reader of the app's own rather than a new library. CR3 and RAF are found but
+  not read, and RAW pixels are left to Siril (so RAW lights are not graded). A filter is suggested
+  only when the app can name two of a target's filters, which the Seestar's LP and IR-cut filters
+  never are. Comets are placed by a two-body orbit from the MPC's line, within an arc minute of a
+  published ephemeris; the app writes the positions file and Siril does the comet registration.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
   index and plate solves; browsing finished images across the NAS (H2) waits for where files live
   ([#38](https://github.com/lgriffin/astrorepo/issues/38)).

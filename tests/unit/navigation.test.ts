@@ -43,6 +43,7 @@ const job = (over: Partial<JobView> = {}): JobView => ({
   canRunNow: true,
   progress: null,
   outputs: [],
+  filter: null,
   ...over
 })
 

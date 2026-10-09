@@ -228,6 +228,16 @@ describe('Node plate solvers: no solution', () => {
 })
 
 describe('SqliteSolveStore', () => {
+  it('[RIG-019] Given a camera RAW light beside a FITS light, When the sky files are read, Then only the FITS light is a candidate to plate solve', async () => {
+    const db = setupTestDb()
+    seedTarget(db, { id: 'm31', canonicalName: 'M 31' })
+    const scan = seedFitsScan(db)
+    seedFitsFile(db, scan, { filePath: '/astro/M31/Light_001.fit', targetId: 'm31', exposureSec: 10 })
+    const raw = seedFitsFile(db, scan, { filePath: '/astro/M31/IMG_0001.CR2', targetId: 'm31', exposureSec: 120, imageType: 'Light' })
+    db.prepare("UPDATE fits_files SET source_format = 'raw' WHERE id = ?").run(raw)
+    expect((await new SqliteSolveStore(db).files('m31')).map(f => f.path)).toEqual(['/astro/M31/Light_001.fit'])
+  })
+
   it('[SKY-003] Given lights with FOCALLEN and pixel size, When read, Then their optics come with them; Windows paths keep their folder', async () => {
     const db = setupTestDb()
     seedTarget(db, { id: 'm31', canonicalName: 'M 31' })

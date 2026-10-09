@@ -2,10 +2,11 @@ import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { FrameIndexSettings, InputFrame, SirilFolder, SirilPlacement } from '@astro/domain'
+import { frameFileKind, frameTypeOfFolder, type FrameIndexSettings, type InputFrame, type SirilFolder, type SirilPlacement } from '@astro/domain'
 import { parseUtc } from './sqlite-frame-catalogue'
 
-const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
+/** FITS and camera RAW: Siril's `convert` reads both (RIG-004). */
+const isFrameFile = (name: string) => frameFileKind(name) !== null
 const SIRIL_FOLDERS: SirilFolder[] = ['lights', 'darks', 'flats', 'biases']
 
 interface IndexedRow {
@@ -21,6 +22,7 @@ interface IndexedRow {
   focallen: string | null
   bayer: number
   has_headers: number
+  source_format: string | null
 }
 
 /** FOCALLEN is kept as header text; a number in it is the focal length in millimetres. */
@@ -37,8 +39,6 @@ function toSettings(r: IndexedRow): FrameIndexSettings {
     scope: r.scope
   }
 }
-/** A folder named for a frame type tells what its frames are when the header does not. */
-const FRAME_TYPE_FOLDER = /dark|flat|bias|offset/i
 /** Copies keep the source's modified time; some file systems store it to the second. */
 const MTIME_TOLERANCE_MS = 1000
 
@@ -58,8 +58,11 @@ export class NodeSirilWorkspace implements SirilWorkspace {
       for (const e of await fs.promises.readdir(dir, { withFileTypes: true })) {
         const full = path.join(dir, e.name)
         if (e.isDirectory()) {
-          await walk(full, FRAME_TYPE_FOLDER.test(e.name) ? e.name : hint)
-        } else if (e.isFile() && FITS_EXTENSIONS.has(path.extname(e.name).toLowerCase())) {
+          // A folder named for calibration frames ("Darks", "Darks_ISO800", "Flats-L") tells what the
+          // frames in it and below it are when their header does not; a target's "Dark Shark" does not.
+          const type = frameTypeOfFolder(e.name)
+          await walk(full, type && type !== 'Light' ? type : hint)
+        } else if (e.isFile() && isFrameFile(e.name)) {
           const row = typeOf?.get(full) as { image_type: string | null } | undefined
           frames.push({ path: full, name: e.name, imageType: row?.image_type ?? hint })
         }
@@ -103,7 +106,7 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     const removed: string[] = []
     for (const name of new Set(names)) {
       // A placement's name is a bare file name; anything else is not one of ours.
-      if (name !== path.basename(name) || !FITS_EXTENSIONS.has(path.extname(name).toLowerCase())) continue
+      if (name !== path.basename(name) || !isFrameFile(name)) continue
       const entry = path.join(dir, name)
       const stat = await fs.promises.lstat(entry).catch(() => null)
       if (!stat?.isFile()) continue
@@ -125,7 +128,8 @@ export class NodeSirilWorkspace implements SirilWorkspace {
               COALESCE(NULLIF(TRIM(f.telescope), ''), NULLIF(TRIM(f.instrument), '')) AS scope,
               (SELECT h.value FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = 'FOCALLEN' LIMIT 1) AS focallen,
               EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = 'BAYERPAT' AND TRIM(REPLACE(COALESCE(h.value, ''), '''', '')) <> '') AS bayer,
-              EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id) AS has_headers
+              EXISTS (SELECT 1 FROM fits_headers h WHERE h.file_id = f.id) AS has_headers,
+              f.source_format
        FROM fits_files f WHERE f.file_path = ?`
     )
     return Promise.all(
@@ -137,11 +141,22 @@ export class NodeSirilWorkspace implements SirilWorkspace {
           sizeBytes: stat?.size ?? 0,
           width: row?.naxis1 ?? null,
           height: row?.naxis2 ?? null,
-          colour: row && row.has_headers ? row.bayer === 1 : null,
+          // A camera RAW frame is a colour sensor's mosaic, whatever its tags say.
+          colour: row?.source_format === 'raw' ? true : row && row.has_headers ? row.bayer === 1 : null,
           settings: row ? toSettings(row) : null
         }
       })
     )
+  }
+
+  async writeText(workDir: string, name: string, text: string): Promise<string> {
+    if (!name || name !== path.basename(name) || name === '.' || name === '..') throw new Error(`${name} is not a bare file name, so it would land outside the work folder.`)
+    await fs.promises.mkdir(workDir, { recursive: true })
+    const file = path.join(workDir, name)
+    // Written beside and moved into place, so a reader never sees half a file.
+    await fs.promises.writeFile(`${file}.partial`, text, 'utf-8')
+    await fs.promises.rename(`${file}.partial`, file)
+    return file
   }
 
   async workAreaSpace(workDir: string): Promise<WorkAreaSpace> {
@@ -175,7 +190,7 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     for (const folder of SIRIL_FOLDERS) {
       const dir = path.join(workDir, folder)
       for (const e of await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])) {
-        if (!FITS_EXTENSIONS.has(path.extname(e.name).toLowerCase())) continue
+        if (!isFrameFile(e.name)) continue
         // Siril reads through links, so a frame's size and time are its target's.
         const stat = await fs.promises.stat(path.join(dir, e.name)).catch(() => null)
         if (stat?.isFile()) frames.push({ folder, name: e.name, sizeBytes: stat.size, modifiedAt: stat.mtime })

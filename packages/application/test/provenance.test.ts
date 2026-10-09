@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeJobScheduler, type SirilWorkspaceResult } from '@astro/application'
+import { makeJobScheduler, makeTargetHolds, type PrepareSirilWorkspace, type SirilWorkspaceResult } from '@astro/application'
 import type { ResultFile, SirilPlacement } from '@astro/domain'
 import { FakeMachine, FakeProcessRunner, FixedClock, FixedJobSettings, InMemoryJobLogs, InMemoryJobStore, InMemoryRunArea } from '@astro/testkit'
 
@@ -317,5 +317,87 @@ describe('stacks run step by step', () => {
     await t.step(1, 'save: No space left on device\n')
     await t.s.idle()
     expect((await t.world.store.get(job.id))?.note).toMatch(/^siril-cli exited with code 1\. The work area’s disk filled up\. Free space/)
+  })
+})
+
+describe('one filter of a mono target, stacked like any other stack (specs/026-other-rigs)', () => {
+  const MONO = '/siril/scripts/Mono_Preprocessing.ssf'
+
+  function monoHarness() {
+    const store = new InMemoryJobStore()
+    const logs = new InMemoryJobLogs()
+    const area = new InMemoryRunArea()
+    area.texts.set(MONO, STOCK)
+    const runner = new FakeProcessRunner()
+    const clock = new FixedClock(new Date(2026, 8, 30, 2, 30))
+    const holds = makeTargetHolds()
+    const prepared: Parameters<PrepareSirilWorkspace>[] = []
+    const results: ResultFile[] = []
+    const s = makeJobScheduler({
+      store,
+      settings: new FixedJobSettings(),
+      machine: new FakeMachine(),
+      runner,
+      logs,
+      workspace: { workAreaSpace: async () => ({ freeBytes: 100 * GB, usedBytes: 0 }), stackResults: async () => results.map(r => ({ ...r })) },
+      prepare: async (...args): Promise<SirilWorkspaceResult> => {
+        prepared.push(args)
+        return { workDir: args[1], linked: 2, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 2, darks: 0, flats: 0, biases: 0 }, placements: lights(2), rejectedPaths: [] }
+      },
+      runArea: area,
+      targetName: async () => 'M 42',
+      readOnlyDirs: () => [],
+      clock,
+      holds
+    })
+    const add = () =>
+      store.add(
+        {
+          kind: 'stack', targetId: 'm42', title: 'Stack M 42 (Ha) with Mono_Preprocessing', timing: 'now',
+          command: { program: 'siril-cli', args: ['-d', '/work/Ha', '-s', MONO], cwd: '/work/Ha' },
+          prepare: { sourceDir: '/astro/m42', workDir: '/work/Ha', filter: 'Ha' }, spaceDir: '/work/Ha', neededBytes: GB
+        },
+        clock.now()
+      )
+    const step = async (exitCode: number | null, output = '') => {
+      await flush()
+      if (output) runner.last?.output(output)
+      runner.last?.exit(exitCode)
+      await flush()
+    }
+    return { s, store, area, runner, holds, prepared, results, add, step }
+  }
+
+  it('[RIG-009] [ARC-008] [PRV-003] Given one filter\'s stack queued while its target is held, When the hold ends, Then only that filter is laid out and Siril runs the mono script step by step to a manifest', async () => {
+    const t = monoHarness()
+    const release = t.holds.hold('m42')
+    const job = await t.add()
+    await t.s.tick()
+    await flush()
+    expect(t.runner.runs).toEqual([])
+    expect((await t.store.get(job.id))?.state).toBe('queued')
+    release?.()
+    await t.s.tick()
+    for (let i = 0; i < 3; i++) await t.step(0)
+    t.results.push({ path: '/work/Ha/result_120s.fit', sizeBytes: 5000, modifiedAt: new Date(2026, 8, 30, 3) })
+    await t.step(0)
+    await t.s.idle()
+    expect(t.prepared[0].slice(0, 2)).toEqual(['/astro/m42', '/work/Ha'])
+    expect(t.prepared[0][3]).toEqual({ filter: 'Ha' })
+    expect(t.runner.runs.map(r => r.command.args)).toEqual([1, 2, 3, 4].map(n => ['-d', '/work/Ha', '-s', `/work/Ha/.astrorepo/step-0${n}.ssf`]))
+    expect(await t.store.get(job.id)).toMatchObject({ state: 'succeeded', progress: { step: 4, of: 4, published: ['/work/Ha/result_120s.fit'] } })
+    expect(t.area.manifests.get('/work/Ha/result_120s.fit')).toMatchObject({ siril: { script: 'Mono_Preprocessing.ssf' } })
+  })
+
+  it('[RIG-009] [HUB-012] Given one filter\'s stack whose step fails, When Siril exits non-zero, Then its exit code is read through the one contract and the job fails at that step', async () => {
+    const t = monoHarness()
+    const job = await t.add()
+    await t.s.tick()
+    await t.step(0)
+    await t.step(3)
+    await t.s.idle()
+    expect(t.runner.runs).toHaveLength(2)
+    expect((await t.store.get(job.id))?.state).toBe('failed')
+    expect((await t.store.get(job.id))?.note).toBe('Step 2 of 4 (register light) failed: Siril exited with code 3.')
   })
 })

@@ -319,10 +319,47 @@ export interface ChannelGap {
 }
 
 /** Luminance and clear filters, which LRGB imaging captures far longer than colour on purpose. */
-const LUMINANCE = /^(l|lum|luminance|clear|c)$/i
+export const LUMINANCE = /^(l|lum|luminance|clear|c)$/i
 
 /** The least-captured filter falls short when it has under this share of the most-captured. */
 export const CHANNEL_BALANCE_RATIO = 1 / 3
+
+export interface FilterTotal {
+  filter: string
+  sec: number
+}
+
+/**
+ * Usable integration per filter, among the filters a target has been captured with or has a goal
+ * for, in first-seen spelling. Frames with no filter (one-shot colour) are left out, and so is
+ * luminance unless asked for: neither is balanced against colour.
+ */
+export function filterTotals(target: TargetFrames, options: { withLuminance?: boolean } = {}): FilterTotal[] {
+  const byFilter = new Map<string, FilterTotal>()
+  const add = (filter: string | null | undefined, sec: number) => {
+    const name = filter?.trim()
+    // Luminance is meant to run far longer than colour, so it is never part of the balance.
+    if (!name || (!options.withLuminance && LUMINANCE.test(name))) return
+    const key = name.toLowerCase()
+    const entry = byFilter.get(key) ?? { filter: name, sec: 0 }
+    entry.sec += sec
+    byFilter.set(key, entry)
+  }
+  for (const s of usableSubs(target)) add(s.filter, s.exposureSec)
+  // A filter the user set a goal for counts even before its first frame.
+  for (const g of target.filterGoals ?? []) add(g.filter, 0)
+  return [...byFilter.values()]
+}
+
+/** The least-captured of these filters when it has under a third of the most-captured; null when balanced. */
+export function laggingFilter(totals: FilterTotal[]): ChannelGap | null {
+  if (totals.length < 2) return null
+  const sorted = [...totals].sort((a, b) => a.sec - b.sec || a.filter.localeCompare(b.filter))
+  const low = sorted[0]
+  const lead = sorted[sorted.length - 1]
+  if (low.sec >= lead.sec * CHANNEL_BALANCE_RATIO) return null
+  return { filter: low.filter, haveSec: low.sec, leadFilter: lead.filter, leadSec: lead.sec }
+}
 
 /**
  * A target's filter that lags far behind its best, among the filters it has been captured with
@@ -330,23 +367,5 @@ export const CHANNEL_BALANCE_RATIO = 1 / 3
  * lead, so neither is balanced.
  */
 export function channelGap(target: TargetFrames): ChannelGap | null {
-  const byFilter = new Map<string, { name: string; sec: number }>()
-  const add = (filter: string | null | undefined, sec: number) => {
-    const name = filter?.trim()
-    // Luminance is meant to run far longer than colour, so it is never part of the balance.
-    if (!name || LUMINANCE.test(name)) return
-    const key = name.toLowerCase()
-    const entry = byFilter.get(key) ?? { name, sec: 0 }
-    entry.sec += sec
-    byFilter.set(key, entry)
-  }
-  for (const s of usableSubs(target)) add(s.filter, s.exposureSec)
-  // A filter the user set a goal for counts even before its first frame.
-  for (const g of target.filterGoals ?? []) add(g.filter, 0)
-  if (byFilter.size < 2) return null
-  const sorted = [...byFilter.values()].sort((a, b) => a.sec - b.sec || a.name.localeCompare(b.name))
-  const low = sorted[0]
-  const lead = sorted[sorted.length - 1]
-  if (low.sec >= lead.sec * CHANNEL_BALANCE_RATIO) return null
-  return { filter: low.name, haveSec: low.sec, leadFilter: lead.name, leadSec: lead.sec }
+  return laggingFilter(filterTotals(target))
 }

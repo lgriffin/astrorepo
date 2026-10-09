@@ -6,7 +6,8 @@ import { isAstronomicalName } from './astro-names'
 import { advanceStage } from './workflow'
 import { ulid, monotonicFactory } from 'ulid'
 import { ScanPacer, ScanCancelled } from './scan-pacer'
-import { planRescan, type FileStamp } from '@astro/domain'
+import { frameFileKind, planRescan, type FileStamp } from '@astro/domain'
+import { parseCameraRawFile } from '../raw/camera-raw'
 import fs from 'fs'
 import path from 'path'
 import type {
@@ -14,8 +15,6 @@ import type {
   FitsHeaderRow, FitsScanAggregates, FitsTargetSummary, TargetObservationData,
   StackedFileDetail, ScanFileCounts
 } from '@shared/types'
-
-const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
 
 interface WalkedFile {
   filePath: string
@@ -51,7 +50,8 @@ async function walkFitsFiles(dir: string, pacer: ScanPacer, onFound: (count: num
             sessionFolder: depth === 1 ? entry.name : sessionFolder,
             depth: depth + 1
           })
-        } else if (entry.isFile() && FITS_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        } else if (entry.isFile() && frameFileKind(entry.name) !== null) {
+          // FITS and camera RAW (RIG-001): RAW frames join the same index from their EXIF.
           results.push({ filePath: fullPath, folderName: targetFolder, sessionFolder })
           if (results.length % 500 === 0) onFound(results.length)
         }
@@ -82,6 +82,11 @@ function getHeaderNumber(headerMap: Map<string, { value: string | number | boole
     if (typeof val === 'number') return val
   }
   return null
+}
+
+/** A FITS file's header, or a camera RAW file's EXIF as header rows (RIG-001). */
+function readFrame(filePath: string): Promise<FitsParseResult> {
+  return frameFileKind(filePath) === 'fits' ? parseFitsFileAsync(filePath) : parseCameraRawFile(filePath)
 }
 
 /** One spelling per folder, so "D:\\Astro\\" and "D:\\Astro" are the same scan root. */
@@ -246,14 +251,14 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
         gain, offset_val, ccd_temp, xpixsz, ypixsz, xbinning, ybinning,
         ra, dec, airmass, bitpix, naxis1, naxis2, bscale, bzero,
         image_type, software, is_stacked, ncombine, total_exposure, calstat,
-        pixel_min, pixel_max, pixel_mean, pixel_stddev, created_at
+        pixel_min, pixel_max, pixel_mean, pixel_stddev, created_at, source_format
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?
       )`
     )
 
@@ -314,7 +319,8 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
         result.imageStats?.max ?? null,
         result.imageStats?.mean ?? null,
         result.imageStats?.stddev ?? null,
-        now
+        now,
+        frameFileKind(filePath) === 'fits' ? 'fits' : 'raw'
       )
 
       if (insertResult.changes === 0) return
@@ -338,7 +344,7 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
       }
       try {
         for (const file of toRead.slice(i, i + READ_BATCH)) {
-          batch.push({ file, stamp: stamps.get(file.filePath)!, result: await parseFitsFileAsync(file.filePath) })
+          batch.push({ file, stamp: stamps.get(file.filePath)!, result: await readFrame(file.filePath) })
           await pacer.checkpoint()
         }
       } catch (err) {

@@ -1,6 +1,6 @@
 import * as Astronomy from 'astronomy-engine'
 import type { Ephemeris } from '@astro/application'
-import type { NightSky, Site, SkySample } from '@astro/domain'
+import type { NightSky, Site, SkySample, Vec3 } from '@astro/domain'
 
 const HOUR_MS = 3600 * 1000
 const DAY_MS = 24 * HOUR_MS
@@ -45,6 +45,18 @@ export class AstronomyEngineEphemeris implements Ephemeris {
       start = Astronomy.MakeTime(new Date(next.date.getTime() + DAY_MS))
     }
     return found
+  }
+
+  /** The Earth's centre from VSOP87 (HelioVector), plus the site's J2000 offset from it (ObserverVector). */
+  async observerPositions(site: Site | null, times: Date[]): Promise<Vec3[]> {
+    const observer = site ? new Astronomy.Observer(site.latitudeDeg, site.longitudeDeg, site.elevationM) : null
+    return times.map(at => {
+      const time = Astronomy.MakeTime(at)
+      const earth = Astronomy.HelioVector(Astronomy.Body.Earth, time)
+      if (!observer) return { x: earth.x, y: earth.y, z: earth.z }
+      const offset = Astronomy.ObserverVector(time, observer, false)
+      return { x: earth.x + offset.x, y: earth.y + offset.y, z: earth.z + offset.z }
+    })
   }
 }
 

@@ -68,7 +68,8 @@ describe('rankNextActions', () => {
       moonSeparationDeg: null,
       closesInDays: 25,
       shortOfGoalSec: 7200,
-      channel: { filter: 'OIII', haveSec: 600, leadFilter: 'Ha', leadSec: 7200 }
+      channel: { filter: 'OIII', haveSec: 600, leadFilter: 'Ha', leadSec: 7200 },
+      filter: null
     })
     expect(m31.kind === 'capture' && m31.id).toBe('capture:target-M31:2026-09-29')
   })

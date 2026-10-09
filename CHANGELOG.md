@@ -62,8 +62,21 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   whether the image is mirrored; the slider shows each image's own grid; a file is read once for
   its figures and preview, one at a time on the worker; PNGs are size-checked from the header and
   inflated no further than their stated size; a broadband LP filter gives red, green and blue, while a Seestar's LP filter stays dual-band.
+- **Other rigs** (spec 026): DSLR and mirrorless camera RAW (CR2, NEF, ARW, DNG and other
+  TIFF-based RAW) indexed from its tags, with ISO as gain, and stacked with Siril's colour script;
+  CR3 and RAF listed as found but not read. Mono lights with several filters stacked one filter at
+  a time in their own work folders, with flats checked per filter and each channel master listed.
+  Tonight's plan names the filter to shoot on a filter-wheel target, for the moon and the lagging
+  channel. Comets take their orbit from the Minor Planet Center's line; the app works out where the
+  comet is in every light and writes the positions file for Siril's comet registration. None of
+  it shows for a Seestar or Vespera target.
 
 ### Fixed
+- **Other rigs review fixes** (spec 026): RAW darks and flats in folders such as `Darks_ISO800`,
+  `Flats-L` or `Darks/ISO800` are no longer stacked as lights; impossible EXIF dates and time
+  offsets, and comet perihelion days the month does not have, are refused; RAW frames are no
+  longer plate solved; queueing one filter's stack hides only that filter's Queue button; filters
+  whose names make one folder name (`S II`, `S.II`) get folders of their own.
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one
   uninterrupted block on the app's main process. It now walks, reads and writes a small piece at
   a time and rests in between, shows live file counts, can be cancelled, and carries on from where

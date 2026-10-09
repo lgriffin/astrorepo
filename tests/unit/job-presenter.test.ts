@@ -58,6 +58,9 @@ describe('job presenter', () => {
     expect(v.queue[1]).toMatchObject({ stateLabel: 'Queued', canCancel: true, canRunNow: true, needed: '1.0 GB', estimate: 'About 2 min (a first-run guess until this PC has run one)' })
     expect(v.queue[0].canRunNow).toBe(false)
     expect(v.queue[1].command).toBe('"C:/Program Files/Siril/bin/siril-cli.exe" -d D:/work/m42 -s OSC.ssf')
+    expect(v.queue.map(q => q.filter)).toEqual([null, null])
+    const ha = view([job('ha', { prepare: { sourceDir: 'D:/data/m42', workDir: 'D:/work/m42/filters/Ha', filter: 'Ha' } })], local(14))
+    expect(ha.queue[0].filter).toBe('Ha')
     expect(v.settings).toEqual({ windowStart: '02:00', windowEnd: '03:00', idleMinutes: 10, maxCpuPercent: 30 })
   })
 

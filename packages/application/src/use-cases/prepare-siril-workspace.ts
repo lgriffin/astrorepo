@@ -25,7 +25,12 @@ export interface SirilWorkspaceResult {
   rejectedPaths: string[]
 }
 
-export type PrepareSirilWorkspace = (sourceDir: string, workDir: string, protectedDirs?: string[]) => Promise<SirilWorkspaceResult>
+export interface PrepareOptions {
+  /** Lays out one filter's lights and flats with every dark and bias, for that filter's stack (RIG-009). */
+  filter?: string
+}
+
+export type PrepareSirilWorkspace = (sourceDir: string, workDir: string, protectedDirs?: string[], options?: PrepareOptions) => Promise<SirilWorkspaceResult>
 
 /** The work area would overlap a folder the app only reads. */
 export class WorkAreaOverlapsSourceError extends Error {
@@ -42,13 +47,13 @@ export class WorkAreaOverlapsSourceError extends Error {
  * is written.
  */
 export function makePrepareSirilWorkspace(deps: PrepareSirilWorkspaceDeps): PrepareSirilWorkspace {
-  return async (sourceDir, workDir, protectedDirs = []) => {
+  return async (sourceDir, workDir, protectedDirs = [], options = {}) => {
     for (const dir of [sourceDir, ...protectedDirs]) {
       if ((await deps.workspace.contains(dir, workDir)) || (await deps.workspace.contains(workDir, dir))) {
         throw new WorkAreaOverlapsSourceError(workDir, dir)
       }
     }
-    const { frames, rejected, rejectedPaths } = await selectFrames(deps, sourceDir)
+    const { frames, rejected, rejectedPaths } = await selectFrames(deps, sourceDir, options.filter)
     await deps.workspace.prepareFolders(workDir)
     const result: SirilWorkspaceResult = {
       workDir,

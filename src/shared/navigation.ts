@@ -186,6 +186,15 @@ export function runsForTarget(view: Pick<JobsView, 'running' | 'queue' | 'histor
   }
 }
 
+/**
+ * Whether one filter's stack is already queued or running (RIG-009), so only that filter's Queue
+ * button is hidden. Filters match as the plan matches them: case and spaces at the ends do not count.
+ */
+export function filterStackQueued(runs: Pick<TargetRuns, 'active'>, filter: string): boolean {
+  const wanted = filter.trim().toLowerCase()
+  return runs.active.some(j => j.kind === 'stack' && j.filter !== null && j.filter.trim().toLowerCase() === wanted)
+}
+
 /** What a step says when its job is already on its way. */
 export function runLine(job: JobView): string {
   if (job.state === 'running') return `Running now: ${job.title}.`

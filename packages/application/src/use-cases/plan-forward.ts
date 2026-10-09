@@ -1,6 +1,7 @@
 import {
   DEFAULT_PLANNING_POLICY,
   channelGap,
+  filterTotals,
   goalShortfallSec,
   hasWorkLeft,
   monthlySeason,
@@ -150,7 +151,8 @@ export function makePlanForward(
         integrationSec: totalSec(usableSubs(f)),
         shortOfGoalSec: goalShortfallSec(f),
         hasFinal: f.finalCount > 0,
-        channel: channelGap(f)
+        channel: channelGap(f),
+        filters: filterTotals(f, { withLuminance: true })
       })
     }
     const open = targets.filter(hasWorkLeft).sort((a, b) => a.targetName.localeCompare(b.targetName))

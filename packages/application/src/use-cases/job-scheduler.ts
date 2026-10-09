@@ -222,7 +222,7 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     let prep: SirilWorkspaceResult | null = null
     if (job.prepare) {
       try {
-        prep = await deps.prepare(job.prepare.sourceDir, job.prepare.workDir, await deps.readOnlyDirs())
+        prep = await deps.prepare(job.prepare.sourceDir, job.prepare.workDir, await deps.readOnlyDirs(), job.prepare.filter ? { filter: job.prepare.filter } : {})
         const graded = prep.rejected > 0 ? ` ${prep.rejected} ${prep.rejected === 1 ? 'light' : 'lights'} rejected by frame grading left out.` : ''
         const pruned = prep.pruned > 0 ? ` ${prep.pruned} ${prep.pruned === 1 ? 'file' : 'files'} from an earlier run removed from the work area.` : ''
         deps.logs.append(job.id, `Prep for Siril: ${prep.linked} linked, ${prep.copied} copied, ${prep.existing} already in place.${graded}${pruned}\n\n`)

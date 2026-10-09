@@ -89,7 +89,8 @@ function toJobView(job: Job, now: Date, extra: { estimate: JobEstimate | null; w
     canCancel: job.state === 'queued' || job.state === 'running',
     canRunNow: job.state === 'queued' && job.timing === 'window',
     progress: progressLine(job),
-    outputs: (job.progress?.published ?? []).map(p => ({ path: p, name: p.split(/[\\/]/).pop() ?? p, manifest: `${p}${MANIFEST_SUFFIX}` }))
+    outputs: (job.progress?.published ?? []).map(p => ({ path: p, name: p.split(/[\\/]/).pop() ?? p, manifest: `${p}${MANIFEST_SUFFIX}` })),
+    filter: job.prepare?.filter ?? null
   }
 }
 

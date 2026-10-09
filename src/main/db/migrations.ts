@@ -537,6 +537,26 @@ export function runMigrations(sqlite: Database.Database): void {
       chosen_at TEXT NOT NULL
     );
   `)
+
+  // Migration: camera RAW frames share the FITS index; the format says which a row is (RIG-001)
+  const hasSourceFormat = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('fits_files') WHERE name='source_format'").get() as { cnt: number }
+  if (hasSourceFormat.cnt === 0) sqlite.exec("ALTER TABLE fits_files ADD COLUMN source_format TEXT NOT NULL DEFAULT 'fits'")
+
+  // Migration: the orbit of a target marked as a comet, as read from its MPC line (RIG-011)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS comet_orbits (
+      target_id TEXT PRIMARY KEY REFERENCES targets(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      perihelion_at TEXT NOT NULL,
+      q REAL NOT NULL,
+      e REAL NOT NULL,
+      inclination_deg REAL NOT NULL,
+      node_deg REAL NOT NULL,
+      peri_deg REAL NOT NULL,
+      epoch TEXT,
+      updated_at TEXT NOT NULL
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

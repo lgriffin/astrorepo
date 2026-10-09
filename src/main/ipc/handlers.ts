@@ -28,6 +28,7 @@ import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../ad
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toPostProcessView, toSyqonView, toToolHealthView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
+import { toCometPlanView } from '../adapters/comet-presenter'
 import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
@@ -589,8 +590,28 @@ export function registerIpcHandlers(): void {
       sourceDir: rawPath,
       workDir: sirilWorkDir(rawPath),
       script: args.script,
-      timing: args.timing
+      timing: args.timing,
+      filter: args.filter
     }))
+  }))
+
+  // A comet's positions in each light (RIG-013) and the file for Siril's comet registration (RIG-014).
+  const cometPlan = async (targetId: string, write: boolean) => {
+    const rawPath = targetRawPath(targetId)
+    return toCometPlanView(await composeCore(getSqlite()).planComet(targetId, rawPath, rawPath ? sirilWorkDir(rawPath) : null, { write }))
+  }
+  handle('comet:plan', validated('comet:plan', args => cometPlan(args.target_id, false)))
+  handle('comet:write-positions', validated('comet:write-positions', async args => {
+    try {
+      return await cometPlan(args.target_id, true)
+    } catch (error) {
+      // Nothing was written; the page says why beside the plan.
+      return { ...(await cometPlan(args.target_id, false)), writeError: error instanceof Error ? error.message : String(error) }
+    }
+  }))
+  handle('comet:set-orbit', validated('comet:set-orbit', async args => {
+    const result = await composeCore(getSqlite()).setCometOrbit(args.target_id, args.line)
+    return result.ok ? { ok: true } : { ok: false, error: result.error }
   }))
 
   handle('jobs:queue-post-process', validated('jobs:queue-post-process', args => {

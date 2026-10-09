@@ -14,6 +14,8 @@ export interface SirilWorkspaceFixture {
   rewriteSource: (relative: string) => Promise<void>
   /** Joins a relative path onto a directory the way the adapter spells paths. */
   join: (dir: string, relative: string) => string
+  /** The text of a file written into the work area, or null when there is none. */
+  workText: (relative: string) => Promise<string | null>
 }
 
 /**
@@ -147,6 +149,32 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
       await f.workspace.prepareFolders(f.workDir)
       await f.workspace.place(placement, f.workDir)
       expect(await f.workspace.copyBytes([placement], f.workDir)).toBe(0)
+    })
+
+    it('[RIG-004] Given camera RAW frames beside FITS, When listed, Then CR2, NEF, DNG and CR3 come back with the FITS and other files do not', async () => {
+      const f = await setup(['IMG_0001.CR2', 'DSC_0002.nef', 'IMG_0003.dng', 'IMG_0004.CR3', 'Light_005.fit', 'IMG_0001.JPG'])
+      expect((await f.workspace.listSourceFrames(f.sourceDir)).map(x => x.name).sort()).toEqual(['DSC_0002.nef', 'IMG_0001.CR2', 'IMG_0003.dng', 'IMG_0004.CR3', 'Light_005.fit'])
+    })
+
+    it('[RIG-004] Given RAW frames placed by an earlier run, When removed, Then they go like FITS frames', async () => {
+      const f = await setup(['IMG_0001.CR2'])
+      await f.workspace.prepareFolders(f.workDir)
+      const [frame] = await f.workspace.listSourceFrames(f.sourceDir)
+      await f.workspace.place({ from: frame.path, folder: 'lights', name: frame.name }, f.workDir)
+      expect(await f.workspace.remove(f.workDir, 'lights', ['IMG_0001.CR2'])).toEqual(['IMG_0001.CR2'])
+      expect(await f.sourceListing()).toEqual(['IMG_0001.CR2'])
+    })
+
+    it('[RIG-014] [NFR-020] Given a text file for the work folder, When written, Then it lands at the top of the work folder, and a name with a folder in it is refused', async () => {
+      const f = await setup(['Light_001.fit'])
+      const written = await f.workspace.writeText(f.workDir, 'comet_positions.csv', 'frame,date_utc,ra_deg,dec_deg\n')
+      expect(written).toBe(f.join(f.workDir, 'comet_positions.csv'))
+      expect(await f.workText('comet_positions.csv')).toBe('frame,date_utc,ra_deg,dec_deg\n')
+      await f.workspace.writeText(f.workDir, 'comet_positions.csv', 'replaced\n')
+      expect(await f.workText('comet_positions.csv')).toBe('replaced\n')
+      await expect(f.workspace.writeText(f.workDir, '../escape.csv', 'x')).rejects.toThrow()
+      await expect(f.workspace.writeText(f.workDir, '..', 'x')).rejects.toThrow()
+      expect(await f.sourceListing()).toEqual(['Light_001.fit'])
     })
   })
 }

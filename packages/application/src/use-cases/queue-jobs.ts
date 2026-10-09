@@ -29,6 +29,8 @@ export interface QueueStackRequest {
   workDir: string
   script: SirilScriptId
   timing: JobTiming
+  /** Stacks one filter of a mono target in its own work folder (RIG-009). */
+  filter?: string
 }
 
 export type QueueStack = (request: QueueStackRequest) => Promise<Job>
@@ -40,7 +42,18 @@ export type QueueStack = (request: QueueStackRequest) => Promise<Job>
  */
 export function makeQueueStack(deps: QueueStackDeps): QueueStack {
   return async request => {
-    const [estimate, target] = await Promise.all([deps.estimate(request.sourceDir, request.workDir), deps.stacks.describeTarget(request.targetId)])
+    const filter = request.filter?.trim() || undefined
+    // A filter's work folder is the one the whole plan gave it, so filters whose names make one
+    // folder name never share it.
+    const whole = filter ? await deps.estimate(request.sourceDir, request.workDir) : null
+    const planned = filter ? whole?.filters?.stacks.find(s => s.filter === filter) : undefined
+    if (filter && !planned) throw new JobRefusedError(`These lights are not stacked per filter, or have no ${filter} lights.`)
+    const workDir = planned?.workDir ?? request.workDir
+    const [estimate, target] = await Promise.all([deps.estimate(request.sourceDir, workDir, filter ? { filter } : {}), deps.stacks.describeTarget(request.targetId)])
+    // One stack over several filters would mix them in one master (RIG-018).
+    if (!filter && estimate.filters) {
+      throw new JobRefusedError(`These mono lights carry ${estimate.filters.stacks.length} filters, and one stack would mix them. Queue each filter's stack on its own.`)
+    }
     const script = estimate.scripts.find(s => s.script === request.script)
     if (!script) throw new JobRefusedError(`${request.script} is not a stock Siril script for these frames' sensor.`)
     if (estimate.counts.lights === 0) throw new JobRefusedError('There are no light frames to stack.')
@@ -56,11 +69,11 @@ export function makeQueueStack(deps: QueueStackDeps): QueueStack {
       {
         kind: 'stack',
         targetId: request.targetId,
-        title: `Stack ${target?.name ?? 'target'} with ${request.script}`,
+        title: `Stack ${target?.name ?? 'target'}${filter ? ` (${filter})` : ''} with ${request.script}`,
         timing: request.timing,
-        command: sirilStackCommand(siril, scriptPath, request.workDir),
-        prepare: { sourceDir: request.sourceDir, workDir: request.workDir },
-        spaceDir: request.workDir,
+        command: sirilStackCommand(siril, scriptPath, workDir),
+        prepare: { sourceDir: request.sourceDir, workDir, ...(filter ? { filter } : {}) },
+        spaceDir: workDir,
         neededBytes: script.neededBytes
       },
       deps.clock.now()

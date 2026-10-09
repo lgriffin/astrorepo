@@ -36,6 +36,8 @@ import {
   makeQueueSolves,
   makeRunSolveJob,
   makeSaveMosaicPlan,
+  makePlanComet,
+  makeSetCometOrbit,
   type Gallery,
   type JobScheduler
 } from '@astro/application'
@@ -73,6 +75,7 @@ export function solveWorkDir(workArea: string, targetId: string): string {
 }
 import { NodeImagePixels } from './adapters/node-image-pixels'
 import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
+import { SqliteCometStore } from './adapters/sqlite-comet-store'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -164,6 +167,7 @@ export function composeCore(db: Database.Database, options: { workArea?: string 
   const sky = { store: solves, mosaics, settings: planningSettings, ephemeris, clock: systemClock }
   const workArea = options.workArea ?? ((readSetting.get('work_area_path') as { value: string } | undefined)?.value || path.join(os.tmpdir(), 'astrorepo-work'))
   const planMosaic = makePlanMosaic(sky)
+  const comets = new SqliteCometStore(db)
   return {
     listStackingSuggestions,
     listNextActions: makeListNextActions({
@@ -214,7 +218,9 @@ export function composeCore(db: Database.Database, options: { workArea?: string 
     describeTargetGeometry: makeDescribeTargetGeometry({ store: solves, mosaics }),
     planMosaic,
     saveMosaicPlan: makeSaveMosaicPlan({ store: solves, mosaics, clock: systemClock }),
-    exportMosaicCsv: makeExportMosaicCsv(planMosaic)
+    exportMosaicCsv: makeExportMosaicCsv(planMosaic),
+    setCometOrbit: makeSetCometOrbit({ comets }),
+    planComet: makePlanComet({ comets, workspace: new NodeSirilWorkspace(db), selection: grading, ephemeris, settings: planningSettings, targets: stacks })
   }
 }
 

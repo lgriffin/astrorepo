@@ -6,8 +6,8 @@ import { Card, EmptyState, LinkButton } from '../common/Card'
 import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
 import { ArchiveCard } from './ArchiveCard'
-import { runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
-import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView, SyqonView } from '@shared/types'
+import { filterStackQueued, runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
+import type { CometPlanView, FilterPlanView, JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView, SyqonView } from '@shared/types'
 
 /**
  * Stack and process (UX-010): the steps from a target's raw frames to a processed image, in
@@ -52,7 +52,8 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         {rawPath ? (
           <>
             <PrepForSiril rawPath={rawPath} onPrepared={setPrepKey} />
-            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey === 'preparing' ? prepKey : `${prepKey ?? ''}|${gradesKey}`} onQueued={loadRuns} queued={runs.stack !== null || view === null} />
+            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey === 'preparing' ? prepKey : `${prepKey ?? ''}|${gradesKey}`} onQueued={loadRuns} queued={runs.stack !== null || view === null} filterQueued={filter => view === null || filterStackQueued(runs, filter)} />
+            <CometPlan targetId={targetId} refreshKey={`${prepKey ?? ''}|${gradesKey}`} />
           </>
         ) : (
           <EmptyState>
@@ -258,7 +259,7 @@ function StackAdvice({ rawPath, advice, onChanged }: { rawPath: string; advice: 
 }
 
 /** Which stock Siril script fits the frames and whether the disk has room, before anything is written. */
-function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { targetId: string; rawPath: string; refreshKey: string | null; onQueued: () => void; queued: boolean }): React.ReactElement | null {
+function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued, filterQueued }: { targetId: string; rawPath: string; refreshKey: string | null; onQueued: () => void; queued: boolean; filterQueued: (filter: string) => boolean }): React.ReactElement | null {
   const [plan, setPlan] = useState<SirilPlanView | null>(null)
   const [failed, setFailed] = useState(false)
   const [reload, setReload] = useState(0)
@@ -287,7 +288,9 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
         )}
       </p>
       <p className="text-xs text-astro-muted">{plan.frames}</p>
-      {chosen && (
+      {plan.rawNote && <p className="text-xs text-astro-muted">{plan.rawNote}</p>}
+      {plan.filters && <FilterStacks targetId={targetId} plan={plan.filters} onQueued={onQueued} queued={filterQueued} />}
+      {chosen && !plan.filters && (
         <p className="text-xs">
           <span className="text-astro-text">Needs {chosen.needed}</span>
           {plan.freeSpace && <span className="text-astro-muted">; {plan.freeSpace}</span>}
@@ -524,6 +527,158 @@ function SyqonSteps({ targetId, rawPath, onQueued, queued }: { targetId: string;
         />
       )}
       <p className="text-[10px] text-astro-muted">The app runs the SyQon CLI you installed; it never ships it.</p>
+    </div>
+  )
+}
+
+/**
+ * One stack per filter for a mono camera's lights (RIG-006 to RIG-009): each filter's frames, the
+ * space its stack needs, a queue button unless that filter's stack is already on its way, and its
+ * channel master once there is one.
+ */
+function FilterStacks({ targetId, plan, onQueued, queued }: { targetId: string; plan: FilterPlanView; onQueued: () => void; queued: (filter: string) => boolean }): React.ReactElement {
+  return (
+    <div className="space-y-2 border border-astro-border rounded p-2">
+      <p className="text-xs text-astro-text">{plan.intro}</p>
+      {plan.notes.map(n => <p key={n} className="text-xs text-yellow-400">{n}</p>)}
+      <table className="w-full text-xs">
+        <tbody>
+          {plan.stacks.map(stack => (
+            <tr key={stack.filter} className="border-t border-astro-border align-top">
+              <td className="py-1 pr-3 font-medium text-astro-text">{stack.filter}</td>
+              <td className="py-1 pr-3 text-astro-muted">
+                {stack.frames}
+                {stack.needed && <span>; needs {stack.needed}, </span>}
+                <span className={VERDICT_TONE[stack.verdict]}>{stack.verdictText}</span>
+                {stack.missing && <p className="text-yellow-400">{stack.missing}</p>}
+              </td>
+              <td className="py-1 pr-3 text-astro-muted">{stack.master ? <span className="font-mono">{stack.master}</span> : 'Not stacked yet'}</td>
+              <td className="py-1">
+                {stack.canQueue && !queued(stack.filter) && (
+                  <QueueJob
+                    label={`Queue ${stack.filter}`}
+                    confirm={[
+                      `Siril runs Mono_Preprocessing.ssf on the ${stack.filter} lights.`,
+                      stack.frames,
+                      `Its own work folder: ${stack.workDir}.`,
+                      'Prep for Siril lays the frames out there first; the source folder is never written to.'
+                    ]}
+                    onQueue={timing => invoke<QueueResult>('jobs:queue-stack', { target_id: targetId, script: 'Mono_Preprocessing', filter: stack.filter, timing })}
+                    onQueued={onQueued}
+                  />
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-xs text-astro-muted">{plan.mastersNote}</p>
+    </div>
+  )
+}
+
+/**
+ * A comet's place in each light and the step that stacks on it (RIG-013, RIG-014). Shown only for
+ * a target whose type is comet or that has an orbit (RIG-016).
+ */
+function CometPlan({ targetId, refreshKey }: { targetId: string; refreshKey: string }): React.ReactElement | null {
+  const [view, setView] = useState<CometPlanView | null>(null)
+  const [line, setLine] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [reload, setReload] = useState(0)
+
+  useEffect(() => {
+    let current = true
+    invoke<CometPlanView>('comet:plan', { target_id: targetId })
+      .then(v => current && setView(v))
+      .catch(() => current && setView(null))
+    return () => {
+      current = false
+    }
+  }, [targetId, refreshKey, reload])
+
+  if (!view?.show) return null
+
+  const saveOrbit = (value: string | null): void => {
+    setBusy(true)
+    setError(null)
+    invoke<{ ok: boolean; error?: string }>('comet:set-orbit', { target_id: targetId, line: value })
+      .then(r => {
+        if (!r.ok) setError(r.error ?? 'The line could not be read.')
+        else {
+          setLine('')
+          setReload(n => n + 1)
+        }
+      })
+      .catch(() => setError('The orbit could not be saved. Try again.'))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <div className="mt-4 space-y-1.5 border-t border-astro-border pt-3">
+      <h4 className="text-sm font-medium text-astro-text">Stack on the comet</h4>
+      {view.orbit ? (
+        <>
+          <p className="text-xs text-astro-text">
+            {view.orbit.name}: {view.orbit.text}{' '}
+            <button className="text-astro-accent hover:underline" disabled={busy} onClick={() => saveOrbit(null)}>
+              Remove the orbit
+            </button>
+          </p>
+          {view.observerNote && <p className="text-xs text-astro-muted">{view.observerNote}</p>}
+          {view.motion && <p className="text-xs text-astro-text">{view.motion}</p>}
+          {view.undatedNote && <p className="text-xs text-yellow-400">{view.undatedNote}</p>}
+          {view.positions.length > 0 && (
+            <table className="text-xs text-astro-muted">
+              <tbody>
+                {view.positions.map(p => (
+                  <tr key={`${p.frame}|${p.time}`}>
+                    <td className="pr-3 text-astro-text">{p.frame}</td>
+                    <td className="pr-3 tabular-nums">{p.time} UTC</td>
+                    <td className="pr-3 tabular-nums">{p.ra}</td>
+                    <td className="tabular-nums">{p.dec}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {view.step && <p className="text-xs text-astro-text">{view.step}</p>}
+          {view.canWrite && (
+            <button
+              className="px-2 py-1 text-xs border border-astro-border rounded text-astro-muted hover:text-astro-text"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true)
+                invoke<CometPlanView>('comet:write-positions', { target_id: targetId })
+                  .then(setView)
+                  .catch(() => setError('The positions file could not be written. Try again.'))
+                  .finally(() => setBusy(false))
+              }}
+            >
+              Write the positions file
+            </button>
+          )}
+          {view.writtenNote && <p className="text-xs text-green-400">{view.writtenNote}</p>}
+          {view.writeError && <p className="text-xs text-red-400">{view.writeError}</p>}
+        </>
+      ) : (
+        <p className="text-xs text-astro-muted">
+          Paste the comet&apos;s line from the Minor Planet Center&apos;s comet elements (CometEls.txt) to work out where it is in each light.
+        </p>
+      )}
+      <div className="flex gap-2">
+        <input
+          className="flex-1 bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs font-mono text-astro-text"
+          placeholder="Paste one line from CometEls.txt"
+          value={line}
+          onChange={e => setLine(e.target.value)}
+        />
+        <button className="px-2 py-1 text-xs border border-astro-border rounded text-astro-muted hover:text-astro-text" disabled={busy || !line.trim()} onClick={() => saveOrbit(line)}>
+          {view.orbit ? 'Replace the orbit' : 'Save the orbit'}
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   )
 }

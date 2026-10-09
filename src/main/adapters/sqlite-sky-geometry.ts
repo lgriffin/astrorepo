@@ -41,7 +41,8 @@ const folderOf = (p: string) => (p.includes('\\') ? path.win32.dirname(p) : path
 /**
  * SolveStore over fits_files, fits_headers and plate_solves. Lights are the target's unstacked
  * light subs with an exposure; masters are its integrated stacks (not calibrated subs or master
- * calibration frames, which point nowhere useful).
+ * calibration frames, which point nowhere useful). Only FITS files: the solvers are handed a copy
+ * named solve.fit, which a camera RAW frame is not (RIG-019).
  */
 export class SqliteSolveStore implements SolveStore {
   constructor(private readonly db: Database.Database) {}
@@ -53,6 +54,7 @@ export class SqliteSolveStore implements SolveStore {
                 CASE WHEN f.is_stacked = 1 THEN 1 ELSE 0 END AS is_master, ${HEADER_NUMBER('FOCALLEN')} AS focal
          FROM fits_files f
          WHERE f.target_id IS NOT NULL ${targetId ? 'AND f.target_id = @targetId' : ''}
+           AND f.source_format = 'fits'
            AND ((f.is_stacked = 0 AND f.exposure_sec IS NOT NULL AND ${IS_LIGHT}) OR (f.is_stacked = 1 AND ${IS_INTEGRATED_LIGHT}))
          ORDER BY f.file_path`
       )

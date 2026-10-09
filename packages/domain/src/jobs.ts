@@ -33,7 +33,8 @@ export interface Job {
   state: JobState
   command: JobCommand
   /** A stack job lays the target's frames out in the work area before Siril runs. */
-  prepare: { sourceDir: string; workDir: string } | null
+  /** A stack's frames to lay out first; `filter` keeps one filter's lights and flats (RIG-009). */
+  prepare: { sourceDir: string; workDir: string; filter?: string } | null
   /** Where the job writes, and the disk it needs there at its busiest. */
   spaceDir: string
   neededBytes: number

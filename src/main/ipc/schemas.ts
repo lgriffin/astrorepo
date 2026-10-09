@@ -289,8 +289,12 @@ export const schemas = {
   'jobs:queue-stack': z.object({
     target_id: id,
     script: z.enum(['OSC_Preprocessing', 'OSC_Preprocessing_WithoutFlat', 'OSC_Preprocessing_WithoutDBF', 'OSC_Preprocessing_BayerDrizzle', 'OSC_Extract_Ha', 'OSC_Extract_HaOIII', 'Mono_Preprocessing']),
-    timing: z.enum(['window', 'now'])
+    timing: z.enum(['window', 'now']),
+    filter: z.string().trim().min(1).max(40).optional()
   }),
+  'comet:plan': z.object({ target_id: id }),
+  'comet:set-orbit': z.object({ target_id: id, line: z.string().max(400).nullable() }),
+  'comet:write-positions': z.object({ target_id: id }),
   'jobs:queue-post-process': z.object({
     target_id: id,
     stack_path: z.string().min(1).optional(),

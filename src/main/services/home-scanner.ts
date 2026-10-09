@@ -8,12 +8,15 @@ import { ScanPacer, ScanCancelled } from './scan-pacer'
 import { advanceStage } from './workflow'
 import { syncTargetsToCollections } from './collection'
 import { ulid } from 'ulid'
+import { READABLE_RAW_EXTENSIONS, UNREAD_RAW_EXTENSIONS } from '@astro/domain'
 import type {
   HomeFolderTarget, HomeScanResult, HomeScanProgress, HomeScanPhaseProgress,
   TargetHomeData, TargetSubfolderDetail, TargetFolderBreakdown
 } from '@shared/types'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
+/** A raw folder may hold camera RAW frames as well as FITS (RIG-001). */
+const FRAME_EXTENSIONS = new Set<string>([...FITS_EXTENSIONS, ...READABLE_RAW_EXTENSIONS, ...UNREAD_RAW_EXTENSIONS])
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.tif', '.tiff'])
 const TIF_EXTENSIONS = new Set(['.tif', '.tiff'])
 
@@ -375,7 +378,7 @@ async function runHomeScan(homePath: string, signal: AbortSignal, pacer: ScanPac
   }
 
   const phases: { dir: string; extensions: Set<string>; field: 'rawDiscovery' | 'stackedDiscovery' | 'tifDiscovery' | 'imagesDiscovery'; fits: boolean }[] = [
-    { dir: path.join(homePath, 'raw'), extensions: FITS_EXTENSIONS, field: 'rawDiscovery', fits: true },
+    { dir: path.join(homePath, 'raw'), extensions: FRAME_EXTENSIONS, field: 'rawDiscovery', fits: true },
     { dir: path.join(homePath, 'stacked'), extensions: FITS_EXTENSIONS, field: 'stackedDiscovery', fits: true },
     { dir: path.join(homePath, 'tif'), extensions: TIF_EXTENSIONS, field: 'tifDiscovery', fits: false },
     { dir: path.join(homePath, 'images'), extensions: IMAGE_EXTENSIONS, field: 'imagesDiscovery', fits: false },

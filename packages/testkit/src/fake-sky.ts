@@ -1,4 +1,4 @@
-import type { NightSky, Site, SkySample } from '@astro/domain'
+import type { NightSky, Site, SkySample, Vec3 } from '@astro/domain'
 import type { Ephemeris, PlanningSettings, TargetPosition, TargetPositions } from '@astro/application'
 
 export interface FakeMoon {
@@ -84,6 +84,37 @@ export class FakeEphemeris implements Ephemeris {
 
   async newMoons(from: Date, to: Date): Promise<Date[]> {
     return this.newMoonDates.filter(d => d >= from && d <= to).map(d => new Date(d))
+  }
+
+  /** The Earth from the low-precision solar theory (Meeus, chapter 25), good to about 0.01°, plus the site's offset. */
+  async observerPositions(site: Site | null, times: Date[]): Promise<Vec3[]> {
+    return times.map(at => earthLowPrecision(at, site))
+  }
+}
+
+const RAD = Math.PI / 180
+const EARTH_RADIUS_AU = 6378.137 / 149_597_870.7
+
+/** The Earth's heliocentric J2000 equatorial position from the Sun's apparent orbit, with an observer's offset. */
+export function earthLowPrecision(at: Date, site: Site | null): Vec3 {
+  const t = (at.getTime() / (24 * HOUR_MS) + 2440587.5 - 2451545) / 36525
+  const l0 = 280.46646 + 36000.76983 * t
+  const m = (357.52911 + 35999.05029 * t) * RAD
+  const e = 0.016708634 - 0.000042037 * t
+  const c = (1.914602 - 0.004817 * t) * Math.sin(m) + (0.019993 - 0.000101 * t) * Math.sin(2 * m) + 0.000289 * Math.sin(3 * m)
+  // The Sun's longitude of date, brought back to the J2000 equinox.
+  const lon = (l0 + c - 1.397 * t) * RAD
+  const r = (1.000001018 * (1 - e * e)) / (1 + e * Math.cos(m + c * RAD))
+  const eps = 23.4392911 * RAD
+  const [x, y] = [-r * Math.cos(lon), -r * Math.sin(lon)]
+  const earth = { x, y: y * Math.cos(eps), z: y * Math.sin(eps) }
+  if (!site) return earth
+  const lst = ((gmstHours(at) + site.longitudeDeg / 15) * 15) * RAD
+  const lat = site.latitudeDeg * RAD
+  return {
+    x: earth.x + EARTH_RADIUS_AU * Math.cos(lat) * Math.cos(lst),
+    y: earth.y + EARTH_RADIUS_AU * Math.cos(lat) * Math.sin(lst),
+    z: earth.z + EARTH_RADIUS_AU * Math.sin(lat)
   }
 }
 

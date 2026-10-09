@@ -586,3 +586,93 @@ to more than its stated size is refused as damaged.
   the palette for the target, and step **3 · Post-process** shows it beside the Siril_Scripts
   command. Siril_Scripts processes one stack, so the palette is a reminder of how to combine
   the channels, not part of the command.
+## Other cameras and comets
+
+Astrorepo is built around smart telescopes that write FITS, such as the Seestar and the Vespera.
+It also works with DSLRs, cooled mono cameras behind a filter wheel, and comets. Each part below
+appears only when your frames or settings call for it, so a Seestar or Vespera target looks the
+same as before.
+
+### DSLR and mirrorless camera RAW
+
+A scan reads CR2, NEF, ARW, DNG and the other RAW formats built on TIFF, alongside FITS files.
+Only the file's tags are read, never its pixels, and the file is never changed. From them the
+index takes:
+
+- the camera, the capture time and the exposure;
+- ISO, which is kept as the gain, so darks and biases are matched on ISO;
+- the image size, and the focal length and pixel size when the camera records them, for the image
+  scale.
+
+A RAW file records no frame type, so the app looks for one in the file name (`DARK_0001.CR2`,
+`M31_LIGHT_0001.CR2`), then in the folder it sits in (`Darks`, `flats_2024-03-10`, `Darks_ISO800`,
+`Flats-L`), then in a folder above it named for calibration frames (`Darks/ISO800`). A folder
+counts when it is a frame-type word with nothing else but an ISO, an exposure, a date or a filter,
+so a target folder called `Dark Shark` keeps its lights. Anything else is a light. RAW frames are
+not plate solved; their FITS stacks are.
+
+The capture time is the camera's clock. When the camera records its time zone, the time is turned
+into UTC. When it does not, it is kept as written: set the camera's clock to UTC to keep nights in
+order across trips. A date the calendar does not have, or an offset beyond ±14:00, gives no
+capture time.
+
+- **CR3 and RAF** (newer Canon and all Fujifilm cameras) are found but not read. They are listed
+  with the files that could not be read, saying so. Siril still stacks them. Convert them to DNG
+  (Adobe's free DNG Converter) to have them indexed.
+- **The stacking plan** counts RAW lights as colour and picks Siril's colour script, which reads
+  RAW itself in its convert step. A line under the plan says how many lights are RAW.
+- **Frame grading** does not measure RAW lights, because the app does not decode RAW pixels. Each
+  says so in its grade and stays in the stack.
+
+### Mono cameras with a filter wheel
+
+When a target's lights come from a mono camera and carry two filters or more, step **2 · Stack**
+plans one stack per filter. Siril's mono script stacks whatever is in its folders, so each filter
+gets its own work folder (`filters/Ha`, `filters/OIII`, and so on) with:
+
+- its own lights;
+- flats taken with the same filter;
+- the darks and biases, which every filter shares.
+
+Each filter shows its frames, the space its stack needs and a **Queue** button for it, hidden
+only for a filter whose stack is already queued or running. Two filters whose names make the same
+folder name (`S II` and `S.II`) each get a short tag after it, so they never share a folder. A filter
+with no flats of its own is named, since Siril's mono script needs them. So are lights and flats
+that record no filter, which no filter's stack takes. Once a filter is stacked, its result is
+listed as that channel's master. When every channel has one, combine them in Siril's RGB
+composition. A single stack that would mix the filters cannot be queued.
+
+**Tonight's plan** names the filter to shoot for such a target:
+
+- narrowband (Ha, OIII, SII) while the moon is bright;
+- broadband (L, R, G, B) while it is dark;
+- within that, the channel that lags the others first, else the one with the least so far.
+
+For example: "Narrowband while the moon is bright: capture OIII, it has 40 m against 6 h of Ha." Only
+filters the app can name count, so the Seestar's LP and IR-cut filters never get a suggestion.
+
+### Comets
+
+For a target whose object type is comet, step **2 · Stack** gains **Stack on the comet**. Paste the
+comet's line from the Minor Planet Center's comet elements (CometEls.txt, or the line an MPEC gives)
+and save it. A line that does not read, including a perihelion day the month does not have, says
+which part is wrong and keeps the orbit you had.
+
+The app then works out where the comet is in every kept light, at the middle of its exposure:
+
+- the position is astrometric J2000, from the comet's orbit around the Sun;
+- it is seen from your site in Settings, or from the Earth's centre when no site is set;
+- it is corrected for the time its light takes to reach you.
+
+It shows the first and last few positions, how fast the comet moves in arc seconds an hour, and
+in which direction. Lights with no capture time are counted and left out. A DSLR that records no
+time zone needs its clock on UTC here, or every position is off by the clock's offset.
+
+**Write the positions file** saves `comet_positions.csv` (frame, UTC date, RA and Dec in degrees)
+in the target's work folder. Your source folder is never written to. Stack on the stars first,
+then register the sequence with Siril's comet registration using the motion shown; the file lets
+you check the comet's position in the frames you pick.
+
+The positions come from a two-body orbit: the planets' pull and the comet's outgassing are left
+out. Near the elements' date they agree with a published ephemeris to within an arc minute, and
+usually a few arc seconds. For a comet seen months from that date, paste the latest elements.
