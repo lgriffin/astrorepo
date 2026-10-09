@@ -11,6 +11,7 @@ import {
   makeEstimateSirilRun,
   sourceLightPaths,
   makeFrameGrading,
+  makeGallery,
   makeFindDuplicates,
   makeJobScheduler,
   makeListNextActions,
@@ -69,6 +70,8 @@ const plateSolvers = () => [new AstapPlateSolver(), new SirilPlateSolver()]
 export function solveWorkDir(workArea: string, targetId: string): string {
   return path.join(workArea, 'solve', targetId.replace(/[^\w.-]+/g, '_') || 'target')
 }
+import { NodeImagePixels } from './adapters/node-image-pixels'
+import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -86,6 +89,26 @@ const appPaths = new WindowsAppPathsRegistry()
 export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
   frameMeasurer = new NodeFrameMeasurer(createWorker)
   return frameMeasurer
+}
+
+/** One pixel reader for the app, so the inspector's requests share its worker thread. */
+let imagePixels = new NodeImagePixels()
+
+/** Reads images for the inspector on a worker thread from now on (NFR-019). The app calls this at start; tests read in place. */
+export function inspectOnWorkers(createWorker: () => Worker): NodeImagePixels {
+  imagePixels = new NodeImagePixels(createWorker)
+  return imagePixels
+}
+
+/** The image inspector, palettes and compare view over the index and the image files (spec 025). */
+export function composeGallery(db: Database.Database) {
+  return makeGallery({
+    pixels: imagePixels,
+    catalogue: new SqliteGalleryCatalogue(db),
+    palettes: new SqlitePaletteStore(db),
+    clock: systemClock,
+    solves: new SqliteSolveStore(db)
+  })
 }
 
 /** Frame grading over the index and the FITS files (spec 019). */
