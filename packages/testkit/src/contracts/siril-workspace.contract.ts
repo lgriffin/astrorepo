@@ -74,6 +74,28 @@ export function sirilWorkspaceContract(adapterName: string, setup: (frames: stri
       expect(await f.workspace.place(placement, f.workDir)).toBe('existing')
     })
 
+    it('[PRV-005] Given frames placed, When the input folders are read, Then each frame comes back once, and a rewritten source reads differently once placed again', async () => {
+      const f = await setup(['Light_001.fit', 'Light_002.fit'])
+      await f.workspace.prepareFolders(f.workDir)
+      const frames = await f.workspace.listSourceFrames(f.sourceDir)
+      const placements = frames.map(x => ({ from: x.path, folder: 'lights' as const, name: x.name }))
+      for (const p of placements) await f.workspace.place(p, f.workDir)
+      const first = await f.workspace.inputFrames(f.workDir)
+      expect(first.map(x => `${x.folder}/${x.name}`)).toEqual(['lights/Light_001.fit', 'lights/Light_002.fit'])
+      await f.rewriteSource('Light_001.fit')
+      await f.workspace.place(placements.find(p => p.name === 'Light_001.fit') as (typeof placements)[number], f.workDir)
+      const second = await f.workspace.inputFrames(f.workDir)
+      const sig = (xs: typeof first) => xs.map(x => `${x.name}:${x.sizeBytes}:${x.modifiedAt?.getTime()}`)
+      expect(sig(second)[0]).not.toBe(sig(first)[0])
+      expect(sig(second)[1]).toBe(sig(first)[1])
+    })
+
+    it('[PRV-005] Given a work folder not made yet, When its input folders are read, Then there are none and nothing is created', async () => {
+      const f = await setup([])
+      expect(await f.workspace.inputFrames(f.workDir)).toEqual([])
+      expect(await f.workHas('')).toBe(false)
+    })
+
     it('[ING-001] Given folders, When containment is checked, Then a folder contains itself and its subfolders but not its siblings', async () => {
       const f = await setup(['Light_001.fit'])
       expect(await f.workspace.contains(f.sourceDir, f.sourceDir)).toBe(true)

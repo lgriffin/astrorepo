@@ -1,5 +1,5 @@
 import type { JobsSnapshot } from '@astro/application'
-import { estimateJobSeconds, formatClock, jobHistory, type Job, type JobEstimate, type WaitReason } from '@astro/domain'
+import { estimateJobSeconds, formatClock, jobHistory, MANIFEST_SUFFIX, progressText, type Job, type JobEstimate, type WaitReason } from '@astro/domain'
 import type { JobsView, JobView } from '@shared/types'
 import { formatBytes } from './discovery-presenter'
 
@@ -50,6 +50,16 @@ export function waitText(wait: WaitReason, estimate: JobEstimate, now: Date): st
 
 const estimateText = (e: JobEstimate) => `About ${formatDuration(e.seconds)}${e.basis === 'guess' ? ' (a first-run guess until this PC has run one)' : ', from earlier runs'}`
 
+/** Where a step-by-step stack is, or got to; null for a job run whole or one that finished every step. */
+function progressLine(job: Job): string | null {
+  const p = job.progress
+  if (!p) return null
+  const resumed = p.resumedFrom ? `, carried on from step ${p.resumedFrom + 1}` : ''
+  if (job.state === 'running' || job.state === 'queued') return p.step > 0 || job.state === 'running' ? `${progressText(p)}${resumed}.` : null
+  if (p.step >= p.of) return p.resumedFrom ? `All ${p.of} steps done${resumed}.` : null
+  return `Stopped after ${p.step} of ${p.of} steps.`
+}
+
 const quote = (a: string) => (/[\s"']/.test(a) ? `"${a}"` : a)
 
 function toJobView(job: Job, now: Date, extra: { estimate: JobEstimate | null; waiting: string | null }): JobView {
@@ -72,7 +82,9 @@ function toJobView(job: Job, now: Date, extra: { estimate: JobEstimate | null; w
     command: [job.command.program, ...job.command.args].map(quote).join(' '),
     needed: formatBytes(job.neededBytes),
     canCancel: job.state === 'queued' || job.state === 'running',
-    canRunNow: job.state === 'queued' && job.timing === 'window'
+    canRunNow: job.state === 'queued' && job.timing === 'window',
+    progress: progressLine(job),
+    outputs: (job.progress?.published ?? []).map(p => ({ path: p, name: p.split(/[\\/]/).pop() ?? p, manifest: `${p}${MANIFEST_SUFFIX}` }))
   }
 }
 

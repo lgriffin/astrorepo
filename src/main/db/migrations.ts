@@ -454,6 +454,10 @@ export function runMigrations(sqlite: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_jobs_state ON jobs(state);
   `)
 
+  // Migration: how far a stack run step by step got, so it can carry on (PRV-003)
+  const hasProgress = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('jobs') WHERE name='progress'").get() as { cnt: number }
+  if (hasProgress.cnt === 0) sqlite.exec('ALTER TABLE jobs ADD COLUMN progress TEXT')
+
   // Migration: each light's measurement and the user's keep or reject (GRD-001, GRD-005).
   // Keyed by path so a rescan keeps them; size and modified time tell a stale measurement.
   sqlite.exec(`

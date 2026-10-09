@@ -37,6 +37,7 @@ import { NodeMachineMonitor } from './adapters/node-machine-monitor'
 import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-frame-grades'
 import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
 import { NodeMemoryProbe } from './adapters/node-memory-probe'
+import { NodeRunArea } from './adapters/node-run-area'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -121,6 +122,8 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     logs: new FileJobLogs(options.logsDir),
     workspace,
     prepare: makePrepareSirilWorkspace({ workspace, selection: composeGrading(db) }),
+    runArea: new NodeRunArea(),
+    targetName: async id => (await new SqliteStackCatalogue(db).describeTarget(id))?.name ?? null,
     readOnlyDirs: options.readOnlyDirs,
     clock: systemClock,
     onChange: options.onChange

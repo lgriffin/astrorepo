@@ -1,5 +1,5 @@
 import type { ContentHasher, FileHashStore, FileIndex, FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { FileHash, FileStamp, SirilFolder, SirilPlacement } from '@astro/domain'
+import type { FileHash, FileStamp, InputFrame, SirilFolder, SirilPlacement } from '@astro/domain'
 
 /**
  * A pretend disk: paths map to text content with a size and a modified time. Tests use it to drive
@@ -146,6 +146,17 @@ export class InMemorySirilWorkspace implements SirilWorkspace {
 
   async stackResults(workDir: string) {
     return [...(this.results.get(workDir) ?? [])].sort((a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0))
+  }
+
+  async inputFrames(workDir: string): Promise<InputFrame[]> {
+    const frames: InputFrame[] = []
+    for (const [dest, from] of this.placed) {
+      const m = dest.startsWith(`${workDir}/`) ? /^(lights|darks|flats|biases)\/([^/]+)$/.exec(dest.slice(workDir.length + 1)) : null
+      if (!m) continue
+      const version = this.placedVersion.get(dest) ?? 0
+      frames.push({ folder: m[1] as SirilFolder, name: m[2], sizeBytes: this.details.get(from)?.sizeBytes ?? 50_000_000, modifiedAt: new Date(version * 1000) })
+    }
+    return frames.sort((a, b) => `${a.folder}/${a.name}`.localeCompare(`${b.folder}/${b.name}`))
   }
 
   async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {

@@ -42,6 +42,7 @@ function job(over: Partial<Job> = {}): Job {
     exitCode: null,
     note: null,
     attempts: 0,
+    progress: null,
     ...over
   }
 }

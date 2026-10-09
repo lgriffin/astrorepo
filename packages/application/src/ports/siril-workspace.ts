@@ -1,4 +1,4 @@
-import type { FrameIndexSettings, SirilFolder, SirilPlacement } from '@astro/domain'
+import type { FrameIndexSettings, InputFrame, SirilFolder, SirilPlacement } from '@astro/domain'
 
 export type PlacementResult = 'linked' | 'copied' | 'existing'
 
@@ -59,4 +59,9 @@ export interface SirilWorkspace {
   remove(workDir: string, folder: SirilFolder, names: string[]): Promise<string[]>
   /** Stacks a Siril run left in `workDir` (its result*.fit files), newest first. Writes nothing. */
   stackResults(workDir: string): Promise<{ path: string; sizeBytes: number; modifiedAt: Date | null }[]>
+  /**
+   * Every frame in the work folder's input folders (lights, darks, flats, biases) as Siril will
+   * read it, whoever put it there, with its size and modified time. Writes nothing.
+   */
+  inputFrames(workDir: string): Promise<InputFrame[]>
 }

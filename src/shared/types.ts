@@ -1138,6 +1138,10 @@ export interface JobView {
   needed: string
   canCancel: boolean
   canRunNow: boolean
+  /** For a stack run step by step: the step it is on, or how far it got (PRV-003). */
+  progress: string | null
+  /** Results it published, each with a manifest beside it (PRV-001). */
+  outputs: { path: string; name: string; manifest: string }[]
 }
 
 export interface JobsView {

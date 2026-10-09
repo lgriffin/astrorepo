@@ -1,12 +1,12 @@
-import type { JobLogs, JobPatch, JobSettingsSource, JobStore, MachineMonitor, ProcessRunner, RunningProcess } from '@astro/application'
-import { DEFAULT_JOB_SETTINGS, type Job, type JobCommand, type JobSettings, type MachineLoad, type NewJob } from '@astro/domain'
+import type { JobLogs, JobPatch, JobSettingsSource, JobStore, MachineMonitor, ProcessRunner, RunArea, RunningProcess } from '@astro/application'
+import { DEFAULT_JOB_SETTINGS, type Job, type JobCommand, type JobSettings, type MachineLoad, type NewJob, type StackManifest } from '@astro/domain'
 
 export class InMemoryJobStore implements JobStore {
   private readonly jobs = new Map<string, Job>()
   private next = 1
 
   async add(job: NewJob, queuedAt: Date): Promise<Job> {
-    const full: Job = { ...job, id: `job-${this.next++}`, state: 'queued', queuedAt, startedAt: null, finishedAt: null, exitCode: null, note: null, attempts: 0 }
+    const full: Job = { ...job, id: `job-${this.next++}`, state: 'queued', queuedAt, startedAt: null, finishedAt: null, exitCode: null, note: null, attempts: 0, progress: null }
     this.jobs.set(full.id, full)
     return { ...full }
   }
@@ -86,5 +86,40 @@ export class InMemoryJobLogs implements JobLogs {
   }
   async read(jobId: string, maxBytes: number): Promise<string> {
     return (this.text.get(jobId) ?? '').slice(-maxBytes)
+  }
+}
+
+/** A run area over maps: scripts to read, steps written, results set aside and manifests. */
+export class InMemoryRunArea implements RunArea {
+  readonly texts = new Map<string, string>()
+  readonly steps: { path: string; text: string }[] = []
+  readonly setAsideFiles: string[] = []
+  readonly manifests = new Map<string, StackManifest>()
+  /** Called with each set-aside path, so a fake work area can drop it. */
+  onSetAside: (path: string) => void = () => {}
+
+  async readText(path: string): Promise<string> {
+    const text = this.texts.get(path)
+    if (text === undefined) throw new Error(`ENOENT: ${path}`)
+    return text
+  }
+
+  async writeStep(workDir: string, name: string, text: string): Promise<string> {
+    const path = `${workDir}/.astrorepo/${name}`
+    this.steps.push({ path, text })
+    return path
+  }
+
+  async setAside(workDir: string, run: string, paths: string[]): Promise<string[]> {
+    return paths.map(p => {
+      this.setAsideFiles.push(p)
+      this.onSetAside(p)
+      return `${workDir}/failed/${run}/${p.split('/').pop()}`
+    })
+  }
+
+  async writeManifest(resultPath: string, manifest: StackManifest): Promise<string> {
+    this.manifests.set(resultPath, structuredClone(manifest))
+    return `${resultPath}.astrorepo.json`
   }
 }

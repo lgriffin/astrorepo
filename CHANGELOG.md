@@ -19,6 +19,11 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   whether Bayer drizzle is worth it, the rejection that suits the kept lights, why calibration
   frames do or do not match, each night with its flats and a way to leave it out, and planning
   that suggests the filter a target is short of.
+- **Provenance** (spec 021): stacks run Siril's stock script a step at a time and carry on from
+  the step they stopped at after the app closes; a result is published only when every step
+  succeeded, with a manifest beside it naming the script, steps and every frame; a failed run's
+  partial result is set aside; known Siril failures are explained; each target's runs read as a
+  timeline.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

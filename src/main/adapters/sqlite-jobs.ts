@@ -20,6 +20,7 @@ interface JobRow {
   exit_code: number | null
   note: string | null
   attempts: number
+  progress: string | null
 }
 
 const date = (s: string | null) => (s ? new Date(s) : null)
@@ -41,7 +42,8 @@ function toJob(r: JobRow): Job {
     finishedAt: date(r.finished_at),
     exitCode: r.exit_code,
     note: r.note,
-    attempts: r.attempts
+    attempts: r.attempts,
+    progress: r.progress ? JSON.parse(r.progress) : null
   }
 }
 
@@ -52,7 +54,8 @@ const COLUMNS: Record<keyof JobPatch, string> = {
   finishedAt: 'finished_at',
   exitCode: 'exit_code',
   note: 'note',
-  attempts: 'attempts'
+  attempts: 'attempts',
+  progress: 'progress'
 }
 
 /** JobStore over the jobs table. */
@@ -94,7 +97,9 @@ export class SqliteJobStore implements JobStore {
   private write(id: string, patch: JobPatch, from: Job['state'] | null): boolean {
     const entries = Object.entries(patch).filter(([key, value]) => key in COLUMNS && value !== undefined) as [keyof JobPatch, unknown][]
     const sets = entries.length > 0 ? entries.map(([key]) => `${COLUMNS[key]} = ?`).join(', ') : 'id = id'
-    const values = entries.map(([, value]) => (value instanceof Date ? value.toISOString() : value))
+    const values = entries.map(([key, value]) =>
+      value instanceof Date ? value.toISOString() : key === 'progress' ? (value === null ? null : JSON.stringify(value)) : value
+    )
     const guard = from ? ' AND state = ?' : ''
     return this.db.prepare(`UPDATE jobs SET ${sets} WHERE id = ?${guard}`).run(...values, id, ...(from ? [from] : [])).changes > 0
   }
