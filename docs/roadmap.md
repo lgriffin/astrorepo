@@ -97,9 +97,10 @@ app has run on real data on the Windows PC and the licence is settled.
 - **Checking a tool runs it, a little** (spec 023). A tool's version and SyQon's models can only
   come from the tools themselves, so Settings runs each tool's version flag and
   `syqon-cli --list-models`, and nothing else; finding tools and building recipes still run
-  nothing. A catalogue a found tool cannot run without (ASTAP's stars, RC Astro's models) blocks
-  the step that needs it, rather than letting it fail at night. Siril's Gaia SPCC files are shown
-  but optional, since Siril's colour calibration fetches Gaia data online without them. ASTAP is checked
+  nothing. A catalogue a found tool cannot run without (ASTAP's stars) blocks the step that needs
+  it, rather than letting it fail at night. Siril's Gaia SPCC files are shown but optional, since
+  Siril's colour calibration fetches Gaia data online without them, and so are RC Astro's models
+  until the installer's file names are confirmed. ASTAP is checked
   for health only; plate solving stays in slice D, which reuses `astapCatalogues`. Several SyQon
   details the developer pages do not name (exit codes 1 to 3 and 5 to 7, the run flags) are
   assumptions listed in spec 023 to confirm.

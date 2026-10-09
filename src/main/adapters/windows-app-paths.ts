@@ -17,24 +17,34 @@ const HIVES = ['HKLM', 'HKCU'] as const
  * first, then HKCU. Off Windows, or when a key is not there, nothing is found.
  */
 export class WindowsAppPathsRegistry implements AppPathsRegistry {
+  private readonly recent = new Map<string, { at: number; paths: Promise<string[]> }>()
+
   constructor(
     private readonly windows = process.platform === 'win32',
-    private readonly exec: ExecFile = execFileText
+    private readonly exec: ExecFile = execFileText,
+    private readonly now: () => number = Date.now,
+    /** How long a lookup is reused, since every page that finds tools asks again. */
+    private readonly lifetimeMs = 30_000
   ) {}
 
-  async lookup(exeName: string): Promise<string[]> {
-    if (!this.windows || !/^[\w .-]+\.exe$/i.test(exeName)) return []
-    const found: string[] = []
-    for (const hive of HIVES) {
-      try {
-        const out = await this.exec('reg', ['query', `${hive}\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${exeName}`, '/ve'])
-        const value = defaultValue(out)
-        if (value && !found.includes(value)) found.push(value)
-      } catch {
-        // No such key in this hive.
-      }
-    }
-    return found
+  lookup(exeName: string): Promise<string[]> {
+    if (!this.windows || !/^[\w .-]+\.exe$/i.test(exeName)) return Promise.resolve([])
+    const key = exeName.toLowerCase()
+    const hit = this.recent.get(key)
+    if (hit && this.now() - hit.at < this.lifetimeMs) return hit.paths
+    const paths = this.query(exeName)
+    this.recent.set(key, { at: this.now(), paths })
+    return paths
+  }
+
+  /** Both hives at once; HKLM's value still comes first. */
+  private async query(exeName: string): Promise<string[]> {
+    const values = await Promise.all(
+      HIVES.map(hive =>
+        this.exec('reg', ['query', `${hive}\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${exeName}`, '/ve']).then(defaultValue, () => null) // No such key in this hive.
+      )
+    )
+    return values.filter((v, i): v is string => v !== null && values.indexOf(v) === i)
   }
 }
 

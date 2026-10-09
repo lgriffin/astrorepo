@@ -38,7 +38,7 @@ export interface CatalogueSpec {
   nearTool: string[]
   /** Other standard folders, per platform (forward slashes; `~` is the home folder, `%VAR%` an environment variable). */
   standard: { windows: string[]; other: string[] }
-  /** The tool can work without it (Siril fetches Gaia data online), so it is shown but blocks nothing. */
+  /** Shown but blocks nothing: the tool can work without it (Siril fetches Gaia data online), or its files are not confirmed. */
   optional?: boolean
 }
 
@@ -69,6 +69,8 @@ export const CATALOGUES: readonly CatalogueSpec[] = [
     why: 'BlurXTerminator, NoiseXTerminator and StarXTerminator each need their model file, which the RC Astro installer puts beside the CLI.',
     settingKey: 'catalogue_path_rc_astro',
     nearTool: ['', 'models'],
+    // The installer's model file names are not confirmed yet, so a miss is shown but blocks nothing.
+    optional: true,
     standard: { windows: [], other: [] }
   }
 ]
@@ -177,7 +179,7 @@ export function blockingMissing(statuses: CatalogueStatus[]): CatalogueStatus[] 
 
 /** "Needs Siril's Gaia SPCC catalogue, which is not installed." for the catalogues a step lacks; null when none. */
 export function catalogueBlock(needed: CatalogueId[], statuses: CatalogueStatus[]): string | null {
-  const lacking = statuses.filter(s => s.state === 'missing' && needed.includes(s.id)).map(s => s.label)
+  const lacking = blockingMissing(statuses).filter(s => needed.includes(s.id)).map(s => s.label)
   if (lacking.length === 0) return null
   const list = lacking.length === 1 ? lacking[0] : `${lacking.slice(0, -1).join(', ')} and ${lacking[lacking.length - 1]}`
   // "RC Astro model files" reads as plural on its own.

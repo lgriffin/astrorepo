@@ -86,9 +86,9 @@ the app relies on. Each is coded so that it can be changed in one place.
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| HUB-006 | Ubiquitous | The system shall look for the SyQon CLI in the path the user set, then the SYQON_CLI_PATH environment variable, then SyQon Studio's install folders, then the Windows App Paths registry key, reading the registry with an argument array and never a shell. |
-| HUB-007 | Event | When the SyQon CLI is found, the system shall list its models with --list-models, reading one model per line with its id first and an availability word, and offer for each step only the models it reports as available. |
-| HUB-011 | Event | When the user confirms a SyQon step (star separation, sharpen, denoise or gradient removal) for a target's stack, the system shall queue the CLI with the stack as input, an output beside it, the chosen model and the overwrite flag only when the user chose to replace an existing output, and show its progress from stderr as a percentage or, when it prints none, its last line. |
+| HUB-006 | Ubiquitous | The system shall look for the SyQon CLI in the path the user set, then the SYQON_CLI_PATH environment variable, then SyQon Studio's install folders, then the Windows App Paths registry key, reading the registry with an argument array and never a shell, both hives at once, and reusing a lookup for half a minute. |
+| HUB-007 | Event | When the SyQon CLI is found, the system shall list its models with --list-models, reading one model per line with its id first and an availability word, and offer for each step only the models it reports as available, reusing a successful list for the same CLI for two minutes unless the user opens tool health again. |
+| HUB-011 | Event | When the user confirms a SyQon step (star separation, sharpen, denoise or gradient removal) for a target's stack, the system shall queue the CLI with the stack as input, an output beside it, the chosen model and the overwrite flag only when the user chose to replace an existing output, and show its progress from stderr, read in whole lines, as a percentage or, when it prints none, its last line; a SyQon output beside the stack is not offered as a stack, and replacing an output still needs room for a full new copy. |
 | HUB-013 | Unwanted | If the SyQon CLI exits with code 4, then the system shall say that the account does not include that model and that queueing it again will not help until that changes. |
 | HUB-014 | Unwanted | If a file already exists where a SyQon step writes and the user has not chosen to replace it, or the stack is in a folder the app only reads, then the system shall not queue the step and shall say why. |
 
@@ -98,7 +98,7 @@ the app relies on. Each is coded so that it can be changed in one place.
 |----|---------|-------------|
 | HUB-008 | Ubiquitous | The system shall show each found tool's version from its own version flag, and Unknown for a tool without a version flag the app relies on or one that prints no version. |
 | HUB-009 | Ubiquitous | The system shall show, for each found tool, whether the catalogues it needs are installed (ASTAP's star database, Siril's Gaia SPCC catalogue and RC Astro's model files), with the folder they are in or every folder it looked in. |
-| HUB-010 | Unwanted | If a catalogue that a found tool cannot run without is not installed, then the system shall add it to the Get set up checklist and refuse to queue a step that needs it with a message naming the catalogue; a catalogue the tool can do without (Siril's Gaia SPCC catalogue, which Siril fetches online when absent) shall be shown but block nothing. |
+| HUB-010 | Unwanted | If a catalogue that a found tool cannot run without is not installed, then the system shall add it to the Get set up checklist and refuse to queue a step that needs it with a message naming the catalogue; a catalogue the tool can do without (Siril's Gaia SPCC catalogue, which Siril fetches online when absent), or whose file names are not yet confirmed (RC Astro's model files), shall be shown but block nothing. |
 | HUB-015 | Ubiquitous | The system shall find ASTAP in the user's setting, on PATH or in its install folder, and name the star databases installed beside it (such as D50 or H18) from their .290 and .1476 files, without plate solving. |
 
 ## Exit codes

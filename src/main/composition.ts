@@ -15,6 +15,7 @@ import {
   makeListStackingSuggestions,
   makeCheckToolHealth,
   makeListSyqonModels,
+  makeSyqonModelCache,
   makeListTools,
   makePlanPostProcessing,
   makePlanSyqon,
@@ -52,11 +53,16 @@ import { WindowsAppPathsRegistry } from './adapters/windows-app-paths'
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
 
-/** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
-
 /** Targets an archive is working on, shared by every composition so the job runner waits for it (ARC-008). */
 export const targetHolds = makeTargetHolds()
 
+/** SyQon's model list, reused for two minutes per syqon-cli path; a health check in Settings lists afresh. */
+const syqonModels = makeSyqonModelCache(() => Date.now(), 2 * 60_000)
+
+/** One registry reader for the app, so its short-lived lookups are shared across calls. */
+const appPaths = new WindowsAppPathsRegistry()
+
+/** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
 export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
   frameMeasurer = new NodeFrameMeasurer(createWorker)
   return frameMeasurer
@@ -80,7 +86,7 @@ export function composeCore(db: Database.Database) {
   const readSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
   const tools = new NodeToolHub({
     setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null,
-    registry: new WindowsAppPathsRegistry()
+    registry: appPaths
   })
   const probe = new NodeToolProbe()
   const stacks = new SqliteStackCatalogue(db)
@@ -88,7 +94,7 @@ export function composeCore(db: Database.Database) {
   const grading = composeGrading(db)
   const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading, memory: new NodeMemoryProbe() })
   const planPostProcessing = makePlanPostProcessing({ stacks, tools, workspace: new NodeSirilWorkspace(db) })
-  const planSyqon = makePlanSyqon({ stacks, tools, workspace: new NodeSirilWorkspace(db), models: makeListSyqonModels({ tools, probe }) })
+  const planSyqon = makePlanSyqon({ stacks, tools, workspace: new NodeSirilWorkspace(db), models: makeListSyqonModels({ tools, probe, cache: syqonModels }) })
   const planForward = makePlanForward({
     frames,
     positions: new SqliteTargetPositions(db),
@@ -117,7 +123,7 @@ export function composeCore(db: Database.Database) {
     planForward,
     listTools: makeListTools({ tools }),
     /** Runs each tool's version flag and SyQon's model list (NFR-017). */
-    checkToolHealth: makeCheckToolHealth({ tools, probe }),
+    checkToolHealth: makeCheckToolHealth({ tools, probe, cache: syqonModels }),
     planPostProcessing,
     planSyqon,
     windows: tools.windows,

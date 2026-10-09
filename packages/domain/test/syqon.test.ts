@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseLiveProgress, parseSyqonModels, SYQON_KNOWN_MODELS, syqonCommand, syqonModelsFor, syqonNeededBytes, syqonOutputPath, toolSpec } from '@astro/domain'
+import { parseLiveProgress, parseSyqonModels, SYQON_KNOWN_MODELS, syqonCommand, syqonModelsFor, syqonNeededBytes, syqonOutputPath, toolSpec, isSyqonOutput } from '@astro/domain'
 
 describe('SyQon CLI', () => {
   it('[HUB-006] Given the tool catalogue, When SyQon is read, Then it is looked for in its own documented order and is optional', () => {
@@ -56,6 +56,9 @@ describe('SyQon CLI', () => {
   it('[HUB-011] Given a stack, When a step is built, Then the output sits beside it named for the step and the arguments are an array', () => {
     expect(syqonOutputPath('D:\\work\\M 31\\result_3600s.fit', 'star-separation')).toBe('D:\\work\\M 31\\result_3600s_starless.fit')
     expect(syqonOutputPath('/stacks/m42.v2.fits', 'gradient')).toBe('/stacks/m42.v2_gradient-removed.fits')
+    expect(isSyqonOutput('D:\\work\\M 31\\result_3600s_STARLESS.fit')).toBe(true)
+    expect(isSyqonOutput('/stacks/m42.v2_gradient-removed.fits')).toBe(true)
+    expect(isSyqonOutput('D:/work/M31/result_3600s.fit')).toBe(false)
     expect(syqonOutputPath('/stacks/noext', 'denoise')).toBe('/stacks/noext_denoised.fit')
     const cmd = syqonCommand({ program: 'C:/SyQon/syqon-cli.exe', model: 'axiom-mini', input: 'D:/s/a b.fit', output: 'D:/s/a b_starless.fit', overwrite: false })
     expect(cmd).toEqual({ program: 'C:/SyQon/syqon-cli.exe', args: ['--model', 'axiom-mini', '--input', 'D:/s/a b.fit', '--output', 'D:/s/a b_starless.fit'], cwd: 'D:/s' })

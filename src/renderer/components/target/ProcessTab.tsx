@@ -478,7 +478,7 @@ function SyqonSteps({ targetId, rawPath, onQueued, queued }: { targetId: string;
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 items-center text-xs">
         {view.stacks.length > 1 && (
-          <select className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value }))}>
+          <select className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value, overwrite: false }))}>
             {view.stacks.map(s => <option key={s.path} value={s.path}>{s.label}</option>)}
           </select>
         )}

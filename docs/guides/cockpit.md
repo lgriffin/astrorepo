@@ -281,8 +281,9 @@ installs them, under `share/siril/scripts` beside its `bin` folder.
     It is optional: without it Siril's colour calibration fetches Gaia data online, so a missing
     one is shown here but blocks nothing. Install it to calibrate offline.
   - **RC Astro model files**: the BlurXTerminator, NoiseXTerminator and StarXTerminator models
-    beside the CLI or in its `models` folder. Needed only when the RC Astro CLI is found (without
-    it, Siril_Scripts skips those stages).
+    beside the CLI or in its `models` folder. Checked only when the RC Astro CLI is found (without
+    it, Siril_Scripts skips those stages). Until the installer's file names are confirmed, a
+    missing one is shown here but blocks nothing.
 
   A catalogue that a found tool cannot run without also adds a step to **Get set up** on Home. A catalogue
   whose tool is not found is not checked.
@@ -300,18 +301,22 @@ Noncommercial.
   `%LOCALAPPDATA%\Programs\SyQon Studio\` and `%ProgramFiles%\SyQon Studio\`, then the Windows
   App Paths registry key for `syqon-cli.exe` (HKLM, then HKCU), read with `reg query`.
 - **Models.** Settings → Tools runs `syqon-cli --list-models` and lists each model with its step
-  and whether your account may use it. Only models it reports as available are offered.
+  and whether your account may use it. Only models it reports as available are offered. A
+  target's page reuses the list for two minutes; opening Settings → Tools always asks afresh.
 - **Running a step.** On a target's **Stack and process**, under **3 · Post-process**, the
   SyQon Studio section picks a stack, a step and a model:
   - the output goes beside the stack, named after the step (`result_3600s_starless.fit`,
     `_sharpened`, `_denoised`, `_gradient-removed`);
   - if that file is already there, the step is not queued until you tick **Replace it**, which
-    adds the CLI's overwrite flag. Nothing is ever replaced without it;
+    adds the CLI's overwrite flag. Nothing is ever replaced without it, and the disk still needs
+    room for a full new copy, since SyQon may write it before the old one goes;
+  - SyQon's own outputs are never offered as stacks, so a step's output does not become the
+    next default;
   - a stack in a folder the app only reads is refused, since SyQon writes beside it;
   - **Queue this step** shows what will run, then queues it for the run window or as soon as
     possible, like the other jobs.
 - **Progress and results.** While it runs, the Jobs page shows SyQon's progress from its stderr
-  as a percentage, or its last line when it prints no percentage. The output path it prints on
+  as a percentage, or its last line when it prints no percentage. Only whole lines are read. The output path it prints on
   stdout is written to the log.
 - **When it fails.** Exit code 4 means your SyQon account does not include that model; the job
   says so, and that queueing it again will not help until that changes. Code 130 means it was

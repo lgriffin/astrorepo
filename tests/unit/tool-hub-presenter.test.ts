@@ -92,10 +92,9 @@ describe('Tool hub presenter', () => {
     expect(none).toEqual({ versions: {}, models: null, modelsNote: null })
   })
 
-  it("[HUB-010] Given RC Astro's models missing, When the recipe is presented, Then it cannot be queued and names them; Siril's optional Gaia catalogue blocks nothing", async () => {
+  it("[HUB-010] Given RC Astro's models or Siril's Gaia catalogue not found, When the recipe is presented, Then both are optional and block nothing", async () => {
     const view = await planView(new FakeToolHub().installAll().removeCatalogue('rc-astro-models'))
-    expect(view.canQueue).toBe(false)
-    expect(view.catalogues).toMatch(/^Needs RC Astro model files/)
+    expect([view.canQueue, view.catalogues]).toEqual([true, null])
     const spcc = await planView(new FakeToolHub().installAll().removeCatalogue('siril-spcc'))
     expect([spcc.canQueue, spcc.catalogues]).toEqual([true, null])
     const tools = toToolsView(await makeListTools({ tools: new FakeToolHub().installAll().removeCatalogue('siril-spcc') })())

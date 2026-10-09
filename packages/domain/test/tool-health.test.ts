@@ -82,22 +82,22 @@ describe('Catalogues', () => {
 
   const status = (over: Partial<CatalogueStatus>): CatalogueStatus => ({ id: 'siril-spcc', tool: 'siril', label: "Siril's Gaia SPCC catalogue", state: 'present', dir: 'x', found: '1 file', looked: [], ...over })
 
-  it('[HUB-010] Given missing catalogues, When a step needs them, Then the block names each; one it does not need is ignored', () => {
+  it('[HUB-010] Given missing catalogues, When a step needs them, Then the block names the blocking ones; optional ones and ones it does not need are ignored', () => {
     expect(postProcessCatalogues(true)).toEqual(['rc-astro-models'])
     expect(postProcessCatalogues(false)).toEqual([])
-    expect(blockingMissing([status({ state: 'missing' }), status({ id: 'rc-astro-models', tool: 'rc-astro', label: 'RC Astro model files', state: 'missing' })]).map(s => s.id)).toEqual(['rc-astro-models'])
+    expect(blockingMissing([status({ state: 'missing' }), status({ id: 'rc-astro-models', tool: 'rc-astro', label: 'RC Astro model files', state: 'missing' })]).map(s => s.id)).toEqual([])
     const spcc = status({ state: 'missing' })
     const models = status({ id: 'rc-astro-models', tool: 'rc-astro', label: 'RC Astro model files', state: 'missing' })
     const stars = status({ id: 'astap-stars', tool: 'astap', label: 'ASTAP star database', state: 'missing' })
-    expect(catalogueBlock(['siril-spcc'], [spcc, stars])).toBe("Needs Siril's Gaia SPCC catalogue, which is not installed. Install it, or set its folder in Settings, under Tools.")
-    expect(catalogueBlock(['siril-spcc', 'rc-astro-models'], [spcc, models])).toBe(
-      "Needs Siril's Gaia SPCC catalogue and RC Astro model files, which are not installed. Install them, or set their folders in Settings, under Tools."
-    )
+    expect(blockingMissing([stars, models]).map(s => s.id)).toEqual(['astap-stars'])
+    expect(catalogueBlock(['astap-stars'], [spcc, stars])).toBe('Needs ASTAP star database, which is not installed. Install it, or set its folder in Settings, under Tools.')
+    expect(catalogueBlock(['siril-spcc', 'rc-astro-models'], [spcc, models])).toBeNull()
+    expect(catalogueBlock(['siril-spcc'], [spcc, stars])).toBeNull()
     expect(catalogueBlock(['siril-spcc'], [status({}), stars])).toBeNull()
     expect(catalogueBlock(['siril-spcc'], [status({ state: 'not-checked' })])).toBeNull()
   })
 
-  it('[HUB-010] Given RC Astro found but its models missing, When the post-processing recipe is built, Then it names them; without RC Astro they are not needed', () => {
+  it('[HUB-010] Given RC Astro found but its models not found, When the post-processing recipe is built, Then they block nothing, since their file names are not confirmed', () => {
     const tools = TOOLS.map(t => ({ id: t.id, path: t.id === 'rc-astro' || t.id === 'siril' || t.id === 'siril-scripts' || t.id === 'bash' ? t.standard.windows[0] ?? 'x' : null, source: null, settingMissing: false, looked: [] }))
     const input: RecipeInput = {
       stack: { path: 'D:/work/M31/result.fit', sizeBytes: 0, width: 100, height: 100, colour: true, focalMm: 250, pixelUm: 2.9 },
@@ -108,7 +108,7 @@ describe('Catalogues', () => {
       inReadOnlyFolder: false,
       catalogues: [status({}), status({ id: 'rc-astro-models', tool: 'rc-astro', label: 'RC Astro model files', state: 'missing' })]
     }
-    expect(buildPostProcessRecipe(input).missingCatalogues).toMatch(/^Needs RC Astro model files/)
+    expect(buildPostProcessRecipe(input).missingCatalogues).toBeNull()
     expect(buildPostProcessRecipe({ ...input, tools: tools.map(t => (t.id === 'rc-astro' ? { ...t, path: null } : t)) }).missingCatalogues).toBeNull()
     expect(buildPostProcessRecipe({ ...input, catalogues: undefined }).missingCatalogues).toBeNull()
   })

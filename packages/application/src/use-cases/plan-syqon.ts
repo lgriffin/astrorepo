@@ -87,7 +87,8 @@ export function makePlanSyqon(deps: PlanSyqonDeps): PlanSyqon {
     ])
     const outputExists = (names ?? []).some(n => n.toLowerCase() === fileName(output).toLowerCase())
     const neededBytes = syqonNeededBytes(stack.sizeBytes)
-    const verdict = spaceVerdict(outputExists && overwrite ? 0 : neededBytes, space.freeBytes)
+    // Replacing still needs room for the new file: SyQon may write it before the old one goes.
+    const verdict = spaceVerdict(neededBytes, space.freeBytes)
     const command = listed.program && model ? syqonCommand({ program: listed.program, model, input: stack.path, output, overwrite }) : null
 
     const label = SYQON_STEP_INFO[step].label.toLowerCase()

@@ -95,6 +95,9 @@ export class JobStateError extends Error {
   }
 }
 
+/** The most of one output line kept while it is unfinished (live progress, SyQon's output path). */
+const LINE_LIMIT = 4096
+
 /**
  * The job runner: one job at a time, started by `tick` when scheduleJobs allows. A stack job lays
  * its frames out first; each job's output goes to its log; the exit code decides success.
@@ -140,13 +143,15 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
   /**
    * Live progress from a tool that reports its own (SyQon on stderr, HUB-011): its percentage when
    * it prints simple percentages, else its last line. Saved when the whole percent changes, or a
-   * line at most every few seconds, so the store is not written on every chunk.
+   * line at most every few seconds, so the store is not written on every chunk. Output arrives in
+   * arbitrary chunks, so only whole lines are read; the unfinished end waits for the next chunk.
    */
   const liveProgress = (job: Job) => {
     let lastPercent: number | null = null
     let lastSaved = 0
     let pending: Promise<unknown> = Promise.resolve()
-    const save = (text: string) => {
+    let partial = ''
+    const read = (text: string) => {
       const live = parseLiveProgress(text)
       if (!live) return
       const now = deps.clock.now().getTime()
@@ -158,7 +163,17 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
       const progress: StepProgress = { step: 0, of: 1, key: 'live', label: job.title, live: { percent: live.percent, line: live.line } }
       pending = pending.then(() => deps.store.update(job.id, { progress })).catch(() => undefined)
     }
-    return { save, settled: () => pending }
+    const save = (chunk: string) => {
+      const records = (partial + chunk).split(/[\r\n]/)
+      // Bounded, so a tool that never ends a line cannot grow it without limit.
+      partial = (records.pop() ?? '').slice(-LINE_LIMIT)
+      if (records.some(r => r.trim())) read(records.join('\n'))
+    }
+    const flush = () => {
+      if (partial.trim()) read(partial)
+      partial = ''
+    }
+    return { save, settled: () => (flush(), pending) }
   }
 
   const run = async (job: Job, entry: Entry) => {
@@ -188,10 +203,11 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     }
 
     const live = job.kind === 'syqon' ? liveProgress(job) : null
+    // SyQon prints the path it wrote as its last stdout line; only a short tail is kept for it.
     let stdout = ''
     entry.process = deps.runner.run(command, (text, stream) => {
       deps.logs.append(job.id, text)
-      if (stream === 'stdout') stdout += text
+      if (stream === 'stdout' && job.kind === 'syqon') stdout = (stdout + text).slice(-LINE_LIMIT)
       else if (live && (stream === 'stderr' || stream === undefined)) live.save(text)
     })
     const result = await entry.process.done
@@ -201,7 +217,7 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     const tool = runToolOf(job.kind)
     const verdict = interpretExit(tool, result.exitCode, { cancelled: entry.cancelled, program: tool === 'syqon' ? undefined : command.program })
     if (verdict.outcome === 'succeeded') {
-      const wrote = stdout.trim().split(/\r?\n/).pop()
+      const wrote = job.kind === 'syqon' ? stdout.trim().split(/\r?\n/).pop() : undefined
       if (wrote) deps.logs.append(job.id, `\nWrote ${wrote}.\n`)
       await finish(job.id, 'succeeded', result.exitCode, null)
     } else if (verdict.outcome === 'cancelled') await finish(job.id, 'cancelled', result.exitCode, verdict.message)

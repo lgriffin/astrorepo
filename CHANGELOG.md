@@ -37,7 +37,8 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   tool shows its version and whether the catalogues it needs are installed (ASTAP's star
   database, Siril's Gaia SPCC catalogue, RC Astro's models); a missing one joins Get set up and
   blocks the step that needs it, except Siril's Gaia catalogue, which is optional because Siril
-  fetches Gaia data online without it. One exit-code contract explains how Siril, Siril_Scripts, RC
+  fetches Gaia data online without it, and RC Astro's models, shown but optional until their file
+  names are confirmed. One exit-code contract explains how Siril, Siril_Scripts, RC
   Astro and SyQon runs ended. The app calls the SyQon CLI you installed and never bundles it.
 
 ### Fixed

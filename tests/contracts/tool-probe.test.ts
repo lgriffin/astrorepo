@@ -56,6 +56,18 @@ describe('WindowsAppPathsRegistry', () => {
     expect(ran).toBe(false)
   })
 
+  it('[HUB-006] Given a lookup made moments ago, When asked again, Then reg is not run again until the lookup is half a minute old', async () => {
+    let now = 0
+    let runs = 0
+    const registry = new WindowsAppPathsRegistry(true, async () => ((runs += 1), REG_OUTPUT('C:\\SyQon\\syqon-cli.exe')), () => now)
+    expect(await registry.lookup('syqon-cli.exe')).toEqual(['C:\\SyQon\\syqon-cli.exe'])
+    expect(await registry.lookup('SYQON-CLI.EXE')).toEqual(['C:\\SyQon\\syqon-cli.exe'])
+    expect(runs).toBe(2)
+    now = 30_000
+    await registry.lookup('syqon-cli.exe')
+    expect(runs).toBe(4)
+  })
+
   it('[HUB-006] Given this machine, When the default registry is asked off Windows, Then nothing is found and nothing runs', async () => {
     if (process.platform === 'win32') return
     expect(await new WindowsAppPathsRegistry().lookup('syqon-cli.exe')).toEqual([])

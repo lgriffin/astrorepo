@@ -73,6 +73,13 @@ export function syqonModelsFor(step: SyqonStep, models: SyqonModel[]): SyqonMode
     .sort((a, b) => Number(!(a.id in SYQON_KNOWN_MODELS)) - Number(!(b.id in SYQON_KNOWN_MODELS)) || a.id.localeCompare(b.id))
 }
 
+/** Whether a file is a SyQon step's output (`<stem>_starless.fit` and the like), not a stack of its own. */
+export function isSyqonOutput(path: string): boolean {
+  const name = path.split(/[\\/]/).pop() ?? path
+  const stem = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name
+  return Object.values(SYQON_STEP_INFO).some(info => stem.toLowerCase().endsWith(`_${info.suffix}`))
+}
+
 /** Where a step writes: beside the stack, named after it and the step ("result_3600s_starless.fit"). */
 export function syqonOutputPath(stackPath: string, step: SyqonStep): string {
   const { dir, sep } = parentDir(stackPath)

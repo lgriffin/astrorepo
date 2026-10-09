@@ -1,4 +1,4 @@
-import { buildPostProcessRecipe, parentDir, type PostProcessRecipe, type Profile, type Quality, type RecipeTarget } from '@astro/domain'
+import { buildPostProcessRecipe, isSyqonOutput, parentDir, type PostProcessRecipe, type Profile, type Quality, type RecipeTarget } from '@astro/domain'
 import type { SirilWorkspace } from '../ports/siril-workspace'
 import type { StackCatalogue, StackFile } from '../ports/stack-catalogue'
 import type { ToolHub } from '../ports/tool-hub'
@@ -21,7 +21,10 @@ export async function targetStacks(deps: { stacks: StackCatalogue; workspace: Pi
   return [
     ...indexed,
     ...results.filter(r => !known.has(r.path)).map(r => ({ ...r, width: null, height: null, colour: true, focalMm: null, pixelUm: null }))
-  ].sort((a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0))
+  ]
+    // A SyQon output sits beside its stack and is newer, but it is not a stack to process again (HUB-011).
+    .filter(s => !isSyqonOutput(s.path))
+    .sort((a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0))
 }
 
 export interface PostProcessingOptions {

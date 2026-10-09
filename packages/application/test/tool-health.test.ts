@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { makeCheckCatalogues, makeCheckToolHealth, makeListSyqonModels, makeListTools, makePlanPostProcessing, makeQueuePostProcess, JobRefusedError } from '@astro/application'
+import { makeCheckCatalogues, makeCheckToolHealth, makeListSyqonModels, makeListTools, makePlanPostProcessing, makeQueuePostProcess } from '@astro/application'
 import { FakeToolHub, FakeToolProbe, FixedClock, InMemoryJobStore, InMemorySirilWorkspace, InMemoryStackCatalogue } from '@astro/testkit'
 
 const SIRIL = 'C:/Program Files/Siril/bin/siril-cli.exe'
@@ -67,12 +67,10 @@ describe('Catalogues block the steps that need them', () => {
     return { plan, store, queue: makeQueuePostProcess({ plan, tools, store, clock: new FixedClock() }) }
   }
 
-  it("[HUB-010] Given RC Astro's models missing, When post-processing is planned and queued, Then the plan names them and nothing is queued", async () => {
+  it("[HUB-010] Given RC Astro's models not found, When post-processing is planned and queued, Then they block nothing, since their file names are not confirmed", async () => {
     const s = setup(new FakeToolHub().installAll().removeCatalogue('rc-astro-models'))
-    expect((await s.plan('m31')).recipe?.missingCatalogues).toBe('Needs RC Astro model files, which are not installed. Install them, or set its folder in Settings, under Tools.')
-    await expect(s.queue('m31', {}, 'window')).rejects.toThrow(/RC Astro model files/)
-    await expect(s.queue('m31', {}, 'window')).rejects.toBeInstanceOf(JobRefusedError)
-    expect(await s.store.list()).toEqual([])
+    expect((await s.plan('m31')).recipe?.missingCatalogues).toBeNull()
+    expect((await s.queue('m31', {}, 'window')).kind).toBe('post-process')
   })
 
   it("[HUB-010] Given every catalogue installed, or only Siril's optional Gaia catalogue missing, When post-processing is queued, Then it is queued", async () => {
