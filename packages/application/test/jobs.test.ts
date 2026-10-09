@@ -3,6 +3,8 @@ import {
   JobRefusedError,
   JobStateError,
   makeJobScheduler,
+  makeTargetHolds,
+  type TargetHolds,
   makeQueuePostProcess,
   makeQueueStack,
   type EstimateSirilRun,
@@ -178,7 +180,7 @@ describe('queueing post-processing', () => {
   })
 })
 
-function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWorkspaceResult> } = {}) {
+function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWorkspaceResult>; holds?: TargetHolds } = {}) {
   const store = new InMemoryJobStore()
   const runner = new FakeProcessRunner()
   const logs = new InMemoryJobLogs()
@@ -202,7 +204,8 @@ function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWo
       }),
     readOnlyDirs: () => ['D:/astro'],
     clock,
-    onChange: () => changes++
+    onChange: () => changes++,
+    holds: over.holds
   })
   const add = (over: Parameters<InMemoryJobStore['add']>[0] extends infer J ? Partial<J> : never = {}) =>
     store.add(
@@ -223,6 +226,20 @@ function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWo
 }
 
 describe('the job runner', () => {
+  it('[ARC-008] Given a target that is being archived, When its queued job is due, Then it waits until the archive lets go, then starts', async () => {
+    const holds = makeTargetHolds()
+    const t = scheduler({ holds })
+    await t.add()
+    const release = holds.hold('m42')
+    expect(holds.hold('m42')).toBeNull()
+    await t.s.tick()
+    expect(t.runner.runs).toHaveLength(0)
+    release?.()
+    await t.s.tick()
+    await flush()
+    expect(t.runner.runs).toHaveLength(1)
+  })
+
   it('[UX-007] Given a page that only shows the jobs, When it lists them, Then the machine is not sampled and nothing starts', async () => {
     const t = scheduler()
     const job = await t.add()

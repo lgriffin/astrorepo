@@ -1,6 +1,8 @@
 import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
 import {
+  makeArchiveTarget,
+  makeTargetHolds,
   makeDiscoverTarget,
   makeDiscoverTargets,
   makeDismissSuggestion,
@@ -38,11 +40,17 @@ import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-fram
 import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
 import { NodeMemoryProbe } from './adapters/node-memory-probe'
 import { NodeRunArea } from './adapters/node-run-area'
+import { NodeArchiveArea } from './adapters/node-archive-area'
+import { SqliteArchiveStore } from './adapters/sqlite-archive-store'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
 
 /** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
+
+/** Targets an archive is working on, shared by every composition so the job runner waits for it (ARC-008). */
+export const targetHolds = makeTargetHolds()
+
 export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
   frameMeasurer = new NodeFrameMeasurer(createWorker)
   return frameMeasurer
@@ -61,7 +69,8 @@ export function composeCore(db: Database.Database) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
   const hashes = new SqliteFileHashStore(db, () => systemClock.now())
-  const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals })
+  const archives = new SqliteArchiveStore(db)
+  const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals, archives })
   const readSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
   const tools = new NodeToolHub({ setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null })
   const stacks = new SqliteStackCatalogue(db)
@@ -98,7 +107,17 @@ export function composeCore(db: Database.Database) {
     listTools: makeListTools({ tools }),
     planPostProcessing,
     queueStack: makeQueueStack({ estimate: estimateSirilRun, tools, stacks, store: jobStore, clock: systemClock }),
-    queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock })
+    queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock }),
+    archive: makeArchiveTarget({
+      holds: targetHolds,
+      area: new NodeArchiveArea(),
+      store: archives,
+      frames,
+      stacks,
+      jobs: jobStore,
+      workspace: new NodeSirilWorkspace(db),
+      clock: systemClock
+    })
   }
 }
 
@@ -126,7 +145,8 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     targetName: async id => (await new SqliteStackCatalogue(db).describeTarget(id))?.name ?? null,
     readOnlyDirs: options.readOnlyDirs,
     clock: systemClock,
-    onChange: options.onChange
+    onChange: options.onChange,
+    holds: targetHolds
   })
 }
 

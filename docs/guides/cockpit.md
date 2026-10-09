@@ -116,7 +116,8 @@ beside every part.
 - **Stack and process**: the whole flow from raw frames to a processed image, as numbered steps.
   **1 · Grade the lights** measures every light and grades it (see below). **2 · Stack** is Prep
   for Siril and the stacking plan. **3 · Post-process** is the Siril_Scripts recipe. **4 · Runs**
-  lists this target's queued, running and recent jobs. When a stack or
+  lists this target's queued, running and recent jobs. **5 · Archive** archives the finished
+  target (see [Archiving a finished target](#archiving-a-finished-target)). When a stack or
   post-processing job is already queued or running, its step says so at the top and does not
   offer to queue it again.
 - **Files**: the target's folders, with buttons to open each one, and what the index knows about
@@ -349,3 +350,59 @@ stack each run on their own. The Jobs page and step **4 · Runs** show the step 
 
 Step **4 · Runs** lists the target's runs, newest first. Each shows how far it got, whether it
 carried on from an earlier run, and the results it published.
+
+## Archiving a finished target
+
+When a target is done, step **5 · Archive** on its Stack and process keeps what matters and gives
+the disk back. Nothing is copied or removed until you press **Archive** and confirm.
+
+**What it shows first.** A table of every folder in the target's work folder: its size, the space
+removing it frees, and whether it can be rebuilt.
+
+- The laid-out `lights`, `darks`, `flats` and `biases` can be rebuilt when the stack manifest
+  names every frame in them and those frames are still where it says, for every run that used
+  the folder. When Prep for Siril
+  hard-linked them (the work area is on the same disk as the frames), removing them frees nothing,
+  and the table says so.
+- `process`, Siril's working files, is usually the big one. It can be rebuilt when a stack
+  manifest exists and its frames are all still there: queue the stack again.
+- `failed` holds results of runs that did not finish. Nothing needs it; tick it if you do not
+  want to look into those runs.
+- `.astrorepo` holds the step scripts, which every stack writes again.
+- The stacks, manifests, `masters` and `processed` (finished images) are kept in the archive.
+
+Folders that can be rebuilt start ticked. A stack run before manifests existed, or by hand in
+Siril, has no manifest, so only `failed` and the step scripts are offered.
+
+**Linked or self-contained.**
+
+- **Linked** copies only what is kept. The raw frames stay where they are, on the NAS, and the
+  archive lists where each one is. It is small and fast.
+- **Self-contained** also copies every raw frame the manifests name into the archive's
+  `frames` folder, so the archive holds everything needed to stack again.
+
+Each archive is a new folder named after the target and the day, for example
+`M 42 2026-10-09`, with an index, `astrorepo-archive.json`, that lists every kept file with its
+size and every raw frame with its source. Set where archives go in Settings → Folders →
+Archive folder; until you do, they go in the work area's `archive` folder. The archive folder
+must be outside the folders the app only reads.
+
+**Safe by design.**
+
+- The archive is built in a hidden staging folder and renamed into place only when every copy
+  has the size it should. If a copy fails, nothing is left behind and nothing is removed, so you
+  can fix the cause and try again.
+- If any file or folder in the work folder cannot be read, the step says which and does nothing,
+  rather than judge a folder on a partial listing.
+- When one frame file is hard-linked from two folders you tick, the space it frees is counted once
+  both are ticked, so the figure in the confirmation is what the disk gets back.
+- Every ticked folder is checked for links before any is removed. If a removal still stops part
+  way (a file in use, say), the archive stays, the step says what was removed and what was not,
+  and you can remove the rest by hand.
+- Only the folders you ticked are removed, only from the work folder, and only after the archive
+  is in place. Source folders are never touched.
+- A target with a stack or post-processing run queued or running cannot be archived until it ends,
+  and a run queued for it while the archive is under way waits until the archive finishes.
+
+Afterwards the step says "Archived on 9 Oct 2026, linked." with the archive folder and the space
+removing intermediates freed. Stacking suggestions leave the target out until new frames arrive.

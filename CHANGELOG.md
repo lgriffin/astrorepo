@@ -24,6 +24,12 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   succeeded, with a manifest beside it naming the script, steps and every frame; a failed run's
   partial result is set aside; known Siril failures are explained; each target's runs read as a
   timeline.
+- **Archive** (spec 022): step 5 on a target's Stack and process archives a finished target,
+  linked to its raw frames on the NAS or self-contained with them bundled in. It first shows
+  every work folder's size, the space removing it frees (hard links count as nothing) and whether
+  a stack manifest can rebuild it, then removes only what you tick. Archives are built in a
+  staging folder and renamed into place, so a failed copy leaves nothing behind. Settings →
+  Folders → Archive folder sets where they go.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

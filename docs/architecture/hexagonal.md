@@ -36,7 +36,12 @@ flowchart LR
   UC -->|FrameMeasurer| A8[NodeFrameMeasurer]
   UC -->|MemoryProbe| A9[NodeMemoryProbe]
   UC -->|RunArea| A10[NodeRunArea]
+  UC -->|ArchiveArea| A11[NodeArchiveArea]
+  UC -->|ArchiveStore| A12[SqliteArchiveStore]
   A10 --> WA
+  A11 --> WA
+  A11 --> AR[(archive folder)]
+  A12 --> DB
   A8 -->|worker thread| FS
   A7 --> DB
   A5 --> FS[(source files, read-only)]
@@ -52,7 +57,7 @@ flowchart LR
 
 | Use case | Domain rules | Ports | IPC channel | Spec |
 |---|---|---|---|---|
-| `listStackingSuggestions` | `assessStackingReadiness`, `isDismissed` | FrameCatalogue, DismissalStore | `recommendations:list` | 009, 010 |
+| `listStackingSuggestions` | `assessStackingReadiness`, `isDismissed`, `isArchivedNow` | FrameCatalogue, DismissalStore, ArchiveStore | `recommendations:list` | 009, 010, 022 |
 | `dismissSuggestion` | `dataFingerprint` | FrameCatalogue, DismissalStore, Clock | `cockpit:dismiss` | 010 |
 | `discoverTargets`, `discoverTarget` | `discoverTarget`, `deriveProgress` | FrameCatalogue | `cockpit:overview`, `discovery:target` | 010 |
 | `reportHiddenData` | `reportHiddenData`, `calibrates`, `groupDuplicates` | FrameCatalogue, FileHashStore | `cockpit:overview` | 010, 011 |
@@ -64,6 +69,7 @@ flowchart LR
 | `queueStack`, `queuePostProcess` | `sirilStackCommand`, `postProcessCommand` | JobStore, ToolHub (`stockScript`), StackCatalogue, Clock (composes `estimateSirilRun` and `planPostProcessing`) | `jobs:queue-stack`, `jobs:queue-post-process` | 016 |
 | `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption`, `splitSirilScript`, `runKey`, `resumeFrom`, `newResults`, `stackManifest`, `explainSirilFailure` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`, `stackResults`), RunArea, Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016, 021 |
 | `makeFrameGrading` (`measureBatch`, `grade`, `setOverride`, `setNightOverride`, `exportCsv`, `rejected`, `reportFor`) | `measureFrame`, `binBayer`, `gradeFrames`, `rejectedPaths`, `gradesCsv` | FrameGradeStore, FrameMeasurer, GradeLimitsSource, Clock | `grades:target`, `grades:measure`, `grades:override`, `grades:override-night`, `grades:export`, `grades:limits` | 019, 020 |
+| `makeArchiveTarget` (`preview`, `archive`) | `summariseWorkFolder`, `freedBytes`, `parseStackManifest`, `namedFrames`, `planArchive`, `removalChoice`, `archiveFolderName`, `archiveSpace` | ArchiveArea, ArchiveStore, FrameCatalogue, StackCatalogue (`describeTarget`), JobStore (`list`), SirilWorkspace (`contains`), Clock | `archive:preview`, `archive:run` | 022 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours`, `channelGap` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 

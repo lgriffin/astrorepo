@@ -481,6 +481,20 @@ export function runMigrations(sqlite: Database.Database): void {
   // Migration: whether an override was made on the frame or by leaving out its night (ADV-008)
   const hasOverrideBy = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('frame_grades') WHERE name='override_by'").get() as { cnt: number }
   if (hasOverrideBy.cnt === 0) sqlite.exec('ALTER TABLE frame_grades ADD COLUMN override_by TEXT')
+
+  // Migration: targets archived, where and how, and what removing intermediates freed (ARC-010)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS target_archives (
+      target_id TEXT PRIMARY KEY,
+      archived_at TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      archive_path TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      copied_bytes INTEGER NOT NULL,
+      removed TEXT NOT NULL DEFAULT '[]',
+      freed_bytes INTEGER NOT NULL DEFAULT 0
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

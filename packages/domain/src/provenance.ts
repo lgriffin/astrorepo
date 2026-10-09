@@ -187,6 +187,9 @@ export function newResults(before: ResultFile[], after: ResultFile[]): ResultFil
 /** Where a run that did not finish puts what it wrote, so it is never taken for a finished stack. */
 export const FAILED_FOLDER = 'failed'
 
+/** The work folder's own subfolder for the step scripts the app writes (NFR-015). */
+export const STEP_FOLDER = '.astrorepo'
+
 /** Beside every published result: `result_3600s.fit` has `result_3600s.fit.astrorepo.json`. */
 export const MANIFEST_SUFFIX = '.astrorepo.json'
 

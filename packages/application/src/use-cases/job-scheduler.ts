@@ -21,6 +21,7 @@ import {
   type StepProgress
 } from '@astro/domain'
 import type { RunArea } from '../ports/run-area'
+import type { TargetHolds } from './target-holds'
 import type { Clock } from '../ports/clock'
 import type { JobLogs, JobSettingsSource, JobStore, MachineMonitor, ProcessRunner, RunningProcess } from '../ports/jobs'
 import type { SirilWorkspace } from '../ports/siril-workspace'
@@ -49,6 +50,8 @@ export interface JobSchedulerDeps {
   clock: Clock
   /** Called whenever a job starts or finishes, so the host can check the queue again. */
   onChange?: () => void
+  /** Targets an archive is working on; their jobs wait until it lets go (ARC-008). */
+  holds?: Pick<TargetHolds, 'held'>
 }
 
 export interface JobsSnapshot {
@@ -321,7 +324,7 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     async tick() {
       const snap = await snapshot()
       const job = snap.jobs.find(j => j.id === snap.schedule.start)
-      if (!job || stopping || active.size > 0) return snap
+      if (!job || stopping || active.size > 0 || deps.holds?.held(job.targetId)) return snap
       launch(job)
       return snap
     },

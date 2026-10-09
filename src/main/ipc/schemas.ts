@@ -272,6 +272,12 @@ export const schemas = {
     quality: z.enum(['light', 'normal', 'strong']).optional(),
     timing: z.enum(['window', 'now'])
   }),
+  'archive:preview': z.object({ target_id: id }),
+  'archive:run': z.object({
+    target_id: id,
+    mode: z.enum(['linked', 'self-contained']),
+    remove: z.array(z.enum(['lights', 'darks', 'flats', 'biases', 'process', 'failed', '.astrorepo'])).max(7)
+  }),
   'jobs:cancel': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),
   'jobs:run-now': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),
   'jobs:log': z.object({ job_id: z.string().regex(/^[A-Za-z0-9_-]+$/) }),

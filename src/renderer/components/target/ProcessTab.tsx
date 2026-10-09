@@ -5,12 +5,14 @@ import { useToast } from '../../contexts/ToastContext'
 import { Card, EmptyState, LinkButton } from '../common/Card'
 import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
+import { ArchiveCard } from './ArchiveCard'
 import { runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
 import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView } from '@shared/types'
 
 /**
  * Stack and process (UX-010): the steps from a target's raw frames to a processed image, in
- * order (grading the lights first, GRD-009), with each step saying when its job is already queued or running (UX-011).
+ * order (grading the lights first, GRD-009), with each step saying when its job is already queued or running (UX-011),
+ * and archiving the finished target last (ARC-001).
  */
 export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: string | null }): React.ReactElement {
   const [view, setView] = useState<JobsView | null>(null)
@@ -66,6 +68,8 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
       </Card>
 
       <TargetRunsCard runs={runs} unreadable={unreadable && view === null} />
+
+      <ArchiveCard targetId={targetId} busy={runs.stack !== null || runs.postProcess !== null} />
     </div>
   )
 }

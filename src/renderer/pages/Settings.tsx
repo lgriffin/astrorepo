@@ -34,6 +34,11 @@ const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }
     description: 'Root folder containing your astrophotography FITS files. Used as the default path on the FITS files page.'
   },
   {
+    key: 'archive_root',
+    label: 'Archive folder',
+    description: 'Where Archive this target puts finished targets, for example a share on the NAS. When not set, archives go in the archive folder of the work area. It must be outside the folders the app only reads.'
+  },
+  {
     key: 'base_folder_path',
     label: 'Base Folder Path',
     description: 'Root folder for generated target directory structures (lights, darks, flats, biases).'
