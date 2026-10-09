@@ -72,4 +72,14 @@ describe('Setting up', () => {
     expect(card).toContain('.catch(() => UNREAD)')
     expect(card).toContain('hide === UNREAD) return')
   })
+
+  it('[HUB-010] Given a found tool missing a catalogue, When Home is drawn, Then the checklist adds a step naming it; with none missing there is no such step', () => {
+    const steps = setupSteps({ ...ready, missingCatalogues: ['ASTAP star database'] })
+    const step = steps.find(s => s.id === 'catalogues')
+    expect(step).toMatchObject({ done: false, link: '/settings?section=tools', why: 'Not installed: ASTAP star database. Steps that need it cannot be queued.' })
+    expect(showSetup(steps, false)).toBe(true)
+    expect(setupSteps({ ...ready, missingCatalogues: ['A', 'B'] }).find(s => s.id === 'catalogues')?.why).toBe('Not installed: A, B. Steps that need them cannot be queued.')
+    expect(setupSteps({ ...ready, missingCatalogues: [] }).map(s => s.id)).not.toContain('catalogues')
+    expect(read('components/cockpit/SetupCard.tsx')).toContain('missingCatalogues')
+  })
 })

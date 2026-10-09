@@ -30,6 +30,16 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   a stack manifest can rebuild it, then removes only what you tick. Archives are built in a
   staging folder and renamed into place, so a failed copy leaves nothing behind. Settings →
   Folders → Archive folder sets where they go.
+- **SyQon CLI and tool health** (spec 023): the SyQon CLI joins Settings, under Tools, found from
+  your path, `SYQON_CLI_PATH`, its install folder or the Windows App Paths key, with the models
+  your account may use. Star separation, sharpening, denoise and gradient removal can be queued
+  for a target's stack, with live progress, and an output is replaced only when you say so. Every
+  tool shows its version and whether the catalogues it needs are installed (ASTAP's star
+  database, Siril's Gaia SPCC catalogue, RC Astro's models); a missing one joins Get set up and
+  blocks the step that needs it, except Siril's Gaia catalogue, which is optional because Siril
+  fetches Gaia data online without it, and RC Astro's models, shown but optional until their file
+  names are confirmed. One exit-code contract explains how Siril, Siril_Scripts, RC
+  Astro and SyQon runs ended. The app calls the SyQon CLI you installed and never bundles it.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

@@ -232,7 +232,7 @@ small CI runner rather than straight away.
   closes is left to finish. A Run now job ignores the window and the idle check.
 - **Predicted length.** Each job's length is predicted from this PC's last five successful runs
   of the same kind, per GB it writes; until there are any, from a first-run guess (a minute and
-  a half per GB for stacking, fifteen for post-processing), and the Jobs page says which. A job
+  a half per GB for stacking, fifteen for post-processing, ten for a SyQon step), and the Jobs page says which. A job
   that would run past the window's close lets a shorter one go first and waits for the next
   night; a job longer than the whole window starts anyway, since it would never fit.
 - **Disk space.** Free space is checked again just before a job starts. A job whose disk is
@@ -247,21 +247,81 @@ small CI runner rather than straight away.
   window's time; it keeps the PC awake while a job runs. If the app closes mid-job, the job is
   stopped and queued again at the next start, and marked failed after the second time.
 
-The runner starts programs directly (Siril's `siril-cli -d <work folder> -s <script>`, or Git
-Bash running `postprocess.sh`), never through a shell. Logs are kept in the app's data folder
-under `jobs/`.
+The runner starts programs directly (Siril's `siril-cli -d <work folder> -s <script>`, Git Bash
+running `postprocess.sh`, or `syqon-cli`), never through a shell. Logs are kept in the app's data
+folder under `jobs/`. However a run ends, its exit code is read the same way for every tool: done,
+failed with a plain message, or cancelled. A failure that will happen again until something
+changes (such as a SyQon model your account lacks) says so in the note.
 
 ## Tools
 
 **Settings → Tools** lists the programs the app hands work to: Siril, Siril_Scripts v2, the RC
-Astro CLI and, on Windows, Git Bash (which Siril_Scripts' `.bat` needs). Each is looked for in
-the path you save there, then on PATH, then in its usual install folder; for Siril_Scripts, the
-repo folder, its `v2` folder or `postprocess.bat` itself will do, as long as `postprocess.sh`
-sits beside it. A tool that is not found lists
-every place the hub looked. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...`
-without searching, so a tool found anywhere else is flagged. Siril's stock scripts are found
-where Siril installs them, under `share/siril/scripts` beside its `bin` folder. Nothing is run to
-check.
+Astro CLI, on Windows Git Bash (which Siril_Scripts' `.bat` needs), the SyQon CLI and ASTAP. Each
+is looked for in the path you save there, then on PATH, then in its usual install folder; for
+Siril_Scripts, the repo folder, its `v2` folder or `postprocess.bat` itself will do, as long as
+`postprocess.sh` sits beside it. The SyQon CLI is looked for in SyQon's own order instead (see
+below). A tool that is not found lists every place the hub looked. The SyQon CLI and ASTAP are
+optional: no step needs them yet, so a missing one says "Not installed (optional)" rather than
+counting as a gap. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...` without
+searching, so a tool found anywhere else is flagged. Siril's stock scripts are found where Siril
+installs them, under `share/siril/scripts` beside its `bin` folder.
+
+- **Versions.** Each tool shows its version, from its own version flag: `siril-cli --version`,
+  `bash --version` and `syqon-cli --version`. The RC Astro CLI, ASTAP and Siril_Scripts have no
+  version flag the app relies on (Siril_Scripts' entry would start processing), so theirs reads
+  Unknown. Asking for a version is the only time the app runs a tool to check it: with an
+  argument array, never Command Prompt, stopped after ten seconds, writing nothing.
+- **Catalogues.** Under each tool, the catalogues it needs show as installed, with the folder
+  and what is there, or not installed, with every folder looked in. You can name the folder:
+  - **ASTAP star database**: files such as `d50_0101.1476` or `h17_0101.290` beside ASTAP or in
+    `C:\Program Files\astap`, named by database (D50, H18). Plate solving with ASTAP comes in a
+    later slice; for now the app only checks it is ready.
+  - **Siril's Gaia SPCC catalogue**: the Gaia `siril_cat*_xpsamp*.dat` files Siril's catalogue
+    installer puts in `%LOCALAPPDATA%\siril\catalogue`, or Siril's own `share/siril/catalogue`.
+    It is optional: without it Siril's colour calibration fetches Gaia data online, so a missing
+    one is shown here but blocks nothing. Install it to calibrate offline.
+  - **RC Astro model files**: the BlurXTerminator, NoiseXTerminator and StarXTerminator models
+    beside the CLI or in its `models` folder. Checked only when the RC Astro CLI is found (without
+    it, Siril_Scripts skips those stages). Until the installer's file names are confirmed, a
+    missing one is shown here but blocks nothing.
+
+  A catalogue that a found tool cannot run without also adds a step to **Get set up** on Home. A catalogue
+  whose tool is not found is not checked.
+
+## SyQon Studio's CLI
+
+SyQon Studio's headless `syqon-cli` runs its models on this PC: star separation (`axiom-mini`),
+sharpening (`parallax-nano`), denoise (`prism-essential`) and gradient removal
+(`deep-gradient`), among others. Install SyQon Studio and sign in; astrorepo calls the CLI you
+installed and never bundles or ships it, because SyQon's integration kit is licensed PolyForm
+Noncommercial.
+
+- **Where it is found.** In SyQon's own order: the path you save in Settings → Tools, the
+  `SYQON_CLI_PATH` environment variable, the install folders
+  `%LOCALAPPDATA%\Programs\SyQon Studio\` and `%ProgramFiles%\SyQon Studio\`, then the Windows
+  App Paths registry key for `syqon-cli.exe` (HKLM, then HKCU), read with `reg query`.
+- **Models.** Settings → Tools runs `syqon-cli --list-models` and lists each model with its step
+  and whether your account may use it. Only models it reports as available are offered. A
+  target's page reuses the list for two minutes; opening Settings → Tools always asks afresh.
+- **Running a step.** On a target's **Stack and process**, under **3 · Post-process**, the
+  SyQon Studio section picks a stack, a step and a model:
+  - the output goes beside the stack, named after the step (`result_3600s_starless.fit`,
+    `_sharpened`, `_denoised`, `_gradient-removed`);
+  - if that file is already there, the step is not queued until you tick **Replace it**, which
+    adds the CLI's overwrite flag. Nothing is ever replaced without it, and the disk still needs
+    room for a full new copy, since SyQon may write it before the old one goes;
+  - SyQon's own outputs are never offered as stacks, so a step's output does not become the
+    next default;
+  - a stack in a folder the app only reads is refused, since SyQon writes beside it;
+  - **Queue this step** shows what will run, then queues it for the run window or as soon as
+    possible, like the other jobs.
+- **Progress and results.** While it runs, the Jobs page shows SyQon's progress from its stderr
+  as a percentage, or its last line when it prints no percentage. Only whole lines are read. The output path it prints on
+  stdout is written to the log.
+- **When it fails.** Exit code 4 means your SyQon account does not include that model; the job
+  says so, and that queueing it again will not help until that changes. Code 130 means it was
+  cancelled. SyQon's pages do not yet say what codes 1 to 3 and 5 to 7 mean, so those say the
+  code and point to the log.
 
 ## Rescanning
 

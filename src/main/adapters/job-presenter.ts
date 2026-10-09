@@ -54,6 +54,11 @@ const estimateText = (e: JobEstimate) => `About ${formatDuration(e.seconds)}${e.
 function progressLine(job: Job): string | null {
   const p = job.progress
   if (!p) return null
+  // A tool that reports its own progress (SyQon): its percentage, else its last line, while it runs.
+  if (p.live) {
+    if (job.state !== 'running') return null
+    return p.live.percent !== null ? `${Math.floor(p.live.percent)}% done.` : `Last message: ${p.live.line}`
+  }
   const resumed = p.resumedFrom ? `, carried on from step ${p.resumedFrom + 1}` : ''
   if (job.state === 'running' || job.state === 'queued') return p.step > 0 || job.state === 'running' ? `${progressText(p)}${resumed}.` : null
   if (p.step >= p.of) return p.resumedFrom ? `All ${p.of} steps done${resumed}.` : null

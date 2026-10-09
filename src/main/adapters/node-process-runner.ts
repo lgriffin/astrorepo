@@ -25,7 +25,7 @@ export class NodeProcessRunner implements ProcessRunner {
     this.setPriority = options.setPriority ?? ((pid, priority) => os.setPriority(pid, priority))
   }
 
-  run(command: JobCommand, onOutput: (text: string) => void): RunningProcess {
+  run(command: JobCommand, onOutput: (text: string, stream?: 'stdout' | 'stderr') => void): RunningProcess {
     const child = this.spawn(command.program, command.args, {
       cwd: command.cwd,
       shell: false,
@@ -38,9 +38,9 @@ export class NodeProcessRunner implements ProcessRunner {
       child.once('error', error => resolve({ exitCode: null, error: `${command.program} could not start: ${error.message}` }))
       child.once('close', (code, signal) => resolve({ exitCode: code, error: code === null ? `${command.program} was stopped (${signal ?? 'killed'}).` : null }))
     })
-    for (const stream of [child.stdout, child.stderr]) {
+    for (const [name, stream] of [['stdout', child.stdout], ['stderr', child.stderr]] as const) {
       stream?.setEncoding('utf8')
-      stream?.on('data', (text: string) => onOutput(text))
+      stream?.on('data', (text: string) => onOutput(text, name))
     }
     if (child.pid) {
       try {

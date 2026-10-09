@@ -1,4 +1,5 @@
 import { spaceVerdict, type SpaceVerdict } from './siril-space'
+import { catalogueBlock, postProcessCatalogues, type CatalogueStatus } from './tool-health'
 import { SIRIL_SCRIPTS_EXPECTS, toolSpec, type ToolId, type ToolStatus } from './tools'
 
 /**
@@ -85,6 +86,8 @@ export interface RecipeInput {
   freeBytes: number | null
   /** The stack sits in a folder the app only reads. */
   inReadOnlyFolder: boolean
+  /** Whether the catalogues the run needs are installed (specs/023-hub-syqon); not checked when not given. */
+  catalogues?: CatalogueStatus[]
 }
 
 export interface PostProcessRecipe {
@@ -97,6 +100,8 @@ export interface PostProcessRecipe {
   misplaced: ToolId[]
   /** The stack is in a folder the app only reads, and the script writes beside it. */
   inReadOnlyFolder: boolean
+  /** Names the catalogues the run needs that are not installed, so it cannot be queued (HUB-010); null when none. */
+  missingCatalogues: string | null
   /** Stages left out, and why. */
   skipped: string[]
   warnings: string[]
@@ -224,6 +229,7 @@ export function buildPostProcessRecipe(input: RecipeInput): PostProcessRecipe {
     missing,
     misplaced,
     inReadOnlyFolder: input.inReadOnlyFolder,
+    missingCatalogues: catalogueBlock(postProcessCatalogues(rcAstro), input.catalogues ?? []),
     skipped,
     warnings,
     program: missing.length === 0 ? found('siril-scripts') : null,

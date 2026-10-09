@@ -123,4 +123,14 @@ describe('job presenter', () => {
     const queued = view([job('q', { progress: { step: 2, of: 9, key, label: 'convert light' } })], local(12)).queue[0]
     expect(queued.progress).toBe('Step 3 of 9: convert light.')
   })
+
+  it('[HUB-011] Given a SyQon step reporting its own progress, When shown, Then a running one gives its percentage or last line, a finished one nothing', () => {
+    const live = (percent: number | null, line: string) => ({ step: 0, of: 1, key: 'live', label: 'Denoise', live: { percent, line } })
+    const pct = job('p', { kind: 'syqon', state: 'running', startedAt: local(2), progress: live(57.4, 'Denoising 57.4%') })
+    expect(view([pct], local(2, 5)).running).toMatchObject({ kind: 'syqon', progress: '57% done.' })
+    const raw = job('r', { kind: 'syqon', state: 'running', startedAt: local(2), progress: live(null, 'tile 3 of 9') })
+    expect(view([raw], local(2, 5)).running?.progress).toBe('Last message: tile 3 of 9')
+    const done = job('d', { kind: 'syqon', state: 'succeeded', startedAt: local(1), finishedAt: local(1, 10), exitCode: 0, progress: live(100, '100%') })
+    expect(view([done], local(2)).history[0]).toMatchObject({ progress: null, outputs: [] })
+  })
 })

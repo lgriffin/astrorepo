@@ -102,6 +102,7 @@ function recipe(over: Partial<PostProcessRecipe> = {}): PostProcessRecipe {
     missing: [],
     misplaced: [],
     inReadOnlyFolder: false,
+    missingCatalogues: null,
     skipped: [],
     warnings: [],
     program: 'C:/S/v2/postprocess.bat',

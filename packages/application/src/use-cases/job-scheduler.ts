@@ -2,7 +2,10 @@ import {
   afterInterruption,
   explainSirilFailure,
   FAILED_FOLDER,
+  interpretExit,
   jobHistory,
+  parseLiveProgress,
+  runToolOf,
   newResults,
   resumeFrom,
   runKey,
@@ -92,6 +95,9 @@ export class JobStateError extends Error {
   }
 }
 
+/** The most of one output line kept while it is unfinished (live progress, SyQon's output path). */
+const LINE_LIMIT = 4096
+
 /**
  * The job runner: one job at a time, started by `tick` when scheduleJobs allows. A stack job lays
  * its frames out first; each job's output goes to its log; the exit code decides success.
@@ -125,10 +131,49 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
 
   /** Why a run failed: the program's own reason, and what a known Siril message means (PRV-006). */
   const failureNote = async (job: Job, base: string) => {
-    const known = explainSirilFailure(await deps.logs.read(job.id, 16 * 1024))
+    const known = job.kind === 'syqon' ? null : explainSirilFailure(await deps.logs.read(job.id, 16 * 1024))
     if (!known) return base
     deps.logs.append(job.id, `\nWhat this usually means: ${known.reason} ${known.fix}\n`)
     return `${base} ${known.reason} ${known.fix}`
+  }
+
+  /** A failure that will happen again until something changes says so (HUB-012). */
+  const notRetryable = (retryable: boolean) => (retryable ? '' : ' Queueing it again will fail the same way until that is fixed.')
+
+  /**
+   * Live progress from a tool that reports its own (SyQon on stderr, HUB-011): its percentage when
+   * it prints simple percentages, else its last line. Saved when the whole percent changes, or a
+   * line at most every few seconds, so the store is not written on every chunk. Output arrives in
+   * arbitrary chunks, so only whole lines are read; the unfinished end waits for the next chunk.
+   */
+  const liveProgress = (job: Job) => {
+    let lastPercent: number | null = null
+    let lastSaved = 0
+    let pending: Promise<unknown> = Promise.resolve()
+    let partial = ''
+    const read = (text: string) => {
+      const live = parseLiveProgress(text)
+      if (!live) return
+      const now = deps.clock.now().getTime()
+      const percent = live.percent === null ? null : Math.floor(live.percent)
+      const changed = percent !== null ? percent !== lastPercent : now - lastSaved >= 3000
+      if (!changed) return
+      lastPercent = percent
+      lastSaved = now
+      const progress: StepProgress = { step: 0, of: 1, key: 'live', label: job.title, live: { percent: live.percent, line: live.line } }
+      pending = pending.then(() => deps.store.update(job.id, { progress })).catch(() => undefined)
+    }
+    const save = (chunk: string) => {
+      const records = (partial + chunk).split(/[\r\n]/)
+      // Bounded, so a tool that never ends a line cannot grow it without limit.
+      partial = (records.pop() ?? '').slice(-LINE_LIMIT)
+      if (records.some(r => r.trim())) read(records.join('\n'))
+    }
+    const flush = () => {
+      if (partial.trim()) read(partial)
+      partial = ''
+    }
+    return { save, settled: () => (flush(), pending) }
   }
 
   const run = async (job: Job, entry: Entry) => {
@@ -157,12 +202,30 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
       deps.logs.append(job.id, 'The script could not be split into steps, so it runs whole and cannot carry on after an interruption.\n\n')
     }
 
-    entry.process = deps.runner.run(command, text => deps.logs.append(job.id, text))
+    const live = job.kind === 'syqon' ? liveProgress(job) : null
+    // SyQon prints the path it wrote as its last stdout line; only a short tail is kept for it.
+    let stdout = ''
+    entry.process = deps.runner.run(command, (text, stream) => {
+      deps.logs.append(job.id, text)
+      if (stream === 'stdout' && job.kind === 'syqon') stdout = (stdout + text).slice(-LINE_LIMIT)
+      else if (live && (stream === 'stderr' || stream === undefined)) live.save(text)
+    })
     const result = await entry.process.done
+    await live?.settled()
     if (stopping) return
-    if (entry.cancelled) await finish(job.id, 'cancelled', result.exitCode, 'Cancelled while it ran.')
-    else if (result.exitCode === 0) await finish(job.id, 'succeeded', 0, null)
-    else await finish(job.id, 'failed', result.exitCode, await failureNote(job, result.error ?? `${command.program} exited with code ${result.exitCode ?? 'unknown'}.`))
+    // One exit-code contract for every tool (HUB-012).
+    const tool = runToolOf(job.kind)
+    const verdict = interpretExit(tool, result.exitCode, { cancelled: entry.cancelled, program: tool === 'syqon' ? undefined : command.program })
+    if (verdict.outcome === 'succeeded') {
+      const wrote = job.kind === 'syqon' ? stdout.trim().split(/\r?\n/).pop() : undefined
+      if (wrote) deps.logs.append(job.id, `\nWrote ${wrote}.\n`)
+      await finish(job.id, 'succeeded', result.exitCode, null)
+    } else if (verdict.outcome === 'cancelled') await finish(job.id, 'cancelled', result.exitCode, verdict.message)
+    else {
+      // The runner's own reason when the program never gave a code (it could not start, or was killed).
+      const base = result.error && result.exitCode === null ? result.error : verdict.message
+      await finish(job.id, 'failed', result.exitCode, `${await failureNote(job, base)}${notRetryable(verdict.retryable)}`)
+    }
   }
 
   /**
@@ -234,9 +297,10 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
         await finish(job.id, 'cancelled', result.exitCode, await setAside(`Cancelled during step ${i + 1} of ${run.steps.length} (${step.label}).`))
         return
       }
-      if (result.exitCode !== 0) {
-        const base = `Step ${i + 1} of ${run.steps.length} (${step.label}) failed: ${result.error ?? `Siril exited with code ${result.exitCode ?? 'unknown'}.`}`
-        await finish(job.id, 'failed', result.exitCode, await setAside(await failureNote(job, base)))
+      const verdict = interpretExit('siril', result.exitCode, { cancelled: false })
+      if (verdict.outcome !== 'succeeded') {
+        const base = `Step ${i + 1} of ${run.steps.length} (${step.label}) failed: ${result.error ?? verdict.message}`
+        await finish(job.id, 'failed', result.exitCode, `${await setAside(await failureNote(job, base))}${notRetryable(verdict.retryable)}`)
         return
       }
       await deps.store.update(job.id, { progress: progress(i + 1) })

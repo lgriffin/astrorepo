@@ -26,7 +26,7 @@ import { composeCore, composeGrading } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
-import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
+import { toPostProcessView, toSyqonView, toToolHealthView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
@@ -484,6 +484,22 @@ export function registerIpcHandlers(): void {
 
   handle('tools:list', async () => toToolsView(await composeCore(getSqlite()).listTools()))
 
+  // Runs each tool only with its version flag, and SyQon with --list-models (NFR-017).
+  handle('tools:health', async () => toToolHealthView(await composeCore(getSqlite()).checkToolHealth()))
+
+  handle('recipe:syqon', validated('recipe:syqon', async (args) => {
+    const core = composeCore(getSqlite())
+    const plan = await core.planSyqon(args.target_id, {
+      workDir: args.raw_path ? sirilWorkDir(args.raw_path) : undefined,
+      readOnlyDirs: readOnlyDirs(),
+      stackPath: args.stack_path,
+      step: args.step,
+      model: args.model,
+      overwrite: args.overwrite
+    })
+    return toSyqonView(plan, core.windows)
+  }))
+
   handle('recipe:post-process', validated('recipe:post-process', async (args) => {
     // Finds tools and reads the index only (NFR-011): nothing is run or written.
     const plan = await composeCore(getSqlite()).planPostProcessing(args.target_id, {
@@ -559,6 +575,18 @@ export function registerIpcHandlers(): void {
       // Jobs queued for the target while it was held can start now.
       kickJobs()
     }
+  }))
+
+  handle('jobs:queue-syqon', validated('jobs:queue-syqon', args => {
+    const rawPath = targetRawPath(args.target_id)
+    return refusable(() => composeCore(getSqlite()).queueSyqon(args.target_id, {
+      workDir: rawPath ? sirilWorkDir(rawPath) : undefined,
+      readOnlyDirs: readOnlyDirs(),
+      stackPath: args.stack_path,
+      step: args.step,
+      model: args.model,
+      overwrite: args.overwrite
+    }, args.timing))
   }))
 
   handle('jobs:cancel', validated('jobs:cancel', args => refusable(() => jobs().cancel(args.job_id))))

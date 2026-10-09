@@ -35,7 +35,8 @@ export interface RunningProcess {
  * streaming its output as it comes.
  */
 export interface ProcessRunner {
-  run(command: JobCommand, onOutput: (text: string) => void): RunningProcess
+  /** `stream` says where the text came from when the runner can tell (SyQon writes progress to stderr, its output path to stdout). */
+  run(command: JobCommand, onOutput: (text: string, stream?: 'stdout' | 'stderr') => void): RunningProcess
 }
 
 /** Driven port: each job's output, kept after it finishes. */

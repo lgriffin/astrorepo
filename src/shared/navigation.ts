@@ -158,6 +158,8 @@ export interface TargetRuns {
   /** The active job for each step of the flow, so the step can say it is already on its way. */
   stack: JobView | null
   postProcess: JobView | null
+  /** A SyQon step on its way (specs/023-hub-syqon). */
+  syqon: JobView | null
 }
 
 /** One target's jobs out of the whole queue (UX-011). */
@@ -169,7 +171,8 @@ export function runsForTarget(view: Pick<JobsView, 'running' | 'queue' | 'histor
     active,
     finished,
     stack: active.find(j => j.kind === 'stack') ?? null,
-    postProcess: active.find(j => j.kind === 'post-process') ?? null
+    postProcess: active.find(j => j.kind === 'post-process') ?? null,
+    syqon: active.find(j => j.kind === 'syqon') ?? null
   }
 }
 

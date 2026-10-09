@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
-import type { ToolsView } from '@shared/types'
+import type { CatalogueView, ToolHealthView, ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 import { GradingSettings } from '../components/target/GradingSettings'
 import { useLocation } from 'react-router-dom'
@@ -331,13 +331,18 @@ export function Settings(): React.ReactElement {
   )
 }
 
-/** Settings > Tools: the tool hub (specs/015-tool-hub). Saving a path re-checks every tool. */
+/** Settings > Tools: the tool hub (specs/015-tool-hub, 023-hub-syqon). Saving a path re-checks every tool. */
 function ToolsSection(): React.ReactElement {
   const [view, setView] = useState<ToolsView | null>(null)
+  const [health, setHealth] = useState<ToolHealthView | null>(null)
+  const [healthFailed, setHealthFailed] = useState(false)
   const [editing, setEditing] = useState<Record<string, string>>({})
 
   const load = (): void => {
     invoke<ToolsView>('tools:list').then(setView).catch(() => setView(null))
+    // Versions and SyQon's models come from running each tool's own version or model-list flag.
+    setHealthFailed(false)
+    invoke<ToolHealthView>('tools:health').then(setHealth).catch(() => setHealthFailed(true))
   }
   useEffect(load, [])
 
@@ -351,11 +356,36 @@ function ToolsSection(): React.ReactElement {
     load()
   }
 
+  const pathInput = (key: string, placeholder: string): React.ReactElement => (
+    <div className="flex gap-2 mt-1">
+      <input
+        className="flex-1 bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs text-astro-text"
+        placeholder={placeholder}
+        value={editing[key] ?? ''}
+        onChange={e => setEditing(prev => ({ ...prev, [key]: e.target.value }))}
+      />
+      <button
+        onClick={() => void save(key, editing[key] ?? '')}
+        disabled={editing[key] === undefined}
+        className="px-3 py-1 text-xs bg-astro-accent text-white rounded disabled:opacity-50"
+      >
+        {editing[key]?.trim() ? 'Save' : 'Use default'}
+      </button>
+    </div>
+  )
+
+  const version = (id: string, found: boolean): string | null => {
+    if (!found) return null
+    if (healthFailed) return 'Version could not be checked'
+    if (!health) return 'Checking version…'
+    return `Version ${health.versions[id] ?? 'Unknown'}`
+  }
+
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
       <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Tools</h2>
       <p className="text-xs text-astro-muted mb-4">
-        Programs the app hands work to. Each is looked for in the path you give here, then on PATH, then in its usual install folder. Nothing is run to check.
+        Programs the app hands work to. Each is looked for in the path you give here, then in the places it usually installs to. Versions come from each tool&apos;s own version flag; nothing else is run to check.
         {view && <span className="text-astro-text"> {view.summary}</span>}
       </p>
       <div className="space-y-4">
@@ -363,10 +393,13 @@ function ToolsSection(): React.ReactElement {
           <div key={t.id}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-medium text-astro-text">{t.label}</span>
-              <span className={`text-xs ${t.found ? 'text-green-400' : 'text-yellow-400'}`}>{t.found ? t.how : 'Not found'}</span>
+              <span className={`text-xs ${t.found ? 'text-green-400' : t.optional ? 'text-astro-muted' : 'text-yellow-400'}`}>
+                {t.found ? t.how : t.optional ? 'Not installed (optional)' : 'Not found'}
+              </span>
             </div>
             <p className="text-xs text-astro-muted">{t.purpose}</p>
             {t.path && <p className="text-xs font-mono text-astro-text break-all">{t.path}</p>}
+            {version(t.id, t.found) && <p className="text-xs text-astro-muted">{version(t.id, t.found)}</p>}
             {t.settingNote && <p className="text-xs text-yellow-400">{t.settingNote}</p>}
             {t.warning && <p className="text-xs text-yellow-400">{t.warning}</p>}
             {!t.found && t.looked.length > 0 && (
@@ -375,24 +408,55 @@ function ToolsSection(): React.ReactElement {
                 <ul className="font-mono pl-3">{t.looked.map(l => <li key={l} className="break-all">{l}</li>)}</ul>
               </details>
             )}
-            <div className="flex gap-2 mt-1">
-              <input
-                className="flex-1 bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs text-astro-text"
-                placeholder={t.id === 'siril-scripts' ? 'Folder of your Siril_Scripts clone' : 'Full path to the program'}
-                value={editing[t.settingKey] ?? ''}
-                onChange={e => setEditing(prev => ({ ...prev, [t.settingKey]: e.target.value }))}
-              />
-              <button
-                onClick={() => void save(t.settingKey, editing[t.settingKey] ?? '')}
-                disabled={editing[t.settingKey] === undefined}
-                className="px-3 py-1 text-xs bg-astro-accent text-white rounded disabled:opacity-50"
-              >
-                {editing[t.settingKey]?.trim() ? 'Save' : 'Use default'}
-              </button>
-            </div>
+            {pathInput(t.settingKey, t.id === 'siril-scripts' ? 'Folder of your Siril_Scripts clone' : 'Full path to the program')}
+            {t.catalogues.map(c => <CatalogueRow key={c.id} catalogue={c} input={pathInput(c.settingKey, `Folder holding the ${c.label}`)} />)}
+            {t.id === 'syqon' && t.found && <SyqonModels health={health} />}
           </div>
         ))}
       </div>
     </div>
+  )
+}
+
+/** One catalogue a tool needs, and whether it is installed (HUB-009). */
+function CatalogueRow({ catalogue: c, input }: { catalogue: CatalogueView; input: React.ReactElement }): React.ReactElement {
+  return (
+    <div className="mt-2 pl-3 border-l border-astro-border">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs text-astro-text">{c.label}</span>
+        <span className={`text-xs ${c.state === 'present' ? 'text-green-400' : c.state === 'missing' ? 'text-yellow-400' : 'text-astro-muted'}`}>
+          {c.state === 'present' ? 'Installed' : c.state === 'missing' ? 'Not installed' : 'Not checked'}
+        </span>
+      </div>
+      <p className={`text-xs ${c.state === 'missing' ? 'text-yellow-400' : 'text-astro-muted'} break-all`}>{c.text}</p>
+      {c.looked.length > 0 && (
+        <details className="text-xs text-astro-muted">
+          <summary className="cursor-pointer">Where it looked</summary>
+          <ul className="font-mono pl-3">{c.looked.map(l => <li key={l} className="break-all">{l}</li>)}</ul>
+        </details>
+      )}
+      {c.state !== 'not-checked' && input}
+    </div>
+  )
+}
+
+/** The models the SyQon CLI listed, and which the account may use (HUB-007). */
+function SyqonModels({ health }: { health: ToolHealthView | null }): React.ReactElement | null {
+  if (!health) return null
+  if (health.modelsNote) return <p className="text-xs text-yellow-400 mt-1">{health.modelsNote}</p>
+  if (!health.models) return null
+  if (health.models.length === 0) return <p className="text-xs text-astro-muted mt-1">The SyQon CLI listed no models.</p>
+  return (
+    <table className="mt-2 text-xs w-full">
+      <tbody>
+        {health.models.map(m => (
+          <tr key={m.id}>
+            <td className="font-mono text-astro-text pr-2">{m.id}</td>
+            <td className="text-astro-muted pr-2">{m.step}</td>
+            <td className={m.available ? 'text-green-400' : 'text-astro-muted'}>{m.available ? 'Available' : `Not available (${m.status})`}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }

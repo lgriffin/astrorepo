@@ -13,12 +13,17 @@ import {
   makeJobScheduler,
   makeListNextActions,
   makeListStackingSuggestions,
+  makeCheckToolHealth,
+  makeListSyqonModels,
+  makeSyqonModelCache,
   makeListTools,
   makePlanPostProcessing,
+  makePlanSyqon,
   makePlanForward,
   makePrepareSirilWorkspace,
   makeQueuePostProcess,
   makeQueueStack,
+  makeQueueSyqon,
   makeReportHiddenData,
   type JobScheduler
 } from '@astro/application'
@@ -42,15 +47,22 @@ import { NodeMemoryProbe } from './adapters/node-memory-probe'
 import { NodeRunArea } from './adapters/node-run-area'
 import { NodeArchiveArea } from './adapters/node-archive-area'
 import { SqliteArchiveStore } from './adapters/sqlite-archive-store'
+import { NodeToolProbe } from './adapters/node-tool-probe'
+import { WindowsAppPathsRegistry } from './adapters/windows-app-paths'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
 
-/** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
-
 /** Targets an archive is working on, shared by every composition so the job runner waits for it (ARC-008). */
 export const targetHolds = makeTargetHolds()
 
+/** SyQon's model list, reused for two minutes per syqon-cli path; a health check in Settings lists afresh. */
+const syqonModels = makeSyqonModelCache(() => Date.now(), 2 * 60_000)
+
+/** One registry reader for the app, so its short-lived lookups are shared across calls. */
+const appPaths = new WindowsAppPathsRegistry()
+
+/** Measures on worker threads from now on (NFR-014). The app calls this at start; tests measure in place. */
 export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
   frameMeasurer = new NodeFrameMeasurer(createWorker)
   return frameMeasurer
@@ -72,12 +84,17 @@ export function composeCore(db: Database.Database) {
   const archives = new SqliteArchiveStore(db)
   const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals, archives })
   const readSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
-  const tools = new NodeToolHub({ setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null })
+  const tools = new NodeToolHub({
+    setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null,
+    registry: appPaths
+  })
+  const probe = new NodeToolProbe()
   const stacks = new SqliteStackCatalogue(db)
   const jobStore = new SqliteJobStore(db)
   const grading = composeGrading(db)
   const estimateSirilRun = makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(db), selection: grading, memory: new NodeMemoryProbe() })
   const planPostProcessing = makePlanPostProcessing({ stacks, tools, workspace: new NodeSirilWorkspace(db) })
+  const planSyqon = makePlanSyqon({ stacks, tools, workspace: new NodeSirilWorkspace(db), models: makeListSyqonModels({ tools, probe, cache: syqonModels }) })
   const planForward = makePlanForward({
     frames,
     positions: new SqliteTargetPositions(db),
@@ -105,7 +122,11 @@ export function composeCore(db: Database.Database) {
     estimateSirilRun,
     planForward,
     listTools: makeListTools({ tools }),
+    /** Runs each tool's version flag and SyQon's model list (NFR-017). */
+    checkToolHealth: makeCheckToolHealth({ tools, probe, cache: syqonModels }),
     planPostProcessing,
+    planSyqon,
+    windows: tools.windows,
     queueStack: makeQueueStack({ estimate: estimateSirilRun, tools, stacks, store: jobStore, clock: systemClock }),
     queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock }),
     archive: makeArchiveTarget({
@@ -117,7 +138,8 @@ export function composeCore(db: Database.Database) {
       jobs: jobStore,
       workspace: new NodeSirilWorkspace(db),
       clock: systemClock
-    })
+    }),
+    queueSyqon: makeQueueSyqon({ plan: planSyqon, store: jobStore, clock: systemClock })
   }
 }
 
