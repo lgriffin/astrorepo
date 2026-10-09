@@ -94,12 +94,14 @@ export function galleryContract(adapterName: string, setup: (seed: GallerySeed) 
 
     it('[INS-004] Given a target’s lights, When integration is asked for, Then it comes per filter with whether the sensor was colour', async () => {
       const h = await setup(seed)
-      const sorted = (await h.catalogue.filterIntegration('m42')).sort((a, b) => String(a.filter).localeCompare(String(b.filter)))
+      // The scope is only for telling a Seestar's LP filter apart, so it is left out here.
+      const plain = (rows: { filter: string | null; colour: boolean | null; seconds: number }[]) => rows.map(({ filter, colour, seconds }) => ({ filter, colour, seconds }))
+      const sorted = plain(await h.catalogue.filterIntegration('m42')).sort((a, b) => String(a.filter).localeCompare(String(b.filter)))
       expect(sorted).toEqual([
         { filter: 'Ha', colour: false, seconds: 600 },
         { filter: 'OIII', colour: false, seconds: 600 }
       ])
-      expect(await h.catalogue.filterIntegration('m31')).toEqual([{ filter: null, colour: true, seconds: 10 }])
+      expect(plain(await h.catalogue.filterIntegration('m31'))).toEqual([{ filter: null, colour: true, seconds: 10 }])
     })
 
     it('[INS-010] Given the catalogues, When objects are asked for, Then Messier, NGC and IC come back in degrees, and others do not', async () => {

@@ -24,6 +24,8 @@ export interface GalleryImage {
   filter: string | null
   /** Three channels; null when unknown. */
   colour: boolean | null
+  /** TELESCOP or INSTRUME of a master, when known. */
+  scope?: string | null
   modifiedAt: Date | null
 }
 

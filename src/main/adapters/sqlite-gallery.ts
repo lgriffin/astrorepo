@@ -17,6 +17,9 @@ const HEADER_NUMBER = (keyword: string) =>
  * GalleryCatalogue over fits_files, the target's images folder and the seeded catalogues. Reads
  * the index and lists folders; never opens an image.
  */
+
+/** The scope a frame names, for telling the Seestar's dual-band LP filter apart. */
+const SCOPE = "COALESCE(NULLIF(TRIM(f.telescope), ''), NULLIF(TRIM(f.instrument), ''))"
 export class SqliteGalleryCatalogue implements GalleryCatalogue {
   constructor(private readonly db: Database.Database) {}
 
@@ -28,11 +31,11 @@ export class SqliteGalleryCatalogue implements GalleryCatalogue {
   async targetImages(targetId: string): Promise<GalleryImage[]> {
     const rows = this.db
       .prepare(
-        `SELECT f.file_path, f.file_name, f.filter, f.file_modified_at, f.created_at,
+        `SELECT f.file_path, f.file_name, f.filter, f.file_modified_at, f.created_at, ${SCOPE} AS scope,
                 ${HEADER_NUMBER('NAXIS3')} AS naxis3, ${HEADER_NUMBER('NAXIS')} AS naxis
          FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 1 AND ${IS_INTEGRATED_LIGHT}`
       )
-      .all(targetId) as { file_path: string; file_name: string; filter: string | null; file_modified_at: string | null; created_at: string | null; naxis3: number | null; naxis: number | null }[]
+      .all(targetId) as { file_path: string; file_name: string; filter: string | null; scope: string | null; file_modified_at: string | null; created_at: string | null; naxis3: number | null; naxis: number | null }[]
     const time = (i: GalleryImage) => i.modifiedAt?.getTime() ?? 0
     const masters: GalleryImage[] = rows
       .filter(r => fs.existsSync(r.file_path))
@@ -42,6 +45,7 @@ export class SqliteGalleryCatalogue implements GalleryCatalogue {
         kind: 'master' as const,
         filter: r.filter?.trim() || null,
         colour: r.naxis3 !== null ? r.naxis3 >= 3 : r.naxis === 2 ? false : null,
+        scope: r.scope,
         modifiedAt: parseUtc(r.file_modified_at) ?? parseUtc(r.created_at)
       }))
       .sort((a, b) => time(b) - time(a))
@@ -82,13 +86,13 @@ export class SqliteGalleryCatalogue implements GalleryCatalogue {
   async filterIntegration(targetId: string): Promise<FilterIntegration[]> {
     const rows = this.db
       .prepare(
-        `SELECT NULLIF(TRIM(f.filter), '') AS filter, ${HAS_HEADER('BAYERPAT')} AS colour, SUM(f.exposure_sec) AS seconds
+        `SELECT NULLIF(TRIM(f.filter), '') AS filter, ${HAS_HEADER('BAYERPAT')} AS colour, ${SCOPE} AS scope, SUM(f.exposure_sec) AS seconds
          FROM fits_files f
          WHERE f.target_id = ? AND f.is_stacked = 0 AND f.exposure_sec > 0 AND ${IS_LIGHT}
-         GROUP BY NULLIF(TRIM(f.filter), ''), colour`
+         GROUP BY NULLIF(TRIM(f.filter), ''), colour, scope`
       )
-      .all(targetId) as { filter: string | null; colour: number; seconds: number }[]
-    return rows.map(r => ({ filter: r.filter, colour: r.colour === 1, seconds: r.seconds }))
+      .all(targetId) as { filter: string | null; colour: number; scope: string | null; seconds: number }[]
+    return rows.map(r => ({ filter: r.filter, colour: r.colour === 1, scope: r.scope, seconds: r.seconds }))
   }
 
   async catalogueObjects(): Promise<CatalogueObject[]> {

@@ -61,7 +61,7 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   Bayer pixel counts as saturated; a header's full CD matrix places the grid; stored solves keep
   whether the image is mirrored; the slider shows each image's own grid; a file is read once for
   its figures and preview, one at a time on the worker; PNGs are size-checked from the header and
-  inflated no further than their stated size; a broadband LP filter gives red, green and blue.
+  inflated no further than their stated size; a broadband LP filter gives red, green and blue, while a Seestar's LP filter stays dual-band.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

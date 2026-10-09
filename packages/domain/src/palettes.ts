@@ -42,17 +42,21 @@ const DUAL_BAND = /(l[\s-]?e?xtreme|l[\s-]?enhance|l[\s-]?ultimate|alp[\s-]?t|du
 const SII = /(^|[^a-z])s[\s-]?(ii|2)($|[^a-z])/i
 const OIII = /(^|[^a-z])o[\s-]?(iii|3)($|[^a-z])/i
 const HA = /(^|[^a-z])h[\s-]?(a|alpha)($|[^a-z])|^h$/i
+/** The Seestar names its built-in dual-band filter just "LP"; elsewhere LP is a broadband light-pollution filter. */
+const SEESTAR = /seestar/i
 
 /**
  * The channels a filter gives and where each lies in a frame or stack taken through it. A narrowband
  * or a red, green, blue or luminance filter gives its own channel as the whole image; a colour
  * camera with no filter, or a broadband one, gives red, green and blue; behind a dual-band filter
- * it gives Ha (red pixels) and OIII (green and blue).
+ * it gives Ha (red pixels) and OIII (green and blue). `scope` is the TELESCOP or INSTRUME the frames
+ * name, which tells the Seestar's dual-band "LP" from a broadband one.
  */
-export function filterChannels(filter: string | null, colour: boolean | null): { channel: PaletteChannel; from: PreviewChannel }[] {
+export function filterChannels(filter: string | null, colour: boolean | null, scope?: string | null): { channel: PaletteChannel; from: PreviewChannel }[] {
   const name = (filter ?? '').trim()
   const whole: PreviewChannel = 'luminance'
-  if (DUAL_BAND.test(name) || (HA.test(name) && OIII.test(name))) {
+  const seestarLp = /^lp$/i.test(name) && SEESTAR.test(scope ?? '')
+  if (seestarLp || DUAL_BAND.test(name) || (HA.test(name) && OIII.test(name))) {
     return colour === false ? [] : [{ channel: 'Ha', from: 'red' }, { channel: 'OIII', from: 'green-blue' }]
   }
   if (SII.test(name)) return [{ channel: 'SII', from: whole }]
@@ -75,12 +79,16 @@ export interface PaletteMaster {
   filter: string | null
   /** Three channels; null when unknown. */
   colour: boolean | null
+  /** TELESCOP or INSTRUME, when known. */
+  scope?: string | null
 }
 
 /** Integration the target has through a filter, with or without a stack yet. */
 export interface FilterIntegration {
   filter: string | null
   colour: boolean | null
+  /** TELESCOP or INSTRUME, when known. */
+  scope?: string | null
   seconds: number
 }
 
@@ -96,12 +104,12 @@ export function channelSources(masters: PaletteMaster[], integration: FilterInte
   const out = new Map<PaletteChannel, ChannelSource>()
   const entry = (channel: PaletteChannel) => out.get(channel) ?? out.set(channel, { channel, master: null, seconds: 0 }).get(channel)!
   for (const m of masters) {
-    for (const c of filterChannels(m.filter, m.colour)) {
+    for (const c of filterChannels(m.filter, m.colour, m.scope)) {
       const e = entry(c.channel)
       e.master ??= { path: m.path, from: c.from }
     }
   }
-  for (const i of integration) for (const c of filterChannels(i.filter, i.colour)) entry(c.channel).seconds += i.seconds
+  for (const i of integration) for (const c of filterChannels(i.filter, i.colour, i.scope)) entry(c.channel).seconds += i.seconds
   return [...out.values()]
 }
 

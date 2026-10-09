@@ -578,7 +578,8 @@ to more than its stated size is refused as damaged.
   - LRGB adds luminance.
   - A colour camera behind a dual-band filter (L-eXtreme, L-eNhance, ALP-T and the like) gives
     Ha from its red pixels and OIII from its green and blue ones. A plain light-pollution filter
-    (one named LP, say) is broadband, so it gives red, green and blue.
+    (one named LP, say) is broadband, so it gives red, green and blue. The exception is the
+    Seestar, whose built-in filter is called LP but passes Ha and OIII, so its LP frames give HOO.
 
   **Preview** combines the masters, each stretched on its own, in the palette's colours. A
   channel captured but not stacked yet says which lights to stack first. **Use this one** saves

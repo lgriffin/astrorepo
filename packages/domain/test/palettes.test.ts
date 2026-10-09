@@ -24,6 +24,10 @@ describe('What a filter gives', () => {
     expect(filterChannels('UV/IR cut', true).map(c => c.channel)).toEqual(['R', 'G', 'B'])
     // A plain light-pollution filter is broadband, not dual-band.
     expect(filterChannels('LP', true).map(c => c.channel)).toEqual(['R', 'G', 'B'])
+    // The Seestar's built-in "LP" filter is dual-band, so its frames give Ha and OIII.
+    expect(filterChannels('LP', true, 'Seestar S50').map(c => [c.channel, c.from])).toEqual([['Ha', 'red'], ['OIII', 'green-blue']])
+    expect(filterChannels('IRCUT', true, 'Seestar S50').map(c => c.channel)).toEqual(['R', 'G', 'B'])
+    expect(channelSources([{ path: 'm.fit', filter: 'LP', colour: true, scope: 'Seestar S30' }], []).map(s => s.channel)).toEqual(['Ha', 'OIII'])
     expect(filterChannels(null, false)).toEqual([{ channel: 'L', from: 'luminance' }])
     expect(filterChannels('Mystery', null)).toEqual([])
   })

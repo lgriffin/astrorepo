@@ -60,7 +60,7 @@ editing stays in Siril, RC Astro and SyQon; what astrorepo takes is the looking:
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| INS-004 | Ubiquitous | The system shall list a target's palettes from the filters it has masters or integration for: HOO needs Ha and OIII, SHO and HSO need SII, Ha and OIII, RGB needs red, green and blue or a colour camera's broadband stack, and LRGB adds luminance; a colour camera behind a dual-band filter gives Ha and OIII, and one behind a broadband light-pollution filter (such as one named LP) gives red, green and blue. |
+| INS-004 | Ubiquitous | The system shall list a target's palettes from the filters it has masters or integration for: HOO needs Ha and OIII, SHO and HSO need SII, Ha and OIII, RGB needs red, green and blue or a colour camera's broadband stack, and LRGB adds luminance; a colour camera behind a dual-band filter gives Ha and OIII, and one behind a broadband light-pollution filter (such as one named LP) gives red, green and blue, except a Seestar's LP filter (TELESCOP or INSTRUME naming a Seestar), which is dual-band. |
 | INS-005 | Event | When the user previews a palette whose channels all have a master, the system shall send a small auto-stretched grey preview of each channel and draw them combined in the palette's colours; when a channel has no master, it shall say which lights to stack. |
 | INS-006 | Event | When the user chooses a palette the target's filters allow, the system shall save it for the target and show it beside the post-processing command as a hint for Siril_Scripts; it shall refuse a palette the filters do not allow. |
 
