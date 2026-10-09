@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { formatSize } from '../../utils/format'
+import { Inspector } from './Inspector'
 import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, QualityMetrics } from '@shared/types'
 
 interface FileDetailProps {
@@ -87,6 +88,11 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
             <p className="text-xs text-astro-muted mt-1">{thumbnail.width} x {thumbnail.height} preview</p>
           </div>
         )}
+
+        <div>
+          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Inspector</h4>
+          <Inspector fileId={fileId} />
+        </div>
 
         <div className="flex gap-3 text-sm text-astro-muted">
           <span>{formatSize(file.fileSizeBytes)}</span>

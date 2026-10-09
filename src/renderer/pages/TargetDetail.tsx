@@ -138,7 +138,7 @@ export function TargetDetail(): React.ReactElement {
             </>
           )}
           {tab === 'process' && <ProcessTab targetId={target.id} rawPath={homeData?.rawPath ?? null} />}
-          {tab === 'files' && <FilesTab homeData={homeData} obsData={obsData} />}
+          {tab === 'files' && <FilesTab targetId={target.id} homeData={homeData} obsData={obsData} />}
           {tab === 'notes' && <NotesTab target={target} onChange={setTarget} />}
         </div>
 

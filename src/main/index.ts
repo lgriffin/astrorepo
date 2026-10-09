@@ -3,8 +3,9 @@ import path from 'path'
 import { initDatabase } from './db/connection'
 import { readOnlyDirs, registerIpcHandlers } from './ipc/handlers'
 import { startJobs } from './jobs-host'
-import { measureOnWorkers } from './composition'
+import { inspectOnWorkers, measureOnWorkers } from './composition'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
+import createInspectWorker from './workers/inspect-worker?nodeWorker'
 import { loadCatalogueSeedData } from './services/catalogue'
 import { autoGenerateCatalogueCollections } from './services/collection'
 
@@ -38,7 +39,11 @@ function createWindow(): void {
 app.whenReady().then(() => {
   initDatabase()
   const measurer = measureOnWorkers(() => createMeasureWorker({}))
-  app.on('will-quit', () => void measurer.dispose())
+  const pixels = inspectOnWorkers(() => createInspectWorker({}))
+  app.on('will-quit', () => {
+    void measurer.dispose()
+    void pixels.dispose()
+  })
   try {
     loadCatalogueSeedData()
     autoGenerateCatalogueCollections()

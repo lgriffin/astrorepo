@@ -52,6 +52,16 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   retried next time; fields overlap by their turned rectangles, corners included; a turned grid
   covers the target along its own axes; saving a plan, not viewing, links other targets' panels,
   once per pair; cancelling a solve job starts no further file.
+- **Gallery inspector** (spec 025): opening a file on the FITS files page shows its histogram per
+  channel, median, noise, saturated and black-clipped share, the brightest unsaturated star's
+  FWHM and profile, and a preview with a coordinate grid and Messier, NGC and IC labels when its
+  header is solved or the file was plate solved; a target's Files compares two of its masters or finished images side by side
+  or with a slider, and lists the palettes its filters allow with a preview and a choice shown
+  beside post-processing. The histograms share one range; a star clipped in one colour or one
+  Bayer pixel counts as saturated; a header's full CD matrix places the grid; stored solves keep
+  whether the image is mirrored; the slider shows each image's own grid; a file is read once for
+  its figures and preview, one at a time on the worker; PNGs are size-checked from the header and
+  inflated no further than their stated size; a broadband LP filter gives red, green and blue, while a Seestar's LP filter stays dual-band.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

@@ -2,10 +2,12 @@ import React from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { formatExposure, formatSize } from '../../utils/format'
 import { Card, EmptyState } from '../common/Card'
+import { CompareCard } from './CompareCard'
+import { PaletteCard } from './PaletteCard'
 import type { TargetHomeData, TargetObservationData } from '@shared/types'
 
 /** Files: where the target's data sits and what the index knows about it (UX-009). */
-export function FilesTab({ homeData, obsData }: { homeData: TargetHomeData | null; obsData: TargetObservationData | null }): React.ReactElement {
+export function FilesTab({ targetId, homeData, obsData }: { targetId: string; homeData: TargetHomeData | null; obsData: TargetObservationData | null }): React.ReactElement {
   if (!homeData && !obsData) {
     return (
       <Card title="Folders">
@@ -16,6 +18,8 @@ export function FilesTab({ homeData, obsData }: { homeData: TargetHomeData | nul
   return (
     <div className="space-y-6">
       {homeData && <HomeFolderSection homeData={homeData} />}
+      <CompareCard targetId={targetId} />
+      <PaletteCard targetId={targetId} />
       {obsData && <ObservationDataSection data={obsData} />}
     </div>
   )

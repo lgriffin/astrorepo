@@ -28,6 +28,8 @@ interface SolveRow {
   scale_arcsec: number | null
   width_px: number | null
   height_px: number | null
+  /** 1 mirrored, 0 the sky as seen, null when the solver did not say. */
+  flipped: number | null
   solver: SolveSource
   solved_at: string
   error: string | null
@@ -93,7 +95,15 @@ export class SqliteSolveStore implements SolveStore {
       path: r.file_path,
       field:
         r.ra_deg !== null && r.dec_deg !== null && r.scale_arcsec !== null && r.width_px !== null && r.height_px !== null
-          ? { raDeg: r.ra_deg, decDeg: r.dec_deg, rotationDeg: r.rotation_deg ?? 0, scaleArcsec: r.scale_arcsec, widthPx: r.width_px, heightPx: r.height_px }
+          ? {
+              raDeg: r.ra_deg,
+              decDeg: r.dec_deg,
+              rotationDeg: r.rotation_deg ?? 0,
+              scaleArcsec: r.scale_arcsec,
+              widthPx: r.width_px,
+              heightPx: r.height_px,
+              ...(r.flipped === null ? {} : { flipped: r.flipped === 1 })
+            }
           : null,
       source: r.solver,
       solvedAt: new Date(r.solved_at),
@@ -105,10 +115,22 @@ export class SqliteSolveStore implements SolveStore {
     const f = solve.field
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO plate_solves (file_path, ra_deg, dec_deg, rotation_deg, scale_arcsec, width_px, height_px, solver, solved_at, error)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT OR REPLACE INTO plate_solves (file_path, ra_deg, dec_deg, rotation_deg, scale_arcsec, width_px, height_px, flipped, solver, solved_at, error)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(solve.path, f?.raDeg ?? null, f?.decDeg ?? null, f?.rotationDeg ?? null, f?.scaleArcsec ?? null, f?.widthPx ?? null, f?.heightPx ?? null, solve.source, solve.solvedAt.toISOString(), solve.error)
+      .run(
+        solve.path,
+        f?.raDeg ?? null,
+        f?.decDeg ?? null,
+        f?.rotationDeg ?? null,
+        f?.scaleArcsec ?? null,
+        f?.widthPx ?? null,
+        f?.heightPx ?? null,
+        f?.flipped === undefined ? null : f.flipped ? 1 : 0,
+        solve.source,
+        solve.solvedAt.toISOString(),
+        solve.error
+      )
   }
 }
 

@@ -23,6 +23,11 @@ export interface SolvedField {
   scaleArcsec: number
   widthPx: number
   heightPx: number
+  /**
+   * East is to the right of north, as in a mirrored image (the WCS's CD determinant is positive);
+   * false for the sky as seen. Absent when the solver's result does not say.
+   */
+  flipped?: boolean
 }
 
 export type SolverId = 'astap' | 'siril'
@@ -129,7 +134,9 @@ export function fieldFromWcs(cards: WcsCards, widthPx: number, heightPx: number)
     rotationDeg: round(normaliseAngle(rotation), 2),
     scaleArcsec: round(scaleDeg * 3600, 4),
     widthPx,
-    heightPx
+    heightPx,
+    // The sky as seen has a negative determinant (east to the left of north); positive is mirrored.
+    flipped: cd[0] * cd[3] - cd[1] * cd[2] > 0
   }
 }
 
@@ -213,13 +220,15 @@ function sexagesimal(text: string): number | null {
 
 /**
  * The solution Siril prints: "Resolution: 2.390 arcsec/px", "Rotation: +12.34 deg" and "Image
- * center: alpha: 05h35m17s, delta: -05°23'28\"" (or with spaces between the parts). A run that
- * prints none says why from its own failure line where there is one.
+ * center: alpha: 05h35m17s, delta: -05°23'28\"" (or with spaces between the parts). Siril adds
+ * "(flipped)" to the rotation of a mirrored image; without it the log does not say, so whether the
+ * field is mirrored is left unknown. A run that prints none says why from its own failure line
+ * where there is one.
  */
 export function parseSirilSolve(log: string, widthPx: number, heightPx: number): SolveOutcome {
   const text = log.replace(/^log:\s*/gm, '')
   const resolution = /Resolution:\s*([\d.]+)\s*arcsec/i.exec(text)
-  const rotation = /Rotation:\s*([+-]?[\d.]+)\s*deg/i.exec(text)
+  const rotation = /Rotation:\s*([+-]?[\d.]+)\s*deg([^\n]*)/i.exec(text)
   const centre = /Image cent(?:er|re):\s*alpha:\s*([^,\n]+),\s*delta:\s*([^\n]+)/i.exec(text)
   const ra = centre ? sexagesimal(centre[1]) : null
   const dec = centre ? sexagesimal(centre[2]) : null
@@ -232,7 +241,8 @@ export function parseSirilSolve(log: string, widthPx: number, heightPx: number):
         rotationDeg: round(normaliseAngle(Number(rotation?.[1] ?? 0)), 2),
         scaleArcsec: Number(resolution[1]),
         widthPx,
-        heightPx
+        heightPx,
+        ...(rotation && /flipped/i.test(rotation[2]) ? { flipped: true } : {})
       }
     }
   }

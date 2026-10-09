@@ -396,6 +396,7 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
         </select>
       </div>
       <p className="text-xs text-astro-muted">{view.profileReason}</p>
+      {view.paletteHint && <p className="text-xs text-astro-text">{view.paletteHint}</p>}
       {view.missing && <p className="text-xs text-yellow-400">{view.missing}</p>}
       {view.catalogues && <p className="text-xs text-yellow-400">{view.catalogues}</p>}
       {view.command && (

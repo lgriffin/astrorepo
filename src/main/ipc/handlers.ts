@@ -22,7 +22,7 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
-import { composeCore, composeGrading } from '../composition'
+import { composeCore, composeGallery, composeGrading } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
@@ -32,7 +32,8 @@ import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
-import { ArchiveRefusedError, ArchiveRemovalError, JobRefusedError, JobStateError } from '@astro/application'
+import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
+import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
@@ -521,8 +522,45 @@ export function registerIpcHandlers(): void {
       profile: args.profile,
       quality: args.quality
     })
-    return toPostProcessView(plan)
+    return toPostProcessView(plan, await composeGallery(getSqlite()).chosenPalette(args.target_id))
   }))
+
+  // The inspector and gallery (spec 025). Pixels are read on a worker thread and only statistics
+  // and small previews come back (NFR-019); the window names files by id or as one of a target's
+  // own images, never by an arbitrary path (INS-008).
+  const galleryRefusal = async <T>(work: () => Promise<T>): Promise<T | { refused: string }> => {
+    try {
+      return await work()
+    } catch (error) {
+      if (error instanceof GalleryRefusedError) return { refused: error.message }
+      throw error
+    }
+  }
+
+  // One read gives the figures and the preview, so opening a file decodes it once.
+  handle('inspect:file', validated('inspect:file', async args => {
+    const result = await composeGallery(getSqlite()).openFile(args.file_id)
+    return result ? toOpenedView(result) : null
+  }))
+
+  handle('gallery:images', validated('gallery:images', async args => toGalleryImagesView(await composeGallery(getSqlite()).images(args.target_id))))
+
+  handle('gallery:preview', validated('gallery:preview', args =>
+    galleryRefusal(async () => toPreviewView(await composeGallery(getSqlite()).previewImage(args.target_id, args.path)))
+  ))
+
+  handle('gallery:palettes', validated('gallery:palettes', async args => toPalettesView(await composeGallery(getSqlite()).palettes(args.target_id))))
+
+  handle('gallery:palette-preview', validated('gallery:palette-preview', args =>
+    galleryRefusal(async () => toPalettePreviewView(await composeGallery(getSqlite()).palettePreview(args.target_id, args.palette), args.palette))
+  ))
+
+  handle('gallery:choose-palette', validated('gallery:choose-palette', args =>
+    galleryRefusal(async () => {
+      await composeGallery(getSqlite()).choosePalette(args.target_id, args.palette)
+      return { ok: true }
+    })
+  ))
 
   handle('jobs:list', validated('jobs:list', async (args) => toJobsView(await jobs().snapshot(), new Date(), args?.target_id)))
 

@@ -1,7 +1,8 @@
 import type { PostProcessingPlan, SyqonPlan, ToolHealth, ToolsReport } from '@astro/application'
-import { blockingMissing, catalogueSpec, commandLine, PROFILES, QUALITIES, SYQON_STEP_INFO, SYQON_STEPS, toolSpec, type CatalogueStatus, type ToolSource } from '@astro/domain'
+import { blockingMissing, catalogueSpec, commandLine, PROFILES, QUALITIES, SYQON_STEP_INFO, SYQON_STEPS, toolSpec, type CatalogueStatus, type PaletteId, type ToolSource } from '@astro/domain'
 import type { CatalogueView, PostProcessView, SyqonView, ToolHealthView, ToolsView } from '@shared/types'
 import { formatBytes } from './discovery-presenter'
+import { paletteHint } from './gallery-presenter'
 
 const HOW: Record<ToolSource, string> = {
   setting: 'Your setting',
@@ -88,7 +89,7 @@ export function toSyqonView(plan: SyqonPlan, windows: boolean): SyqonView {
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p
 
 /** The target page's post-processing panel. */
-export function toPostProcessView(plan: PostProcessingPlan): PostProcessView {
+export function toPostProcessView(plan: PostProcessingPlan, palette: PaletteId | null = null): PostProcessView {
   const base = {
     stacks: plan.stacks.map(s => ({
       path: s.path,
@@ -117,7 +118,8 @@ export function toPostProcessView(plan: PostProcessingPlan): PostProcessView {
       outputDir: null,
       space: null,
       verdict: 'unknown',
-      verdictText: null
+      verdictText: null,
+      paletteHint: null
     }
   }
   const about = r.sizeApproximate ? 'about ' : ''
@@ -145,6 +147,7 @@ export function toPostProcessView(plan: PostProcessingPlan): PostProcessView {
         ? `Short by ${formatBytes(r.space.shortBytes)} on the stack's disk`
         : r.space.headroomBytes !== null
           ? `Fits, ${formatBytes(r.space.headroomBytes)} to spare on the stack's disk`
-          : "Free space on the stack's disk unknown"
+          : "Free space on the stack's disk unknown",
+    paletteHint: palette ? paletteHint(palette) : null
   }
 }

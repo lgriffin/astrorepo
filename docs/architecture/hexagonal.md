@@ -45,6 +45,10 @@ flowchart LR
   UC -->|SolveStore, MosaicStore| A17[SqliteSolveStore, SqliteMosaicStore]
   A16 --> WA
   A17 --> DB
+  UC -->|ImagePixels| A18[NodeImagePixels]
+  UC -->|GalleryCatalogue, PaletteStore| A19[SqliteGalleryCatalogue, SqlitePaletteStore]
+  A18 -->|worker thread| FS
+  A19 --> DB
   A10 --> WA
   A11 --> WA
   A11 --> AR[(archive folder)]
@@ -79,6 +83,7 @@ flowchart LR
 | `makeJobScheduler` (`tick`, `cancel`, `runNow`, `recover`, `log`) | `scheduleJobs`, `windowState`, `estimateJobSeconds`, `afterInterruption`, `splitSirilScript`, `runKey`, `resumeFrom`, `newResults`, `stackManifest`, `explainSirilFailure`, `interpretExit`, `runToolOf`, `parseLiveProgress` | JobStore, JobSettingsSource, MachineMonitor, ProcessRunner, JobLogs, SirilWorkspace (`workAreaSpace`, `stackResults`), RunArea, Clock | `jobs:list`, `jobs:cancel`, `jobs:run-now`, `jobs:log` | 016, 021, 023 |
 | `makeFrameGrading` (`measureBatch`, `grade`, `setOverride`, `setNightOverride`, `exportCsv`, `rejected`, `reportFor`) | `measureFrame`, `binBayer`, `gradeFrames`, `rejectedPaths`, `gradesCsv` | FrameGradeStore, FrameMeasurer, GradeLimitsSource, Clock | `grades:target`, `grades:measure`, `grades:override`, `grades:override-night`, `grades:export`, `grades:limits` | 019, 020 |
 | `makeArchiveTarget` (`preview`, `archive`) | `summariseWorkFolder`, `freedBytes`, `parseStackManifest`, `namedFrames`, `planArchive`, `removalChoice`, `archiveFolderName`, `archiveSpace` | ArchiveArea, ArchiveStore, FrameCatalogue, StackCatalogue (`describeTarget`), JobStore (`list`), SirilWorkspace (`contains`), Clock | `archive:preview`, `archive:run` | 022 |
+| `makeGallery` (`openFile`, `images`, `previewImage`, `palettes`, `palettePreview`, `choosePalette`) | `inspectImage`, `previewImage`, `autoStretch`, `channelSources`, `possiblePalettes`, `fieldFromWcs`, `skyOverlay` | ImagePixels, GalleryCatalogue, PaletteStore, Clock | `inspect:file`, `gallery:images`, `gallery:preview`, `gallery:palettes`, `gallery:palette-preview`, `gallery:choose-palette` | 025 |
 | `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours`, `channelGap` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012 |
 | `makePreferredSolver`, `queueSolves`, `runSolveJob` (inside the job runner) | `chooseSolver`, `planSolves`, `fieldFromWcs`, `astapCommand`, `parseAstapResult`, `sirilSolveScript`, `parseSirilSolve`, `solveJobCommand` | PlateSolver, SolveStore, MosaicStore, ToolHub, JobStore, Clock | `sky:solve-target` | 024 |
