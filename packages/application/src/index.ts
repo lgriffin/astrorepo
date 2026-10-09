@@ -24,3 +24,5 @@ export type { FrameGradeStore, FrameMeasurer, GradeLimitsSource } from './ports/
 export * from './use-cases/frame-grading'
 export type { MemoryProbe } from './ports/memory'
 export type { RunArea } from './ports/run-area'
+export type { ArchiveArea, ArchiveRecord, ArchiveStore } from './ports/archive'
+export * from './use-cases/archive-target'

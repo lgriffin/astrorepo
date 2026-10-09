@@ -19,7 +19,7 @@ describe('Migrations', () => {
     const db = new Database(':memory:')
     runMigrations(db)
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map(t => t.name)
-    expect(tables).toEqual(expect.arrayContaining(['targets', 'fits_files', 'integration_goals', 'target_home_data', 'dismissed_suggestions', 'app_settings']))
+    expect(tables).toEqual(expect.arrayContaining(['targets', 'fits_files', 'integration_goals', 'target_home_data', 'dismissed_suggestions', 'app_settings', 'target_archives']))
     db.close()
   })
 })

@@ -25,7 +25,7 @@ when the code says otherwise, and the reasons are recorded here.
 | Q1 · Frame grading | Every light measured for FWHM, eccentricity, noise, background, star count and SNR weight; graded against limits in Settings; trend per night; manual keep or reject; CSV export; only kept lights go to Siril | [019](../specs/019-frame-grading/requirements.md) | Done |
 | Q2 · Stacking advice | Memory beside the disk estimate; drizzle and rejection advice from image scale and frame count; calibration gaps explained; one stacking plan across nights; channel balance suggestions | [020](../specs/020-stacking-advice/requirements.md) | Done |
 | P1 · Provenance | A manifest beside every master; outputs staged and published only on success; long stacks resume by stage; a processing timeline per target; known Siril failures explained | [021](../specs/021-provenance/requirements.md) | Done |
-| P2 · Archive | Archive a finished target, linked or self-contained, with the space each intermediate frees shown first | [022](../specs/022-archive/requirements.md) | Planned |
+| P2 · Archive | Archive a finished target, linked or self-contained, with the space each intermediate frees shown first | [022](../specs/022-archive/requirements.md) | Done |
 | N · Hub: SyQon CLI and tool health | SyQon CLI found and run like RC Astro; tool versions and the catalogues each needs; one exit-code contract for every tool | [023](../specs/023-hub-syqon/requirements.md) | Planned |
 | D · Sky geometry | Plate solving with ASTAP, Siril as fallback; a mosaic planner on the Sky planner; panels grouped from their solves | [024](../specs/024-sky-geometry/requirements.md) | Planned |
 | H1 · Gallery inspector | Histogram and clipping per file; palette suggestions with a preview; compare two images; a coordinate grid and catalogue labels on solved images | [025](../specs/025-gallery-inspector/requirements.md) | Planned |
@@ -89,6 +89,11 @@ app has run on real data on the Windows PC and the licence is settled.
   and plan mosaics (D, reshaped around ASTAP). Leigh answered: SyQon's CLI joins the tool hub like
   RC Astro (N), Q comes first, plate solving supports both ASTAP and Siril, and other people's rigs
   (DSLRs, mono cameras with filters, comets) come after his own needs (O).
+- **Archives run while you wait, not in the job runner** (spec 022). The job runner starts
+  programs in a night window; an archive runs none and needs Leigh there to confirm what it
+  removes, so it copies when he presses Archive, into a staging folder that is renamed into place
+  only when every copy checks out. Only intermediates a stack manifest can rebuild are offered for
+  removal, and hard-linked frames are shown as freeing nothing.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
   index and plate solves; browsing finished images across the NAS (H2) waits for where files live
   ([#38](https://github.com/lgriffin/astrorepo/issues/38)).

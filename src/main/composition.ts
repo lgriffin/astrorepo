@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
 import {
+  makeArchiveTarget,
   makeDiscoverTarget,
   makeDiscoverTargets,
   makeDismissSuggestion,
@@ -38,6 +39,8 @@ import { SqliteFrameGradeStore, SqliteGradeLimits } from './adapters/sqlite-fram
 import { NodeFrameMeasurer } from './adapters/node-frame-measurer'
 import { NodeMemoryProbe } from './adapters/node-memory-probe'
 import { NodeRunArea } from './adapters/node-run-area'
+import { NodeArchiveArea } from './adapters/node-archive-area'
+import { SqliteArchiveStore } from './adapters/sqlite-archive-store'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -61,7 +64,8 @@ export function composeCore(db: Database.Database) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
   const hashes = new SqliteFileHashStore(db, () => systemClock.now())
-  const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals })
+  const archives = new SqliteArchiveStore(db)
+  const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals, archives })
   const readSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
   const tools = new NodeToolHub({ setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null })
   const stacks = new SqliteStackCatalogue(db)
@@ -98,7 +102,16 @@ export function composeCore(db: Database.Database) {
     listTools: makeListTools({ tools }),
     planPostProcessing,
     queueStack: makeQueueStack({ estimate: estimateSirilRun, tools, stacks, store: jobStore, clock: systemClock }),
-    queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock })
+    queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock }),
+    archive: makeArchiveTarget({
+      area: new NodeArchiveArea(),
+      store: archives,
+      frames,
+      stacks,
+      jobs: jobStore,
+      workspace: new NodeSirilWorkspace(db),
+      clock: systemClock
+    })
   }
 }
 

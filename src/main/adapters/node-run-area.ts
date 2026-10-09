@@ -1,11 +1,10 @@
 import fs from 'fs'
 import path from 'path'
 import type { RunArea } from '@astro/application'
-import { FAILED_FOLDER, MANIFEST_SUFFIX, type StackManifest } from '@astro/domain'
+import { FAILED_FOLDER, MANIFEST_SUFFIX, STEP_FOLDER, type StackManifest } from '@astro/domain'
 import { ownFolder } from './node-siril-workspace'
 
-/** The work folder's own subfolder for the steps the app writes (NFR-015). */
-export const STEP_FOLDER = '.astrorepo'
+export { STEP_FOLDER }
 
 /** Whether `p` is inside `dir`, both resolved. */
 function inside(dir: string, p: string): boolean {

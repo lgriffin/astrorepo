@@ -30,7 +30,8 @@ import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
-import { JobRefusedError, JobStateError } from '@astro/application'
+import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
+import { ArchiveRefusedError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
@@ -57,9 +58,17 @@ export function readOnlyDirs(): string[] {
   return [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
 }
 
+function workAreaPath(): string {
+  return getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
+}
+
 function sirilWorkDir(sourceDir: string): string {
-  const workArea = getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
-  return path.join(workArea, 'siril', sirilFolderName(sourceDir))
+  return path.join(workAreaPath(), 'siril', sirilFolderName(sourceDir))
+}
+
+/** Where archives go: the archive folder setting, else the work area's archive folder (ARC-012). */
+function archiveRoot(): string {
+  return getSetting('archive_root') || path.join(workAreaPath(), 'archive')
 }
 
 type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
@@ -527,6 +536,26 @@ export function registerIpcHandlers(): void {
       profile: args.profile,
       quality: args.quality
     }, args.timing))
+  }))
+
+  // The work folder comes from the target's own raw folder and the destination from Settings, never
+  // from the page, so an archive only ever reads and removes inside that target's work folder.
+  const archiveRequest = (targetId: string) => {
+    const rawPath = targetRawPath(targetId)
+    return { targetId, workDir: rawPath ? sirilWorkDir(rawPath) : null, archiveRoot: archiveRoot(), readOnlyDirs: readOnlyDirs() }
+  }
+
+  handle('archive:preview', validated('archive:preview', async args => toArchivePreviewView(await composeCore(getSqlite()).archive.preview(archiveRequest(args.target_id)))))
+
+  handle('archive:run', validated('archive:run', async args => {
+    try {
+      const out = await composeCore(getSqlite()).archive.archive({ ...archiveRequest(args.target_id), mode: args.mode, remove: args.remove })
+      return { ok: true, message: archiveResultMessage(out) }
+    } catch (error) {
+      if (error instanceof ArchiveRefusedError) return { ok: false, error: error.message }
+      // A failed copy leaves no archive and removes nothing; the user can fix the cause and try again.
+      return { ok: false, error: `The archive was not made, and nothing was removed: ${error instanceof Error ? error.message : String(error)}` }
+    }
   }))
 
   handle('jobs:cancel', validated('jobs:cancel', args => refusable(() => jobs().cancel(args.job_id))))

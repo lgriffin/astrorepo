@@ -1214,3 +1214,51 @@ export interface MeasureBatchView {
   /** The last light this batch tried; pass it back as retry_after to carry a retry on. */
   last: string | null
 }
+
+/** One folder of a target's work folder, in the archive preview (specs/022-archive). */
+export interface ArchiveFolderView {
+  /** The folder's name, or '' for the files in the work folder itself. */
+  folder: string
+  /** What it is, in the user's words. */
+  label: string
+  size: string
+  /** What removing it gives back, with why when that is nothing. */
+  frees: string
+  freesBytes: number
+  rebuildable: boolean
+  /** Whether it can be rebuilt, or why it is kept or not. */
+  rebuild: string
+  intermediate: boolean
+  /** The user may tick it for removal. */
+  removable: boolean
+  /** Ticked at the start: removable and rebuildable. */
+  suggested: boolean
+}
+
+export interface ArchiveOptionView {
+  mode: 'linked' | 'self-contained'
+  label: string
+  /** What this kind of archive copies, in one sentence. */
+  text: string
+  copies: string
+  verdict: 'fits' | 'short' | 'unknown'
+  verdictText: string
+  /** Raw frames a manifest names that are gone, in one sentence; null when none are. */
+  missing: string | null
+}
+
+export interface ArchivePreviewView {
+  /** "Archived on 9 Oct 2026, linked, in D:\\Archive\\M 42 2026-10-09." when it was archived. */
+  archived: string | null
+  archivedPath: string | null
+  workDir: string | null
+  destination: string
+  folders: ArchiveFolderView[]
+  /** How many stack manifests the work folder holds, in one sentence. */
+  manifests: string
+  options: ArchiveOptionView[]
+  /** Why it cannot be archived now; null when it can. */
+  blocked: string | null
+}
+
+export type ArchiveRunResult = { ok: true; message: string } | { ok: false; error: string }
