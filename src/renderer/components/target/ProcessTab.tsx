@@ -4,17 +4,19 @@ import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
 import { Card, EmptyState } from '../common/Card'
 import { QueueJob, type QueueResult } from '../jobs/QueueJob'
+import { FrameGrades } from './FrameGrades'
 import { runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
 import type { JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView } from '@shared/types'
 
 /**
  * Stack and process (UX-010): the steps from a target's raw frames to a processed image, in
- * order, with each step saying when its job is already queued or running (UX-011).
+ * order (grading the lights first, GRD-009), with each step saying when its job is already queued or running (UX-011).
  */
 export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: string | null }): React.ReactElement {
   const [view, setView] = useState<JobsView | null>(null)
   const [unreadable, setUnreadable] = useState(false)
   const [prepKey, setPrepKey] = useState<string | null>(null)
+  const [gradesKey, setGradesKey] = useState(0)
   // Only the newest poll may update the runs, so a slow old one never brings back a stale queue.
   const request = useRef(0)
 
@@ -39,12 +41,16 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
 
   return (
     <div className="space-y-6">
-      <Card title="1 · Stack">
+      <Card title="1 · Grade the lights">
+        <FrameGrades targetId={targetId} onChanged={() => setGradesKey(k => k + 1)} />
+      </Card>
+
+      <Card title="2 · Stack">
         {runs.stack && <RunBanner job={runs.stack} />}
         {rawPath ? (
           <>
             <PrepForSiril rawPath={rawPath} onPrepared={setPrepKey} />
-            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey} onQueued={loadRuns} queued={runs.stack !== null || view === null} />
+            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey === 'preparing' ? prepKey : `${prepKey ?? ''}|${gradesKey}`} onQueued={loadRuns} queued={runs.stack !== null || view === null} />
           </>
         ) : (
           <EmptyState>
@@ -54,7 +60,7 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         )}
       </Card>
 
-      <Card title="2 · Post-process">
+      <Card title="3 · Post-process">
         {runs.postProcess && <RunBanner job={runs.postProcess} />}
         <PostProcessing targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.postProcess !== null || view === null} />
       </Card>
@@ -73,7 +79,7 @@ function RunBanner({ job }: { job: JobView }): React.ReactElement {
   )
 }
 
-/** 3 · Runs: this target's queued, running and recent jobs. */
+/** 4 · Runs: this target's queued, running and recent jobs. */
 function TargetRunsCard({ runs, unreadable }: { runs: TargetRuns; unreadable: boolean }): React.ReactElement {
   const row = (job: JobView) => (
     <li key={job.id} className="flex items-baseline justify-between gap-3 py-1.5 border-t border-astro-border first:border-t-0">
@@ -84,7 +90,7 @@ function TargetRunsCard({ runs, unreadable }: { runs: TargetRuns; unreadable: bo
     </li>
   )
   return (
-    <Card title="3 · Runs" action={<Link to="/jobs" className="text-xs text-astro-accent hover:underline">Open Jobs</Link>}>
+    <Card title="4 · Runs" action={<Link to="/jobs" className="text-xs text-astro-accent hover:underline">Open Jobs</Link>}>
       {unreadable ? (
         <EmptyState>Could not read the job queue. This part tries again every few seconds.</EmptyState>
       ) : runs.active.length === 0 && runs.finished.length === 0 ? (
@@ -108,7 +114,8 @@ function PrepForSiril({ rawPath, onPrepared }: { rawPath: string; onPrepared: (k
       const result = await invoke<SirilWorkspaceView>('home:prep-siril', { raw_path: rawPath })
       const total = result.linked + result.copied + result.existing
       const parts = [`${result.byFolder.lights} lights`, `${result.byFolder.darks} darks`, `${result.byFolder.flats} flats`, `${result.byFolder.biases} biases`]
-      const done = `Siril folders ready in ${result.workDir}: ${parts.join(', ')}. Your source folder was not changed.`
+      const graded = result.rejected > 0 ? ` Frame grading left out ${result.rejected} ${result.rejected === 1 ? 'light' : 'lights'}${result.pruned > 0 ? ` and removed ${result.pruned} earlier ${result.pruned === 1 ? 'file' : 'files'} from the work area` : ''}.` : ''
+      const done = `Siril folders ready in ${result.workDir}: ${parts.join(', ')}.${graded} Your source folder was not changed.`
       setStatus(done)
       onPrepared(done)
       addToast(`Siril work area ready with ${total} frames`, 'success')
@@ -197,6 +204,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
           onQueued={onQueued}
         />
       )}
+      {plan.gradingNote && <p className="text-xs text-astro-muted">{plan.gradingNote}</p>}
       {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
       {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
       {plan.scripts.length > 0 && (

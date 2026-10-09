@@ -6,6 +6,7 @@ const GB = 1024 ** 3
 
 const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
   counts: { lights: 120, darks: 20, flats: 0, biases: 1 },
+  rejectedLights: 0,
   sensor: 'colour',
   sensorKnown: true,
   geometry: { width: 1920, height: 1080 },

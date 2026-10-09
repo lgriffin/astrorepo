@@ -14,9 +14,12 @@ import {
   type SpaceVerdict
 } from '@astro/domain'
 import type { SirilWorkspace } from '../ports/siril-workspace'
+import type { FrameSelection } from './frame-grading'
 
 export interface EstimateSirilRunDeps {
   workspace: SirilWorkspace
+  /** Grading, when wired: rejected lights are left out of the count and the space. */
+  selection?: FrameSelection
 }
 
 export interface ScriptEstimate extends SpaceVerdict {
@@ -31,6 +34,8 @@ export interface ScriptEstimate extends SpaceVerdict {
 
 export interface SirilRunEstimate {
   counts: FrameCounts
+  /** Lights grading rejected, left out of the counts and the space. */
+  rejectedLights: number
   sensor: Sensor
   /** Read from the lights' headers, else guessed from file size (and then approximate). */
   sensorKnown: boolean
@@ -59,8 +64,10 @@ export type EstimateSirilRun = (sourceDir: string, workDir: string) => Promise<S
  */
 export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilRun {
   return async (sourceDir, workDir) => {
-    const frames = await deps.workspace.listSourceFrames(sourceDir)
-    const placements = planSirilWorkspace(frames)
+    const selected = await selectFrames(deps, sourceDir)
+    const rejected = selected.rejected
+    const frames = selected.frames.filter(f => !selected.rejectedPaths.has(f.path))
+    const placements = planSirilWorkspace(selected.frames).filter(p => !selected.rejectedPaths.has(p.from))
     const counts: FrameCounts = { lights: 0, darks: 0, flats: 0, biases: 0 }
     for (const p of placements) counts[p.folder]++
 
@@ -100,6 +107,7 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
 
     return {
       counts,
+      rejectedLights: rejected,
       sensor,
       sensorKnown: known.length > 0,
       geometry,
@@ -112,4 +120,21 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
       scripts
     }
   }
+}
+
+/**
+ * The source folder's frames and the lights grading rejects among them. Calibration frames are
+ * never graded, so never left out. `frames` holds every frame, so its layout names each light the
+ * way an earlier run did; leave `rejectedPaths` out of it to get what a stack uses.
+ */
+export async function selectFrames(
+  deps: { workspace: Pick<SirilWorkspace, 'listSourceFrames'>; selection?: FrameSelection },
+  sourceDir: string
+): Promise<{ frames: { path: string; name: string; imageType: string | null }[]; rejected: number; rejectedPaths: Set<string> }> {
+  const all = await deps.workspace.listSourceFrames(sourceDir)
+  if (!deps.selection) return { frames: all, rejected: 0, rejectedPaths: new Set() }
+  const lights = planSirilWorkspace(all).filter(p => p.folder === 'lights').map(p => p.from)
+  const flagged = await deps.selection.rejected(lights)
+  const rejectedPaths = new Set(lights.filter(p => flagged.has(p)))
+  return { frames: all, rejected: rejectedPaths.size, rejectedPaths }
 }

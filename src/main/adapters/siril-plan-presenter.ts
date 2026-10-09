@@ -34,6 +34,10 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
       e.usedBytes > 0
         ? `An earlier run left ${formatBytes(e.usedBytes)} in the work folder's process and masters. It is not counted as free; delete it before running to get the space back.`
         : null,
+    gradingNote:
+      e.rejectedLights > 0
+        ? `${plural(e.rejectedLights, 'light')} rejected by frame grading ${e.rejectedLights === 1 ? 'is' : 'are'} left out of the stack and the space.`
+        : null,
     scripts: e.scripts.map(s => ({
       file: `${s.script}.ssf`,
       script: s.script,

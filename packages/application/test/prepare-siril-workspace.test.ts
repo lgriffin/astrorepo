@@ -11,7 +11,7 @@ describe('PrepareSirilWorkspace', () => {
     const result = await makePrepareSirilWorkspace({ workspace })('/data/M 81', '/work/siril/M 81')
 
     expect(result).toEqual({
-      workDir: '/work/siril/M 81', linked: 4, copied: 0, existing: 0,
+      workDir: '/work/siril/M 81', linked: 4, copied: 0, existing: 0, rejected: 0, pruned: 0,
       byFolder: { lights: 2, darks: 1, flats: 1, biases: 0 }
     })
     expect([...workspace.folders].sort()).toEqual(['/work/siril/M 81/biases', '/work/siril/M 81/darks', '/work/siril/M 81/flats', '/work/siril/M 81/lights'])

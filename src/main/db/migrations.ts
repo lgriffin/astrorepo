@@ -453,6 +453,26 @@ export function runMigrations(sqlite: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_jobs_state ON jobs(state);
   `)
+
+  // Migration: each light's measurement and the user's keep or reject (GRD-001, GRD-005).
+  // Keyed by path so a rescan keeps them; size and modified time tell a stale measurement.
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS frame_grades (
+      file_path TEXT PRIMARY KEY,
+      size_bytes INTEGER,
+      modified_at TEXT,
+      fwhm REAL,
+      eccentricity REAL,
+      star_count INTEGER,
+      background REAL,
+      noise REAL,
+      snr REAL,
+      measure_error TEXT,
+      measured_at TEXT,
+      override TEXT,
+      override_at TEXT
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

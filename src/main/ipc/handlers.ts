@@ -22,13 +22,14 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
-import { composeCore } from '../composition'
+import { composeCore, composeGrading } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toPostProcessView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toJobsView } from '../adapters/job-presenter'
+import { toGradesView } from '../adapters/grades-presenter'
 import { JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
@@ -446,6 +447,26 @@ export function registerIpcHandlers(): void {
   handle('siril:estimate', validated('siril:estimate', async (args) => {
     // Reads the index and the disk only (NFR-010): the work folder may not exist yet.
     return toSirilPlanView(await composeCore(getSqlite()).estimateSirilRun(args.raw_path, sirilWorkDir(args.raw_path)))
+  }))
+
+  handle('grades:limits', async () => composeGrading(getSqlite()).limits())
+
+  handle('grades:target', validated('grades:target', async args => toGradesView(await composeGrading(getSqlite()).grade(args.target_id))))
+
+  // One batch a call (NFR-014): the page asks again while frames remain, and stops when told to.
+  handle('grades:measure', validated('grades:measure', args => composeGrading(getSqlite()).measureBatch(args.target_id, { retry: args.retry, retryAfter: args.retry_after ?? null })))
+
+  handle('grades:override', validated('grades:override', async args => {
+    await composeGrading(getSqlite()).setOverride(args.file_id, args.override)
+    return { ok: true }
+  }))
+
+  handle('grades:export', validated('grades:export', async args => {
+    const csv = await composeGrading(getSqlite()).exportCsv(args.target_id)
+    const result = await dialog.showSaveDialog({ defaultPath: 'frame-grades.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (result.canceled || !result.filePath) return { saved: false }
+    fs.writeFileSync(result.filePath, csv, 'utf-8')
+    return { saved: true, path: result.filePath }
   }))
 
   handle('tools:list', async () => toToolsView(await composeCore(getSqlite()).listTools()))

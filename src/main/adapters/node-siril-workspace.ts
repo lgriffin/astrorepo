@@ -2,10 +2,10 @@ import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { SirilPlacement } from '@astro/domain'
+import type { SirilFolder, SirilPlacement } from '@astro/domain'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
-const SIRIL_FOLDERS = ['lights', 'darks', 'flats', 'biases']
+const SIRIL_FOLDERS: SirilFolder[] = ['lights', 'darks', 'flats', 'biases']
 /** A folder named for a frame type tells what its frames are when the header does not. */
 const FRAME_TYPE_FOLDER = /dark|flat|bias|offset/i
 /** Copies keep the source's modified time; some file systems store it to the second. */
@@ -39,7 +39,10 @@ export class NodeSirilWorkspace implements SirilWorkspace {
   }
 
   async prepareFolders(workDir: string): Promise<void> {
-    for (const folder of SIRIL_FOLDERS) await fs.promises.mkdir(path.join(workDir, folder), { recursive: true })
+    for (const folder of SIRIL_FOLDERS) {
+      await fs.promises.mkdir(path.join(workDir, folder), { recursive: true })
+      await ownFolder(workDir, folder)
+    }
   }
 
   async place(p: SirilPlacement, workDir: string): Promise<PlacementResult> {
@@ -60,6 +63,23 @@ export class NodeSirilWorkspace implements SirilWorkspace {
       await fs.promises.utimes(dest, source.atime, source.mtime)
       return 'copied'
     }
+  }
+
+  async remove(workDir: string, folder: SirilFolder, names: string[]): Promise<string[]> {
+    if (names.length === 0) return []
+    const dir = await ownFolder(workDir, folder)
+    if (dir === null) return []
+    const removed: string[] = []
+    for (const name of new Set(names)) {
+      // A placement's name is a bare file name; anything else is not one of ours.
+      if (name !== path.basename(name) || !FITS_EXTENSIONS.has(path.extname(name).toLowerCase())) continue
+      const entry = path.join(dir, name)
+      const stat = await fs.promises.lstat(entry).catch(() => null)
+      if (!stat?.isFile()) continue
+      await fs.promises.unlink(entry)
+      removed.push(name)
+    }
+    return removed.sort()
   }
 
   async contains(dir: string, candidate: string): Promise<boolean> {
@@ -140,6 +160,30 @@ function isCurrent(existing: fs.Stats, source: fs.Stats): boolean {
   const sameFile = existing.ino !== 0 && existing.ino === source.ino && existing.dev === source.dev
   const sameCopy = existing.size === source.size && Math.abs(existing.mtimeMs - source.mtimeMs) < MTIME_TOLERANCE_MS
   return sameFile || sameCopy
+}
+
+/** A frame folder that is, or links to, a folder outside the work area. */
+export class WorkFolderLinksOutError extends Error {
+  constructor(readonly folder: string) {
+    super(`The work area's ${path.basename(folder)} folder (${folder}) links to a folder outside the work area, and the app only writes inside its work area. Remove the link, then try again.`)
+    this.name = 'WorkFolderLinksOutError'
+  }
+}
+
+/**
+ * The real path of a frame folder when it is a plain folder inside the work area; null when it
+ * does not exist. Throws when it is a link, or resolves outside the work area, so nothing the app
+ * writes or removes can reach a source folder through it.
+ */
+async function ownFolder(workDir: string, folder: SirilFolder): Promise<string | null> {
+  const dir = path.join(workDir, folder)
+  const stat = await fs.promises.lstat(dir).catch(() => null)
+  if (!stat) return null
+  if (stat.isSymbolicLink() || !stat.isDirectory()) throw new WorkFolderLinksOutError(dir)
+  const [real, root] = await Promise.all([fs.promises.realpath(dir), fs.promises.realpath(workDir)])
+  const rel = path.relative(root, real)
+  if ((process.platform === 'win32' ? rel.toLowerCase() : rel) !== folder) throw new WorkFolderLinksOutError(dir)
+  return real
 }
 
 /** The path itself or its closest ancestor that exists, so space can be read before a folder is made. */

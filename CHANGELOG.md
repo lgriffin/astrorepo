@@ -11,6 +11,11 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 
 ## [Unreleased]
 
+### Added
+- **Frame grading** (spec 019): every light measured for FWHM, eccentricity, stars, background,
+  noise and SNR, graded against limits in Settings and its own night, kept or rejected by hand,
+  exported as CSV; only kept lights go to Siril.
+
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one
   uninterrupted block on the app's main process. It now walks, reads and writes a small piece at

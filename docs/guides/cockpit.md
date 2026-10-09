@@ -114,8 +114,9 @@ beside every part.
 - **Overview**: what the files say (below), the next step for the target in one sentence, and the
   workflow stage.
 - **Stack and process**: the whole flow from raw frames to a processed image, as numbered steps.
-  **1 · Stack** is Prep for Siril and the stacking plan. **2 · Post-process** is the Siril_Scripts
-  recipe. **3 · Runs** lists this target's queued, running and recent jobs. When a stack or
+  **1 · Grade the lights** measures every light and grades it (see below). **2 · Stack** is Prep
+  for Siril and the stacking plan. **3 · Post-process** is the Siril_Scripts recipe. **4 · Runs**
+  lists this target's queued, running and recent jobs. When a stack or
   post-processing job is already queued or running, its step says so at the top and does not
   offer to queue it again.
 - **Files**: the target's folders, with buttons to open each one, and what the index knows about
@@ -268,3 +269,29 @@ Everything else keeps its target link, headers and quality verdict, so a rescan 
 is quick. Scanning a subfolder of one already scanned, or the same folder typed with a trailing
 slash, reuses those rows too. Unreadable files that have not changed stay in the "could not be
 read" list without being read again.
+
+## Grading the lights
+
+Before a stack, **1 · Grade the lights** on a target's Stack and process measures every light from
+its pixels: FWHM (how wide the stars are, in the frame's own pixels), eccentricity (how trailed
+they are, 0 for round), how many stars it holds, the sky background and noise, and SNR (how well
+the stars stand out). A colour camera's frames are binned 2×2 first, so the Bayer pattern is not
+mistaken for stars. Your files are only read.
+
+**Measure lights** works through them a few at a time, away from the rest of the app so it stays
+responsive; **Stop** stops between batches and the next press carries on. Each night and filter then shows its median FWHM and stars, a trend line of
+FWHM over star-count bars in capture order (rejected frames in red), and every frame with its
+grade and the reasons for it.
+
+A light is **rejected** when its eccentricity is above the limit, or its FWHM, star count or
+background is far from the median of its own night and filter (so a soft night is not thrown out
+whole). Set the limits in **Settings > Frame grading**; changing them grades every light again
+straight away. **Your choice** beside a frame keeps or rejects it whatever the limits say, until
+you set it back to **By the limits**. A light that could not be read shows why and stays in the
+stack.
+
+Only kept lights go to Siril: the stacking plan counts them, and Prep for Siril and queued stacks
+place only them, removing any rejected light an earlier run left in the work area. Anything else
+in the work folders, such as frames you added by hand, stays. Kept lights get
+a weight (their SNR squared against the best one) for weighted stacking. **Export CSV** saves every
+measurement, grade and reason for a spreadsheet.
