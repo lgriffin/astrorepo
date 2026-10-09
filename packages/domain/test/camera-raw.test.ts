@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   cameraRawSummary,
   frameFileKind,
+  frameTypeOfFolder,
   pixelPitchUm,
   rawCaptureTime,
   rawFormatOf,
@@ -58,7 +59,23 @@ describe('camera RAW files', () => {
     expect(rawCaptureTime({ dateTimeOriginal: null, subSec: null, offsetTime: null })).toBeNull()
   })
 
-  it('[RIG-017] Given RAW file and folder names, When typed, Then a word in the name wins, then a folder named for its frames, else a light', () => {
+  it('[RIG-001] Given impossible EXIF dates, times or offsets, When read, Then there is no capture time; a leap day reads', () => {
+    const at = (dateTimeOriginal: string, offsetTime: string | null = null) => rawCaptureTime({ dateTimeOriginal, subSec: null, offsetTime })
+    expect(at('2025:02:29 21:15:03')).toBeNull()
+    expect(at('2025:02:31 21:15:03')).toBeNull()
+    expect(at('2025:04:31 21:15:03')).toBeNull()
+    expect(at('2025:04:10 24:00:00')).toBeNull()
+    expect(at('2025:04:10 21:60:00')).toBeNull()
+    expect(at('2025:04:10 21:15:61')).toBeNull()
+    expect(at('2025:04:10 21:15:03', '+99:99')).toBeNull()
+    expect(at('2025:04:10 21:15:03', '+15:00')).toBeNull()
+    expect(at('2025:04:10 21:15:03', '-05:60')).toBeNull()
+    expect(at('2024:02:29 21:15:03')).toEqual({ dateObs: '2024-02-29T21:15:03.000', zoneKnown: false })
+    expect(at('2024:02:29 21:15:03', '+14:00')).toEqual({ dateObs: '2024-02-29T07:15:03.000Z', zoneKnown: true })
+    expect(at('2024:02:29 21:15:03', '-12:00')).toEqual({ dateObs: '2024-03-01T09:15:03.000Z', zoneKnown: true })
+  })
+
+  it('[RIG-017] Given RAW file and folder names, When typed, Then a word in the name wins, then a folder named for its frames, else none', () => {
     expect(rawImageType('DARK_300s_ISO800_0001.CR2', 'M31')).toBe('Dark')
     expect(rawImageType('M31_LIGHT_300s_0001.CR2', 'Darks')).toBe('Light')
     expect(rawImageType('flat-12.nef', null)).toBe('Flat')
@@ -66,9 +83,32 @@ describe('camera RAW files', () => {
     expect(rawImageType('IMG_0001.CR2', 'Darks')).toBe('Dark')
     expect(rawImageType('IMG_0001.CR2', 'flats_2024-03-10')).toBe('Flat')
     expect(rawImageType('IMG_0001.CR2', 'Bias frames')).toBe('Bias')
-    expect(rawImageType('IMG_0001.CR2', 'Dark Shark')).toBe('Light')
-    expect(rawImageType('IMG_0001.CR2', 'Flaming Star')).toBe('Light')
-    expect(rawImageType('IMG_0001.CR2', null)).toBe('Light')
+    expect(rawImageType('IMG_0001.CR2', 'Darks_ISO800')).toBe('Dark')
+    expect(rawImageType('IMG_0001.CR2', 'Flats-L')).toBe('Flat')
+    expect(rawImageType('IMG_0001.CR2', 'Lights')).toBe('Light')
+    // Neither name says, so the folder the frame is laid out from decides ("Darks/ISO800").
+    expect(rawImageType('IMG_0001.CR2', 'ISO800')).toBeNull()
+    expect(rawImageType('IMG_0001.CR2', 'Dark Shark')).toBeNull()
+    expect(rawImageType('IMG_0001.CR2', 'Flaming Star')).toBeNull()
+    expect(rawImageType('IMG_0001.CR2', null)).toBeNull()
+  })
+
+  it('[RIG-017] Given folder names, When read for a frame type, Then only a frame-type word with qualifiers such as an ISO, a date or a filter names one', () => {
+    expect(frameTypeOfFolder('Darks_ISO800')).toBe('Dark')
+    expect(frameTypeOfFolder('Flats-L')).toBe('Flat')
+    expect(frameTypeOfFolder('Darks')).toBe('Dark')
+    expect(frameTypeOfFolder('DarkFrames')).toBe('Dark')
+    expect(frameTypeOfFolder('flats_2024-03-10')).toBe('Flat')
+    expect(frameTypeOfFolder('Bias frames')).toBe('Bias')
+    expect(frameTypeOfFolder('Master Offsets')).toBe('Bias')
+    expect(frameTypeOfFolder('Dark Shark')).toBeNull()
+    expect(frameTypeOfFolder('Darks and Flats')).toBeNull()
+    expect(frameTypeOfFolder('ISO800')).toBeNull()
+    expect(frameTypeOfFolder(null)).toBeNull()
+  })
+
+  it('[RIG-017] Given a RAW frame of no known type, When turned into header rows, Then no IMAGETYP is written', () => {
+    expect(rawHeaders(exif(), 'CR2', null).some(r => r.keyword === 'IMAGETYP')).toBe(false)
   })
 
   it('[RIG-001] Given a RAW frame\'s tags, When turned into header rows, Then they carry FITS names, ISO as gain and the camera once', () => {

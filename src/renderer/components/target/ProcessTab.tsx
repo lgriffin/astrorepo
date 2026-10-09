@@ -6,7 +6,7 @@ import { Card, EmptyState, LinkButton } from '../common/Card'
 import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
 import { ArchiveCard } from './ArchiveCard'
-import { runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
+import { filterStackQueued, runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
 import type { CometPlanView, FilterPlanView, JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView, SyqonView } from '@shared/types'
 
 /**
@@ -52,7 +52,7 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         {rawPath ? (
           <>
             <PrepForSiril rawPath={rawPath} onPrepared={setPrepKey} />
-            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey === 'preparing' ? prepKey : `${prepKey ?? ''}|${gradesKey}`} onQueued={loadRuns} queued={runs.stack !== null || view === null} />
+            <StackingPlan targetId={targetId} rawPath={rawPath} refreshKey={prepKey === 'preparing' ? prepKey : `${prepKey ?? ''}|${gradesKey}`} onQueued={loadRuns} queued={runs.stack !== null || view === null} filterQueued={filter => view === null || filterStackQueued(runs, filter)} />
             <CometPlan targetId={targetId} refreshKey={`${prepKey ?? ''}|${gradesKey}`} />
           </>
         ) : (
@@ -259,7 +259,7 @@ function StackAdvice({ rawPath, advice, onChanged }: { rawPath: string; advice: 
 }
 
 /** Which stock Siril script fits the frames and whether the disk has room, before anything is written. */
-function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { targetId: string; rawPath: string; refreshKey: string | null; onQueued: () => void; queued: boolean }): React.ReactElement | null {
+function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued, filterQueued }: { targetId: string; rawPath: string; refreshKey: string | null; onQueued: () => void; queued: boolean; filterQueued: (filter: string) => boolean }): React.ReactElement | null {
   const [plan, setPlan] = useState<SirilPlanView | null>(null)
   const [failed, setFailed] = useState(false)
   const [reload, setReload] = useState(0)
@@ -289,7 +289,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued }: { tar
       </p>
       <p className="text-xs text-astro-muted">{plan.frames}</p>
       {plan.rawNote && <p className="text-xs text-astro-muted">{plan.rawNote}</p>}
-      {plan.filters && <FilterStacks targetId={targetId} plan={plan.filters} onQueued={onQueued} queued={queued} />}
+      {plan.filters && <FilterStacks targetId={targetId} plan={plan.filters} onQueued={onQueued} queued={filterQueued} />}
       {chosen && !plan.filters && (
         <p className="text-xs">
           <span className="text-astro-text">Needs {chosen.needed}</span>
@@ -533,9 +533,10 @@ function SyqonSteps({ targetId, rawPath, onQueued, queued }: { targetId: string;
 
 /**
  * One stack per filter for a mono camera's lights (RIG-006 to RIG-009): each filter's frames, the
- * space its stack needs, a queue button, and its channel master once there is one.
+ * space its stack needs, a queue button unless that filter's stack is already on its way, and its
+ * channel master once there is one.
  */
-function FilterStacks({ targetId, plan, onQueued, queued }: { targetId: string; plan: FilterPlanView; onQueued: () => void; queued: boolean }): React.ReactElement {
+function FilterStacks({ targetId, plan, onQueued, queued }: { targetId: string; plan: FilterPlanView; onQueued: () => void; queued: (filter: string) => boolean }): React.ReactElement {
   return (
     <div className="space-y-2 border border-astro-border rounded p-2">
       <p className="text-xs text-astro-text">{plan.intro}</p>
@@ -553,7 +554,7 @@ function FilterStacks({ targetId, plan, onQueued, queued }: { targetId: string; 
               </td>
               <td className="py-1 pr-3 text-astro-muted">{stack.master ? <span className="font-mono">{stack.master}</span> : 'Not stacked yet'}</td>
               <td className="py-1">
-                {stack.canQueue && !queued && (
+                {stack.canQueue && !queued(stack.filter) && (
                   <QueueJob
                     label={`Queue ${stack.filter}`}
                     confirm={[

@@ -42,20 +42,27 @@ here only appears when such frames or settings exist.
   gets them indexed.
 - **A RAW frame's type comes from its name.** RAW files record no frame type. A word in the file
   name decides ("DARK_300s_0001.CR2", "M31_LIGHT_0001.CR2"), else the folder it sits in when that
-  folder is named for its frames ("Darks", "flats_2024-03-10"). Only the nearest folder counts,
-  so a target folder called "Dark Shark" never turns its lights into darks. Anything else is a
-  light.
+  folder is named for its frames ("Darks", "flats_2024-03-10", "Darks_ISO800", "Flats-L"): one
+  frame-type word with nothing else but an ISO, an exposure, a date or a filter. A target folder
+  called "Dark Shark" is not named for its frames, so it never turns its lights into darks. When
+  neither name says, no type is written, and the folder the frame is laid out from decides
+  ("Darks/ISO800/IMG_0001.CR2" is a dark); anything else is a light. RAW frames are not plate
+  solved: the solvers are handed FITS copies only.
 - **The capture time keeps the camera's clock.** EXIF times are local. When the camera records its
   offset (OffsetTimeOriginal, EXIF 2.31) the time is turned into UTC. Otherwise it is kept as
   written and the header row says the time zone is unknown; comet positions then need the
-  camera's clock on UTC.
+  camera's clock on UTC. A date that is not in the calendar (30 February), a time out of range or
+  an offset beyond ±14:00 gives no capture time.
 - **Filters are named, not guessed.** Filter planning starts only when lights carry two filters the
   app can name: Ha, OIII, SII, NII, H-beta, L, R, G, B and their usual spellings. The Seestar's LP
   and IR-cut filters and dual-band filters are neither narrowband nor broadband, so Leigh's targets
   never get a filter suggestion. The lagging channel reuses the channel balance of spec 020.
 - **Per-filter stacks reuse the job runner.** Each filter's stack is an ordinary queued stack whose
   work folder is `filters/<filter>` inside the target's work folder, with the step-by-step runs,
-  carrying on and manifests of spec 021. A stack that would mix filters in one folder is refused.
+  carrying on and manifests of spec 021. Two filters whose names make one folder name ("S II" and
+  "S.II") each get a short tag that stays the same for the name, so they never share a folder.
+  Only the queued filter's Queue button is hidden while its stack is on its way. A stack that
+  would mix filters in one folder is refused.
 - **Comet positions are two-body.** The orbit is the MPC's osculating orbit around the Sun, solved
   with universal variables so elliptic, parabolic and hyperbolic comets take the same path. The
   Earth comes from astronomy-engine (VSOP87), with the site's offset when it is set. The position
@@ -72,20 +79,21 @@ here only appears when such frames or settings exist.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | RIG-001 | Ubiquitous | The system shall index camera RAW frames in CR2, NEF, ARW, DNG and other TIFF-based RAW formats from their TIFF and EXIF tags alone, into the index FITS frames use: camera make and model, capture time, exposure, ISO as gain, image size, focal length and pixel size, and the temperature where the EXIF records one outside the maker note. |
-| RIG-017 | Ubiquitous | The system shall take a camera RAW frame's type from a frame-type word in its file name, else from its nearest folder when that folder is named for its frames, else take it as a light. |
+| RIG-017 | Ubiquitous | The system shall take a camera RAW frame's type from a frame-type word in its file name, else from its nearest folder when that folder is named for its frames, else from the nearest folder it is laid out from that is named for calibration frames, else take it as a light. |
 | RIG-002 | Event | When a scan finds a CR3 or RAF file, the system shall list it among the files it could not read, saying it was found and its metadata is not read, and still lay it out for Siril. |
 | RIG-003 | Unwanted | If a camera RAW file is not TIFF underneath or its tags point past its end, then the system shall set it aside with the files it could not read, with the reason. |
 | RIG-004 | Event | When a stack's lights include camera RAW frames, the system shall lay them out in the Siril work area as they are, take them as colour, recommend Siril's colour script and say in the plan that its convert step reads RAW. |
 | RIG-005 | Unwanted | If frame grading measures a camera RAW light, then the system shall record that its pixels are not measured and keep it in the stack. |
+| RIG-019 | Ubiquitous | The system shall plate solve FITS files only, never camera RAW frames. |
 
 ## Mono cameras with filters
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| RIG-006 | Optional | Where a stack's mono lights carry two filters or more, the system shall plan one stack per filter in its own work folder, with each filter's lights, its own flats and the shared darks and biases, and show each one's frames, space and missing calibration for Siril's mono script. |
+| RIG-006 | Optional | Where a stack's mono lights carry two filters or more, the system shall plan one stack per filter in its own work folder, never shared with another filter, with each filter's lights, its own flats and the shared darks and biases, and show each one's frames, space and missing calibration for Siril's mono script. |
 | RIG-007 | Event | When a filter's stack has left a result in its work folder, the system shall list it as that filter's channel master, and say how many channels still need one. |
 | RIG-008 | Ubiquitous | The system shall count each filter's flats from the flats taken with that filter, name the filters with none of their own, and say how many lights and flats record no filter. |
-| RIG-009 | Event | When the user queues one filter's stack, the system shall lay out only that filter's lights and flats with every dark and bias in the filter's work folder and run Siril's mono script there. |
+| RIG-009 | Event | When the user queues one filter's stack, the system shall lay out only that filter's lights and flats with every dark and bias in the filter's work folder and run Siril's mono script there, and offer no second Queue for that filter alone while its stack is on its way. |
 | RIG-018 | Unwanted | If a stack of mono lights that carry several filters is queued as one, then the system shall refuse it and ask for each filter's stack instead. |
 
 ## Planning

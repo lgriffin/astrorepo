@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import { frameFileKind, type FrameIndexSettings, type InputFrame, type SirilFolder, type SirilPlacement } from '@astro/domain'
+import { frameFileKind, frameTypeOfFolder, type FrameIndexSettings, type InputFrame, type SirilFolder, type SirilPlacement } from '@astro/domain'
 import { parseUtc } from './sqlite-frame-catalogue'
 
 /** FITS and camera RAW: Siril's `convert` reads both (RIG-004). */
@@ -39,8 +39,6 @@ function toSettings(r: IndexedRow): FrameIndexSettings {
     scope: r.scope
   }
 }
-/** A folder named for a frame type tells what its frames are when the header does not. */
-const FRAME_TYPE_FOLDER = /dark|flat|bias|offset/i
 /** Copies keep the source's modified time; some file systems store it to the second. */
 const MTIME_TOLERANCE_MS = 1000
 
@@ -60,7 +58,10 @@ export class NodeSirilWorkspace implements SirilWorkspace {
       for (const e of await fs.promises.readdir(dir, { withFileTypes: true })) {
         const full = path.join(dir, e.name)
         if (e.isDirectory()) {
-          await walk(full, FRAME_TYPE_FOLDER.test(e.name) ? e.name : hint)
+          // A folder named for calibration frames ("Darks", "Darks_ISO800", "Flats-L") tells what the
+          // frames in it and below it are when their header does not; a target's "Dark Shark" does not.
+          const type = frameTypeOfFolder(e.name)
+          await walk(full, type && type !== 'Light' ? type : hint)
         } else if (e.isFile() && isFrameFile(e.name)) {
           const row = typeOf?.get(full) as { image_type: string | null } | undefined
           frames.push({ path: full, name: e.name, imageType: row?.image_type ?? hint })

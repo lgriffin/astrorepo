@@ -605,12 +605,16 @@ index takes:
   scale.
 
 A RAW file records no frame type, so the app looks for one in the file name (`DARK_0001.CR2`,
-`M31_LIGHT_0001.CR2`), then in the folder it sits in (`Darks`, `flats_2024-03-10`). Anything else
-is a light.
+`M31_LIGHT_0001.CR2`), then in the folder it sits in (`Darks`, `flats_2024-03-10`, `Darks_ISO800`,
+`Flats-L`), then in a folder above it named for calibration frames (`Darks/ISO800`). A folder
+counts when it is a frame-type word with nothing else but an ISO, an exposure, a date or a filter,
+so a target folder called `Dark Shark` keeps its lights. Anything else is a light. RAW frames are
+not plate solved; their FITS stacks are.
 
 The capture time is the camera's clock. When the camera records its time zone, the time is turned
 into UTC. When it does not, it is kept as written: set the camera's clock to UTC to keep nights in
-order across trips.
+order across trips. A date the calendar does not have, or an offset beyond ±14:00, gives no
+capture time.
 
 - **CR3 and RAF** (newer Canon and all Fujifilm cameras) are found but not read. They are listed
   with the files that could not be read, saying so. Siril still stacks them. Convert them to DNG
@@ -630,7 +634,9 @@ gets its own work folder (`filters/Ha`, `filters/OIII`, and so on) with:
 - flats taken with the same filter;
 - the darks and biases, which every filter shares.
 
-Each filter shows its frames, the space its stack needs and a **Queue** button for it. A filter
+Each filter shows its frames, the space its stack needs and a **Queue** button for it, hidden
+only for a filter whose stack is already queued or running. Two filters whose names make the same
+folder name (`S II` and `S.II`) each get a short tag after it, so they never share a folder. A filter
 with no flats of its own is named, since Siril's mono script needs them. So are lights and flats
 that record no filter, which no filter's stack takes. Once a filter is stacked, its result is
 listed as that channel's master. When every channel has one, combine them in Siril's RGB
@@ -649,7 +655,8 @@ filters the app can name count, so the Seestar's LP and IR-cut filters never get
 
 For a target whose object type is comet, step **2 · Stack** gains **Stack on the comet**. Paste the
 comet's line from the Minor Planet Center's comet elements (CometEls.txt, or the line an MPEC gives)
-and save it. A line that does not read says which part is wrong and keeps the orbit you had.
+and save it. A line that does not read, including a perihelion day the month does not have, says
+which part is wrong and keeps the orbit you had.
 
 The app then works out where the comet is in every kept light, at the middle of its exposure:
 

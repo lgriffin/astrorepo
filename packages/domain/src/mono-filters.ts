@@ -37,10 +37,22 @@ export function filterFolderName(filter: string): string {
   return safe || 'unnamed'
 }
 
-/** The work folder of one filter's stack, inside the target's work folder, spelt as the work folder is. */
-export function filterWorkDir(workDir: string, filter: string): string {
+/** A short tag that stays the same for a filter's name, for telling apart names that make one folder name. */
+function filterTag(filter: string): string {
+  // FNV-1a over the name as filters are matched: case and the spaces at the ends do not count.
+  let hash = 0x811c9dc5
+  for (const ch of filter.trim().toLowerCase()) hash = Math.imul(hash ^ (ch.codePointAt(0) as number), 0x01000193) >>> 0
+  return hash.toString(36).padStart(7, '0')
+}
+
+/**
+ * The work folder of one filter's stack, inside the target's work folder, spelt as the work folder
+ * is. `folderName` is the planned one (FilterStack.folderName), so two filters whose names make the
+ * same folder name ("S II" and "S.II") never share a folder.
+ */
+export function filterWorkDir(workDir: string, folderName: string): string {
   const sep = workDir.includes('\\') && !workDir.includes('/') ? '\\' : '/'
-  return `${workDir.replace(/[\\/]+$/, '')}${sep}filters${sep}${filterFolderName(filter)}`
+  return `${workDir.replace(/[\\/]+$/, '')}${sep}filters${sep}${filterFolderName(folderName)}`
 }
 
 export interface FilterFrame {
@@ -99,6 +111,9 @@ export function planFilterStacks(frames: FilterFrame[]): FilterStackPlan | null 
     else if (!f.filter?.trim()) unfilteredFlats++
   }
   const filters = [...byFilter.values()].sort((a, b) => a.filter.localeCompare(b.filter))
+  // Folder names are matched without case, as Windows does; filters that would share one each get a tag.
+  const shared = (f: FilterStack) => filters.filter(o => o.folderName.toLowerCase() === f.folderName.toLowerCase()).length > 1
+  for (const f of filters.filter(shared)) f.folderName = `${f.folderName}_${filterTag(f.filter)}`
   return {
     filters,
     darks: frames.filter(f => f.folder === 'darks').length,

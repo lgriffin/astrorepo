@@ -72,6 +72,11 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   it shows for a Seestar or Vespera target.
 
 ### Fixed
+- **Other rigs review fixes** (spec 026): RAW darks and flats in folders such as `Darks_ISO800`,
+  `Flats-L` or `Darks/ISO800` are no longer stacked as lights; impossible EXIF dates and time
+  offsets, and comet perihelion days the month does not have, are refused; RAW frames are no
+  longer plate solved; queueing one filter's stack hides only that filter's Queue button; filters
+  whose names make one folder name (`S II`, `S.II`) get folders of their own.
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one
   uninterrupted block on the app's main process. It now walks, reads and writes a small piece at
   a time and rests in between, shows live file counts, can be cancelled, and carries on from where

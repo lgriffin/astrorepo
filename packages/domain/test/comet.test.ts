@@ -67,6 +67,22 @@ describe('reading an MPC comet line', () => {
     expect(error('0001P  1986 02  9.4589  0.57  0.96  40  590  162')).toContain('node')
     expect(orbitProblem(orbit({ perihelionAt: new Date(NaN) }))).toContain('not a date')
   })
+
+  it('[RIG-012] Given perihelion days past the end of their month, When read, Then each is not a date; a leap day and a fractional last day read', () => {
+    const read = (date: string) => parseMpcComet(`0001P  ${date}  0.574761  0.967482  111.8566  59.0994  162.2516`)
+    const error = (date: string) => {
+      const p = read(date)
+      return p.ok ? null : p.error
+    }
+    expect(error('2025 02 31.5')).toContain('is not a date')
+    expect(error('2023 02 29.0')).toContain('is not a date')
+    expect(error('2025 04 31.2')).toContain('is not a date')
+    expect(error('2025 01 32')).toContain('is not a date')
+    const leap = read('2024 02 29.25')
+    expect(leap.ok && leap.orbit.perihelionAt.toISOString()).toBe('2024-02-29T06:00:00.000Z')
+    const last = read('2025 04 30.75')
+    expect(last.ok && last.orbit.perihelionAt.toISOString()).toBe('2025-04-30T18:00:00.000Z')
+  })
 })
 
 describe('the two-body orbit', () => {

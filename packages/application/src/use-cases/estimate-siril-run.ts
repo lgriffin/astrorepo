@@ -181,7 +181,7 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
       const { filters: planned, ...rest } = filterPlan
       const stacks: FilterStackEstimate[] = []
       for (const f of planned) {
-        const dir = filterWorkDir(workDir, f.filter)
+        const dir = filterWorkDir(workDir, f.folderName)
         const [one, results] = await Promise.all([estimate(sourceDir, dir, { filter: f.filter }), deps.workspace.stackResults(dir)])
         stacks.push({
           filter: f.filter,

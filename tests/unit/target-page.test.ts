@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { describe, it, expect } from 'vitest'
-import { TARGET_TABS, runLine, runsForTarget, targetLink, targetTabFrom } from '../../src/shared/navigation'
+import { TARGET_TABS, filterStackQueued, runLine, runsForTarget, targetLink, targetTabFrom } from '../../src/shared/navigation'
 import { toRecommendation } from '../../src/main/adapters/stacking-suggestion-presenter'
 import type { JobView, JobsView } from '../../src/shared/types'
 
@@ -29,6 +29,7 @@ const job = (over: Partial<JobView>): JobView => ({
   canRunNow: true,
   progress: null,
   outputs: [],
+  filter: null,
   ...over
 })
 
@@ -101,6 +102,17 @@ describe("A target's page", () => {
     expect(runs.stack?.id).toBe('q')
     expect(runs.postProcess?.id).toBe('r')
     expect(runsForTarget(null, 't-m31')).toEqual({ active: [], finished: [], stack: null, postProcess: null, syqon: null })
+  })
+
+  it("[RIG-009] Given one filter's stack on its way, When each filter's Queue button is decided, Then only that filter's is hidden", () => {
+    const ha = job({ id: 'ha', title: 'Stack M 31 (Ha) with Mono_Preprocessing', filter: 'Ha' })
+    const done = job({ id: 'oiii', state: 'succeeded', stateLabel: 'Succeeded', filter: 'OIII' })
+    const runs = runsForTarget(view({ queue: [ha], history: [done] }), 't-m31')
+    expect(filterStackQueued(runs, 'Ha')).toBe(true)
+    expect(filterStackQueued(runs, ' ha ')).toBe(true)
+    expect(filterStackQueued(runs, 'OIII')).toBe(false)
+    expect(filterStackQueued(runs, 'SII')).toBe(false)
+    expect(filterStackQueued(runsForTarget(view({ queue: [job({ id: 'w' })] }), 't-m31'), 'Ha')).toBe(false)
   })
 
   it('[UX-011] Given a step whose job is on its way, When the step says so, Then it gives the job and why it waits, or that it runs', () => {

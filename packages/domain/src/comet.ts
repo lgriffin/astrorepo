@@ -6,6 +6,8 @@
  * everything here is arithmetic.
  */
 
+import { daysInMonth } from './camera-raw'
+
 export interface Vec3 {
   x: number
   y: number
@@ -65,7 +67,8 @@ export function parseMpcComet(line: string): CometParse {
   const [, , year, month, day, q, e, peri, node, inc, epoch, , , rest] = m
   const mo = Number(month)
   const d = Number(day)
-  if (mo < 1 || mo > 12 || d < 1 || d >= 32) return { ok: false, error: `The perihelion date ${year} ${month} ${day} is not a date.` }
+  // The day may carry a fraction (perihelion at 6 h is day .25), but its whole part must be in the month.
+  if (mo < 1 || mo > 12 || d < 1 || Math.floor(d) > daysInMonth(Number(year), mo)) return { ok: false, error: `The perihelion date ${year} ${month} ${day} is not a date.` }
   const perihelionAt = new Date(Date.UTC(Number(year), mo - 1, 1) + (d - 1) * DAY_MS)
   const orbit: CometOrbit = {
     name: (rest ?? '').split(/\s{2,}/)[0].trim() || (m[1] ?? '').trim() || 'Comet',

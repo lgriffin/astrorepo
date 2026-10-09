@@ -152,6 +152,25 @@ describe('mono cameras with filters', () => {
     expect(job.command.args).toEqual(['-d', '/work/NGC 6888/filters/Ha', '-s', 'C:/Program Files/Siril/share/siril/scripts/Mono_Preprocessing.ssf'])
   })
 
+  it('[RIG-009] Given filters "S II" and "S.II" whose names make one folder name, When each is queued, Then each runs in the folder its plan gave it, never the same one', async () => {
+    const ws = new InMemorySirilWorkspace()
+    const frames: { name: string; imageType: string; filter: string | null }[] = ['S II', 'S.II'].flatMap((filter, n) => [
+      { name: `Light_${n}_1.fits`, imageType: 'Light', filter },
+      { name: `flats/Flat_${n}_1.fits`, imageType: 'Flat', filter }
+    ])
+    frames.push({ name: 'darks/Dark_1.fits', imageType: 'Dark', filter: null }, { name: 'biases/Bias_1.fits', imageType: 'Bias', filter: null })
+    ws.addSource('/data/Sh2', ...frames)
+    for (const f of frames) ws.describe(`/data/Sh2/${f.name}`, { width: 100, height: 100, colour: false, sizeBytes: 1000, settings: settings({ filter: f.filter }) })
+    ws.space = { freeBytes: 500 * GB, usedBytes: 0 }
+    const estimate = makeEstimateSirilRun({ workspace: ws })
+    const queue = makeQueueStack({ estimate, tools: new FakeToolHub().installAll(), stacks: new InMemoryStackCatalogue().addTarget('sh2', { name: 'Sh2' }), store: new InMemoryJobStore(), clock: new FixedClock(new Date(2026, 8, 29, 20)) })
+    const plan = await estimate('/data/Sh2', '/work/Sh2')
+    const request = { ...base, targetId: 'sh2', sourceDir: '/data/Sh2', workDir: '/work/Sh2' }
+    const jobs = [await queue({ ...request, filter: 'S II' }), await queue({ ...request, filter: 'S.II' })]
+    expect(jobs.map(j => j.prepare?.workDir)).toEqual(['S II', 'S.II'].map(f => plan.filters?.stacks.find(s => s.filter === f)?.workDir))
+    expect(new Set(jobs.map(j => j.prepare?.workDir)).size).toBe(2)
+  })
+
   it('[RIG-018] Given mono lights in several filters, When one stack of them all is queued, Then it is refused; a filter with no flats or no lights is refused too', async () => {
     const { queue, store } = queueSetup()
     await expect(queue(base)).rejects.toThrow(JobRefusedError)

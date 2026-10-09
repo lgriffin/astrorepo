@@ -69,6 +69,18 @@ describe('one stack per filter', () => {
     expect(plan).toMatchObject({ darks: 20, biases: 50, unfilteredLights: 2, unfilteredFlats: 3, flatsMissing: ['SII'] })
   })
 
+  it('[RIG-006] Given two filters whose names make one folder name, When planned, Then each gets its own folder, tagged the same way every time', () => {
+    const plan = planFilterStacks([...frames('lights', 'S II', 2), ...frames('lights', 'S.II', 3), ...frames('lights', 'Ha', 4)])
+    const folders = plan?.filters.map(f => f.folderName) ?? []
+    expect(folders[0]).toBe('Ha')
+    expect(folders[1]).toMatch(/^S_II_[0-9a-z]{7}$/)
+    expect(folders[2]).toMatch(/^S_II_[0-9a-z]{7}$/)
+    expect(new Set(folders.map(f => f.toLowerCase())).size).toBe(3)
+    const again = planFilterStacks([...frames('lights', 's.ii ', 1), ...frames('lights', 'S II', 1)])
+    expect(again?.filters.map(f => f.folderName.toLowerCase()).sort()).toEqual([folders[1], folders[2]].map(f => f.toLowerCase()).sort())
+    expect(new Set((plan?.filters ?? []).map(f => filterWorkDir('/work/M42', f.folderName))).size).toBe(3)
+  })
+
   it('[RIG-016] Given one filter, or lights with no filter, When planned, Then there is no per-filter plan', () => {
     expect(planFilterStacks([...frames('lights', 'L', 10), ...frames('flats', 'L', 5)])).toBeNull()
     expect(planFilterStacks(frames('lights', null, 10))).toBeNull()

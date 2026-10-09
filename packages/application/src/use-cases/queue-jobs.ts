@@ -1,4 +1,4 @@
-import { filterWorkDir, parentDir, postProcessCommand, sirilStackCommand, SYQON_STEP_INFO, toolSpec, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
+import { parentDir, postProcessCommand, sirilStackCommand, SYQON_STEP_INFO, toolSpec, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
 import type { Clock } from '../ports/clock'
 import type { JobStore } from '../ports/jobs'
 import type { StackCatalogue } from '../ports/stack-catalogue'
@@ -43,13 +43,13 @@ export type QueueStack = (request: QueueStackRequest) => Promise<Job>
 export function makeQueueStack(deps: QueueStackDeps): QueueStack {
   return async request => {
     const filter = request.filter?.trim() || undefined
-    const workDir = filter ? filterWorkDir(request.workDir, filter) : request.workDir
-    const [estimate, target, whole] = await Promise.all([
-      deps.estimate(request.sourceDir, workDir, filter ? { filter } : {}),
-      deps.stacks.describeTarget(request.targetId),
-      filter ? deps.estimate(request.sourceDir, request.workDir) : Promise.resolve(null)
-    ])
-    if (filter && !whole?.filters?.stacks.some(s => s.filter === filter)) throw new JobRefusedError(`These lights are not stacked per filter, or have no ${filter} lights.`)
+    // A filter's work folder is the one the whole plan gave it, so filters whose names make one
+    // folder name never share it.
+    const whole = filter ? await deps.estimate(request.sourceDir, request.workDir) : null
+    const planned = filter ? whole?.filters?.stacks.find(s => s.filter === filter) : undefined
+    if (filter && !planned) throw new JobRefusedError(`These lights are not stacked per filter, or have no ${filter} lights.`)
+    const workDir = planned?.workDir ?? request.workDir
+    const [estimate, target] = await Promise.all([deps.estimate(request.sourceDir, workDir, filter ? { filter } : {}), deps.stacks.describeTarget(request.targetId)])
     // One stack over several filters would mix them in one master (RIG-018).
     if (!filter && estimate.filters) {
       throw new JobRefusedError(`These mono lights carry ${estimate.filters.stacks.length} filters, and one stack would mix them. Queue each filter's stack on its own.`)

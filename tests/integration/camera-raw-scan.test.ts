@@ -87,6 +87,32 @@ describe('scanning camera RAW', () => {
     expect(plan.cameraRaw).toEqual({ count: 4, unread: 1, formats: ['CR2', 'CR3', 'NEF'] })
   })
 
+  it('[RIG-017] Given RAW darks and flats in folders such as "Darks_ISO800", "Flats-L" and "Darks/ISO800", When scanned and laid out, Then they are darks and flats, not lights', async () => {
+    const target = path.join(root, 'NGC 7000')
+    for (const dir of ['Darks_ISO800', 'Flats-L', path.join('Darks', 'ISO800'), 'Dark Shark']) fs.mkdirSync(path.join(target, dir), { recursive: true })
+    fs.writeFileSync(path.join(target, 'Darks_ISO800', 'IMG_0200.CR2'), cr2Bytes())
+    fs.writeFileSync(path.join(target, 'Flats-L', 'IMG_0300.CR2'), cr2Bytes())
+    fs.writeFileSync(path.join(target, 'Darks', 'ISO800', 'IMG_0400.CR2'), cr2Bytes())
+    fs.writeFileSync(path.join(target, 'Dark Shark', 'IMG_0500.CR2'), cr2Bytes())
+    await startFolderScan(root, { pacer: fast() })
+    const types = sqlite.prepare("SELECT file_name, image_type FROM fits_files WHERE file_name IN ('IMG_0200.CR2', 'IMG_0300.CR2', 'IMG_0400.CR2', 'IMG_0500.CR2') ORDER BY file_name").all()
+    expect(types).toEqual([
+      { file_name: 'IMG_0200.CR2', image_type: 'Dark' },
+      { file_name: 'IMG_0300.CR2', image_type: 'Flat' },
+      { file_name: 'IMG_0400.CR2', image_type: null },
+      { file_name: 'IMG_0500.CR2', image_type: null }
+    ])
+    const listed = await new NodeSirilWorkspace(sqlite).listSourceFrames(target)
+    expect(listed.map(f => [f.name, f.imageType]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toEqual([
+      ['IMG_0200.CR2', 'Dark'],
+      ['IMG_0300.CR2', 'Flat'],
+      ['IMG_0400.CR2', 'Dark'],
+      ['IMG_0500.CR2', null]
+    ])
+    const plan = await makeEstimateSirilRun({ workspace: new NodeSirilWorkspace(sqlite) })(target, path.join(root, 'work'))
+    expect(plan.counts).toEqual({ lights: 1, darks: 2, flats: 1, biases: 0 })
+  })
+
   it('[RIG-001] Given the migrations, When they run again, Then the RAW format column and the comet table are there once and nothing changes', () => {
     runMigrations(sqlite)
     const columns = sqlite.prepare("SELECT COUNT(*) AS n FROM pragma_table_info('fits_files') WHERE name = 'source_format'").get() as { n: number }

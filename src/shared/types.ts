@@ -1246,6 +1246,8 @@ export interface JobView {
   progress: string | null
   /** Results it published, each with a manifest beside it (PRV-001). */
   outputs: { path: string; name: string; manifest: string }[]
+  /** For one filter's stack, the filter it stacks (RIG-009); null for any other job. */
+  filter: string | null
 }
 
 export interface JobsView {
