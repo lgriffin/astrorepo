@@ -22,4 +22,16 @@ describe('Migrations', () => {
     expect(tables).toEqual(expect.arrayContaining(['targets', 'fits_files', 'integration_goals', 'target_home_data', 'dismissed_suggestions', 'app_settings', 'target_archives']))
     db.close()
   })
+
+  it('[SKY-001, SKY-003] Given an older database with a jobs table, When migrations run, Then plate solves, mosaic plans and the jobs solve column exist', () => {
+    const db = new Database(':memory:')
+    runMigrations(db)
+    db.exec('ALTER TABLE jobs DROP COLUMN solve')
+    runMigrations(db)
+    const columns = (table: string) => (db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all() as { name: string }[]).map(c => c.name)
+    expect(columns('jobs')).toContain('solve')
+    expect(columns('plate_solves')).toEqual(['file_path', 'ra_deg', 'dec_deg', 'rotation_deg', 'scale_arcsec', 'width_px', 'height_px', 'solver', 'solved_at', 'error'])
+    expect(columns('mosaic_plans')).toEqual(['target_id', 'field_width_deg', 'field_height_deg', 'rotation_deg', 'overlap', 'saved_at'])
+    db.close()
+  })
 })

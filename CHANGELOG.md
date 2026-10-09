@@ -40,6 +40,18 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   fetches Gaia data online without it, and RC Astro's models, shown but optional until their file
   names are confirmed. One exit-code contract explains how Siril, Siril_Scripts, RC
   Astro and SyQon runs ended. The app calls the SyQon CLI you installed and never bundles it.
+- **Sky geometry** (spec 024): plate solving with ASTAP, or Siril's own solver when ASTAP is not
+  installed, of one light per folder per night and every master, as one background job per
+  target over hard links or copies in the work area; files whose headers already carry a WCS are
+  placed without solving; each target's Overview shows where its files point, warns when they
+  may be filed under the wrong name and shows the rotation by night; a mosaic planner on the Sky
+  planner proposes tiles with at least 15% overlap, their centres, the hours each needs and the
+  nights every panel is up, with CSV export; solved lights are grouped into a mosaic's panels and
+  Next actions names tiles with no lights. A WCS's centre comes from its reference pixel; a solve
+  that finds no match near the filed target is retried over the whole sky, and a failed one is
+  retried next time; fields overlap by their turned rectangles, corners included; a turned grid
+  covers the target along its own axes; saving a plan, not viewing, links other targets' panels,
+  once per pair; cancelling a solve job starts no further file.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

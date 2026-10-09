@@ -6,7 +6,7 @@ export class InMemoryJobStore implements JobStore {
   private next = 1
 
   async add(job: NewJob, queuedAt: Date): Promise<Job> {
-    const full: Job = { ...job, id: `job-${this.next++}`, state: 'queued', queuedAt, startedAt: null, finishedAt: null, exitCode: null, note: null, attempts: 0, progress: null }
+    const full: Job = { solve: null, ...job, id: `job-${this.next++}`, state: 'queued', queuedAt, startedAt: null, finishedAt: null, exitCode: null, note: null, attempts: 0, progress: null }
     this.jobs.set(full.id, full)
     return { ...full }
   }

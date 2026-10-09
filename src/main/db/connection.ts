@@ -37,6 +37,8 @@ export function resetDatabase(): { cleared: boolean } {
   if (!sqlite) throw new Error('Database not initialized')
   sqlite.exec(`
     DELETE FROM jobs;
+    DELETE FROM plate_solves;
+    DELETE FROM mosaic_plans;
     DELETE FROM dismissed_suggestions;
     DELETE FROM quarantined_files;
     DELETE FROM file_hashes;

@@ -5,14 +5,14 @@ import type { RecipeTarget } from '@astro/domain'
 import { IS_LIGHT, parseUtc } from './sqlite-frame-catalogue'
 
 /** A header card's number, without the quotes some writers put around it. */
-const HEADER_NUMBER = (keyword: string) =>
+export const HEADER_NUMBER = (keyword: string) =>
   `(SELECT CAST(TRIM(REPLACE(h.value, '''', '')) AS REAL) FROM fits_headers h WHERE h.file_id = f.id AND h.keyword = '${keyword}' LIMIT 1)`
 
 /**
  * An integration, not just a flagged file: the scanner also marks a calibrated sub (CALSTAT alone)
  * as stacked, and master calibration frames are stacks too, so neither is offered.
  */
-const IS_INTEGRATED_LIGHT = `(${IS_LIGHT.replace("LIKE '%light%'", "LIKE '%light%' OR LOWER(f.image_type) LIKE '%stack%' OR LOWER(f.image_type) LIKE '%integrat%'")}
+export const IS_INTEGRATED_LIGHT = `(${IS_LIGHT.replace("LIKE '%light%'", "LIKE '%light%' OR LOWER(f.image_type) LIKE '%stack%' OR LOWER(f.image_type) LIKE '%integrat%'")}
   AND (COALESCE(f.ncombine, 0) > 1
        OR (f.total_exposure IS NOT NULL AND f.exposure_sec IS NOT NULL AND f.total_exposure > f.exposure_sec)
        OR LOWER(COALESCE(f.image_type, '')) LIKE '%stack%'

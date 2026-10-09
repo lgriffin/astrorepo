@@ -103,12 +103,12 @@ export const TOOLS: readonly ToolSpec[] = [
   {
     id: 'astap',
     label: 'ASTAP',
-    purpose: 'Plate solver. Checked here for where it is and whether its star database is installed.',
+    purpose: 'Plate solves lights and masters to find where they point (Siril solves them when ASTAP is not installed).',
     settingKey: 'tool_path_astap',
     onPath: { windows: ['astap_cli.exe', 'astap.exe'], other: ['astap_cli', 'astap'] },
     standard: {
       windows: ['C:/Program Files/astap/astap_cli.exe', 'C:/Program Files/astap/astap.exe'],
-      other: ['/opt/astap/astap_cli', '/opt/astap/astap', '/usr/bin/astap', '/Applications/ASTAP.app/Contents/MacOS/astap']
+      other: ['/opt/astap/astap_cli', '/opt/astap/astap', '/usr/bin/astap', '/usr/local/bin/astap_cli', '/Applications/ASTAP.app/Contents/MacOS/astap']
     },
     // ASTAP's command line documents no version flag the app could rely on.
     versionArgs: null,

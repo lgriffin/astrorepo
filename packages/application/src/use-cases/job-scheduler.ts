@@ -29,6 +29,7 @@ import type { Clock } from '../ports/clock'
 import type { JobLogs, JobSettingsSource, JobStore, MachineMonitor, ProcessRunner, RunningProcess } from '../ports/jobs'
 import type { SirilWorkspace } from '../ports/siril-workspace'
 import type { PrepareSirilWorkspace, SirilWorkspaceResult } from './prepare-siril-workspace'
+import type { RunSolveJob } from './sky-geometry'
 
 export interface JobSchedulerDeps {
   store: JobStore
@@ -51,6 +52,8 @@ export interface JobSchedulerDeps {
   /** Folders the app only reads, which a work area must not overlap. */
   readOnlyDirs: () => string[] | Promise<string[]>
   clock: Clock
+  /** Runs a plate solve job's files one by one (specs/024-sky-geometry); without it a solve job fails. */
+  solve?: RunSolveJob
   /** Called whenever a job starts or finishes, so the host can check the queue again. */
   onChange?: () => void
   /** Targets an archive is working on; their jobs wait until it lets go (ARC-008). */
@@ -176,7 +179,44 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     return { save, settled: () => (flush(), pending) }
   }
 
+  /** Keeps the end of a program's output for a solver to read, without holding a whole Siril log. */
+  const OUTPUT_KEPT = 256 * 1024
+
+  /** A plate solve job: each file solved in turn through the same runner, logged and cancellable (SKY-003). */
+  const runSolve = async (job: Job, entry: Entry) => {
+    deps.logs.append(job.id, `${deps.clock.now().toISOString()} started ${job.title}\n\n`)
+    if (!deps.solve || !job.solve) {
+      await finish(job.id, 'failed', null, 'This job has no files to plate solve.')
+      return
+    }
+    const result = await deps.solve(job, {
+      log: text => deps.logs.append(job.id, text),
+      cancelled: () => entry.cancelled || stopping,
+      progress: async (step, of, label) => {
+        await deps.store.update(job.id, { progress: { step, of, key: 'solve', label } })
+        deps.onChange?.()
+      },
+      run: async command => {
+        // A cancel or quit that came between files (while the next one was being staged) starts nothing.
+        if (entry.cancelled || stopping) return { exitCode: null, error: 'Cancelled.', output: '' }
+        deps.logs.append(job.id, `> ${[command.program, ...command.args].join(' ')}\n`)
+        let output = ''
+        entry.process = deps.runner.run(command, text => {
+          output = (output + text).slice(-OUTPUT_KEPT)
+          deps.logs.append(job.id, text)
+        })
+        if (entry.cancelled || stopping) entry.process.cancel()
+        const done = await entry.process.done
+        return { ...done, output }
+      }
+    })
+    if (stopping) return
+    if (entry.cancelled) await finish(job.id, 'cancelled', null, `Cancelled while it ran. ${result.note ?? ''}`.trim())
+    else await finish(job.id, result.state, result.state === 'succeeded' ? 0 : null, result.note)
+  }
+
   const run = async (job: Job, entry: Entry) => {
+    if (job.kind === 'solve') return runSolve(job, entry)
     const { command } = job
     deps.logs.append(job.id, `${deps.clock.now().toISOString()} started ${job.title}\n> ${[command.program, ...command.args].join(' ')}\n\n`)
     let prep: SirilWorkspaceResult | null = null
@@ -214,7 +254,7 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     await live?.settled()
     if (stopping) return
     // One exit-code contract for every tool (HUB-012).
-    const tool = runToolOf(job.kind)
+    const tool = runToolOf(job.kind, job.solve?.solver)
     const verdict = interpretExit(tool, result.exitCode, { cancelled: entry.cancelled, program: tool === 'syqon' ? undefined : command.program })
     if (verdict.outcome === 'succeeded') {
       const wrote = job.kind === 'syqon' ? stdout.trim().split(/\r?\n/).pop() : undefined

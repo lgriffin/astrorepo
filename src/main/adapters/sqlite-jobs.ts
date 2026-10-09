@@ -21,6 +21,7 @@ interface JobRow {
   note: string | null
   attempts: number
   progress: string | null
+  solve: string | null
 }
 
 const date = (s: string | null) => (s ? new Date(s) : null)
@@ -43,7 +44,8 @@ function toJob(r: JobRow): Job {
     exitCode: r.exit_code,
     note: r.note,
     attempts: r.attempts,
-    progress: r.progress ? JSON.parse(r.progress) : null
+    progress: r.progress ? JSON.parse(r.progress) : null,
+    solve: r.solve ? JSON.parse(r.solve) : null
   }
 }
 
@@ -66,10 +68,22 @@ export class SqliteJobStore implements JobStore {
     const id = ulid()
     this.db
       .prepare(
-        `INSERT INTO jobs (id, kind, target_id, title, timing, state, command, prepare, space_dir, needed_bytes, queued_at, attempts)
-         VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, 0)`
+        `INSERT INTO jobs (id, kind, target_id, title, timing, state, command, prepare, space_dir, needed_bytes, queued_at, attempts, solve)
+         VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, 0, ?)`
       )
-      .run(id, job.kind, job.targetId, job.title, job.timing, JSON.stringify(job.command), job.prepare ? JSON.stringify(job.prepare) : null, job.spaceDir, job.neededBytes, queuedAt.toISOString())
+      .run(
+        id,
+        job.kind,
+        job.targetId,
+        job.title,
+        job.timing,
+        JSON.stringify(job.command),
+        job.prepare ? JSON.stringify(job.prepare) : null,
+        job.spaceDir,
+        job.neededBytes,
+        queuedAt.toISOString(),
+        job.solve ? JSON.stringify(job.solve) : null
+      )
     return (await this.get(id)) as Job
   }
 

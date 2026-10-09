@@ -1,4 +1,5 @@
 import type { ChannelGap, Job, NextAction, StackingSuggestion } from '@astro/domain'
+import { mosaicPlannerLink } from '@shared/navigation'
 import type { Recommendation } from '@shared/types'
 import { targetLink } from '@shared/navigation'
 
@@ -51,6 +52,7 @@ export function toRecommendation(s: StackingSuggestion): Recommendation {
 /** A ranked next action in the Recommendations shape; captures lead, stacking follows. */
 export function toNextActionRecommendation(a: NextAction): Recommendation {
   if (a.kind === 'stack') return toRecommendation(a.suggestion)
+  if (a.kind === 'mosaic-tile') return toMosaicTileRecommendation(a)
   const hours = formatDuration(Math.round(a.usableHours * 3600))
   const parts: string[] = []
   if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
@@ -92,4 +94,32 @@ export function withQueuedJobs(recommendations: Recommendation[], jobs: Pick<Job
           : 'Queued in Jobs for the run window.'
     return { ...r, queued, actionLabel: 'Open Jobs', actionTo: '/jobs' }
   })
+}
+
+const shortDate = (night: string) => {
+  const [, m, d] = night.split('-').map(Number)
+  return `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}`
+}
+
+/** "M 31 · tile 3 of 6 has no lights" with the coming nights it clears the altitude limit (SKY-012). */
+export function toMosaicTileRecommendation(a: Extract<NextAction, { kind: 'mosaic-tile' }>): Recommendation {
+  const visible =
+    a.lookedAt === 0
+      ? 'Set your site in Settings to see the nights it is visible.'
+      : a.nights.length === 0
+        ? `It does not clear 30° for an hour on any of the next ${a.lookedAt} nights.`
+        : `It is up for at least an hour above 30° on ${plural(a.nights.length, 'night')} of the next ${a.lookedAt}, first on ${shortDate(a.nights[0])}${a.nights.length > 1 ? ` and last on ${shortDate(a.nights[a.nights.length - 1])}` : ''}.`
+  const goal = a.goalSec ? ` Each panel needs ${formatDuration(a.goalSec)} for your goal.` : ''
+  return {
+    id: a.id,
+    category: 'capture',
+    priority: 'medium',
+    title: `${a.targetName} · tile ${a.tile} of ${a.of} has no lights`,
+    description: `${visible}${goal}`,
+    targetId: a.targetId,
+    targetName: a.targetName,
+    actionLabel: 'Open the mosaic plan',
+    actionTo: mosaicPlannerLink(a.targetId),
+    dismissible: false
+  }
 }

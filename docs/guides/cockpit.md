@@ -75,7 +75,10 @@ One ranked list of what to do, captures first because a night does not wait:
    soonest first. These are marked high priority.
 2. **Shoot tonight**: your other targets with work left that are up for at least an hour above
    30°, most hours first.
-3. **Stack**: the stacking suggestions below, most waiting data first.
+3. **Mosaic tiles with no lights**: for a target with a saved mosaic plan, each tile nothing has
+   been captured for yet, with how many of the next 30 nights it is up for an hour above 30°
+   (see [Planning a mosaic](#planning-a-mosaic)).
+4. **Stack**: the stacking suggestions below, most waiting data first.
 
 Each capture says how long the target is up above 30°, how close the moon comes, the days left in
 its season when it is closing, and how far it is from its integration goals. Goals count per filter:
@@ -261,8 +264,8 @@ is looked for in the path you save there, then on PATH, then in its usual instal
 Siril_Scripts, the repo folder, its `v2` folder or `postprocess.bat` itself will do, as long as
 `postprocess.sh` sits beside it. The SyQon CLI is looked for in SyQon's own order instead (see
 below). A tool that is not found lists every place the hub looked. The SyQon CLI and ASTAP are
-optional: no step needs them yet, so a missing one says "Not installed (optional)" rather than
-counting as a gap. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...` without
+optional (ASTAP is the preferred plate solver, and Siril solves when it is missing), so a missing
+one says "Not installed (optional)" rather than counting as a gap. Siril_Scripts runs Siril and RC Astro from `C:/Program Files/...` without
 searching, so a tool found anywhere else is flagged. Siril's stock scripts are found where Siril
 installs them, under `share/siril/scripts` beside its `bin` folder.
 
@@ -274,8 +277,8 @@ installs them, under `share/siril/scripts` beside its `bin` folder.
 - **Catalogues.** Under each tool, the catalogues it needs show as installed, with the folder
   and what is there, or not installed, with every folder looked in. You can name the folder:
   - **ASTAP star database**: files such as `d50_0101.1476` or `h17_0101.290` beside ASTAP or in
-    `C:\Program Files\astap`, named by database (D50, H18). Plate solving with ASTAP comes in a
-    later slice; for now the app only checks it is ready.
+    `C:\Program Files\astap`, named by database (D50, H18). Plate solving (below) uses ASTAP
+    when it is found.
   - **Siril's Gaia SPCC catalogue**: the Gaia `siril_cat*_xpsamp*.dat` files Siril's catalogue
     installer puts in `%LOCALAPPDATA%\siril\catalogue`, or Siril's own `share/siril/catalogue`.
     It is optional: without it Siril's colour calibration fetches Gaia data online, so a missing
@@ -461,8 +464,73 @@ must be outside the folders the app only reads.
   and you can remove the rest by hand.
 - Only the folders you ticked are removed, only from the work folder, and only after the archive
   is in place. Source folders are never touched.
-- A target with a stack or post-processing run queued or running cannot be archived until it ends,
-  and a run queued for it while the archive is under way waits until the archive finishes.
+- A target with any job queued or running (a stack, post-processing, a SyQon step or a plate
+  solve) cannot be archived until it ends, and a run queued for it while the archive is under way waits until the archive finishes.
 
 Afterwards the step says "Archived on 9 Oct 2026, linked." with the archive folder and the space
 removing intermediates freed. Stacking suggestions leave the target out until new frames arrive.
+
+## Plate solving
+
+**Where it points**, on a target's Overview, says where its files point on the sky. **Plate
+solve** queues one job in Jobs that places, one after another:
+- one light from each folder of each night (the one in the middle of the night's run);
+- every master stack.
+
+Files already placed are skipped, so asking again only solves what is new; a file whose solve
+failed counts as not placed and is tried again. The job runs as soon as nothing else is running,
+since a solve takes seconds; it shows the file it is on, and Cancel stops it before the next file
+starts.
+
+- **Near the target first, then the whole sky.** Each solve starts from the catalogue position of
+  the target the file is filed under. When the solver finds no match there, the file is solved
+  once more over the whole sky (slower) before the failure is kept, so files filed under the
+  wrong name are still placed and flagged.
+
+- **Which solver.** ASTAP when Settings → Tools finds it (`astap_cli` or `astap`), otherwise
+  Siril's own solver. With neither, the card says so and nothing is queued. ASTAP needs one of its
+  star databases installed beside it; without one, each solve fails with ASTAP's own message.
+- **Your files are not touched.** Each file is hard linked, or copied when that is not possible,
+  into `solve/<target>` in the work area. The solver runs there, and its copy and result files
+  are removed after each solve.
+- **No solve when the headers know.** A file that already carries a position in its headers (a
+  WCS, as Siril and the Seestar write into stacks) is placed from them without solving. The centre
+  is the image's middle pixel, worked out from the WCS's reference pixel, not the reference
+  position itself.
+
+Each solved file shows its centre, field size, pixel scale and rotation, and which solver placed
+it. A file that could not be solved shows why. Two checks follow from the solves:
+- **May be filed under the wrong name** appears when most of the files point further from the
+  catalogue position of the target's name than their own field is wide. Check the OBJECT header,
+  or link the files to the right target.
+- **Rotation by night** shows each night's camera angle. When two nights differ by more than 2°,
+  the card says the stack will have ragged edges. A half turn from a meridian flip counts as the
+  same angle, since Siril turns those frames back.
+
+## Planning a mosaic
+
+**Plan a mosaic**, at the foot of the Sky planner (or from a target's Where it points card),
+splits a target too big for one field into panels:
+1. Search for the target. Its size comes from the catalogue.
+2. Pick the scope and camera (and reducer) from Equipment; the field of view is the one the
+   Equipment page works out. With none picked, the field of the target's solved lights is used.
+3. Set the rotation (the camera angle, east of north) and the overlap. Panels always overlap by
+   at least 15%; 20% is the default. A turned grid is sized for the target's extent along the
+   turned panels, so a long target at 45° gets rows as well as columns.
+
+The plan lists each tile, row by row from the top left, with its centre as RA hh:mm:ss and Dec
+±dd:mm:ss. Each tile shows what is captured for it so far and the hours it still needs for the
+target's integration goal (each panel needs the whole goal). With your site set, it then counts
+the next 90 nights on which every panel is above 30° for at least an hour in darkness, and lists
+them as runs of dates. A target that fits one field gets one tile and is told it needs no mosaic.
+
+**Export CSV** saves the tiles (centre in both forms, rotation and hours needed) for a capture
+program such as NINA or the Seestar app. **Save plan** keeps it for the target; from then on Next
+actions names each tile with no lights yet.
+
+**Panels.** Once lights are plate solved, those whose fields overlap each other or a planned tile
+(corners included, each field turned to its rotation) are grouped as the panels of one mosaic, and
+a tile's integration counts every night's lights from its folder. When panels were captured under
+different target names (for example "M 31 panel 2"), the card names those targets; **Save plan**
+links them to the main one as part of its mosaic, once whichever side it is saved from. Looking at
+a target or trying out a plan links nothing.

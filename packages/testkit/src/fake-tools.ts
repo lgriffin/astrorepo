@@ -27,12 +27,13 @@ export class FakeToolHub implements ToolHub {
     return this
   }
 
-  /** Siril, Siril_Scripts, RC Astro and Git Bash where Siril_Scripts v2 expects them. */
+  /** Siril, Siril_Scripts, RC Astro and Git Bash where Siril_Scripts v2 expects them, and ASTAP. */
   installAll(): this {
     return this.install('siril', 'C:/Program Files/Siril/bin/siril-cli.exe')
       .install('siril-scripts', 'C:/Users/leigh/Siril_Scripts/v2/postprocess.bat')
       .install('rc-astro', 'C:/Program Files/RC-Astro/CLI/rc-astro.exe')
       .install('bash', 'C:/Program Files/Git/bin/bash.exe')
+      .install('astap', 'C:/Program Files/astap/astap_cli.exe')
   }
 
   async locate(): Promise<ToolStatus[]> {
