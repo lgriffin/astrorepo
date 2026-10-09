@@ -108,7 +108,10 @@ app has run on real data on the Windows PC and the licence is settled.
   image they solve, so each file is hard linked or copied into the work area first. One light is
   solved per folder per night rather than per night, because a mosaic's panels are captured into
   folders of their own, and a target's files are solved by one background job rather than one
-  job each. Catalogue health for ASTAP stays with slice N.
+  job each. A solve that finds no match near the filed target's position is retried blind, so a
+  misfiled target is placed and flagged rather than failing; a failed solve is retried the next
+  time. Panels are linked to a mosaic only when its plan is saved, never just by viewing.
+  Catalogue health for ASTAP stays with slice N.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
   index and plate solves; browsing finished images across the NAS (H2) waits for where files live
   ([#38](https://github.com/lgriffin/astrorepo/issues/38)).

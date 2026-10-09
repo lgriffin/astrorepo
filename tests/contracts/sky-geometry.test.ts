@@ -198,6 +198,35 @@ mosaicStoreContract('SQLite', () => {
   return new SqliteMosaicStore(db)
 })
 
+describe('SqliteMosaicStore', () => {
+  it('[SKY-011] Given a link written panel first by an earlier version, When linked from either side, Then no second row is written and new rows put the lesser id first', async () => {
+    const db = setupTestDb()
+    for (const id of ['m31', 'm31-p2', 'm31-p3']) seedTarget(db, { id, canonicalName: id })
+    db.prepare("INSERT INTO target_relationships (id, source_target_id, related_target_id, relationship_type, created_at) VALUES ('old', 'm31-p2', 'm31', 'part_of_mosaic', '2026-10-01')").run()
+    const store = new SqliteMosaicStore(db)
+    await store.linkPanels('m31', ['m31-p2', 'm31-p2'])
+    await store.linkPanels('m31-p2', ['m31'])
+    await store.linkPanels('m31-p3', ['m31'])
+    const rows = db.prepare("SELECT source_target_id AS s, related_target_id AS r FROM target_relationships WHERE relationship_type = 'part_of_mosaic' ORDER BY s, r").all()
+    expect(rows).toEqual([
+      { s: 'm31', r: 'm31-p3' },
+      { s: 'm31-p2', r: 'm31' }
+    ])
+  })
+})
+
+describe('Node plate solvers: no solution', () => {
+  it('[SKY-005] Given ASTAP exits 1 with no result file, When it solves, Then the failure says it found no solution, so a blind retry may follow', async () => {
+    const r = rig(new AstapPlateSolver(), async () => ({ exitCode: 1, error: null, output: '' }))
+    expect(await r.solver.solve(r.program, r.file, r.workDir, r.io)).toEqual({ ok: false, reason: 'ASTAP found no solution.', noSolution: true })
+    const noDatabase = rig(new AstapPlateSolver(), async command => {
+      fs.writeFileSync(astapResultPath(command.args[1]), ASTAP_INI(false))
+      return { exitCode: 32, error: null, output: '' }
+    })
+    expect(await noDatabase.solver.solve(noDatabase.program, noDatabase.file, noDatabase.workDir, noDatabase.io)).toEqual({ ok: false, reason: 'ASTAP could not solve it: No star database found!.' })
+  })
+})
+
 describe('SqliteSolveStore', () => {
   it('[SKY-003] Given lights with FOCALLEN and pixel size, When read, Then their optics come with them; Windows paths keep their folder', async () => {
     const db = setupTestDb()

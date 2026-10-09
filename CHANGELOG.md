@@ -47,7 +47,11 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   may be filed under the wrong name and shows the rotation by night; a mosaic planner on the Sky
   planner proposes tiles with at least 15% overlap, their centres, the hours each needs and the
   nights every panel is up, with CSV export; solved lights are grouped into a mosaic's panels and
-  Next actions names tiles with no lights.
+  Next actions names tiles with no lights. A WCS's centre comes from its reference pixel; a solve
+  that finds no match near the filed target is retried over the whole sky, and a failed one is
+  retried next time; fields overlap by their turned rectangles, corners included; a turned grid
+  covers the target along its own axes; saving a plan, not viewing, links other targets' panels,
+  once per pair; cancelling a solve job starts no further file.
 
 ### Fixed
 - **Scanning a large library no longer locks up the PC** (spec 018): the scan used to run as one

@@ -477,9 +477,15 @@ solve** queues one job in Jobs that places, one after another:
 - one light from each folder of each night (the one in the middle of the night's run);
 - every master stack.
 
-Files already placed are skipped, so asking again only solves what is new. The job runs as soon
-as nothing else is running, since a solve takes seconds; it shows the file it is on, and Cancel
-stops it.
+Files already placed are skipped, so asking again only solves what is new; a file whose solve
+failed counts as not placed and is tried again. The job runs as soon as nothing else is running,
+since a solve takes seconds; it shows the file it is on, and Cancel stops it before the next file
+starts.
+
+- **Near the target first, then the whole sky.** Each solve starts from the catalogue position of
+  the target the file is filed under. When the solver finds no match there, the file is solved
+  once more over the whole sky (slower) before the failure is kept, so files filed under the
+  wrong name are still placed and flagged.
 
 - **Which solver.** ASTAP when Settings → Tools finds it (`astap_cli` or `astap`), otherwise
   Siril's own solver. With neither, the card says so and nothing is queued. ASTAP needs one of its
@@ -488,7 +494,9 @@ stops it.
   into `solve/<target>` in the work area. The solver runs there, and its copy and result files
   are removed after each solve.
 - **No solve when the headers know.** A file that already carries a position in its headers (a
-  WCS, as Siril and the Seestar write into stacks) is placed from them without solving.
+  WCS, as Siril and the Seestar write into stacks) is placed from them without solving. The centre
+  is the image's middle pixel, worked out from the WCS's reference pixel, not the reference
+  position itself.
 
 Each solved file shows its centre, field size, pixel scale and rotation, and which solver placed
 it. A file that could not be solved shows why. Two checks follow from the solves:
@@ -507,7 +515,8 @@ splits a target too big for one field into panels:
 2. Pick the scope and camera (and reducer) from Equipment; the field of view is the one the
    Equipment page works out. With none picked, the field of the target's solved lights is used.
 3. Set the rotation (the camera angle, east of north) and the overlap. Panels always overlap by
-   at least 15%; 20% is the default.
+   at least 15%; 20% is the default. A turned grid is sized for the target's extent along the
+   turned panels, so a long target at 45° gets rows as well as columns.
 
 The plan lists each tile, row by row from the top left, with its centre as RA hh:mm:ss and Dec
 ±dd:mm:ss. Each tile shows what is captured for it so far and the hours it still needs for the
@@ -520,6 +529,8 @@ program such as NINA or the Seestar app. **Save plan** keeps it for the target; 
 actions names each tile with no lights yet.
 
 **Panels.** Once lights are plate solved, those whose fields overlap each other or a planned tile
-are grouped as the panels of one mosaic, and a tile's integration counts every night's lights
-from its folder. When panels were captured under different target names (for example "M 31
-panel 2"), those targets are linked to the main one as part of its mosaic and the card says so.
+(corners included, each field turned to its rotation) are grouped as the panels of one mosaic, and
+a tile's integration counts every night's lights from its folder. When panels were captured under
+different target names (for example "M 31 panel 2"), the card names those targets; **Save plan**
+links them to the main one as part of its mosaic, once whichever side it is saved from. Looking at
+a target or trying out a plan links nothing.

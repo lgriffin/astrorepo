@@ -178,7 +178,7 @@ export function composeCore(db: Database.Database, options: { workArea?: string 
     }),
     describeTargetGeometry: makeDescribeTargetGeometry({ store: solves, mosaics }),
     planMosaic,
-    saveMosaicPlan: makeSaveMosaicPlan({ mosaics, clock: systemClock }),
+    saveMosaicPlan: makeSaveMosaicPlan({ store: solves, mosaics, clock: systemClock }),
     exportMosaicCsv: makeExportMosaicCsv(planMosaic)
   }
 }

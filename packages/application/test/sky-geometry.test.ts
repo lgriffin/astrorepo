@@ -36,6 +36,8 @@ const until = async (check: () => boolean) => {
   for (let i = 0; i < 50 && !check(); i++) await flush()
 }
 
+const seestar = { widthDeg: 0.72, heightDeg: 1.28 }
+
 function mosaics() {
   return new InMemoryMosaicStore()
     .addTarget({ id: 'm31', name: 'M 31', raHours: 10.6847 / 15, decDeg: 41.2688, sizeArcmin: 178, goalSec: 6 * 3600 })
@@ -97,12 +99,30 @@ describe('queueing plate solves', () => {
       skyFile({ path: '/a/2.fit', capturedAt: new Date('2026-10-02T21:00:00Z') }),
       skyFile({ path: '/a/3.fit', capturedAt: new Date('2026-10-03T21:00:00Z') })
     )
-    await store.save({ path: '/a/2.fit', field: null, source: 'astap', solvedAt: new Date(), error: 'ASTAP found no solution.' })
+    await store.save({ path: '/a/2.fit', field: solvedField(10.7, 41.3), source: 'astap', solvedAt: new Date(), error: null })
     const solve: SolveTask = { solver: 'astap', program: 'astap', workDir: '/w', files: [{ path: '/a/3.fit', widthPx: 1, heightPx: 1, hint: null, optics: null }] }
     await jobs.add({ kind: 'solve', targetId: 'm31', title: 't', timing: 'now', command: { program: 'astap', args: [], cwd: '/w' }, prepare: null, spaceDir: '/w', neededBytes: 0, solve }, new Date())
     const result = await queue('m31')
     expect(result).toMatchObject({ fromHeaders: 1, toSolve: 0, job: null, message: '1 file already carried a position in its headers. Every light night and master of this target is placed.' })
     expect(store.stored.get('/a/1.fit')).toMatchObject({ source: 'header', error: null, field: { raDeg: 10.7 } })
+    expect(await jobs.list()).toHaveLength(1)
+  })
+
+  it("[SKY-003] Given a target whose only stored solve failed, When asked again, Then the file is queued again, counted unsolved, and a success replaces the failure", async () => {
+    const { store, jobs, queue } = queueSetup()
+    store.add(skyFile({ path: '/a/1.fit', capturedAt: new Date('2026-10-01T21:00:00Z') }))
+    await store.save({ path: '/a/1.fit', field: null, source: 'astap', solvedAt: new Date(), error: 'ASTAP found no solution.' })
+    expect((await makeDescribeTargetGeometry({ store, mosaics: mosaics() })('m31'))?.unsolved).toBe(1)
+    const result = await queue('m31')
+    expect(result).toMatchObject({ toSolve: 1, message: '1 file queued in Jobs to plate solve with ASTAP.' })
+    expect(result.job?.solve?.files.map(f => f.path)).toEqual(['/a/1.fit'])
+    // While that job waits, asking again queues nothing more.
+    expect(await queue('m31')).toMatchObject({ toSolve: 0, job: null })
+    const run = makeRunSolveJob({ solvers: [new FakePlateSolver('astap').answer('/a/1.fit', { ok: true, field: solvedField(10.7, 41.3) })], store, clock: new FixedClock() })
+    const io = { run: async () => ({ exitCode: 0, error: null, output: '' }), log: () => {}, progress: async () => {}, cancelled: () => false }
+    expect(await run(result.job as Job, io)).toEqual({ state: 'succeeded', note: 'Solved 1 of 1 file.' })
+    expect(store.stored.get('/a/1.fit')).toMatchObject({ error: null, field: { raDeg: 10.7 } })
+    expect((await makeDescribeTargetGeometry({ store, mosaics: mosaics() })('m31'))?.unsolved).toBe(0)
     expect(await jobs.list()).toHaveLength(1)
   })
 
@@ -117,12 +137,11 @@ describe('queueing plate solves', () => {
   })
 })
 
-function runnerSetup() {
+function runnerSetup(astap = new FakePlateSolver('astap')) {
   const store = new InMemorySolveStore()
   const jobs = new InMemoryJobStore()
   const runner = new FakeProcessRunner()
   const logs = new InMemoryJobLogs()
-  const astap = new FakePlateSolver('astap')
   const clock = new FixedClock(new Date(2026, 9, 9, 2, 30))
   const scheduler = makeJobScheduler({
     store: jobs,
@@ -196,6 +215,54 @@ describe('running a solve job', () => {
     expect((await jobs.get(job.id))?.state).toBe('cancelled')
   })
 
+  it('[SKY-003] Given a cancel that comes while the next file is being staged, When the solver goes to run it, Then no further process starts', async () => {
+    let release = () => {}
+    const staged = new Promise<void>(resolve => (release = resolve))
+    // The second file waits as a real solver does while it hard links or copies the file.
+    class StagingSolver extends FakePlateSolver {
+      override async solve(...args: Parameters<FakePlateSolver['solve']>) {
+        if (this.solved.length === 1) await staged
+        return super.solve(...args)
+      }
+    }
+    const { runner, scheduler, add } = runnerSetup(new StagingSolver('astap'))
+    const job = await add(['/a/1.fit', '/a/2.fit', '/a/3.fit'])
+    await scheduler.tick()
+    await until(() => runner.runs.length === 1)
+    runner.last?.exit(1)
+    for (let i = 0; i < 10; i++) await flush()
+    const cancelling = scheduler.cancel(job.id)
+    for (let i = 0; i < 10; i++) await flush()
+    release()
+    expect(await cancelling).toMatchObject({ state: 'cancelled' })
+    expect(runner.runs).toHaveLength(1)
+  })
+
+  it('[SKY-005, SKY-003] Given a hinted solve that finds no match, When the job runs, Then the file is solved once more over the whole sky and its field stored', async () => {
+    const store = new InMemorySolveStore().add(skyFile({ path: '/a/1.fit' }), skyFile({ path: '/a/2.fit', capturedAt: new Date('2026-10-02T22:00:00Z') }))
+    const astap = new FakePlateSolver('astap')
+      .answer('/a/1.fit (blind)', { ok: true, field: solvedField(83.8, -5.4) })
+      .answer('/a/2.fit', { ok: false, reason: 'ASTAP found no star database.' })
+    const run = makeRunSolveJob({ solvers: [astap], store, clock: new FixedClock() })
+    const commands: string[][] = []
+    const log: string[] = []
+    const io = { run: async (c: { args: string[] }) => (commands.push(c.args), { exitCode: 0, error: null, output: '' }), log: (t: string) => log.push(t), progress: async () => {}, cancelled: () => false }
+    const hint = { raDeg: 10.6847, decDeg: 41.2688 }
+    const files = ['/a/1.fit', '/a/2.fit'].map(path => ({ path, widthPx: 1080, heightPx: 1920, hint, optics: null }))
+    const result = await run({ solve: { solver: 'astap', program: 'astap_cli', workDir: '/w', files } } as unknown as Job, io)
+    expect(result).toEqual({ state: 'succeeded', note: 'Solved 1 of 2 files. Not solved: 2.fit: ASTAP found no star database.' })
+    // Only the file with no match is retried, and the retry carries no hint: ASTAP searches the whole sky.
+    expect(astap.solved).toEqual(['/a/1.fit', '/a/1.fit', '/a/2.fit'])
+    expect(commands[0]).toEqual(expect.arrayContaining(['-r', '10', '-ra']))
+    expect(commands[1]).toEqual(expect.arrayContaining(['-r', '180']))
+    expect(commands[1]).not.toContain('-ra')
+    expect(log.join('')).toMatch(/Not solved near the target's catalogue position \(ASTAP found no solution\.\) Trying the whole sky\./)
+    expect(store.stored.get('/a/1.fit')).toMatchObject({ error: null, field: { raDeg: 83.8 } })
+    // Placed where it really points, the misfiled warning can fire.
+    await store.save({ path: '/a/2.fit', field: solvedField(83.8, -5.4), source: 'astap', solvedAt: new Date(), error: null })
+    expect((await makeDescribeTargetGeometry({ store, mosaics: mosaics() })('m31'))?.misfiled).toMatchObject({ far: 2, of: 2 })
+  })
+
   it('[SKY-003] Given a solve job without files or a solver it knows, When it runs, Then it fails with a plain reason', async () => {
     const { jobs, scheduler, add } = runnerSetup()
     const empty = await add([], null)
@@ -239,13 +306,14 @@ describe("what a target's solves say", () => {
     await store.save({ path: '/a/stack.fit', field: null, source: 'astap', solvedAt: new Date(), error: 'ASTAP found no solution.' })
     const g = await describeGeometry('m31')
     expect(g?.solves.map(s => s.path)).toEqual(['/a/stack.fit', '/a/n1/1.fit', '/a/n2/1.fit'])
-    expect(g?.unsolved).toBe(1)
+    // The third night and the master whose solve failed are still to place.
+    expect(g?.unsolved).toBe(2)
     expect(g?.misfiled).toMatchObject({ far: 2, of: 2 })
     expect(g?.rotation).toEqual({ nights: [{ night: '2026-10-01', rotationDeg: 0 }, { night: '2026-10-02', rotationDeg: 10 }], spreadDeg: 10 })
     expect(await describeGeometry('nope')).toBeNull()
   })
 
-  it('[SKY-011] Given panels under two targets whose fields overlap, When described, Then they are one mosaic and the other target is linked as part of it once', async () => {
+  it('[SKY-011] Given panels under two targets whose fields overlap, When described, Then they are one mosaic; only saving a plan links the other target, once', async () => {
     const { store, mosaics: m, describe: describeGeometry } = geometrySetup()
     store.add(
       skyFile({ path: '/a/p1/1.fit', capturedAt: new Date('2026-10-01T21:00:00Z') }),
@@ -264,9 +332,17 @@ describe("what a target's solves say", () => {
     expect(g?.mosaic.grouping.mosaic).toEqual([1, 2])
     expect(g?.mosaic.linkedTargetIds).toEqual(['m31-p2'])
     expect(g?.misfiled).toBeNull()
+    // Looking writes nothing.
+    expect(m.links).toEqual([])
+    const save = makeSaveMosaicPlan({ store, mosaics: m, clock: new FixedClock() })
+    await save('m31', { field: seestar, rotationDeg: 0, overlap: 0.2 })
+    await save('m31', { field: seestar, rotationDeg: 0, overlap: 0.2 })
     await describeGeometry('m31')
-    expect(m.links).toEqual([['m31-p2', 'm31']])
+    expect(m.links).toEqual([['m31', 'm31-p2']])
     expect(await m.linked('m31-p2')).toEqual(['m31'])
+    // A target with no catalogue entry saves its plan and links nothing.
+    await makeSaveMosaicPlan({ store, mosaics: m, clock: new FixedClock() })('ghost', { field: seestar, rotationDeg: 0, overlap: 0.2 })
+    expect(m.links).toHaveLength(1)
   })
 })
 
@@ -276,10 +352,9 @@ function plannerSetup(site: typeof london | null = london) {
   const ephemeris = new FakeEphemeris()
   const clock = new FixedClock(new Date('2026-10-09T15:00:00Z'))
   const deps = { store, mosaics: m, settings: new InMemoryPlanningSettings(site), ephemeris, clock }
-  return { ...deps, plan: makePlanMosaic(deps, 10), save: makeSaveMosaicPlan({ mosaics: m, clock }), gaps: makeListMosaicGaps(deps, 10) }
+  return { ...deps, plan: makePlanMosaic(deps, 10), save: makeSaveMosaicPlan({ store, mosaics: m, clock }), gaps: makeListMosaicGaps(deps, 10) }
 }
 
-const seestar = { widthDeg: 0.72, heightDeg: 1.28 }
 
 describe('planning a mosaic', () => {
   it('[SKY-007, SKY-008] Given M 31 and a Seestar field, When planned, Then tiles carry what they have and need for the goal, and the coming nights are marked', async () => {
@@ -318,10 +393,9 @@ describe('planning a mosaic', () => {
     if (fromSolves.status !== 'ok') throw new Error(fromSolves.status)
     expect(fromSolves.fieldFrom).toBe('solves')
     expect(fromSolves.tiles[0]).toEqual({ tile: 1, capturedSec: 1200, lightCount: 2, neededSec: 6 * 3600 - 1200 })
-    // A plan being tried out links nothing; the saved plan links the other target's panel.
+    // Planning links nothing; saving the plan links the other target's panel.
     expect(await m.linked('m31')).toEqual([])
     const saved = await save('m31', { field: { widthDeg: 1080 * 2.39 / 3600, heightDeg: 1920 * 2.39 / 3600 }, rotationDeg: 0, overlap: 0.2 })
-    await plan({ targetId: 'm31' })
     expect(await m.linked('m31')).toEqual(['m31-p2'])
     await save('m31', { field: seestar, rotationDeg: 30, overlap: 0.25 })
     expect(saved).toMatchObject({ targetId: 'm31', rotationDeg: 0, overlap: 0.2 })

@@ -31,7 +31,8 @@ export type SolveSource = SolverId | 'header'
 
 export const SOLVER_LABEL: Record<SolveSource, string> = { astap: 'ASTAP', siril: 'Siril', header: 'its own headers' }
 
-export type SolveOutcome = { ok: true; field: SolvedField } | { ok: false; reason: string }
+/** A failure with `noSolution` means the solver ran and found no match; a blind retry may still place it. */
+export type SolveOutcome = { ok: true; field: SolvedField } | { ok: false; reason: string; noSolution?: true }
 
 /** A rough position to start the solver from, and the optics when the headers give them. */
 export interface SolveHint {
@@ -74,7 +75,7 @@ export function scaleFromOptics(optics: SolveOptics): number {
 export type WcsCards = Record<string, string | number | null | undefined>
 
 /** The keywords a WCS is read from. */
-export const WCS_KEYWORDS = ['CRVAL1', 'CRVAL2', 'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'CDELT1', 'CDELT2', 'CROTA1', 'CROTA2', 'PLTSOLVD'] as const
+export const WCS_KEYWORDS = ['CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2', 'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'CDELT1', 'CDELT2', 'CROTA1', 'CROTA2', 'PLTSOLVD'] as const
 
 function cardNumber(cards: WcsCards, key: string): number | null {
   const raw = cards[key]
@@ -86,34 +87,45 @@ function cardNumber(cards: WcsCards, key: string): number | null {
 }
 
 /**
- * The field a WCS describes: CRVAL1/2 for the centre and either the CD matrix or CDELT with CROTA2
- * for scale and rotation. Null when the cards do not hold a usable WCS. CRVAL is taken as the
- * centre, which is where solvers put the reference pixel.
+ * The field a WCS describes: the centre pixel ((W+1)/2, (H+1)/2) taken through the CD matrix (or
+ * CDELT with CROTA2) and a TAN projection about CRVAL1/2 at CRPIX1/2, with scale and rotation from
+ * the same matrix. Without CRPIX, CRVAL is taken as the centre. Null when the cards do not hold a
+ * usable WCS.
  */
 export function fieldFromWcs(cards: WcsCards, widthPx: number, heightPx: number): SolvedField | null {
   const ra = cardNumber(cards, 'CRVAL1')
   const dec = cardNumber(cards, 'CRVAL2')
   if (ra === null || dec === null || Math.abs(dec) > 90 || !(widthPx > 0) || !(heightPx > 0)) return null
   const cd11 = cardNumber(cards, 'CD1_1')
-  const cd12 = cardNumber(cards, 'CD1_2') ?? 0
-  const cd21 = cardNumber(cards, 'CD2_1') ?? 0
   const cd22 = cardNumber(cards, 'CD2_2')
+  let cd: [number, number, number, number]
   let scaleDeg: number
   let rotation: number
   if (cd11 !== null && cd22 !== null) {
-    scaleDeg = Math.sqrt(Math.abs(cd11 * cd22 - cd12 * cd21))
-    rotation = Math.atan2(-cd12, cd22) / RAD
+    cd = [cd11, cardNumber(cards, 'CD1_2') ?? 0, cardNumber(cards, 'CD2_1') ?? 0, cd22]
+    scaleDeg = Math.sqrt(Math.abs(cd[0] * cd[3] - cd[1] * cd[2]))
+    rotation = Math.atan2(-cd[1], cd[3]) / RAD
   } else {
     const d1 = cardNumber(cards, 'CDELT1')
     const d2 = cardNumber(cards, 'CDELT2')
     if (d1 === null && d2 === null) return null
     scaleDeg = (Math.abs(d1 ?? d2 ?? 0) + Math.abs(d2 ?? d1 ?? 0)) / 2
     rotation = cardNumber(cards, 'CROTA2') ?? cardNumber(cards, 'CROTA1') ?? 0
+    const [c1, c2, r] = [d1 ?? d2 ?? 0, d2 ?? d1 ?? 0, rotation * RAD]
+    cd = [c1 * Math.cos(r), -c2 * Math.sin(r), c1 * Math.sin(r), c2 * Math.cos(r)]
   }
   if (!(scaleDeg > 0)) return null
+  const px1 = cardNumber(cards, 'CRPIX1')
+  const px2 = cardNumber(cards, 'CRPIX2')
+  let centre = { raDeg: ra, decDeg: dec }
+  if (px1 !== null && px2 !== null) {
+    const dx = (widthPx + 1) / 2 - px1
+    const dy = (heightPx + 1) / 2 - px2
+    centre = offsetPosition({ raDeg: ra, decDeg: dec }, cd[0] * dx + cd[1] * dy, cd[2] * dx + cd[3] * dy)
+  }
   return {
-    raDeg: round(((ra % 360) + 360) % 360, 6),
-    decDeg: dec,
+    raDeg: round(((centre.raDeg % 360) + 360) % 360, 6),
+    decDeg: centre.decDeg,
     rotationDeg: round(normaliseAngle(rotation), 2),
     scaleArcsec: round(scaleDeg * 3600, 4),
     widthPx,
@@ -165,7 +177,9 @@ export function parseAstapResult(ini: string, widthPx: number, heightPx: number)
   const solved = String(cards.PLTSOLVD ?? '').toUpperCase().startsWith('T')
   if (!solved) {
     const why = String(cards.ERROR ?? cards.WARNING ?? '').trim()
-    return { ok: false, reason: why ? `ASTAP could not solve it: ${why.replace(/\.?$/, '.')}` : 'ASTAP found no solution.' }
+    const reason = why ? `ASTAP could not solve it: ${why.replace(/\.?$/, '.')}` : 'ASTAP found no solution.'
+    // An ERROR (a missing star database, an unreadable image) is not a field ASTAP looked for and missed.
+    return cards.ERROR ? { ok: false, reason } : { ok: false, reason, noSolution: true }
   }
   const field = fieldFromWcs(cards, widthPx, heightPx)
   return field ? { ok: true, field } : { ok: false, reason: 'ASTAP said it solved the image but wrote no usable position.' }
@@ -223,7 +237,10 @@ export function parseSirilSolve(log: string, widthPx: number, heightPx: number):
     }
   }
   const failure = text.split(/\r?\n/).find(l => /fail|not enough|could not|cannot|error/i.test(l))
-  return { ok: false, reason: failure ? `Siril could not solve it: ${failure.trim().replace(/\.?$/, '.')}` : 'Siril finished without printing a solution.' }
+  if (!failure) return { ok: false, reason: 'Siril finished without printing a solution.' }
+  const reason = `Siril could not solve it: ${failure.trim().replace(/\.?$/, '.')}`
+  // Its plate solver ran and matched nothing, rather than failing to load the image or a catalogue.
+  return /solv/i.test(failure) && !/catalog/i.test(failure) ? { ok: false, reason, noSolution: true } : { ok: false, reason }
 }
 
 // ── Solve jobs ──────────────────────────────────────────────────────────
@@ -457,17 +474,19 @@ function panelsAlong(targetDeg: number, fieldDeg: number, overlap: number): numb
 
 /**
  * A grid of panels that covers the target with at least the minimum overlap, turned to the chosen
- * rotation and centred on the target. Tile 1 is top left with north up at rotation 0 (east on the
+ * rotation and centred on the target. The target's extent is measured along the turned panels' axes. Tile 1 is top left with north up at rotation 0 (east on the
  * left, as on the sky), and tiles run row by row.
  */
 export function planMosaic(req: MosaicRequest): MosaicPlan {
   const overlap = Math.min(0.5, Math.max(MOSAIC_MIN_OVERLAP, req.overlap))
   const { widthDeg, heightDeg } = req.field
-  const columns = panelsAlong(req.targetWidthArcmin / 60, widthDeg, overlap)
-  const rows = panelsAlong(req.targetHeightArcmin / 60, heightDeg, overlap)
+  const theta = normaliseAngle(req.rotationDeg) * RAD
+  // The target's extent along the turned panels' own axes: a long target turned 45° needs rows as well as columns.
+  const [w, h, cos, sin] = [req.targetWidthArcmin / 60, req.targetHeightArcmin / 60, Math.abs(Math.cos(theta)), Math.abs(Math.sin(theta))]
+  const columns = panelsAlong(w * cos + h * sin, widthDeg, overlap)
+  const rows = panelsAlong(w * sin + h * cos, heightDeg, overlap)
   const stepX = widthDeg * (1 - overlap)
   const stepY = heightDeg * (1 - overlap)
-  const theta = normaliseAngle(req.rotationDeg) * RAD
   // The panel's up axis points at the position angle; its right axis is a quarter turn on, toward the west at 0.
   const up = { xi: Math.sin(theta), eta: Math.cos(theta) }
   const right = { xi: -Math.cos(theta), eta: Math.sin(theta) }
@@ -585,14 +604,51 @@ export interface PanelGrouping {
 
 const minSide = (f: SolvedField) => Math.min(fieldWidthDeg(f), fieldHeightDeg(f))
 
+/** A field's rectangle on the sky: centre, size in degrees and the position angle of its up axis. */
+export interface Footprint {
+  raDeg: number
+  decDeg: number
+  widthDeg: number
+  heightDeg: number
+  rotationDeg: number
+}
+
+export const footprintOf = (f: SolvedField): Footprint => ({ raDeg: f.raDeg, decDeg: f.decDeg, widthDeg: fieldWidthDeg(f), heightDeg: fieldHeightDeg(f), rotationDeg: f.rotationDeg })
+
+/** Where a position falls on the tangent plane about a centre, in degrees east and north; null on the far side. */
+export function projectPosition(centre: { raDeg: number; decDeg: number }, at: { raDeg: number; decDeg: number }): { xi: number; eta: number } | null {
+  const [d0, d, dra] = [centre.decDeg * RAD, at.decDeg * RAD, (at.raDeg - centre.raDeg) * RAD]
+  const cosc = Math.sin(d0) * Math.sin(d) + Math.cos(d0) * Math.cos(d) * Math.cos(dra)
+  if (cosc <= 0) return null
+  return { xi: (Math.cos(d) * Math.sin(dra)) / cosc / RAD, eta: (Math.cos(d0) * Math.sin(d) - Math.sin(d0) * Math.cos(d) * Math.cos(dra)) / cosc / RAD }
+}
+
+/**
+ * Whether two fields' rectangles overlap: both laid on the tangent plane about the first one's
+ * centre, turned to their rotations, and checked for a separating axis. Fields that only touch do
+ * not overlap.
+ */
+export function footprintsOverlap(a: Footprint, b: Footprint): boolean {
+  const at = projectPosition(a, b)
+  if (!at) return false
+  const axes = (f: Footprint) => {
+    const t = f.rotationDeg * RAD
+    return { up: { x: Math.sin(t), y: Math.cos(t) }, right: { x: -Math.cos(t), y: Math.sin(t) }, hw: f.widthDeg / 2, hh: f.heightDeg / 2 }
+  }
+  const [p, q] = [axes(a), axes(b)]
+  const dot = (u: { x: number; y: number }, v: { x: number; y: number }) => Math.abs(u.x * v.x + u.y * v.y)
+  const reach = (r: ReturnType<typeof axes>, axis: { x: number; y: number }) => r.hw * dot(r.right, axis) + r.hh * dot(r.up, axis)
+  return [p.up, p.right, q.up, q.right].every(axis => dot({ x: at.xi, y: at.eta }, axis) < reach(p, axis) + reach(q, axis) - 1e-12)
+}
+
 /**
  * Groups solved lights into panels and panels into one mosaic. Lights whose centres are within a
- * quarter of a field are the same pointing (one panel); panels whose fields overlap each other, or
- * that each fill a planned tile, are panels of one mosaic. A panel fills a tile when its centre is
+ * quarter of a field are the same pointing (one panel); panels whose turned rectangles overlap on
+ * the sky, or that each fill a planned tile, are panels of one mosaic. A panel fills a tile when its centre is
  * within half the tile's smaller side of the tile's centre.
  */
 export function groupPanels(groups: SolvedGroup[], plan: Pick<MosaicPlan, 'tiles' | 'field'> | null): PanelGrouping {
-  const panels: (Panel & { side: number })[] = []
+  const panels: (Panel & { side: number; footprint: Footprint })[] = []
   for (const g of groups) {
     const same = panels.find(p => angularDistanceDeg(p.raDeg, p.decDeg, g.field.raDeg, g.field.decDeg) < Math.min(p.side, minSide(g.field)) / 4)
     if (same) {
@@ -611,7 +667,8 @@ export function groupPanels(groups: SolvedGroup[], plan: Pick<MosaicPlan, 'tiles
       nights: [g.night],
       targetIds: [g.targetId],
       tile: null,
-      side: minSide(g.field)
+      side: minSide(g.field),
+      footprint: footprintOf(g.field)
     })
   }
 
@@ -637,18 +694,19 @@ export function groupPanels(groups: SolvedGroup[], plan: Pick<MosaicPlan, 'tiles
     if (plan && a.tile !== null && panels.some(b => b !== a && b.tile !== null)) mosaic.add(a.id)
     for (const b of panels) {
       if (a === b) continue
-      if (angularDistanceDeg(a.raDeg, a.decDeg, b.raDeg, b.decDeg) < Math.min(a.side, b.side)) mosaic.add(a.id)
+      if (footprintsOverlap(a.footprint, b.footprint)) mosaic.add(a.id)
     }
   }
   for (const c of tiles) c.nights.sort()
   return {
-    panels: panels.map(({ side: _side, ...p }) => ({ ...p, nights: [...p.nights].sort() })),
+    panels: panels.map(({ side: _side, footprint: _footprint, ...p }) => ({ ...p, nights: [...p.nights].sort() })),
     mosaic: [...mosaic].sort((a, b) => a - b),
     tiles
   }
 }
 
 /** Whether a solved field overlaps a planned tile or another field, for picking other targets' lights. */
-export function overlapsAny(field: SolvedField, others: { raDeg: number; decDeg: number; sideDeg: number }[]): boolean {
-  return others.some(o => angularDistanceDeg(o.raDeg, o.decDeg, field.raDeg, field.decDeg) < Math.min(o.sideDeg, minSide(field)))
+export function overlapsAny(field: SolvedField, others: Footprint[]): boolean {
+  const mine = footprintOf(field)
+  return others.some(o => footprintsOverlap(mine, o))
 }

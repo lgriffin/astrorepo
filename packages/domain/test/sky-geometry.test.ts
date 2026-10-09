@@ -8,6 +8,8 @@ import {
   fieldFromWcs,
   fieldHeightDeg,
   fieldWidthDeg,
+  footprintOf,
+  footprintsOverlap,
   formatDecDms,
   formatRaHms,
   groupPanels,
@@ -36,10 +38,13 @@ import {
 } from '@astro/domain'
 import { skyFile, solvedField } from '@astro/testkit'
 
+/** Degrees of RA that `offsetDeg` west or east spans at a declination, on the tangent plane. */
+const angleOf = (offsetDeg: number, decDeg: number) => Math.atan2(offsetDeg * (Math.PI / 180), Math.cos(decDeg * (Math.PI / 180))) / (Math.PI / 180)
+
 const ASTAP_SOLVED = [
   'PLTSOLVD=T',
-  'CRPIX1= 5.4000000000000000E+002',
-  'CRPIX2= 9.6000000000000000E+002',
+  'CRPIX1= 5.4050000000000000E+002',
+  'CRPIX2= 9.6050000000000000E+002',
   'CRVAL1= 1.0684708333333334E+001',
   'CRVAL2= 4.1268750000000000E+001',
   'CDELT1=-6.6388888888888886E-004',
@@ -74,6 +79,23 @@ describe('reading where an image points', () => {
     expect(fieldFromWcs({ CRVAL1: 5, CRVAL2: 20, CDELT2: 0.001 }, 100, 50)?.rotationDeg).toBe(0)
   })
 
+  it('[SKY-004] Given a reference pixel away from the image centre, When read, Then the centre is the middle pixel taken through the matrix and a TAN projection', () => {
+    // Reference pixel at the bottom left corner, 0.001° per pixel, RA increasing to the left.
+    const corner = fieldFromWcs({ CRVAL1: 100, CRVAL2: 0, CRPIX1: 1, CRPIX2: 1, CD1_1: -0.001, CD2_2: 0.001 }, 1001, 1001)
+    expect(corner?.raDeg).toBeCloseTo(99.5, 3)
+    expect(corner?.decDeg).toBeCloseTo(0.5, 3)
+    // Near the pole the projection, not a flat offset, gives the RA: 0.5° east at Dec 80 is about 2.9° of RA,
+    const north = fieldFromWcs({ CRVAL1: 100, CRVAL2: 80, CRPIX1: 1, CRPIX2: 501, CDELT1: 0.001, CDELT2: 0.001, CROTA2: 0 }, 1001, 1001)
+    expect(north?.raDeg).toBeCloseTo(100 + angleOf(0.5, 80), 2)
+    // and the Dec falls a little off the parallel: atan(sin 80° / √(ξ² + cos² 80°)).
+    expect(north?.decDeg).toBeCloseTo(79.9876, 3)
+    // A reference pixel at the centre leaves CRVAL as the centre; turned 90°, CDELT and CROTA2 move it along Dec.
+    expect(fieldFromWcs({ CRVAL1: 10, CRVAL2: 20, CRPIX1: 50.5, CRPIX2: 25.5, CDELT1: -0.001, CDELT2: 0.001 }, 100, 50)).toMatchObject({ raDeg: 10, decDeg: 20 })
+    const turned = fieldFromWcs({ CRVAL1: 10, CRVAL2: 20, CRPIX1: 1, CRPIX2: 25.5, CDELT1: -0.001, CDELT2: 0.001, CROTA2: 90 }, 101, 50)
+    expect(turned?.raDeg).toBeCloseTo(10, 3)
+    expect(turned?.decDeg).toBeCloseTo(19.95, 3)
+  })
+
   it('[SKY-004] Given cards that are not a usable WCS, When read, Then there is no field', () => {
     expect(fieldFromWcs({ CRVAL1: 10 }, 100, 100)).toBeNull()
     expect(fieldFromWcs({ CRVAL1: 10, CRVAL2: 95, CDELT1: 0.001 }, 100, 100)).toBeNull()
@@ -96,8 +118,8 @@ describe('reading where an image points', () => {
 
   it('[SKY-001] Given ASTAP failed, When its .ini or exit code is read, Then the reason is a plain sentence, a missing star database included', () => {
     expect(parseAstapResult('PLTSOLVD=F\nERROR=No star database found!', 100, 100)).toEqual({ ok: false, reason: 'ASTAP could not solve it: No star database found!.' })
-    expect(parseAstapResult('PLTSOLVD=F\nWARNING=Not enough stars', 100, 100)).toEqual({ ok: false, reason: 'ASTAP could not solve it: Not enough stars.' })
-    expect(parseAstapResult('PLTSOLVD=F', 100, 100)).toEqual({ ok: false, reason: 'ASTAP found no solution.' })
+    expect(parseAstapResult('PLTSOLVD=F\nWARNING=Not enough stars', 100, 100)).toEqual({ ok: false, reason: 'ASTAP could not solve it: Not enough stars.', noSolution: true })
+    expect(parseAstapResult('PLTSOLVD=F', 100, 100)).toEqual({ ok: false, reason: 'ASTAP found no solution.', noSolution: true })
     expect(parseAstapResult('PLTSOLVD=T\nCRVAL1=1', 100, 100)).toEqual({ ok: false, reason: 'ASTAP said it solved the image but wrote no usable position.' })
     expect(astapExitReason(32)).toMatch(/no star database/)
     expect(astapExitReason(2)).toMatch(/too few stars/)
@@ -135,7 +157,10 @@ describe('reading where an image points', () => {
   })
 
   it('[SKY-001] Given Siril failed, When its log is parsed, Then its own failure line is the reason', () => {
-    expect(parseSirilSolve('log: Reading image\nlog: Plate solving failed: not enough stars\n', 10, 10)).toEqual({ ok: false, reason: 'Siril could not solve it: Plate solving failed: not enough stars.' })
+    expect(parseSirilSolve('log: Reading image\nlog: Plate solving failed: not enough stars\n', 10, 10)).toEqual({ ok: false, reason: 'Siril could not solve it: Plate solving failed: not enough stars.', noSolution: true })
+    // A missing catalogue or an unreadable file is not a field searched and missed, so no blind retry follows.
+    expect(parseSirilSolve('log: Plate solving failed: no local catalogue\n', 10, 10)).toEqual({ ok: false, reason: 'Siril could not solve it: Plate solving failed: no local catalogue.' })
+    expect(parseSirilSolve('log: error: could not open file\n', 10, 10)).toEqual({ ok: false, reason: 'Siril could not solve it: error: could not open file.' })
     expect(parseSirilSolve('log: done\n', 10, 10)).toEqual({ ok: false, reason: 'Siril finished without printing a solution.' })
   })
 })
@@ -245,13 +270,29 @@ describe('the mosaic planner', () => {
   })
 
   it('[SKY-007] Given an overlap under 15% and a quarter turn, When planned, Then the overlap is raised and the grid turns with the rotation', () => {
-    const plan = planMosaic({ ...m31, targetWidthArcmin: 70, targetHeightArcmin: 40, overlap: 0.05, rotationDeg: 90 })
+    // A target taller than it is wide: turned 90°, the panels' long side lies along it.
+    const plan = planMosaic({ ...m31, targetWidthArcmin: 40, targetHeightArcmin: 70, overlap: 0.05, rotationDeg: 90 })
     expect(plan.overlap).toBe(0.15)
     expect(plan).toMatchObject({ columns: 2, rows: 1 })
     // Turned 90°, the panels' left-right axis runs north-south, so the two tiles share an RA.
     expect(plan.tiles[0].raDeg).toBeCloseTo(plan.tiles[1].raDeg, 3)
     expect(plan.tiles[0].decDeg).toBeLessThan(plan.tiles[1].decDeg)
     expect(planMosaic({ ...m31, overlap: 0.9 }).overlap).toBe(0.5)
+  })
+
+  it('[SKY-007] Given a long thin target and panels turned 45°, When planned, Then the grid spans its extent along both turned axes and every point of it falls in a tile', () => {
+    const thin = { ...m31, targetWidthArcmin: 600, targetHeightArcmin: 6, rotationDeg: 45 }
+    const plan = planMosaic(thin)
+    const along = (10 + 0.1) * Math.SQRT1_2
+    expect(plan.coverWidthDeg).toBeGreaterThanOrEqual(along)
+    expect(plan.coverHeightDeg).toBeGreaterThanOrEqual(along)
+    expect(plan.rows).toBeGreaterThan(1)
+    const tiles = plan.tiles.map(t => ({ raDeg: t.raDeg, decDeg: t.decDeg, widthDeg: 0.72, heightDeg: 1.28, rotationDeg: 45 }))
+    // Points along the target's length and its corners, each a tiny field, all land in a tile.
+    for (const [xi, eta] of [[-5, -0.05], [-5, 0.05], [5, -0.05], [5, 0.05], [-2.5, 0], [0, 0], [3.3, 0.05]]) {
+      const p = offsetPosition(thin.centre, xi, eta)
+      expect(tiles.some(t => footprintsOverlap(t, { ...p, widthDeg: 1e-6, heightDeg: 1e-6, rotationDeg: 0 }))).toBe(true)
+    }
   })
 
   it('[SKY-010] Given a target smaller than the field, When planned, Then one tile on the target is proposed and it fits one field', () => {
@@ -342,8 +383,31 @@ describe('panels of a mosaic', () => {
     expect(g.mosaic).toEqual([])
     const both = groupPanels([group('a', 'm31', '2026-10-01', t1.raDeg, t1.decDeg), group('b', 'm31', '2026-10-02', t2.raDeg, t2.decDeg)], plan)
     expect(both.mosaic).toEqual([1, 2])
-    expect(overlapsAny(solvedField(t1.raDeg, t1.decDeg), [{ raDeg: t2.raDeg, decDeg: t2.decDeg, sideDeg: 0.72 }])).toBe(true)
-    expect(overlapsAny(solvedField(83.8, -5.4), [{ raDeg: t2.raDeg, decDeg: t2.decDeg, sideDeg: 0.72 }])).toBe(false)
+    const tile2 = { raDeg: t2.raDeg, decDeg: t2.decDeg, widthDeg: 0.72, heightDeg: 1.28, rotationDeg: 0 }
+    expect(overlapsAny(solvedField(t1.raDeg, t1.decDeg), [tile2])).toBe(true)
+    expect(overlapsAny(solvedField(83.8, -5.4), [tile2])).toBe(false)
+  })
+
+  it('[SKY-011] Given 1° fields offset 0.8° east and 0.8° north, When grouped, Then their corners overlap and they are one mosaic, and turned fields are tested on their own axes', () => {
+    const square = (raDeg: number, decDeg: number, rotationDeg = 0) => solvedField(raDeg, decDeg, { scaleArcsec: 3.6, widthPx: 1000, heightPx: 1000, rotationDeg })
+    const corner = offsetPosition({ raDeg: 100, decDeg: 0 }, 0.8, 0.8)
+    const diagonal = groupPanels(
+      [
+        { ...group('a', 'm31', '2026-10-01', 100, 0), field: square(100, 0) },
+        { ...group('b', 'm31-p2', '2026-10-01', 0, 0), field: square(corner.raDeg, corner.decDeg) }
+      ],
+      null
+    )
+    expect(diagonal.panels).toHaveLength(2)
+    expect(diagonal.mosaic).toEqual([1, 2])
+    expect(footprintsOverlap(footprintOf(square(100, 0)), footprintOf(square(corner.raDeg, corner.decDeg)))).toBe(true)
+    // Turned 45°, the same 1.13° offset runs along their own axes, so they part; side by side 1.2° apart they meet.
+    const apart = offsetPosition({ raDeg: 100, decDeg: 0 }, 0.8, -0.8)
+    expect(footprintsOverlap(footprintOf(square(100, 0, 45)), footprintOf(square(apart.raDeg, apart.decDeg, 45)))).toBe(false)
+    const far = offsetPosition({ raDeg: 100, decDeg: 0 }, 1.2, 0)
+    expect(footprintsOverlap(footprintOf(square(100, 0, 45)), footprintOf(square(far.raDeg, far.decDeg, 45)))).toBe(true)
+    expect(footprintsOverlap(footprintOf(square(100, 0)), footprintOf(square(far.raDeg, far.decDeg)))).toBe(false)
+    expect(footprintsOverlap(footprintOf(square(100, 0)), footprintOf(square(280, 0)))).toBe(false)
   })
 
   it('[SKY-012] Given tiles with no lights, When next actions are ranked, Then they follow tonight’s captures and lead stacking, soonest visible first', () => {

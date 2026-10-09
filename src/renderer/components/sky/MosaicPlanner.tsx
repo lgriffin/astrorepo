@@ -56,15 +56,18 @@ export function MosaicPlanner(): React.ReactElement {
     }
   }, [query])
 
-  // The field of view comes from the Equipment page's own calculation for the pair picked.
+  // The field of view comes from the Equipment page's own calculation for the pair picked. The old
+  // field goes as soon as the pick changes, and an answer for a pick no longer current is dropped.
   useEffect(() => {
-    if (!scope || !camera) {
-      setField(null)
-      return
-    }
+    setField(null)
+    if (!scope || !camera) return
+    let current = true
     invoke<FOVResult | null>('equipment:calculate-fov', { telescope_id: scope, camera_id: camera, reducer_id: reducer || undefined })
-      .then(fov => setField(fov ? { widthDeg: fov.widthDeg, heightDeg: fov.heightDeg } : null))
-      .catch(() => setField(null))
+      .then(fov => current && setField(fov ? { widthDeg: fov.widthDeg, heightDeg: fov.heightDeg } : null))
+      .catch(() => current && setField(null))
+    return () => {
+      current = false
+    }
   }, [scope, camera, reducer])
 
   const request = useCallback(

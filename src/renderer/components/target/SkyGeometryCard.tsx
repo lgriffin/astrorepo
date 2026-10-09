@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card, EmptyState, LinkButton } from '../common/Card'
 import { invoke } from '../../hooks/useIPC'
@@ -20,23 +20,33 @@ export function SkyGeometryCard({ targetId }: { targetId: string }): React.React
   const [busy, setBusy] = useState(false)
   const [showAll, setShowAll] = useState(false)
 
+  // Only the latest load for the target on show may set the view: an answer for another target, or an older one, is dropped.
+  const shown = useRef(targetId)
+  const generation = useRef(0)
   const load = useCallback(() => {
+    const ticket = ++generation.current
+    const settle = (next: TargetGeometryView | null) => {
+      if (ticket === generation.current && shown.current === targetId) setView(next)
+    }
     invoke<TargetGeometryView | null>('sky:target-geometry', { target_id: targetId })
-      .then(setView)
-      .catch(() => setView(null))
+      .then(settle)
+      .catch(() => settle(null))
   }, [targetId])
 
   useEffect(() => {
+    // A new load also outdates every earlier one.
+    shown.current = targetId
     setView(null)
     load()
-  }, [load])
+  }, [targetId, load])
 
   const solve = async () => {
+    const asked = targetId
     setBusy(true)
     try {
-      const result = await invoke<SolveQueuedView>('sky:solve-target', { target_id: targetId })
+      const result = await invoke<SolveQueuedView>('sky:solve-target', { target_id: asked })
       addToast(result.message, result.queued ? 'success' : 'info')
-      load()
+      if (shown.current === asked) load()
     } catch (error) {
       addToast(`Plate solving could not be queued: ${error instanceof Error ? error.message : String(error)}`, 'error')
     } finally {

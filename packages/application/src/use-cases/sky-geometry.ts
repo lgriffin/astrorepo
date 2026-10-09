@@ -2,6 +2,7 @@ import {
   chooseSolver,
   fieldHeightDeg,
   fieldWidthDeg,
+  footprintOf,
   groupPanels,
   misfiledCheck,
   mosaicCsv,
@@ -30,6 +31,7 @@ import {
   type SolvedField,
   type SolvedGroup,
   type SolverId,
+  type SolveOutcome,
   type SolveSource,
   type SolveTask
 } from '@astro/domain'
@@ -84,12 +86,13 @@ const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}
 /**
  * Plate solves a target's lights (one per folder per night) and masters as one background job
  * (SKY-003). Files whose headers already carry a WCS are stored from it without solving (SKY-004);
- * files already solved, or in a solve job that has not finished, are left alone.
+ * files already placed, or in a solve job that has not finished, are left alone. A stored failure
+ * is solved again, and a success replaces it.
  */
 export function makeQueueSolves(deps: QueueSolvesDeps): QueueSolves {
   return async (targetId, timing = 'now') => {
     const files = await deps.store.files(targetId)
-    const stored = new Set((await deps.store.solves(files.map(f => f.path))).map(s => s.path))
+    const stored = new Set((await deps.store.solves(files.map(f => f.path))).filter(s => s.field).map(s => s.path))
     for (const job of await deps.jobs.list()) {
       if (job.kind !== 'solve' || (job.state !== 'queued' && job.state !== 'running')) continue
       for (const f of job.solve?.files ?? []) stored.add(f.path)
@@ -154,15 +157,17 @@ const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p
 
 /**
  * Solves a job's files one by one with the solver it was queued for and stores each field or
- * failure (SKY-001, SKY-003). A file stored meanwhile is skipped, so a job interrupted by the app
- * closing carries on where it stopped. It fails only when nothing could be solved.
+ * failure (SKY-001, SKY-003). A file placed meanwhile is skipped, so a job interrupted by the app
+ * closing carries on where it stopped. A file the solver finds no match for near the target's
+ * catalogue position is solved once more over the whole sky, so a misfiled target can still be
+ * placed and flagged (SKY-005). It fails only when nothing could be solved.
  */
 export function makeRunSolveJob(deps: { solvers: PlateSolver[]; store: SolveStore; clock: Clock }): RunSolveJob {
   return async (job, io) => {
     const task = job.solve
     const solver = task ? deps.solvers.find(s => s.id === task.solver) : undefined
     if (!task || !solver) return { state: 'failed', note: 'This job has no files to plate solve.' }
-    const done = new Set((await deps.store.solves(task.files.map(f => f.path))).map(s => s.path))
+    const done = new Set((await deps.store.solves(task.files.map(f => f.path))).filter(s => s.field).map(s => s.path))
     let solved = 0
     let skipped = 0
     const failed: string[] = []
@@ -175,8 +180,14 @@ export function makeRunSolveJob(deps: { solvers: PlateSolver[]; store: SolveStor
       }
       await io.progress(i, task.files.length, fileName(file.path))
       io.log(`── ${i + 1} of ${task.files.length}: ${file.path}\n`)
-      const outcome = await solver.solve(task.program, file, task.workDir, io).catch((error: unknown) => ({ ok: false as const, reason: error instanceof Error ? error.message : String(error) }))
+      const attempt = (f: typeof file) => solver.solve(task.program, f, task.workDir, io).catch((error: unknown): SolveOutcome => ({ ok: false, reason: error instanceof Error ? error.message : String(error) }))
+      let outcome = await attempt(file)
       if (io.cancelled()) break
+      if (!outcome.ok && outcome.noSolution && file.hint) {
+        io.log(`Not solved near the target's catalogue position (${outcome.reason}) Trying the whole sky.\n`)
+        outcome = await attempt({ ...file, hint: null })
+        if (io.cancelled()) break
+      }
       const at = deps.clock.now()
       if (outcome.ok) {
         solved++
@@ -268,8 +279,8 @@ function savedPlan(target: MosaicTarget, saved: Pick<SavedMosaic, 'field' | 'rot
 
 /**
  * Panels of a target's mosaic: its own solved lights, and other targets' lights whose fields
- * overlap them or a tile of its plan. Other targets found this way are recorded as part of its
- * mosaic (SKY-011).
+ * overlap them or a tile of its plan. Only saving a plan records the other targets found this way
+ * as part of its mosaic (SKY-011); looking never writes.
  */
 async function coverage(
   deps: SkyGeometryDeps,
@@ -277,14 +288,14 @@ async function coverage(
   plan: MosaicPlan | null,
   allFiles: SkyFile[],
   allSolves: StoredSolve[],
-  /** Only a saved plan, or no plan, records links: a plan still being tried out does not. */
-  link = true
+  /** Set only when the user saves a plan. */
+  link = false
 ): Promise<MosaicCoverage> {
   const groups = solvedGroups(allFiles, allSolves)
   const own = groups.filter(g => g.targetId === targetId)
   const anchors = [
-    ...own.map(g => ({ raDeg: g.field.raDeg, decDeg: g.field.decDeg, sideDeg: Math.min(fieldWidthDeg(g.field), fieldHeightDeg(g.field)) })),
-    ...(plan?.tiles ?? []).map(t => ({ raDeg: t.raDeg, decDeg: t.decDeg, sideDeg: Math.min(plan?.field.widthDeg ?? 0, plan?.field.heightDeg ?? 0) }))
+    ...own.map(g => footprintOf(g.field)),
+    ...(plan?.tiles ?? []).map(t => ({ raDeg: t.raDeg, decDeg: t.decDeg, widthDeg: plan?.field.widthDeg ?? 0, heightDeg: plan?.field.heightDeg ?? 0, rotationDeg: plan?.rotationDeg ?? 0 }))
   ]
   const others = groups.filter(g => g.targetId !== targetId && overlapsAny(g.field, anchors))
   const grouping = groupPanels([...own, ...others], plan)
@@ -319,7 +330,8 @@ export function makeDescribeTargetGeometry(deps: SkyGeometryDeps): DescribeTarge
     return {
       targetId,
       solves,
-      unsolved: planSolves(files, new Set(solves.map(s => s.path))).toSolve.length,
+      // A failed solve is not a placed file: it is solved again.
+      unsolved: planSolves(files, new Set(placed.map(s => s.path))).toSolve.length,
       misfiled: misfiledCheck(catalogue, placed.map(s => s.field as SolvedField)),
       rotation: rotationByNight(placed.filter(s => s.kind === 'light' && s.night).map(s => ({ night: s.night as string, field: s.field as SolvedField }))),
       mosaic: await coverage(deps, targetId, savedPlan(target, saved), allFiles, allSolves)
@@ -415,8 +427,7 @@ export function makePlanMosaic(deps: MosaicPlannerDeps, nightsAhead = MOSAIC_NIG
       rotationDeg: request.rotationDeg ?? saved?.rotationDeg ?? 0,
       overlap: request.overlap ?? saved?.overlap ?? DEFAULT_MOSAIC_OVERLAP
     }) as MosaicPlan
-    const asSaved = saved !== null && !request.field && request.rotationDeg === undefined && request.overlap === undefined
-    const { grouping } = await coverage(deps, target.id, plan, allFiles, allSolves, asSaved)
+    const { grouping } = await coverage(deps, target.id, plan, allFiles, allSolves)
     const tiles = grouping.tiles.map(t => ({
       tile: t.tile,
       capturedSec: t.integrationSec,
@@ -438,11 +449,19 @@ export function makePlanMosaic(deps: MosaicPlannerDeps, nightsAhead = MOSAIC_NIG
 
 export type SaveMosaicPlan = (targetId: string, plan: Pick<SavedMosaic, 'field' | 'rotationDeg' | 'overlap'>) => Promise<SavedMosaic>
 
-/** Keeps the plan the user chose, so Next actions can name tiles with no lights (SKY-012). */
-export function makeSaveMosaicPlan(deps: { mosaics: MosaicStore; clock: Clock }): SaveMosaicPlan {
+/**
+ * Keeps the plan the user chose, so Next actions can name tiles with no lights (SKY-012), and links
+ * other targets whose lights are its panels as part of the mosaic (SKY-011).
+ */
+export function makeSaveMosaicPlan(deps: SkyGeometryDeps & { clock: Clock }): SaveMosaicPlan {
   return async (targetId, plan) => {
     const saved: SavedMosaic = { targetId, ...plan, savedAt: deps.clock.now() }
     await deps.mosaics.savePlan(saved)
+    const target = await deps.mosaics.target(targetId)
+    if (target) {
+      const [allFiles, allSolves] = await Promise.all([deps.store.files(), deps.store.solves()])
+      await coverage(deps, targetId, savedPlan(target, saved), allFiles, allSolves, true)
+    }
     return saved
   }
 }

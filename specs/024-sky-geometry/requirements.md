@@ -32,8 +32,9 @@ Siril's own solver when ASTAP is not installed, and builds the same habits aroun
 
   **Export CSV** saves the tiles and **Save plan** keeps the plan for the target.
 - **Panels.** Lights whose solved fields overlap each other or a planned tile are grouped as the
-  panels of one mosaic, with the integration each tile has. Another target whose lights are
-  panels of the mosaic is linked to it (the existing `part_of_mosaic` relationship). Next actions
+  panels of one mosaic, with the integration each tile has. When the plan is saved, another
+  target whose lights are panels of the mosaic is linked to it (the existing `part_of_mosaic`
+  relationship); looking at a target or trying out a plan writes nothing. Next actions
   says "tile N has no lights" for a saved plan, with the coming nights the tile is visible.
 
 ## Changes to the blueprint
@@ -63,23 +64,23 @@ Siril's own solver when ASTAP is not installed, and builds the same habits aroun
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| SKY-001 | Ubiquitous | The system shall plate solve a file by handing a hard link or copy of it in the work folder to ASTAP's command line or to Siril's own solver, and store the centre, rotation, pixel scale and field size it reads from the solver's result with the solver and the time, or why the solve failed. |
+| SKY-001 | Ubiquitous | The system shall plate solve a file by handing a hard link or copy of it in the work folder to ASTAP's command line or to Siril's own solver, and store the centre (the image's middle pixel, taken through the WCS's reference pixel, matrix and TAN projection), rotation, pixel scale and field size it reads from the solver's result with the solver and the time, or why the solve failed. |
 | SKY-002 | Ubiquitous | The system shall solve with ASTAP when the tool hub finds it, with Siril when only Siril is found, and say that neither is set up when neither is found. |
-| SKY-003 | Event | When the user asks to plate solve a target, the system shall queue one background job that solves one light from each folder of each night and every master not yet placed, show the file it is on, and skip files already stored when it runs again. |
-| SKY-004 | Optional | Where a light or master already carries a WCS in its headers, the system shall store its field from those headers without solving it. |
+| SKY-003 | Event | When the user asks to plate solve a target, the system shall queue one background job that solves one light from each folder of each night and every master not yet placed (a stored failure counts as not placed, and its success replaces it), show the file it is on, skip files already placed when it runs again, and start no further solver once the job is cancelled. |
+| SKY-004 | Optional | Where a light or master already carries a WCS in its headers, the system shall store its field from those headers without solving it, taking its centre from the reference pixel as SKY-001 does. |
 
 ## What the solves say
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| SKY-005 | Unwanted | If most of a target's solved files point further from the catalogue position of its name than the larger side of their field, then the system shall flag that the target may be filed under the wrong name and say how far off they point. |
+| SKY-005 | Unwanted | If most of a target's solved files point further from the catalogue position of its name than the larger side of their field, then the system shall flag that the target may be filed under the wrong name and say how far off they point; a file the solver finds no match for near the catalogue position shall be solved once more over the whole sky before its failure is stored, so a misfiled target can still be placed. |
 | SKY-006 | Ubiquitous | The system shall show each night's field rotation on a target's page and say when two nights differ by more than 2°, counting a half turn as a meridian flip. |
 
 ## Mosaic planner
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| SKY-007 | Event | When the user plans a mosaic for a target larger than one field, the system shall propose a grid of panels from the catalogue size and the field of view of the chosen equipment with at least 15% overlap at the chosen rotation, and list each tile's centre as RA hh:mm:ss and Dec ±dd:mm:ss with the hours it still needs for the target's goal. |
+| SKY-007 | Event | When the user plans a mosaic for a target larger than one field, the system shall propose a grid of panels from the catalogue size (measured along the turned panels' axes) and the field of view of the chosen equipment with at least 15% overlap at the chosen rotation, and list each tile's centre as RA hh:mm:ss and Dec ±dd:mm:ss with the hours it still needs for the target's goal. |
 | SKY-008 | Event | When a mosaic is planned and the site is set, the system shall mark the coming nights on which every panel stays above the altitude limit for at least the minimum usable hours. |
 | SKY-009 | Event | When the user exports a mosaic plan, the system shall save its tiles as CSV with each tile's centre and the hours it still needs. |
 | SKY-010 | Unwanted | If the target has no catalogue position or size, or no field of view is known, then the system shall say what is missing and propose no grid; a target that fits one field shall get one tile and be told so. |
@@ -88,7 +89,7 @@ Siril's own solver when ASTAP is not installed, and builds the same habits aroun
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| SKY-011 | Ubiquitous | The system shall group solved lights whose fields overlap each other or a planned tile as the panels of one mosaic, show the integration each tile has, and link any other target with such lights to the mosaic's target as part of its mosaic. |
+| SKY-011 | Ubiquitous | The system shall group solved lights whose fields (rectangles on the sky, turned to their rotation) overlap each other or a planned tile as the panels of one mosaic, show the integration each tile has, and link any other target with such lights to the mosaic's target as part of its mosaic, once per pair, only when the user saves a mosaic plan for it. |
 | SKY-012 | State | While a saved mosaic plan has a tile with no lights, the system shall say in Next actions that the tile has no lights, with the coming nights on which it clears the altitude limit. |
 
 ## Quality

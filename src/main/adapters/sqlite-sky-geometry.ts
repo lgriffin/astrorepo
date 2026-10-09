@@ -163,15 +163,26 @@ export class SqliteMosaicStore implements MosaicStore {
       .run(plan.targetId, plan.field.widthDeg, plan.field.heightDeg, plan.rotationDeg, plan.overlap, plan.savedAt.toISOString())
   }
 
+  /**
+   * One link per pair whichever side asks: the check and the insert run in one transaction, and a
+   * new link is written lesser id first so the table's unique pair catches a second writer.
+   */
   async linkPanels(targetId: string, panelTargetIds: string[]): Promise<void> {
-    const linked = new Set(await this.linked(targetId))
+    const exists = this.db.prepare(
+      `SELECT 1 FROM target_relationships WHERE relationship_type = 'part_of_mosaic'
+         AND ((source_target_id = @a AND related_target_id = @b) OR (source_target_id = @b AND related_target_id = @a))`
+    )
     const insert = this.db.prepare(
       `INSERT OR IGNORE INTO target_relationships (id, source_target_id, related_target_id, relationship_type, created_at)
        VALUES (?, ?, ?, 'part_of_mosaic', ?)`
     )
     const now = new Date().toISOString()
     this.db.transaction(() => {
-      for (const other of panelTargetIds) if (other !== targetId && !linked.has(other)) insert.run(ulid(), other, targetId, now)
+      for (const other of new Set(panelTargetIds)) {
+        if (other === targetId) continue
+        const [a, b] = other < targetId ? [other, targetId] : [targetId, other]
+        if (!exists.get({ a, b })) insert.run(ulid(), a, b, now)
+      }
     })()
   }
 

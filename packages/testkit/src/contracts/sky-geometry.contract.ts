@@ -70,7 +70,7 @@ export const SKY_SEED: SkySeed = {
   targetId: 'm31',
   files: [
     { path: '/astro/M31/n1/L_001.fit', kind: 'light', dateObs: '2026-10-01T21:00:00', exposureSec: 10, width: 1080, height: 1920 },
-    { path: '/astro/M31/n1/L_002.fit', kind: 'light', dateObs: '2026-10-01T21:00:10', exposureSec: 10, width: 1080, height: 1920, wcs: { CRVAL1: '10.68', CRVAL2: '41.27', CD1_1: '-0.000664', CD2_2: '0.000664' } },
+    { path: '/astro/M31/n1/L_002.fit', kind: 'light', dateObs: '2026-10-01T21:00:10', exposureSec: 10, width: 1080, height: 1920, wcs: { CRVAL1: '10.68', CRVAL2: '41.27', CRPIX1: '540.5', CRPIX2: '960.5', CD1_1: '-0.000664', CD2_2: '0.000664' } },
     { path: '/astro/M31/stack.fit', kind: 'master', dateObs: null, exposureSec: 10, width: 1080, height: 1920 }
   ]
 }
@@ -84,7 +84,7 @@ export function solveStoreContract(adapterName: string, make: () => SolveStore):
       const [first, second, master] = files
       expect(first).toMatchObject({ targetId: 'm31', exposureSec: 10, widthPx: 1080, heightPx: 1920, wcs: null, folder: '/astro/M31/n1' })
       expect(first.capturedAt?.toISOString()).toBe('2026-10-01T21:00:00.000Z')
-      expect(second.wcs).toMatchObject({ CRVAL1: '10.68', CRVAL2: '41.27' })
+      expect(second.wcs).toMatchObject({ CRVAL1: '10.68', CRVAL2: '41.27', CRPIX1: '540.5', CRPIX2: '960.5' })
       expect(master.capturedAt).toBeNull()
       expect((await make().files()).length).toBe(SKY_SEED.files.length + 1)
     })
@@ -133,6 +133,16 @@ export function mosaicStoreContract(adapterName: string, make: () => MosaicStore
       await store.linkPanels('m31', ['m31-p2'])
       expect(await store.linked('m31')).toEqual(['m31-p2', 'm31-p3'])
       expect(await store.linked('m31-p2')).toEqual(['m31'])
+    })
+
+    it('[SKY-011] Given a link asked for from one side and then the other, When read, Then there is one link either way round', async () => {
+      const store = make()
+      await store.linkPanels('m31-p2', ['m31-p3'])
+      await store.linkPanels('m31-p3', ['m31-p2'])
+      await Promise.all([store.linkPanels('m31', ['m31-p3']), store.linkPanels('m31-p3', ['m31'])])
+      expect(await store.linked('m31-p3')).toEqual(['m31', 'm31-p2'])
+      expect(await store.linked('m31-p2')).toEqual(['m31-p3'])
+      expect(await store.linked('m31')).toEqual(['m31-p3'])
     })
   })
 }

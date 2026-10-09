@@ -38,7 +38,8 @@ export class FakePlateSolver implements PlateSolver {
     this.solved.push(file.path)
     const run = await io.run(astapCommand(program, `${workDir}/solve.fit`, file.hint, null))
     if (run.exitCode === null) return { ok: false, reason: 'Stopped.' }
-    return this.outcomes.get(file.path) ?? { ok: false, reason: 'ASTAP found no solution.' }
+    // An answer for a blind solve (no hint) is looked up as `path (blind)` first.
+    return (file.hint ? undefined : this.outcomes.get(`${file.path} (blind)`)) ?? this.outcomes.get(file.path) ?? { ok: false, reason: 'ASTAP found no solution.', noSolution: true }
   }
 }
 
@@ -68,7 +69,7 @@ export class InMemorySolveStore implements SolveStore {
 export class InMemoryMosaicStore implements MosaicStore {
   readonly targets = new Map<string, MosaicTarget>()
   readonly saved = new Map<string, SavedMosaic>()
-  /** part_of_mosaic links, as [panel target, mosaic target]. */
+  /** part_of_mosaic links, each pair lesser id first. */
   readonly links: [string, string][] = []
 
   addTarget(target: Partial<MosaicTarget> & { id: string; name: string }): this {
@@ -93,8 +94,10 @@ export class InMemoryMosaicStore implements MosaicStore {
   }
 
   async linkPanels(targetId: string, panelTargetIds: string[]): Promise<void> {
-    const linked = new Set(await this.linked(targetId))
-    for (const other of panelTargetIds) if (other !== targetId && !linked.has(other)) this.links.push([other, targetId])
+    for (const other of panelTargetIds) {
+      if (other === targetId || this.links.some(l => l.includes(other) && l.includes(targetId))) continue
+      this.links.push(other < targetId ? [other, targetId] : [targetId, other])
+    }
   }
 
   async linked(targetId: string): Promise<string[]> {

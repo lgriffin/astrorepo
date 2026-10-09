@@ -64,8 +64,9 @@ export class AstapPlateSolver implements PlateSolver {
       const heightDeg = file.optics ? (file.heightPx * scaleFromOptics(file.optics)) / 3600 : null
       const run = await io.run(astapCommand(program, copy, file.hint, heightDeg))
       const ini = await fs.promises.readFile(astapResultPath(copy), 'utf8').catch(() => null)
-      if (ini === null) return { ok: false, reason: run.error ?? astapExitReason(run.exitCode) }
-      return parseAstapResult(ini, file.widthPx, file.heightPx)
+      const outcome: SolveOutcome = ini === null ? { ok: false, reason: run.error ?? astapExitReason(run.exitCode) } : parseAstapResult(ini, file.widthPx, file.heightPx)
+      // Exit code 1 is ASTAP's "no solution": it searched and matched nothing.
+      return !outcome.ok && run.exitCode === 1 && !run.error ? { ...outcome, noSolution: true } : outcome
     })
   }
 }

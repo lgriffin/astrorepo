@@ -197,12 +197,15 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
         deps.onChange?.()
       },
       run: async command => {
+        // A cancel or quit that came between files (while the next one was being staged) starts nothing.
+        if (entry.cancelled || stopping) return { exitCode: null, error: 'Cancelled.', output: '' }
         deps.logs.append(job.id, `> ${[command.program, ...command.args].join(' ')}\n`)
         let output = ''
         entry.process = deps.runner.run(command, text => {
           output = (output + text).slice(-OUTPUT_KEPT)
           deps.logs.append(job.id, text)
         })
+        if (entry.cancelled || stopping) entry.process.cancel()
         const done = await entry.process.done
         return { ...done, output }
       }
