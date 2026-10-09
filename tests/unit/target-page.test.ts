@@ -27,6 +27,8 @@ const job = (over: Partial<JobView>): JobView => ({
   needed: '4 GB',
   canCancel: true,
   canRunNow: true,
+  progress: null,
+  outputs: [],
   ...over
 })
 

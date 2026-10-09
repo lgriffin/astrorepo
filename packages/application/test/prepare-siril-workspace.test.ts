@@ -10,10 +10,12 @@ describe('PrepareSirilWorkspace', () => {
     )
     const result = await makePrepareSirilWorkspace({ workspace })('/data/M 81', '/work/siril/M 81')
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       workDir: '/work/siril/M 81', linked: 4, copied: 0, existing: 0, rejected: 0, pruned: 0,
-      byFolder: { lights: 2, darks: 1, flats: 1, biases: 0 }
+      byFolder: { lights: 2, darks: 1, flats: 1, biases: 0 },
+      rejectedPaths: []
     })
+    expect(result.placements.map(p => `${p.folder}/${p.name}`).sort()).toEqual(['darks/d1.fit', 'flats/Flat_1.fit', 'lights/Light_001.fit', 'lights/Light_002.fit'])
     expect([...workspace.folders].sort()).toEqual(['/work/siril/M 81/biases', '/work/siril/M 81/darks', '/work/siril/M 81/flats', '/work/siril/M 81/lights'])
     expect(workspace.placed.get('/work/siril/M 81/darks/d1.fit')).toBe('/data/M 81/d1.fit')
   })

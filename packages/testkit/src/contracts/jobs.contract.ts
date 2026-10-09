@@ -56,5 +56,16 @@ export function jobStoreContract(adapterName: string, make: () => JobStore): voi
       expect(await store.get(job.id)).toMatchObject({ state: 'cancelled', attempts: 0 })
       expect(await store.transition('missing', 'queued', { state: 'running' })).toBeNull()
     })
+
+    it('[PRV-003] Given a stack run step by step, When its progress is saved and cleared, Then it comes back as saved', async () => {
+      const store = make()
+      const job = await store.add(newJob(), new Date('2026-09-30T20:00:00Z'))
+      expect(job.progress).toBeNull()
+      const progress = { step: 3, of: 9, key: 'abc-def-30', label: 'register pp_light', resumedFrom: 2, published: ['D:/work/M 42/result_3600s.fit'] }
+      expect((await store.update(job.id, { progress })).progress).toEqual(progress)
+      expect((await store.get(job.id))?.progress).toEqual(progress)
+      expect((await store.update(job.id, { note: 'x' })).progress).toEqual(progress)
+      expect((await store.update(job.id, { progress: null })).progress).toBeNull()
+    })
   })
 }

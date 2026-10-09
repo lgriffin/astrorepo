@@ -1,4 +1,4 @@
-import { planSirilWorkspace, type SirilFolder } from '@astro/domain'
+import { planSirilWorkspace, type SirilFolder, type SirilPlacement } from '@astro/domain'
 import type { SirilWorkspace } from '../ports/siril-workspace'
 import { selectFrames } from './estimate-siril-run'
 import type { FrameSelection } from './frame-grading'
@@ -19,6 +19,10 @@ export interface SirilWorkspaceResult {
   /** Rejected lights an earlier run placed in the work area, removed. */
   pruned: number
   byFolder: Record<SirilFolder, number>
+  /** Every frame now laid out for the stack, for its manifest (PRV-001). */
+  placements: SirilPlacement[]
+  /** Source paths of the lights grading left out. */
+  rejectedPaths: string[]
 }
 
 export type PrepareSirilWorkspace = (sourceDir: string, workDir: string, protectedDirs?: string[]) => Promise<SirilWorkspaceResult>
@@ -53,7 +57,9 @@ export function makePrepareSirilWorkspace(deps: PrepareSirilWorkspaceDeps): Prep
       existing: 0,
       rejected,
       pruned: 0,
-      byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 }
+      byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 },
+      placements: [],
+      rejectedPaths: [...rejectedPaths]
     }
     // Laid out with every frame, so a rejected light has the name an earlier run gave it.
     const layout = planSirilWorkspace(frames)
@@ -61,6 +67,7 @@ export function makePrepareSirilWorkspace(deps: PrepareSirilWorkspaceDeps): Prep
       const outcome = await deps.workspace.place(placement, workDir)
       result[outcome]++
       result.byFolder[placement.folder]++
+      result.placements.push(placement)
     }
     // Siril stacks whatever is in the folders, so a light rejected since an earlier run must go.
     // Only those: anything else in the folders, such as frames the user added, stays.

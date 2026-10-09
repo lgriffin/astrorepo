@@ -79,14 +79,28 @@ function RunBanner({ job }: { job: JobView }): React.ReactElement {
   )
 }
 
-/** 4 · Runs: this target's queued, running and recent jobs. */
+/**
+ * 4 · Runs: this target's processing timeline (PRV-007): what is queued and running, then what ran,
+ * newest first, with how far a step-by-step stack got and the results it published.
+ */
 function TargetRunsCard({ runs, unreadable }: { runs: TargetRuns; unreadable: boolean }): React.ReactElement {
   const row = (job: JobView) => (
-    <li key={job.id} className="flex items-baseline justify-between gap-3 py-1.5 border-t border-astro-border first:border-t-0">
-      <span className="text-sm text-astro-text">{job.title}</span>
-      <span className="text-xs text-astro-muted text-right">
-        {[job.stateLabel, job.duration && `ran ${job.duration}`, job.state === 'queued' ? job.waiting : job.note].filter(Boolean).join(' · ')}
-      </span>
+    <li key={job.id} className="py-1.5 border-t border-astro-border first:border-t-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm text-astro-text">
+          {job.finishedAt && <span className="text-xs text-astro-muted mr-2">{new Date(job.finishedAt).toLocaleDateString()}</span>}
+          {job.title}
+        </span>
+        <span className="text-xs text-astro-muted text-right">
+          {[job.stateLabel, job.duration && `ran ${job.duration}`, job.state === 'queued' ? job.waiting : job.note].filter(Boolean).join(' · ')}
+        </span>
+      </div>
+      {job.progress && <p className="text-xs text-astro-muted">{job.progress}</p>}
+      {job.outputs.map(o => (
+        <p key={o.path} className="text-xs text-astro-muted break-all" title={o.manifest}>
+          Published {o.name}, with its manifest.
+        </p>
+      ))}
     </li>
   )
   return (

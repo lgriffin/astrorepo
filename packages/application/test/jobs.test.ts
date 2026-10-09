@@ -198,7 +198,7 @@ function scheduler(over: { free?: number | null; prepare?: () => Promise<SirilWo
       over.prepare ??
       (async (sourceDir, workDir, protectedDirs) => {
         prepared.push({ sourceDir, workDir, protectedDirs })
-        return { workDir, linked: 30, copied: 2, existing: 1, rejected: 0, pruned: 0, byFolder: { lights: 30, darks: 1, flats: 1, biases: 1 } }
+        return { workDir, linked: 30, copied: 2, existing: 1, rejected: 0, pruned: 0, byFolder: { lights: 30, darks: 1, flats: 1, biases: 1 }, placements: [], rejectedPaths: [] }
       }),
     readOnlyDirs: () => ['D:/astro'],
     clock,
@@ -237,7 +237,7 @@ describe('the job runner', () => {
   })
 
   it('[GRD-007] Given grading rejected lights, When a stack job lays out its frames, Then its log says how many were left out and removed', async () => {
-    const t = scheduler({ prepare: async () => ({ workDir: '/work', linked: 30, copied: 0, existing: 0, rejected: 3, pruned: 1, byFolder: { lights: 30, darks: 0, flats: 0, biases: 0 } }) })
+    const t = scheduler({ prepare: async () => ({ workDir: '/work', linked: 30, copied: 0, existing: 0, rejected: 3, pruned: 1, byFolder: { lights: 30, darks: 0, flats: 0, biases: 0 }, placements: [], rejectedPaths: [] }) })
     const job = await t.add()
     await t.s.tick()
     await flush()
@@ -424,7 +424,7 @@ describe('the job runner', () => {
     const t = scheduler({
       prepare: () =>
         new Promise(resolve => {
-          release = () => resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 } })
+          release = () => resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 }, placements: [], rejectedPaths: [] })
         })
     })
     const job = await t.add()
@@ -527,7 +527,7 @@ describe('the job runner', () => {
       const t = scheduler({
         prepare: () =>
           new Promise((resolve, reject) => {
-            release = () => (fail ? reject(new Error('stopped')) : resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 } }))
+            release = () => (fail ? reject(new Error('stopped')) : resolve({ workDir: '/work', linked: 0, copied: 0, existing: 0, rejected: 0, pruned: 0, byFolder: { lights: 0, darks: 0, flats: 0, biases: 0 }, placements: [], rejectedPaths: [] }))
           })
       })
       const job = await t.add()

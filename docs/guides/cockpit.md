@@ -327,3 +327,22 @@ Tonight's plan and the next actions also watch the balance of narrowband targets
 has under a third of the integration of the target's best-covered filter, they suggest capturing
 it, for example: "Capture OIII: it has 40 m against 6 h of Ha." Luminance is left out of the
 balance, and a filter you set a goal for counts before its first frame ("it has nothing yet").
+
+## What made a stack
+
+A queued stack runs Siril's stock script one step at a time: convert, calibrate, register and
+stack each run on their own. The Jobs page and step **4 · Runs** show the step that is running.
+
+- **When the app closes during a stack**, the next start carries on from the step it stopped
+  at. If the frames changed since (a light graded out, a new night added) or Siril's script
+  changed, it starts from the first step, and the log says why.
+- **When every step succeeds**, each result Siril saved gets a manifest beside it, for example
+  `result_3600s.fit.astrorepo.json`. The manifest records the script, each step and how long it
+  took, every frame by folder with its source, and the lights grading left out.
+- **When a step fails or you cancel**, any result the run wrote is moved to the work folder's
+  `failed` folder, so it is never mistaken for a finished stack. When the failure is one Siril
+  often hits (a full disk, too little memory, too few stars to register, frames of different
+  sizes, a file another program holds open), the job says what it usually means and what to do.
+
+Step **4 · Runs** lists the target's runs, newest first. Each shows how far it got, whether it
+carried on from an earlier run, and the results it published.

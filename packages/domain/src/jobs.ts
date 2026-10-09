@@ -1,3 +1,5 @@
+import type { StepProgress } from './provenance'
+
 /**
  * The job queue: Siril and Siril_Scripts runs the user confirmed, started one at a time inside a
  * nightly run window while the PC is idle, with how long each will take predicted from earlier
@@ -38,6 +40,8 @@ export interface Job {
   note: string | null
   /** How many times it has started. */
   attempts: number
+  /** A stack run step by step: how far it got, so it can carry on (specs/021-provenance). */
+  progress: StepProgress | null
 }
 
 export type NewJob = Pick<Job, 'kind' | 'targetId' | 'title' | 'timing' | 'command' | 'prepare' | 'spaceDir' | 'neededBytes'>
@@ -275,10 +279,20 @@ export function scheduleJobs(input: ScheduleInput): Schedule {
 export const MAX_JOB_ATTEMPTS = 2
 
 /** What becomes of a job that was running when the app closed. */
-export function afterInterruption(job: Pick<Job, 'attempts'>): { state: 'queued' | 'failed'; note: string } {
-  return job.attempts >= MAX_JOB_ATTEMPTS
-    ? { state: 'failed', note: `The app closed while it ran, ${job.attempts} times, so it is not started again. Queue it again to retry.` }
+export function afterInterruption(job: Pick<Job, 'attempts'> & { progress?: StepProgress | null }): { state: 'queued' | 'failed'; note: string } {
+  if (job.attempts >= MAX_JOB_ATTEMPTS) {
+    return { state: 'failed', note: `The app closed while it ran, ${job.attempts} times, so it is not started again. Queue it again to retry.` }
+  }
+  const p = job.progress
+  return p && p.step > 0 && p.step < p.of
+    ? { state: 'queued', note: `The app closed while it ran, so it carries on from step ${p.step + 1} of ${p.of} if the frames have not changed.` }
     : { state: 'queued', note: 'The app closed while it ran, so it starts again from the beginning.' }
+}
+
+/** The stock script a Siril stack command runs; null for any other command. */
+export function stockScriptOf(command: JobCommand): { program: string; workDir: string; script: string } | null {
+  const [d, workDir, s, script, ...rest] = command.args
+  return d === '-d' && s === '-s' && workDir && script && rest.length === 0 ? { program: command.program, workDir, script } : null
 }
 
 // ── Commands ────────────────────────────────────────────────────────────

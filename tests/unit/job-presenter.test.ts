@@ -23,6 +23,7 @@ function job(id: string, over: Partial<Job> = {}): Job {
     exitCode: null,
     note: null,
     attempts: 0,
+    progress: null,
     ...over
   }
 }
@@ -102,5 +103,24 @@ describe('job presenter', () => {
     expect(formatDuration(7800)).toBe('2 h 10 min')
     expect(when(local(23), local(14))).toBe('23:00 today')
     expect(when(local(2, 0, 3), local(14))).toBe('02:00 on 2026-09-03')
+  })
+
+  it('[PRV-007] Given stacks run step by step, When shown, Then a running one says its step, a stopped one how far it got, and a finished one what it published', () => {
+    const key = 'k'
+    const running = job('run', { state: 'running', startedAt: local(2), progress: { step: 3, of: 9, key, label: 'register pp_light', resumedFrom: 2 } })
+    const failed = job('bad', { state: 'failed', startedAt: local(1), finishedAt: local(1, 30), progress: { step: 4, of: 9, key, label: 'stack r_pp_light' } })
+    const done = job('ok', { state: 'succeeded', startedAt: local(0), finishedAt: local(1), progress: { step: 9, of: 9, key, label: null, published: ['D:\\work\\m42\\result_3600s.fit'] } })
+    const whole = job('whole', { state: 'succeeded', startedAt: local(0), finishedAt: local(0, 10) })
+    const v = view([running, failed, done, whole], local(2, 10))
+    expect(v.running?.progress).toBe('Step 4 of 9: register pp_light, carried on from step 3.')
+    const byId = Object.fromEntries(v.history.map(j => [j.id, j]))
+    expect(byId.bad.progress).toBe('Stopped after 4 of 9 steps.')
+    expect(byId.ok.progress).toBeNull()
+    expect(byId.ok.outputs).toEqual([{ path: 'D:\\work\\m42\\result_3600s.fit', name: 'result_3600s.fit', manifest: 'D:\\work\\m42\\result_3600s.fit.astrorepo.json' }])
+    expect(byId.whole).toMatchObject({ progress: null, outputs: [] })
+    const resumedDone = view([job('r', { state: 'succeeded', startedAt: local(0), finishedAt: local(1), progress: { step: 9, of: 9, key, label: null, resumedFrom: 5 } })], local(2)).history[0]
+    expect(resumedDone.progress).toBe('All 9 steps done, carried on from step 6.')
+    const queued = view([job('q', { progress: { step: 2, of: 9, key, label: 'convert light' } })], local(12)).queue[0]
+    expect(queued.progress).toBe('Step 3 of 9: convert light.')
   })
 })

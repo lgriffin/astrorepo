@@ -1,6 +1,6 @@
 import type { Job, JobCommand, JobSettings, MachineLoad, NewJob } from '@astro/domain'
 
-export type JobPatch = Partial<Pick<Job, 'state' | 'timing' | 'startedAt' | 'finishedAt' | 'exitCode' | 'note' | 'attempts'>>
+export type JobPatch = Partial<Pick<Job, 'state' | 'timing' | 'startedAt' | 'finishedAt' | 'exitCode' | 'note' | 'attempts' | 'progress'>>
 
 /** Driven port: the jobs the user queued, and what became of each. */
 export interface JobStore {

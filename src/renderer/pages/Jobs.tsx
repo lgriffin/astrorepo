@@ -87,7 +87,13 @@ export function Jobs(): React.ReactElement {
           .filter(Boolean)
           .join(' · ')}
       </p>
+      {job.progress && <p className="text-xs text-astro-text mt-1">{job.progress}</p>}
       {job.note && <p className={`text-xs mt-1 ${job.state === 'failed' ? 'text-red-400' : 'text-yellow-400'}`}>{job.note}</p>}
+      {job.outputs.map(o => (
+        <p key={o.path} className="text-xs text-astro-muted mt-1 break-all" title={o.manifest}>
+          Published {o.path}, with its manifest beside it.
+        </p>
+      ))}
       {logFor === job.id && (
         <div className="mt-2">
           <p className="text-xs font-mono text-astro-muted break-all">{job.command}</p>
