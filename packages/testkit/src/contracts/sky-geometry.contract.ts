@@ -104,6 +104,15 @@ export function solveStoreContract(adapterName: string, make: () => SolveStore):
         ['/b.fit', 'header']
       ])
       expect(all[0].field).toEqual(field)
+      expect(all[0].field && 'flipped' in all[0].field).toBe(false)
+    })
+
+    it('[SKY-001, INS-012] Given fields known to be mirrored or not, When saved and read, Then each keeps whether it is mirrored', async () => {
+      const store = make()
+      const field = { raDeg: 10.68, decDeg: 41.27, rotationDeg: -12.5, scaleArcsec: 2.39, widthPx: 1080, heightPx: 1920 }
+      await store.save({ path: '/m.fit', field: { ...field, flipped: true }, source: 'astap', solvedAt: new Date('2026-10-09T01:00:00Z'), error: null })
+      await store.save({ path: '/n.fit', field: { ...field, flipped: false }, source: 'header', solvedAt: new Date('2026-10-09T01:00:00Z'), error: null })
+      expect((await store.solves(['/m.fit', '/n.fit'])).map(s => s.field?.flipped)).toEqual([true, false])
     })
   })
 }

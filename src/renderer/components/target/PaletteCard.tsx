@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { Card, EmptyState } from '../common/Card'
 import { decodePixels, PixelCanvas } from '../gallery/PreviewImage'
@@ -23,24 +23,48 @@ export function PaletteCard({ targetId }: { targetId: string }): React.ReactElem
   const [view, setView] = useState<PalettesView | null>(null)
   const [shown, setShown] = useState<{ id: string; preview: PalettePreviewView | null; error: string | null } | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  // Which target the card is on, and which list and preview requests are still wanted: an answer
+  // that comes back after the user has moved to another target, or asked again, is dropped.
+  const target = useRef(targetId)
+  const listAsk = useRef(0)
+  const previewAsk = useRef(0)
+  const isCurrent = (forTarget: string) => target.current === forTarget
 
-  const load = () => invoke<PalettesView>('gallery:palettes', { target_id: targetId }).then(setView).catch(() => setMessage('The palettes could not be worked out.'))
+  const load = (forTarget = targetId) => {
+    const ask = ++listAsk.current
+    return invoke<PalettesView>('gallery:palettes', { target_id: forTarget })
+      .then(v => {
+        if (isCurrent(forTarget) && ask === listAsk.current) setView(v)
+      })
+      .catch(() => {
+        if (isCurrent(forTarget) && ask === listAsk.current) setMessage('The palettes could not be worked out.')
+      })
+  }
   useEffect(() => {
+    target.current = targetId
+    previewAsk.current++
+    setView(null)
     setShown(null)
-    void load()
+    setMessage(null)
+    void load(targetId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId])
 
   async function preview(id: string): Promise<void> {
+    const forTarget = targetId
+    const ask = ++previewAsk.current
     setShown({ id, preview: null, error: null })
-    const result = await invoke<PalettePreviewView | { refused: string }>('gallery:palette-preview', { target_id: targetId, palette: id }).catch(() => ({ refused: 'The preview could not be made.' }))
-    setShown(s => (s?.id !== id ? s : 'refused' in result ? { id, preview: null, error: result.refused } : { id, preview: result, error: result.error }))
+    const result = await invoke<PalettePreviewView | { refused: string }>('gallery:palette-preview', { target_id: forTarget, palette: id }).catch(() => ({ refused: 'The preview could not be made.' }))
+    if (!isCurrent(forTarget) || ask !== previewAsk.current) return
+    setShown('refused' in result ? { id, preview: null, error: result.refused } : { id, preview: result, error: result.error })
   }
 
   async function choose(id: string | null): Promise<void> {
-    const result = await invoke<{ ok: true } | { refused: string }>('gallery:choose-palette', { target_id: targetId, palette: id })
+    const forTarget = targetId
+    const result = await invoke<{ ok: true } | { refused: string }>('gallery:choose-palette', { target_id: forTarget, palette: id }).catch(() => ({ refused: 'The choice could not be saved.' }))
+    if (!isCurrent(forTarget)) return
     setMessage('refused' in result ? result.refused : null)
-    await load()
+    await load(forTarget)
   }
 
   if (!view) return <Card title="Palettes"><EmptyState>{message ?? 'Looking at this target’s filters…'}</EmptyState></Card>

@@ -38,7 +38,7 @@ export function paletteChannels(id: PaletteId): PaletteChannel[] {
 }
 
 /** Dual-band filters made for colour cameras, which pass Ha and OIII together. */
-const DUAL_BAND = /(l[\s-]?e?xtreme|l[\s-]?enhance|l[\s-]?ultimate|alp[\s-]?t|duo|dual|nbz|ha[\s/+-]?o(iii|3)|tri[\s-]?band|quad[\s-]?band|^lp$)/i
+const DUAL_BAND = /(l[\s-]?e?xtreme|l[\s-]?enhance|l[\s-]?ultimate|alp[\s-]?t|duo|dual|nbz|ha[\s/+-]?o(iii|3)|tri[\s-]?band|quad[\s-]?band)/i
 const SII = /(^|[^a-z])s[\s-]?(ii|2)($|[^a-z])/i
 const OIII = /(^|[^a-z])o[\s-]?(iii|3)($|[^a-z])/i
 const HA = /(^|[^a-z])h[\s-]?(a|alpha)($|[^a-z])|^h$/i

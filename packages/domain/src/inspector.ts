@@ -105,8 +105,11 @@ export function ceilingOf(saturation: number | null, max: number): number | null
   return max <= 1 ? 1 : null
 }
 
-/** Median, MAD noise, clipping and histogram of one channel's sampled values. */
-export function channelStats(channel: ChannelName, values: ArrayLike<number>, limits: { saturation: number | null; black: number }): ChannelStats {
+/**
+ * Median, MAD noise, clipping and histogram of one channel's sampled values. The histogram spans
+ * `range` when given, so every channel of an image is binned on one axis; else the channel's own.
+ */
+export function channelStats(channel: ChannelName, values: ArrayLike<number>, limits: { saturation: number | null; black: number }, range?: { min: number; max: number }): ChannelStats {
   const sorted = sortedFinite(values)
   const n = sorted.length
   const median = medianOfSorted(sorted)
@@ -127,7 +130,7 @@ export function channelStats(channel: ChannelName, values: ArrayLike<number>, li
   }
   return {
     channel,
-    histogram: histogram(sorted, { min, max }),
+    histogram: histogram(sorted, range ?? { min, max }),
     median,
     noise,
     saturatedShare: satAt === null ? null : n ? saturated / n : 0,
@@ -202,6 +205,23 @@ export function radialProfile(plane: Plane, cx: number, cy: number, background: 
   return sums.map((s, r) => (counts[r] ? s / counts[r] : 0))
 }
 
+/**
+ * The most any of the file's own pixels reaches around a peak on the star plane (a 3 × 3 block
+ * there): every colour plane of a colour image, the raw 2×2 cells of a colour sensor's frame. A
+ * star clipped in one channel or one pixel of a cell is saturated even when the average is not.
+ */
+function sourcePeak(image: RasterImage, kind: ImageInspection['kind'], px: number, py: number): number {
+  const bin = kind === 'bayer' ? 2 : 1
+  const planes = kind === 'colour' ? image.planes.slice(0, 3) : [image.planes[0]]
+  const x0 = Math.max(0, (px - 1) * bin)
+  const x1 = Math.min(image.width - 1, (px + 2) * bin - 1)
+  const y0 = Math.max(0, (py - 1) * bin)
+  const y1 = Math.min(image.height - 1, (py + 2) * bin - 1)
+  let max = -Infinity
+  for (const plane of planes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) max = Math.max(max, plane[y * image.width + x])
+  return max
+}
+
 /** Stars tried, brightest first, before the inspector says none stood out. */
 const STAR_TRIES = 60
 const STAR_RADIUS = 6
@@ -215,12 +235,14 @@ export function brightestStar(image: RasterImage, kind: ImageInspection['kind'])
   const { background, noise } = skyStatistics(plane)
   if (!(noise > 0)) return null
   const peaks = findPeaks(plane, background + 5 * noise, STAR_RADIUS)
-  let planeMax = -Infinity
-  for (let i = 0; i < plane.data.length; i += Math.max(1, Math.floor(plane.data.length / 100_000))) planeMax = Math.max(planeMax, plane.data[i])
-  const ceiling = ceilingOf(image.saturation, planeMax / per)
-  const satLimit = ceiling === null ? null : 0.98 * ceiling * per
+  let sourceMax = -Infinity
+  const sources = kind === 'colour' ? image.planes.slice(0, 3) : [image.planes[0]]
+  for (const data of sources) for (let i = 0; i < data.length; i += Math.max(1, Math.floor(data.length / 100_000))) sourceMax = Math.max(sourceMax, data[i])
+  const ceiling = ceilingOf(image.saturation, sourceMax)
+  // Judged on the file's own pixels: binning or averaging hides a star clipped in part.
+  const satLimit = ceiling === null ? null : 0.98 * ceiling
   for (const p of peaks.slice(0, STAR_TRIES)) {
-    if (satLimit !== null && p.value >= satLimit) continue
+    if (satLimit !== null && sourcePeak(image, kind, p.x, p.y) >= satLimit) continue
     const shape = measureStar(plane, p.x, p.y, background, STAR_RADIUS)
     // Wider than the box is a nebula knot or a galaxy core, not a star.
     if (!shape || shape.fwhm >= STAR_RADIUS * 1.5) continue
@@ -241,7 +263,18 @@ export function brightestStar(image: RasterImage, kind: ImageInspection['kind'])
 /** Everything the inspector shows for one image. */
 export function inspectImage(image: RasterImage, samples = INSPECT_SAMPLES): ImageInspection {
   const { kind, channels } = sampleChannels(image, samples)
-  const stats = [...channels].map(([name, values]) => channelStats(name, values, { saturation: image.saturation, black: image.black }))
+  // One range for every channel, so the histograms drawn on one chart line up bin for bin.
+  let min = Infinity
+  let max = -Infinity
+  for (const values of channels.values()) {
+    for (const v of values) {
+      if (!Number.isFinite(v)) continue
+      if (v < min) min = v
+      if (v > max) max = v
+    }
+  }
+  const range = min <= max ? { min, max } : undefined
+  const stats = [...channels].map(([name, values]) => channelStats(name, values, { saturation: image.saturation, black: image.black }, range))
   return {
     width: image.width,
     height: image.height,

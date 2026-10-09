@@ -21,16 +21,16 @@ export function preview(width = 4, height = 3, value = 64, overrides: Partial<Im
 
 /** Pixels from a script: each path answers with what it was given, or fails with its reason. */
 export class FakeImagePixels implements ImagePixels {
-  readonly asked: { op: 'inspect' | 'preview'; path: string; maxWidth?: number; channel?: PreviewChannel }[] = []
+  readonly asked: { op: 'open' | 'preview'; path: string; maxWidth?: number; channel?: PreviewChannel }[] = []
   readonly inspections = new Map<string, ImageInspection>()
   readonly previews = new Map<string, { preview: ImagePreview; header: WcsHeader }>()
   readonly failures = new Map<string, string>()
 
-  async inspect(path: string): Promise<ImageInspection> {
-    this.asked.push({ op: 'inspect', path })
+  async open(path: string, options: { maxWidth: number }): Promise<{ inspection: ImageInspection; preview: ImagePreview; header: WcsHeader }> {
+    this.asked.push({ op: 'open', path, ...options })
     const failure = this.failures.get(path)
     if (failure) throw new Error(failure)
-    return this.inspections.get(path) ?? inspection()
+    return { inspection: this.inspections.get(path) ?? inspection(), ...(this.previews.get(path) ?? { preview: preview(), header: {} }) }
   }
 
   async preview(path: string, options: { maxWidth: number; channel?: PreviewChannel }): Promise<{ preview: ImagePreview; header: WcsHeader }> {

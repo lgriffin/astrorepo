@@ -9,7 +9,8 @@ export type WcsHeader = Record<string, number | string>
  * the user can act on when the file cannot be read.
  */
 export interface ImagePixels {
-  inspect(path: string): Promise<ImageInspection>
+  /** The inspector's figures and a colour preview from one read of the file, with its header's WCS cards. */
+  open(path: string, options: { maxWidth: number }): Promise<{ inspection: ImageInspection; preview: ImagePreview; header: WcsHeader }>
   /** A small auto-stretched preview, and the WCS cards of the file's header (none for a PNG). */
   preview(path: string, options: { maxWidth: number; channel?: PreviewChannel }): Promise<{ preview: ImagePreview; header: WcsHeader }>
 }

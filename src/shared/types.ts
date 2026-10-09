@@ -1456,6 +1456,12 @@ export interface PreviewView {
   fieldText: string | null
 }
 
+/** A file opened in the inspector: its figures, and its preview when it could be read. */
+export interface OpenedFileView {
+  inspection: InspectionView
+  preview: PreviewView | null
+}
+
 export interface GalleryImageView {
   path: string
   /** "master_Ha.fit (Ha master, 2026-02-01)". */

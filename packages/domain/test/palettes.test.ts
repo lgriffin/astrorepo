@@ -13,7 +13,7 @@ describe('What a filter gives', () => {
   })
 
   it('[INS-004] Given a colour camera behind a dual-band filter, When read, Then Ha comes from red and OIII from green and blue', () => {
-    for (const name of ['L-eXtreme', 'L-eNhance', 'ALP-T', 'Duo-band', 'LP', 'Ha/OIII']) {
+    for (const name of ['L-eXtreme', 'L-eNhance', 'ALP-T', 'Duo-band', 'Ha/OIII']) {
       expect(filterChannels(name, true)).toEqual([{ channel: 'Ha', from: 'red' }, { channel: 'OIII', from: 'green-blue' }])
     }
     expect(filterChannels('L-eXtreme', false)).toEqual([])
@@ -22,6 +22,8 @@ describe('What a filter gives', () => {
   it('[INS-004] Given a colour camera with no filter or a broadband one, When read, Then it gives red, green and blue; a mono camera with none gives luminance', () => {
     expect(filterChannels(null, true).map(c => [c.channel, c.from])).toEqual([['R', 'red'], ['G', 'green'], ['B', 'blue']])
     expect(filterChannels('UV/IR cut', true).map(c => c.channel)).toEqual(['R', 'G', 'B'])
+    // A plain light-pollution filter is broadband, not dual-band.
+    expect(filterChannels('LP', true).map(c => c.channel)).toEqual(['R', 'G', 'B'])
     expect(filterChannels(null, false)).toEqual([{ channel: 'L', from: 'luminance' }])
     expect(filterChannels('Mystery', null)).toEqual([])
   })

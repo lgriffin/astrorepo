@@ -72,6 +72,30 @@ describe('A field from a FITS header', () => {
     expect(corner.y).toBeCloseTo(800.5, 1)
   })
 
+  it('[INS-011] Given a CD matrix with unequal axis scales, When the field is projected, Then each axis keeps its own scale', () => {
+    const f = overlayFieldFromWcs({ CRVAL1: 30, CRVAL2: 0, CRPIX1: 500.5, CRPIX2: 500.5, NAXIS1: 1000, NAXIS2: 1000, CD1_1: -0.001, CD1_2: 0, CD2_1: 0, CD2_2: 0.002 })!
+    const north = skyToPixel(f, 30, 0.1)!
+    const east = skyToPixel(f, 30.1, 0)!
+    expect(north.x).toBeCloseTo(500, 6)
+    expect(north.y).toBeCloseTo(500 - 0.1 / 0.002, 2)
+    expect(east.x).toBeCloseTo(500 - 0.1 / 0.001, 2)
+    expect(east.y).toBeCloseTo(500, 6)
+    const back = pixelToSky(f, east.x, east.y)
+    expect(back.raDeg).toBeCloseTo(30.1, 9)
+    expect(back.decDeg).toBeCloseTo(0, 9)
+  })
+
+  it('[INS-011] Given a skewed CD matrix with the reference pixel off centre, When projected, Then the reference point lands on its own pixel', () => {
+    const f = overlayFieldFromWcs({ CRVAL1: 120, CRVAL2: 45, CRPIX1: 101, CRPIX2: 51, NAXIS1: 800, NAXIS2: 600, CD1_1: -0.0004, CD1_2: 0.0001, CD2_1: 0.00005, CD2_2: 0.0005 })!
+    const ref = skyToPixel(f, 120, 45)!
+    expect(ref.x).toBeCloseTo(100.5, 6)
+    expect(ref.y).toBeCloseTo(600 - 50.5, 6)
+    const corner = pixelToSky(f, 0, 0)
+    const again = skyToPixel(f, corner.raDeg, corner.decDeg)!
+    expect(again.x).toBeCloseTo(0, 6)
+    expect(again.y).toBeCloseTo(0, 6)
+  })
+
   it('[INS-011] Given a mirrored solution, When read, Then the field says so', () => {
     expect(overlayFieldFromWcs({ CRVAL1: 10, CRVAL2: 41, NAXIS1: 100, NAXIS2: 100, CDELT1: 0.001, CDELT2: 0.001 })?.flipped).toBe(true)
   })
@@ -83,6 +107,8 @@ describe('A field from a FITS header', () => {
     expect(overlayFieldFromWcs({ CRVAL1: 10, CRVAL2: 41, NAXIS1: 100, NAXIS2: 100, CD1_1: 0, CD2_2: 0 })).toBeNull()
     expect(overlayFieldFromWcs({ CRVAL1: 10, CRVAL2: 41, NAXIS1: 0, NAXIS2: 100, CDELT1: -1, CDELT2: 1 })).toBeNull()
     expect(overlayFieldFromWcs({ CRVAL1: 10, CRVAL2: 41, NAXIS1: 100, NAXIS2: 100, CD1_1: -0.001 })?.scaleArcsec).toBeUndefined()
+    expect(overlayFieldFromWcs({ CRVAL1: 10, CRVAL2: 95, NAXIS1: 100, NAXIS2: 100, CDELT1: -0.001, CDELT2: 0.001 })).toBeNull()
+    expect(overlayFieldFromWcs({ CRVAL1: 10, CRVAL2: -90.5, NAXIS1: 100, NAXIS2: 100, CDELT1: -0.001, CDELT2: 0.001 })).toBeNull()
   })
 })
 
@@ -109,6 +135,10 @@ describe('The coordinate grid', () => {
   it('[INS-009] Given coordinates, When labelled, Then right ascension reads in hours and minutes and declination in degrees and minutes', () => {
     expect(formatRa(83.75)).toBe('5h 35m')
     expect(formatRa(-15)).toBe('23h')
+    // 5h 59m 40s and 23h 59m 50s round up to the next whole hour.
+    expect(formatRa((5 + 59 / 60 + 40 / 3600) * 15)).toBe('6h')
+    expect(formatRa((23 + 59 / 60 + 50 / 3600) * 15)).toBe('0h')
+    expect(formatRa((5 + 59 / 60 + 20 / 3600) * 15)).toBe('5h 59m')
     expect(formatDec(-5.5)).toBe('−5° 30′')
     expect(formatDec(41)).toBe('+41°')
   })

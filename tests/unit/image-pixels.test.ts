@@ -9,7 +9,7 @@ import { inspection, preview } from '@astro/testkit'
 import { readPngImage } from '../../src/main/fits/png-reader'
 import { readRaster } from '../../src/main/fits/inspect-image'
 import { encodeGreyscalePng } from '../../src/main/fits/png-encoder'
-import { NodeImagePixels, type PixelsReply, type PixelsRequest } from '../../src/main/adapters/node-image-pixels'
+import { answerPixels, NodeImagePixels, serialQueue, type PixelsReply, type PixelsRequest } from '../../src/main/adapters/node-image-pixels'
 import { fitsImage } from '../helpers/fits'
 
 const dirs: string[] = []
@@ -117,6 +117,40 @@ describe('readPngImage', () => {
     huge.writeUInt32BE(100_000, 20)
     await expect(readPngImage(write('h.png', huge))).rejects.toThrow(/larger than the app measures/)
   })
+
+  it('[NFR-019] Given an oversized PNG header followed by a large body, When read, Then it is refused from the header without reading the pixel data', async () => {
+    const huge = png(1, 1, 0, 8, [[1]])
+    huge.writeUInt32BE(20_000, 16)
+    huge.writeUInt32BE(20_000, 20)
+    // A body claiming 2 GB that is not there: refused for its size before any chunk is read.
+    const body = Buffer.alloc(12)
+    body.writeUInt32BE(0x7fffffff, 0)
+    body.write('IDAT', 4, 'ascii')
+    const file = write('o.png', Buffer.concat([huge.subarray(0, 33), body]))
+    await expect(readPngImage(file)).rejects.toThrow(/20000 × 20000, larger than the app measures/)
+  })
+
+  it('[NFR-019] Given a small PNG whose pixel data inflates far beyond its image size, When read, Then it is refused as damaged without unpacking it all', async () => {
+    const ihdr = (w: number, h: number) => {
+      const b = png(1, 1, 0, 8, [[1]]).subarray(0, 33)
+      b.writeUInt32BE(w, 16)
+      b.writeUInt32BE(h, 20)
+      return b
+    }
+    const chunk = (kind: string, body: Buffer) => {
+      const len = Buffer.alloc(4)
+      len.writeUInt32BE(body.length)
+      return Buffer.concat([len, Buffer.from(kind, 'ascii'), body, Buffer.alloc(4)])
+    }
+    const iend = chunk('IEND', Buffer.alloc(0))
+    // 64 MB of zeros deflate to about 64 KB, well under the 1 MB a 1000 × 1000 grey image may take, yet unpack 64 times larger.
+    const bomb = zlib.deflateSync(Buffer.alloc(64 * 1024 * 1024))
+    expect(bomb.length).toBeLessThan(1_000_000)
+    await expect(readPngImage(write('bomb.png', Buffer.concat([ihdr(1000, 1000), chunk('IDAT', bomb), iend])))).rejects.toThrow('The PNG pixel data is truncated or damaged.')
+    // Compressed data larger than the raster could ever need is refused before it is inflated.
+    const padded = zlib.deflateSync(Buffer.alloc(64 * 1024 * 1024), { level: 0 })
+    await expect(readPngImage(write('big.png', Buffer.concat([ihdr(10, 10), chunk('IDAT', padded), iend])))).rejects.toThrow(/larger than its image size allows/)
+  })
 })
 
 describe('readRaster', () => {
@@ -134,19 +168,50 @@ describe('readRaster', () => {
 })
 
 describe('NodeImagePixels', () => {
-  it('[INS-001] Given a FITS file, When inspected and previewed in place, Then statistics and a small preview come back', async () => {
+  it('[INS-001] Given a FITS file, When opened and previewed in place, Then statistics and a small preview come back, opening reading both at once', async () => {
     const pixels = Array.from({ length: 64 * 48 }, (_, i) => 1000 + (i % 7))
     const file = write('m.fit', fitsImage(64, 48, [pixels]))
     const p = new NodeImagePixels()
-    const result = await p.inspect(file)
-    expect(result).toMatchObject({ width: 64, height: 48, kind: 'mono' })
+    const opened = await p.open(file, { maxWidth: 16 })
+    expect(opened.inspection).toMatchObject({ width: 64, height: 48, kind: 'mono' })
+    expect(opened.preview).toMatchObject({ width: 16, height: 12, channels: 1 })
+    expect(opened.header).toMatchObject({ NAXIS1: 64 })
     const shown = await p.preview(file, { maxWidth: 32 })
     expect(shown.preview).toMatchObject({ width: 32, height: 24, channels: 1 })
     expect(shown.header).toMatchObject({ NAXIS1: 64 })
   })
 
   it('[INS-003] Given a file that is neither FITS nor PNG, When inspected, Then it fails with the reason', async () => {
-    await expect(new NodeImagePixels().inspect(write('x.jpg', Buffer.alloc(3000, 0xff)))).rejects.toThrow('This is not a FITS file.')
+    await expect(new NodeImagePixels().open(write('x.jpg', Buffer.alloc(3000, 0xff)), { maxWidth: 32 })).rejects.toThrow('This is not a FITS file.')
+  })
+})
+
+describe('The inspect worker', () => {
+  it('[NFR-019] Given reads queued together, When run, Then each starts only after the one before has settled, failures included', async () => {
+    const queue = serialQueue()
+    const log: string[] = []
+    let open = 0
+    const task = (name: string, fail = false) => async () => {
+      open++
+      expect(open).toBe(1)
+      log.push(`start ${name}`)
+      await new Promise(r => setTimeout(r, 5))
+      log.push(`end ${name}`)
+      open--
+      if (fail) throw new Error(name)
+      return name
+    }
+    const results = await Promise.allSettled([queue(task('a')), queue(task('b', true)), queue(task('c'))])
+    expect(log).toEqual(['start a', 'end a', 'start b', 'end b', 'start c', 'end c'])
+    expect(results.map(r => r.status)).toEqual(['fulfilled', 'rejected', 'fulfilled'])
+  })
+
+  it('[NFR-019] Given an open request, When answered, Then the figures and preview come back with the preview bytes to hand over; a failure is its reason', async () => {
+    const file = write('w.fit', fitsImage(8, 6, [Array.from({ length: 48 }, (_, i) => 100 + i)]))
+    const { reply, transfer } = await answerPixels({ id: 7, op: 'open', path: file, maxWidth: 4 })
+    expect(reply).toMatchObject({ id: 7, inspection: { width: 8, height: 6 }, preview: { width: 4 } })
+    expect(transfer).toHaveLength(1)
+    expect(await answerPixels({ id: 8, op: 'preview', path: write('n.fit', Buffer.alloc(10)), maxWidth: 4 })).toEqual({ reply: { id: 8, error: expect.any(String) }, transfer: [] })
   })
 })
 
@@ -184,19 +249,19 @@ describe('NodeImagePixels on a worker thread', () => {
   it('[NFR-019] Given a worker, When images are inspected and previewed, Then each request goes to the one worker and only its answer comes back', async () => {
     const workers: FakeWorker[] = []
     const p = new NodeImagePixels(() => {
-      const w = new FakeWorker(r =>
+      const w = new FakeWorker((r): PixelsReply =>
         r.path === 'bad.fit' ? { id: r.id, error: 'The pixel data is truncated.' }
-        : r.op === 'inspect' ? { id: r.id, inspection: inspection({ sampled: r.id }) }
+        : r.op === 'open' ? { id: r.id, inspection: inspection({ sampled: r.id }), preview: preview(2, 2), header: {} }
         : { id: r.id, preview: preview(2, 2), header: { CRVAL1: 1 } }
       )
       workers.push(w)
       return asWorker(w)
     })
-    const [a, b] = await Promise.all([p.inspect('a.fit'), p.preview('b.fit', { maxWidth: 320, channel: 'red' })])
-    expect(a.sampled).toBe(1)
+    const [a, b] = await Promise.all([p.open('a.fit', { maxWidth: 320 }), p.preview('b.fit', { maxWidth: 320, channel: 'red' })])
+    expect(a).toEqual({ inspection: inspection({ sampled: 1 }), preview: preview(2, 2), header: {} })
     expect(b).toEqual({ preview: preview(2, 2), header: { CRVAL1: 1 } })
     expect(workers[0].sent[1]).toEqual({ id: 2, op: 'preview', path: 'b.fit', maxWidth: 320, channel: 'red' })
-    await expect(p.inspect('bad.fit')).rejects.toThrow('The pixel data is truncated.')
+    await expect(p.open('bad.fit', { maxWidth: 320 })).rejects.toThrow('The pixel data is truncated.')
     workers[0].emit('message', { id: 999, error: 'stray' })
     expect(workers).toHaveLength(1)
     expect(workers[0].refs).toBe(0)
@@ -207,12 +272,12 @@ describe('NodeImagePixels on a worker thread', () => {
   it('[NFR-019] Given a worker that dies or fails, When it was reading, Then that request fails and the next gets a new worker', async () => {
     const workers: FakeWorker[] = []
     const p = new NodeImagePixels(() => {
-      const w = new FakeWorker(r => (workers.length === 1 ? 'die' : { id: r.id, inspection: inspection() }))
+      const w = new FakeWorker(r => (workers.length === 1 ? 'die' : { id: r.id, inspection: inspection(), preview: preview(), header: {} }))
       workers.push(w)
       return asWorker(w)
     })
-    await expect(p.inspect('a.fit')).rejects.toThrow(/stopped unexpectedly/)
-    await expect(p.inspect('a.fit')).resolves.toEqual(inspection())
+    await expect(p.open('a.fit', { maxWidth: 10 })).rejects.toThrow(/stopped unexpectedly/)
+    await expect(p.open('a.fit', { maxWidth: 10 })).resolves.toEqual({ inspection: inspection(), preview: preview(), header: {} })
     const pending = p.preview('slow.fit', { maxWidth: 10 })
     workers[1].emit('error', new Error('out of memory'))
     await expect(pending).rejects.toThrow('Reading the image failed: out of memory')

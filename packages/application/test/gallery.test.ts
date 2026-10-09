@@ -24,38 +24,36 @@ function setup() {
 const solved = { CTYPE1: 'RA---TAN', CRVAL1: 83.82, CRVAL2: -5.39, CRPIX1: 1500.5, CRPIX2: 1000.5, NAXIS1: 3000, NAXIS2: 2000, CDELT1: -1.2 / 3600, CDELT2: 1.2 / 3600 }
 
 describe('Gallery: the inspector', () => {
-  it('[INS-001] Given an indexed file, When inspected, Then its statistics come back with its path, read through the pixel port', async () => {
+  it('[INS-001, NFR-019] Given an indexed file, When opened, Then its statistics and preview come back with its path from one read through the pixel port', async () => {
     const s = setup()
     s.pixels.inspections.set('/fits/m42_stack.fit', inspection({ kind: 'colour' }))
-    const result = await s.gallery.inspectFile('f1')
-    expect(result).toMatchObject({ ok: true, path: '/fits/m42_stack.fit', name: 'm42_stack.fit', inspection: { kind: 'colour' } })
-    expect(s.pixels.asked).toEqual([{ op: 'inspect', path: '/fits/m42_stack.fit' }])
-    expect(await s.gallery.inspectFile('gone')).toBeNull()
+    const result = await s.gallery.openFile('f1')
+    expect(result).toMatchObject({ ok: true, path: '/fits/m42_stack.fit', name: 'm42_stack.fit', inspection: { kind: 'colour' }, preview: { width: 4 }, overlay: null })
+    expect(s.pixels.asked).toEqual([{ op: 'open', path: '/fits/m42_stack.fit', maxWidth: PREVIEW_MAX_WIDTH }])
+    expect(await s.gallery.openFile('gone')).toBeNull()
   })
 
-  it('[INS-003] Given a file that cannot be read, When inspected or previewed, Then the reason comes back instead', async () => {
+  it('[INS-003] Given a file that cannot be read, When opened, Then the reason comes back instead', async () => {
     const s = setup()
     s.pixels.failures.set('/fits/m42_stack.fit', 'The pixel data is truncated.')
-    expect(await s.gallery.inspectFile('f1')).toEqual({ ok: false, error: 'The pixel data is truncated.' })
-    expect(await s.gallery.previewFile('f1')).toEqual({ ok: false, error: 'The pixel data is truncated.' })
-    expect(await s.gallery.previewFile('gone')).toBeNull()
+    expect(await s.gallery.openFile('f1')).toEqual({ ok: false, error: 'The pixel data is truncated.' })
   })
 
-  it('[INS-011] Given a file whose header is solved, When previewed, Then the grid and catalogue labels come scaled to the preview', async () => {
+  it('[INS-011] Given a file whose header is solved, When opened, Then the grid and catalogue labels come scaled to the preview', async () => {
     const s = setup()
     s.pixels.previews.set('/fits/m42_stack.fit', { preview: preview(750, 500, 64, { scale: 0.25, sourceWidth: 3000, sourceHeight: 2000 }), header: solved })
-    const result = await s.gallery.previewFile('f1')
+    const result = await s.gallery.openFile('f1')
     if (!result?.ok) throw new Error('expected a preview')
     expect(result.field?.scaleArcsec).toBeCloseTo(1.2, 9)
     expect(result.overlay?.objects.map(o => o.designation)).toEqual(['M42'])
     expect(result.overlay?.objects[0].x).toBeCloseTo(375, 3)
     expect(result.overlay?.grid.length).toBeGreaterThan(2)
-    expect(s.pixels.asked[0]).toEqual({ op: 'preview', path: '/fits/m42_stack.fit', maxWidth: PREVIEW_MAX_WIDTH })
+    expect(s.pixels.asked[0]).toEqual({ op: 'open', path: '/fits/m42_stack.fit', maxWidth: PREVIEW_MAX_WIDTH })
   })
 
-  it('[INS-011] Given a file without a solution in its header, When previewed, Then no overlay is offered', async () => {
+  it('[INS-011] Given a file without a solution in its header, When opened, Then no overlay is offered', async () => {
     const s = setup()
-    const result = await s.gallery.previewFile('f1')
+    const result = await s.gallery.openFile('f1')
     expect(result).toMatchObject({ ok: true, field: null, fieldSource: null, overlay: null })
   })
 
@@ -66,7 +64,7 @@ describe('Gallery: the inspector', () => {
     await s.solves.save({ path: '/fits/Ha.fit', field: { ...field, scaleArcsec: 2.4 }, source: 'siril', solvedAt: new Date('2026-10-08T22:00:00Z'), error: null })
     s.pixels.previews.set('/fits/m42_stack.fit', { preview: preview(750, 500, 64, { scale: 0.25, sourceWidth: 3000, sourceHeight: 2000 }), header: {} })
     s.pixels.previews.set('/fits/Ha.fit', { preview: preview(750, 500, 64, { scale: 0.25, sourceWidth: 3000, sourceHeight: 2000 }), header: {} })
-    const result = await s.gallery.previewFile('f1')
+    const result = await s.gallery.openFile('f1')
     if (!result?.ok) throw new Error('expected a preview')
     expect(result).toMatchObject({ field, fieldSource: 'astap' })
     expect(result.overlay?.objects.map(o => o.designation)).toEqual(['M42'])
@@ -79,7 +77,7 @@ describe('Gallery: the inspector', () => {
     const other = { raDeg: 10, decDeg: 41, rotationDeg: 0, scaleArcsec: 3, widthPx: 3000, heightPx: 2000 }
     await s.solves.save({ path: '/fits/m42_stack.fit', field: other, source: 'astap', solvedAt: new Date(), error: null })
     s.pixels.previews.set('/fits/m42_stack.fit', { preview: preview(750, 500, 64, { scale: 0.25, sourceWidth: 3000, sourceHeight: 2000 }), header: solved })
-    expect(await s.gallery.previewFile('f1')).toMatchObject({ ok: true, fieldSource: 'header', field: { scaleArcsec: expect.closeTo(1.2, 9) } })
+    expect(await s.gallery.openFile('f1')).toMatchObject({ ok: true, fieldSource: 'header', field: { scaleArcsec: expect.closeTo(1.2, 9) } })
 
     await s.solves.save({ path: '/fits/OIII.fit', field: null, source: 'astap', solvedAt: new Date(), error: 'ASTAP found no solution.' })
     await s.solves.save({ path: '/fits/Ha.fit', field: { ...other, widthPx: 6000, heightPx: 4000 }, source: 'astap', solvedAt: new Date(), error: null })

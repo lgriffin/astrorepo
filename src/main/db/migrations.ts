@@ -525,6 +525,10 @@ export function runMigrations(sqlite: Database.Database): void {
   const hasSolve = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('jobs') WHERE name='solve'").get() as { cnt: number }
   if (hasSolve.cnt === 0) sqlite.exec('ALTER TABLE jobs ADD COLUMN solve TEXT')
 
+  // Migration: whether a stored solve is mirrored, 1 or 0, null when the solver did not say (INS-012)
+  const hasFlipped = sqlite.prepare("SELECT COUNT(*) as cnt FROM pragma_table_info('plate_solves') WHERE name='flipped'").get() as { cnt: number }
+  if (hasFlipped.cnt === 0) sqlite.exec('ALTER TABLE plate_solves ADD COLUMN flipped INTEGER')
+
   // Migration: the palette chosen for each target, a hint for post-processing (INS-006)
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS target_palettes (

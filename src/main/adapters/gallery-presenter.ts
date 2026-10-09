@@ -13,7 +13,7 @@ import {
   type PaletteId,
   type PaletteSpec
 } from '@astro/domain'
-import type { ChannelStatsView, GalleryImageView, InspectionView, PalettePreviewView, PalettesView, PreviewView } from '@shared/types'
+import type { ChannelStatsView, GalleryImageView, InspectionView, OpenedFileView, PalettePreviewView, PalettesView, PreviewView } from '@shared/types'
 
 const CHANNEL_LABEL: Record<ChannelName, string> = { L: 'Luminance', R: 'Red', G: 'Green', B: 'Blue' }
 
@@ -92,6 +92,9 @@ const base64 = (data: Uint8Array) => Buffer.from(data.buffer, data.byteOffset, d
 
 const round1 = (v: number) => Math.round(v * 10) / 10
 
+/** A stored solve that did not record whether the image is mirrored is drawn as the sky as seen. */
+const UNKNOWN_MIRROR = ' The solve did not say whether the image is mirrored, so the grid is drawn as the sky is seen and east and west may be swapped.'
+
 /** A preview with its grid and labels when the image is solved, by its header or a stored plate solve (INS-007, INS-009 to INS-012). */
 export function toPreviewView(result: Read<ShownImage>): PreviewView {
   if (!result.ok) {
@@ -118,9 +121,14 @@ export function toPreviewView(result: Read<ShownImage>): PreviewView {
         }
       : null,
     fieldText: f
-      ? `Centred on ${formatRa(f.raDeg)}, ${formatDec(f.decDeg)} at ${f.scaleArcsec.toFixed(2)}″ per pixel, north turned ${Math.round(((f.rotationDeg % 360) + 360) % 360)}°${f.flipped ? ', mirrored' : ''}.${result.fieldSource && result.fieldSource !== 'header' ? ` From its plate solve by ${SOLVER_LABEL[result.fieldSource]}.` : ''}`
+      ? `Centred on ${formatRa(f.raDeg)}, ${formatDec(f.decDeg)} at ${f.scaleArcsec.toFixed(2)}″ per pixel, north turned ${Math.round(((f.rotationDeg % 360) + 360) % 360)}°${f.flipped ? ', mirrored' : ''}.${result.fieldSource && result.fieldSource !== 'header' ? ` From its plate solve by ${SOLVER_LABEL[result.fieldSource]}.${f.flipped === undefined ? UNKNOWN_MIRROR : ''}` : ''}`
       : null
   }
+}
+
+/** A file opened in the inspector: its figures and its preview, from one read (INS-001 to INS-003, INS-011). */
+export function toOpenedView(result: Read<{ inspection: ImageInspection } & ShownImage>): OpenedFileView {
+  return { inspection: toInspectionView(result), preview: result.ok ? toPreviewView(result) : null }
 }
 
 /** A target's images to pick from for comparing. */

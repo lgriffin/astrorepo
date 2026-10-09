@@ -123,9 +123,40 @@ describe('The brightest unsaturated star', () => {
     expect(star.peak).toBeGreaterThan(4000)
   })
 
+  it('[INS-002] Given a colour image whose star is clipped in red only, When inspected, Then it counts as saturated though the average is not', () => {
+    const clipped = frame(120, 100, [{ x: 30, y: 30, peak: 90000, sigma: 2 }, { x: 80, y: 60, peak: 5000, sigma: 1.5 }])
+    const rest = frame(120, 100, [{ x: 80, y: 60, peak: 5000, sigma: 1.5 }])
+    const star = brightestStar({ ...clipped, planes: [clipped.planes[0], rest.planes[0], rest.planes[0]] }, 'colour')!
+    expect(star.x).toBeCloseTo(80.5, 0)
+    expect(star.y).toBeCloseTo(60.5, 0)
+  })
+
+  it('[INS-002] Given a raw colour frame whose star clips one pixel of a cell, When inspected, Then it counts as saturated though the binned cell is not', () => {
+    const base = frame(160, 120, [{ x: 81, y: 61, peak: 70000, sigma: 1 }, { x: 41, y: 41, peak: 6000, sigma: 3 }])
+    const raw = base.planes[0]
+    // The bright star is clipped at one pixel; its 2×2 cell summed stays well under four times the ceiling.
+    expect(raw[61 * 160 + 81]).toBe(65535)
+    expect(raw[60 * 160 + 80] + raw[60 * 160 + 81] + raw[61 * 160 + 80] + raw[61 * 160 + 81]).toBeLessThan(0.98 * 65535 * 4)
+    const star = brightestStar({ ...base, bayer: 'RGGB' }, 'bayer')!
+    expect(star.x).toBeCloseTo(41.5, 0)
+  })
+
   it('[INS-002] Given only sky, or only saturated stars, When inspected, Then there is no star profile', () => {
     expect(brightestStar({ ...frame(60, 60, []), planes: [new Float32Array(3600).fill(5)] }, 'mono')).toBeNull()
     expect(brightestStar(frame(80, 80, [{ x: 40, y: 40, peak: 90000, sigma: 2 }]), 'mono')).toBeNull()
+  })
+
+  it('[INS-001] Given colour channels over different ranges, When inspected, Then every histogram spans one range so their bins line up', () => {
+    const n = 100
+    const red = new Float32Array(n).map((_, i) => i)
+    const blue = new Float32Array(n).map((_, i) => 1000 + i * 10)
+    const result = inspectImage({ width: 10, height: 10, planes: [red, red, blue], bayer: null, saturation: 65535, black: 0, bottomUp: false })
+    expect(result.channels.map(c => [c.histogram.min, c.histogram.max])).toEqual([[0, 1990], [0, 1990], [0, 1990]])
+    // Red's largest value and blue's smallest fall in the bins of those values on the shared axis.
+    const bin = Math.floor((99 / 1990) * 256)
+    expect(result.channels[0].histogram.counts[bin]).toBeGreaterThan(0)
+    expect(result.channels[2].histogram.counts.findIndex(c => c > 0)).toBe(Math.floor((1000 / 1990) * 256))
+    expect(channelStats('L', [5, 6], { saturation: null, black: 0 }, { min: 0, max: 10 }).histogram).toMatchObject({ min: 0, max: 10 })
   })
 
   it('[INS-001] Given an image, When inspected, Then statistics, kind, size and star come together', () => {

@@ -22,6 +22,12 @@ export interface FieldGeometry {
   heightPx: number
   /** East is to the right of north, as in a mirrored image; absent means the sky as seen, east left. */
   flipped?: boolean
+  /**
+   * A FITS header's own transform, kept whole so unequal axis scales or skew place the grid
+   * exactly: the tangent point, the displayed pixel it falls on, and the CD matrix in degrees per
+   * pixel (FITS axes, y up). Absent for a plate solve, which gives only the figures above.
+   */
+  wcs?: { raDeg: number; decDeg: number; x: number; y: number; cd: [number, number, number, number] }
 }
 
 export interface PixelPoint {
@@ -39,36 +45,42 @@ function cdMatrix(field: FieldGeometry): [number, number, number, number] {
   return [c1 * Math.cos(t), -s * Math.sin(t), c1 * Math.sin(t), s * Math.cos(t)]
 }
 
+/** The projection a field is drawn by: the header's own, else one about the centre from the scale and rotation. */
+const tangentOf = (field: FieldGeometry): NonNullable<FieldGeometry['wcs']> =>
+  field.wcs ?? { raDeg: field.raDeg, decDeg: field.decDeg, x: field.widthPx / 2, y: field.heightPx / 2, cd: cdMatrix(field) }
+
 /** Where a point on the sky falls on the image, or null when it is on the far side of the sky. */
 export function skyToPixel(field: FieldGeometry, raDeg: number, decDeg: number): PixelPoint | null {
-  const a = (raDeg - field.raDeg) * RAD
+  const t = tangentOf(field)
+  const a = (raDeg - t.raDeg) * RAD
   const d = decDeg * RAD
-  const d0 = field.decDeg * RAD
+  const d0 = t.decDeg * RAD
   const cosC = Math.sin(d0) * Math.sin(d) + Math.cos(d0) * Math.cos(d) * Math.cos(a)
   if (cosC <= 1e-6) return null
   const xi = (Math.cos(d) * Math.sin(a)) / cosC / RAD
   const eta = (Math.cos(d0) * Math.sin(d) - Math.sin(d0) * Math.cos(d) * Math.cos(a)) / cosC / RAD
-  const [m11, m12, m21, m22] = cdMatrix(field)
+  const [m11, m12, m21, m22] = t.cd
   const det = m11 * m22 - m12 * m21
   const dx = (m22 * xi - m12 * eta) / det
   const dy = (-m21 * xi + m11 * eta) / det
   // FITS y runs up the image; displayed y runs down.
-  return { x: field.widthPx / 2 + dx, y: field.heightPx / 2 - dy }
+  return { x: t.x + dx, y: t.y - dy }
 }
 
 /** The point on the sky under a pixel. */
 export function pixelToSky(field: FieldGeometry, x: number, y: number): { raDeg: number; decDeg: number } {
-  const [m11, m12, m21, m22] = cdMatrix(field)
-  const dx = x - field.widthPx / 2
-  const dy = field.heightPx / 2 - y
+  const t = tangentOf(field)
+  const [m11, m12, m21, m22] = t.cd
+  const dx = x - t.x
+  const dy = t.y - y
   const xi = (m11 * dx + m12 * dy) * RAD
   const eta = (m21 * dx + m22 * dy) * RAD
-  const d0 = field.decDeg * RAD
+  const d0 = t.decDeg * RAD
   const rho = Math.hypot(xi, eta)
-  if (rho === 0) return { raDeg: field.raDeg, decDeg: field.decDeg }
+  if (rho === 0) return { raDeg: t.raDeg, decDeg: t.decDeg }
   const c = Math.atan(rho)
   const dec = Math.asin(Math.cos(c) * Math.sin(d0) + (eta * Math.sin(c) * Math.cos(d0)) / rho)
-  const ra = field.raDeg * RAD + Math.atan2(xi * Math.sin(c), rho * Math.cos(d0) * Math.cos(c) - eta * Math.sin(d0) * Math.sin(c))
+  const ra = t.raDeg * RAD + Math.atan2(xi * Math.sin(c), rho * Math.cos(d0) * Math.cos(c) - eta * Math.sin(d0) * Math.sin(c))
   return { raDeg: (((ra / RAD) % 360) + 360) % 360, decDeg: dec / RAD }
 }
 
@@ -76,7 +88,10 @@ export function pixelToSky(field: FieldGeometry, x: number, y: number): { raDeg:
 
 /**
  * The field a FITS header's world coordinate system describes, from CRVAL1/2 with either the CD
- * matrix or CDELT1/2 and CROTA2. Null when the header has no usable TAN solution.
+ * matrix or CDELT1/2 and CROTA2. The header's transform is kept whole, so pixels that are not
+ * square or a skewed matrix still place the grid exactly; the centre, scale and rotation are
+ * worked out from it for saying where the image points. Null when the header has no usable TAN
+ * solution or a declination off the sky.
  */
 export function overlayFieldFromWcs(header: Record<string, number | string | boolean | undefined>): FieldGeometry | null {
   const num = (k: string): number | null => (typeof header[k] === 'number' && Number.isFinite(header[k]) ? (header[k] as number) : null)
@@ -87,7 +102,7 @@ export function overlayFieldFromWcs(header: Record<string, number | string | boo
   const dec = num('CRVAL2')
   const width = num('NAXIS1')
   const height = num('NAXIS2')
-  if (ra === null || dec === null || !width || !height || width <= 0 || height <= 0) return null
+  if (ra === null || dec === null || Math.abs(dec) > 90 || !width || !height || width <= 0 || height <= 0) return null
 
   let cd: [number, number, number, number] | null = null
   const cd11 = num('CD1_1')
@@ -108,25 +123,21 @@ export function overlayFieldFromWcs(header: Record<string, number | string | boo
   const scaleDeg = Math.sqrt(Math.abs(det))
   // The sky as seen has a negative determinant (east to the left of north); positive is mirrored.
   const flipped = det > 0
-  // North sits along the second column; its angle from up gives the rotation either way.
-  const rotationDeg = Math.atan2(-cd[1], cd[3]) / RAD
-  // The reference pixel need not be the centre: the centre's own coordinates anchor the field.
-  const reference: FieldGeometry = { raDeg: ra, decDeg: dec, rotationDeg, scaleArcsec: scaleDeg * 3600, widthPx: width, heightPx: height, flipped }
   const crpix1 = num('CRPIX1') ?? (width + 1) / 2
   const crpix2 = num('CRPIX2') ?? (height + 1) / 2
   // Displayed pixel of the reference point: FITS pixel centres are whole numbers counted from 1,
-  // and FITS rows run bottom to top. A field centred there shares the image's displayed pixels.
-  const atRef = { x: crpix1 - 0.5, y: height - crpix2 + 0.5 }
-  const aroundRef: FieldGeometry = { ...reference, widthPx: 2 * atRef.x, heightPx: 2 * atRef.y }
-  const centre = pixelToSky(aroundRef, width / 2, height / 2)
-  // North turns across a field away from the equator, so the rotation is measured again at the centre.
-  const north = skyToPixel(aroundRef, centre.raDeg, centre.decDeg + scaleDeg)
-  let rotation = rotationDeg
+  // and FITS rows run bottom to top.
+  const wcs = { raDeg: ra, decDeg: dec, x: crpix1 - 0.5, y: height - crpix2 + 0.5, cd }
+  const exact: FieldGeometry = { raDeg: ra, decDeg: dec, rotationDeg: 0, scaleArcsec: scaleDeg * 3600, widthPx: width, heightPx: height, flipped, wcs }
+  const centre = pixelToSky(exact, width / 2, height / 2)
+  // North turns across a field away from the equator, so the rotation is measured at the centre.
+  const north = skyToPixel(exact, centre.raDeg, centre.decDeg + scaleDeg)
+  let rotation = Math.atan2(-cd[1], cd[3]) / RAD
   if (north) {
     const along = Math.atan2(-(north.x - width / 2), -(north.y - height / 2)) / RAD
     rotation = flipped ? -along : along
   }
-  return { ...reference, raDeg: centre.raDeg, decDeg: centre.decDeg, rotationDeg: rotation }
+  return { ...exact, raDeg: centre.raDeg, decDeg: centre.decDeg, rotationDeg: rotation }
 }
 
 // ── The grid ────────────────────────────────────────────────────────────
@@ -150,9 +161,10 @@ function step(span: number, steps: number[], lines: number): number {
 }
 
 export function formatRa(raDeg: number): string {
-  const totalMin = Math.round((((raDeg % 360) + 360) % 360) * 4 * 60) / 60
-  const h = Math.floor(totalMin / 60) % 24
-  const m = Math.round(totalMin - Math.floor(totalMin / 60) * 60)
+  // Whole minutes of time first, so 5h 59m 40s reads 6h rather than 5h 60m.
+  const totalMin = Math.round((((raDeg % 360) + 360) % 360) * 4) % (24 * 60)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
   return m === 0 ? `${h}h` : `${h}h ${String(m).padStart(2, '0')}m`
 }
 

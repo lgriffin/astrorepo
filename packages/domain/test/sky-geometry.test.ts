@@ -74,9 +74,18 @@ describe('reading where an image points', () => {
       rotationDeg: -170,
       scaleArcsec: 1.8,
       widthPx: 100,
-      heightPx: 50
+      heightPx: 50,
+      flipped: false
     })
     expect(fieldFromWcs({ CRVAL1: 5, CRVAL2: 20, CDELT2: 0.001 }, 100, 50)?.rotationDeg).toBe(0)
+  })
+
+  it('[SKY-001, SKY-004] Given a WCS with a positive CD determinant, When read, Then the field is mirrored; a negative one is the sky as seen', () => {
+    expect(fieldFromWcs({ CRVAL1: 10, CRVAL2: 20, CD1_1: 0.001, CD2_2: 0.001 }, 100, 50)?.flipped).toBe(true)
+    expect(fieldFromWcs({ CRVAL1: 10, CRVAL2: 20, CD1_1: -0.001, CD2_2: 0.001 }, 100, 50)?.flipped).toBe(false)
+    expect(fieldFromWcs({ CRVAL1: 10, CRVAL2: 20, CDELT1: 0.001, CDELT2: 0.001 }, 100, 50)?.flipped).toBe(true)
+    const astap = parseAstapResult('PLTSOLVD=T\nCRVAL1=10\nCRVAL2=20\nCD1_1=6.5E-04\nCD1_2=0\nCD2_1=0\nCD2_2=6.5E-04\n', 100, 50)
+    expect(astap.ok && astap.field.flipped).toBe(true)
   })
 
   it('[SKY-004] Given a reference pixel away from the image centre, When read, Then the centre is the middle pixel taken through the matrix and a TAN projection', () => {
@@ -154,6 +163,14 @@ describe('reading where an image points', () => {
     expect(old).toEqual({ ok: true, field: { raDeg: expect.closeTo(10.6833, 3), decDeg: expect.closeTo(41.2689, 3), rotationDeg: -12.34, scaleArcsec: 2.39, widthPx: 1080, heightPx: 1920 } })
     const spaced = parseSirilSolve('Resolution: 1.200 arcsec/px\nImage center: alpha: 05 35 17.300, delta: -05 23 28.000\n', 100, 100)
     expect(spaced.ok && spaced.field).toMatchObject({ raDeg: expect.closeTo(83.822, 3), decDeg: expect.closeTo(-5.391, 3), rotationDeg: 0 })
+  })
+
+  it("[SKY-001] Given Siril's log, When it marks the rotation flipped, Then the field is mirrored; without the mark whether it is stays unknown", () => {
+    const log = (rotation: string) => `Resolution: 1.200 arcsec/px\nRotation: ${rotation}\nImage center: alpha: 05 35 17.300, delta: -05 23 28.000\n`
+    const flipped = parseSirilSolve(log('+12.34 deg (flipped)'), 100, 100)
+    expect(flipped.ok && flipped.field).toMatchObject({ rotationDeg: 12.34, flipped: true })
+    const plain = parseSirilSolve(log('+12.34 deg'), 100, 100)
+    expect(plain.ok && 'flipped' in plain.field).toBe(false)
   })
 
   it('[SKY-001] Given Siril failed, When its log is parsed, Then its own failure line is the reason', () => {

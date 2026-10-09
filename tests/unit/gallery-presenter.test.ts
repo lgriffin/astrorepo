@@ -9,6 +9,7 @@ import {
   paletteMapping,
   toGalleryImagesView,
   toInspectionView,
+  toOpenedView,
   toPalettePreviewView,
   toPalettesView,
   toPreviewView
@@ -84,9 +85,26 @@ describe('Preview wording', () => {
   })
 
   it('[INS-012] Given a preview placed by a stored plate solve, When shown, Then where it points names the solver', () => {
-    const solved = { raDeg: 83.82, decDeg: -5.39, rotationDeg: 0, scaleArcsec: 1.2, widthPx: 3000, heightPx: 2000 }
+    const solved = { raDeg: 83.82, decDeg: -5.39, rotationDeg: 0, scaleArcsec: 1.2, widthPx: 3000, heightPx: 2000, flipped: false }
     const view = toPreviewView({ ok: true, preview: preview(2, 1, 200, { sourceWidth: 3000, sourceHeight: 2000 }), field: solved, fieldSource: 'astap', overlay: null })
     expect(view.fieldText).toBe('Centred on 5h 35m, −5° 23′ at 1.20″ per pixel, north turned 0°. From its plate solve by ASTAP.')
+    const mirrored = toPreviewView({ ok: true, preview: preview(), field: { ...solved, flipped: true }, fieldSource: 'astap', overlay: null })
+    expect(mirrored.fieldText).toBe('Centred on 5h 35m, −5° 23′ at 1.20″ per pixel, north turned 0°, mirrored. From its plate solve by ASTAP.')
+  })
+
+  it('[INS-012] Given a stored plate solve that did not say whether the image is mirrored, When shown, Then it says the grid may have east and west swapped', () => {
+    const unsure = { raDeg: 83.82, decDeg: -5.39, rotationDeg: 0, scaleArcsec: 1.2, widthPx: 3000, heightPx: 2000 }
+    const view = toPreviewView({ ok: true, preview: preview(), field: unsure, fieldSource: 'siril', overlay: null })
+    expect(view.fieldText).toBe(
+      'Centred on 5h 35m, −5° 23′ at 1.20″ per pixel, north turned 0°. From its plate solve by Siril. The solve did not say whether the image is mirrored, so the grid is drawn as the sky is seen and east and west may be swapped.'
+    )
+  })
+
+  it('[INS-001, INS-011, NFR-019] Given a file opened in the inspector, When shown, Then its figures and preview come from the one read, or the reason without a preview', () => {
+    const opened = toOpenedView({ ok: true, inspection: inspection(), preview: preview(2, 1), field: null, fieldSource: null, overlay: null })
+    expect(opened.inspection.error).toBeNull()
+    expect(opened.preview).toMatchObject({ error: null, width: 2, height: 1 })
+    expect(toOpenedView({ ok: false, error: 'Gone.' })).toMatchObject({ inspection: { error: expect.stringContaining('Gone.') }, preview: null })
   })
 
   it('[INS-011] Given a preview without a field, or one that failed, When shown, Then there is no overlay, or the reason', () => {
@@ -155,7 +173,7 @@ describe('Palette wording', () => {
 describe('Gallery IPC schemas', () => {
   it('[INS-008] Given requests from the window, When validated, Then files go by id, images with their target, and only known palettes pass', () => {
     expect(schemas['inspect:file'].parse({ file_id: 'f1' })).toEqual({ file_id: 'f1' })
-    expect(() => schemas['inspect:file-preview'].parse({})).toThrow()
+    expect(() => schemas['inspect:file'].parse({})).toThrow()
     expect(() => schemas['gallery:preview'].parse({ target_id: 't', path: '' })).toThrow()
     expect(schemas['gallery:choose-palette'].parse({ target_id: 't', palette: null })).toEqual({ target_id: 't', palette: null })
     expect(() => schemas['gallery:palette-preview'].parse({ target_id: 't', palette: 'XYZ' })).toThrow()

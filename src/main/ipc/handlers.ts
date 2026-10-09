@@ -32,7 +32,7 @@ import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
-import { toGalleryImagesView, toInspectionView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
+import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
@@ -537,14 +537,10 @@ export function registerIpcHandlers(): void {
     }
   }
 
+  // One read gives the figures and the preview, so opening a file decodes it once.
   handle('inspect:file', validated('inspect:file', async args => {
-    const result = await composeGallery(getSqlite()).inspectFile(args.file_id)
-    return result ? toInspectionView(result) : null
-  }))
-
-  handle('inspect:file-preview', validated('inspect:file-preview', async args => {
-    const result = await composeGallery(getSqlite()).previewFile(args.file_id)
-    return result ? toPreviewView(result) : null
+    const result = await composeGallery(getSqlite()).openFile(args.file_id)
+    return result ? toOpenedView(result) : null
   }))
 
   handle('gallery:images', validated('gallery:images', async args => toGalleryImagesView(await composeGallery(getSqlite()).images(args.target_id))))

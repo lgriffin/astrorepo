@@ -540,37 +540,45 @@ a target or trying out a plan links nothing.
 
 **On the FITS files page**, open a file and its **Inspector** reads the pixels:
 
-- **A histogram** of every channel on one chart. A colour camera's raw frame is read channel by
-  channel from its Bayer pattern, so red, green and blue each get a line; a stack in colour does
-  too; a mono frame has one. Counts are on a log scale so the faint tail shows.
+- **A histogram** of every channel on one chart, all binned over the same range so a value sits
+  at the same place on every line. A colour camera's raw frame is read channel by channel from
+  its Bayer pattern, so red, green and blue each get a line; a stack in colour does too; a mono
+  frame has one. Counts are on a log scale so the faint tail shows.
 - **Median, noise, saturated and clipped to black** for each channel. The noise comes from the
   median absolute deviation, so stars and nebula barely move it. When more than 0.1% of a
   channel is saturated or clipped to black, a sentence says so and what it costs.
 - **The brightest unsaturated star**: its FWHM in pixels, its peak above the sky, where it is,
-  and its profile from the centre outwards. A saturated star's core is flat, so it is skipped.
+  and its profile from the centre outwards. A saturated star's core is flat, so it is skipped:
+  a star counts as saturated when any of its own pixels comes within 2% of the ceiling, in any
+  colour or any pixel of a raw frame's Bayer cell, even if the average does not.
 - **A preview**, stretched so the sky sits at a quarter grey. When the file's header holds a
   plate solution, the preview says where it points and the scale, and **Grid and labels** draws
   right ascension and declination lines and the Messier, NGC and IC objects in the field, each
-  with a circle of its size. A file whose header has no solution uses its stored plate solve
-  instead (see Plate solving), and says which solver placed it; files with neither do not offer
-  the grid. Compare images uses the same rule.
+  with a circle of its size. The header's own transform is used as it is, so pixels that are not
+  square still get a true grid. A file whose header has no solution uses its stored plate solve
+  instead (see Plate solving), and says which solver placed it; a solve that did not record
+  whether the image is mirrored is drawn as the sky is seen, and says east and west may be
+  swapped. Files with neither do not offer the grid. Compare images uses the same rule.
 
-The pixels are read on a separate thread and only the figures and a preview at most 1024
-pixels wide come back, so the app stays responsive while a large frame is read. Images over 200
-megapixels are not read.
+The pixels are read on a separate thread, one image at a time, and only the figures and a
+preview at most 1024 pixels wide come back, so the app stays responsive while a large frame is
+read; the figures and the preview come from one read of the file. Images over 200 megapixels
+are refused from their header before their pixels are read, and a PNG whose data would unpack
+to more than its stated size is refused as damaged.
 
 **On a target's Files**:
 
 - **Compare images** shows any two of the target's masters or finished images side by side, or
   under a **Slider** you drag across. Both get the same auto-stretch rule, worked out from each
-  image's own sky. Finished images are the FITS and PNG files in the target's images folder and
+  image's own sky. Under the slider each side carries its own image's grid and labels. Finished images are the FITS and PNG files in the target's images folder and
   the folders directly in it; JPEG and TIFF are not read yet.
 - **Palettes** lists HOO, SHO, HSO, RGB and LRGB with what goes where, and what each lacks:
   - HOO needs Ha and OIII; SHO and HSO need SII as well.
   - RGB needs red, green and blue, or a colour camera's stack without a narrowband filter.
   - LRGB adds luminance.
   - A colour camera behind a dual-band filter (L-eXtreme, L-eNhance, ALP-T and the like) gives
-    Ha from its red pixels and OIII from its green and blue ones.
+    Ha from its red pixels and OIII from its green and blue ones. A plain light-pollution filter
+    (one named LP, say) is broadband, so it gives red, green and blue.
 
   **Preview** combines the masters, each stretched on its own, in the palette's colours. A
   channel captured but not stacked yet says which lights to stack first. **Use this one** saves

@@ -117,7 +117,8 @@ app has run on real data on the Windows PC and the licence is settled.
   ([#38](https://github.com/lgriffin/astrorepo/issues/38)).
 - **The inspector reads the header's solution, then the stored plate solve** (specs 025, 024).
   The overlay needs a solved field: H1 draws the grid from a FITS header's own WCS, and for a
-  file without one from the solve slice D stored for its path, which has the same field shape. Finished images are FITS and PNG for now,
+  file without one from the solve slice D stored for its path, which has the same field shape and
+  records whether the image is mirrored when the solver says. Finished images are FITS and PNG for now,
   since JPEG and TIFF need a decoder, and the chosen palette is a hint beside the Siril_Scripts
   command because v2 has no palette option.
 - **C4 diagrams** live in [architecture/c4.md](architecture/c4.md) and are updated by every slice

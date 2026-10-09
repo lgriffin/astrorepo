@@ -20,7 +20,7 @@ import {
   type SolveSource
 } from '@astro/domain'
 import type { Clock } from '../ports/clock'
-import type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore } from '../ports/gallery'
+import type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore, WcsHeader } from '../ports/gallery'
 import type { SolveStore } from '../ports/sky-geometry'
 
 export interface GalleryDeps {
@@ -79,14 +79,16 @@ export function makeGallery(deps: GalleryDeps) {
     return { field, source: stored.source }
   }
 
-  const show = async (path: string): Promise<ShownImage> => {
-    const { preview, header } = await deps.pixels.preview(path, { maxWidth: PREVIEW_MAX_WIDTH })
+  /** A preview with its field and overlay, from the header read with it or the path's stored solve. */
+  const placed = async (path: string, { preview, header }: { preview: ImagePreview; header: WcsHeader }): Promise<ShownImage> => {
     const fromHeader = overlayFieldFromWcs(header)
     const solved = fromHeader ? null : await storedField(path, preview)
     const field: FieldGeometry | null = fromHeader ?? solved?.field ?? null
     const fieldSource: SolveSource | null = fromHeader ? 'header' : (solved?.source ?? null)
     return { preview, field, fieldSource, overlay: field ? skyOverlay(field, await catalogue(), preview.scale) : null }
   }
+
+  const show = async (path: string): Promise<ShownImage> => placed(path, await deps.pixels.preview(path, { maxWidth: PREVIEW_MAX_WIDTH }))
 
   const imageOf = async (targetId: string, path: string): Promise<GalleryImage> => {
     const image = (await deps.catalogue.targetImages(targetId)).find(i => i.path === path)
@@ -106,23 +108,16 @@ export function makeGallery(deps: GalleryDeps) {
   }
 
   return {
-    /** Histograms, clipping, noise and the brightest star of an indexed FITS file (INS-001, INS-002). */
-    async inspectFile(fileId: string): Promise<Read<{ path: string; name: string; inspection: ImageInspection }> | null> {
+    /**
+     * Histograms, clipping, noise and the brightest star of an indexed FITS file (INS-001, INS-002),
+     * and its preview with the grid and labels when it is solved (INS-011), from one read of the file.
+     */
+    async openFile(fileId: string): Promise<Read<{ path: string; name: string; inspection: ImageInspection } & ShownImage> | null> {
       const file = await deps.catalogue.fileById(fileId)
       if (!file) return null
       try {
-        return { ok: true, ...file, inspection: await deps.pixels.inspect(file.path) }
-      } catch (error) {
-        return { ok: false, error: reason(error) }
-      }
-    },
-
-    /** A preview of an indexed FITS file, with the grid and labels when its header is solved (INS-011). */
-    async previewFile(fileId: string): Promise<Read<ShownImage> | null> {
-      const file = await deps.catalogue.fileById(fileId)
-      if (!file) return null
-      try {
-        return { ok: true, ...(await show(file.path)) }
+        const { inspection, ...read } = await deps.pixels.open(file.path, { maxWidth: PREVIEW_MAX_WIDTH })
+        return { ok: true, ...file, inspection, ...(await placed(file.path, read)) }
       } catch (error) {
         return { ok: false, error: reason(error) }
       }

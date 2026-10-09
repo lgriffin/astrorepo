@@ -7,27 +7,38 @@ import type { GalleryImageView, PreviewView } from '@shared/types'
 
 type Loaded = PreviewView | { refused: string } | null
 
-/** Two previews over one another, the slider showing the first to its left and the second to its right. */
+/** One preview with its own grid and labels, sized by its own pixels, shown only inside `clip`. */
+function ClippedLayer({ view, rgba, grid, clip, className }: { view: PreviewView; rgba: Uint8ClampedArray<ArrayBuffer>; grid: boolean; clip: string; className: string }): React.ReactElement {
+  return (
+    <div className={className} style={{ clipPath: clip }}>
+      <div className="relative">
+        <PixelCanvas rgba={rgba} width={view.width} height={view.height} className="rounded" />
+        {grid && view.overlay && <SkyOverlayLayer overlay={view.overlay} width={view.width} height={view.height} />}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Two previews over one another, the slider showing the first to its left and the second to its
+ * right. Each half carries its own image's grid and labels, placed by that image's own preview
+ * size, so two differently framed or solved images never share one overlay.
+ */
 function Slider({ a, b }: { a: PreviewView; b: PreviewView }): React.ReactElement {
   const [at, setAt] = useState(50)
   const [grid, setGrid] = useState(true)
   const left = useMemo(() => toRgba(decodePixels(a.pixelsBase64), a.width, a.height, a.channels), [a])
   const right = useMemo(() => toRgba(decodePixels(b.pixelsBase64), b.width, b.height, b.channels), [b])
-  const overlay = a.overlay ?? b.overlay
-  const sizeOf = a.overlay ? a : b
   return (
     <div className="space-y-1">
-      <div className="relative select-none">
-        <PixelCanvas rgba={right} width={b.width} height={b.height} className="rounded border border-astro-border" />
-        <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - at}% 0 0)` }}>
-          <PixelCanvas rgba={left} width={a.width} height={a.height} className="rounded" />
-        </div>
+      <div className="relative select-none rounded border border-astro-border overflow-hidden">
+        <ClippedLayer view={b} rgba={right} grid={grid} clip={`inset(0 0 0 ${at}%)`} className="relative" />
+        <ClippedLayer view={a} rgba={left} grid={grid} clip={`inset(0 ${100 - at}% 0 0)`} className="absolute inset-0 overflow-hidden" />
         <div className="absolute top-0 bottom-0 w-px bg-white/70" style={{ left: `${at}%` }} />
-        {grid && overlay && <SkyOverlayLayer overlay={overlay} width={sizeOf.width} height={sizeOf.height} />}
       </div>
       <div className="flex items-center gap-3 text-xs text-astro-muted">
         <input type="range" min={0} max={100} value={at} onChange={e => setAt(Number(e.target.value))} className="flex-1" aria-label="Slider position" />
-        {overlay && (
+        {(a.overlay || b.overlay) && (
           <label className="flex items-center gap-1">
             <input type="checkbox" checked={grid} onChange={e => setGrid(e.target.checked)} /> Grid and labels
           </label>

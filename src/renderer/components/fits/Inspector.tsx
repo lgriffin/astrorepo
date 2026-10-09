@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { decodePixels, PixelCanvas, SkyOverlayLayer, toRgba } from '../gallery/PreviewImage'
-import type { ChannelStatsView, InspectionView, PreviewView } from '@shared/types'
+import type { ChannelStatsView, InspectionView, OpenedFileView, PreviewView } from '@shared/types'
 
 const TONE: Record<ChannelStatsView['channel'], string> = { L: '#cbd5e1', R: '#f87171', G: '#4ade80', B: '#60a5fa' }
 
-/** Every channel's histogram on one chart, counts on a log scale so the faint tail shows (INS-001). */
+/** Every channel's histogram on one chart, binned over one shared range, counts on a log scale so the faint tail shows (INS-001). */
 function HistogramChart({ channels }: { channels: ChannelStatsView[] }): React.ReactElement {
   const w = 256
   const h = 90
@@ -78,14 +78,12 @@ export function Inspector({ fileId }: { fileId: string }): React.ReactElement {
     setView(null)
     setPreview(null)
     setFailed(false)
-    invoke<InspectionView | null>('inspect:file', { file_id: fileId })
-      .then(v => {
-        if (!current) return null
-        setView(v)
-        return v && !v.error ? invoke<PreviewView | null>('inspect:file-preview', { file_id: fileId }) : null
-      })
-      .then(p => {
-        if (current && p) setPreview(p)
+    // One read of the file gives both the figures and the preview.
+    invoke<OpenedFileView | null>('inspect:file', { file_id: fileId })
+      .then(opened => {
+        if (!current) return
+        setView(opened?.inspection ?? null)
+        setPreview(opened?.preview ?? null)
       })
       .catch(() => {
         if (current) setFailed(true)

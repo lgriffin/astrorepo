@@ -265,7 +265,6 @@ export const schemas = {
   'grades:export': z.object({ target_id: id }),
   'grades:leave-out-night': z.object({ raw_path: z.string().min(1).max(4096), night: z.string().min(1).max(40), left_out: z.boolean() }),
   'inspect:file': z.object({ file_id: id }),
-  'inspect:file-preview': z.object({ file_id: id }),
   'gallery:images': z.object({ target_id: id }),
   'gallery:preview': z.object({ target_id: id, path: z.string().min(1).max(4096) }),
   'gallery:palettes': z.object({ target_id: id }),

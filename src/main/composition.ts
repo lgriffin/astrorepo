@@ -36,6 +36,7 @@ import {
   makeQueueSolves,
   makeRunSolveJob,
   makeSaveMosaicPlan,
+  type Gallery,
   type JobScheduler
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
@@ -100,15 +101,26 @@ export function inspectOnWorkers(createWorker: () => Worker): NodeImagePixels {
   return imagePixels
 }
 
-/** The image inspector, palettes and compare view over the index and the image files (spec 025). */
-export function composeGallery(db: Database.Database) {
-  return makeGallery({
-    pixels: imagePixels,
-    catalogue: new SqliteGalleryCatalogue(db),
-    palettes: new SqlitePaletteStore(db),
-    clock: systemClock,
-    solves: new SqliteSolveStore(db)
-  })
+/** The gallery last composed, kept while the database and pixel reader stay the same. */
+let gallery: { db: Database.Database; pixels: NodeImagePixels; gallery: Gallery } | null = null
+
+/**
+ * The image inspector, palettes and compare view over the index and the image files (spec 025).
+ * One per database handle and pixel reader, so the catalogue it labels overlays from is read once;
+ * a new handle (a reset) or inspectOnWorkers composes it afresh.
+ */
+export function composeGallery(db: Database.Database): Gallery {
+  if (gallery?.db !== db || gallery.pixels !== imagePixels) {
+    const made = makeGallery({
+      pixels: imagePixels,
+      catalogue: new SqliteGalleryCatalogue(db),
+      palettes: new SqlitePaletteStore(db),
+      clock: systemClock,
+      solves: new SqliteSolveStore(db)
+    })
+    gallery = { db, pixels: imagePixels, gallery: made }
+  }
+  return gallery.gallery
 }
 
 /** Frame grading over the index and the FITS files (spec 019). */

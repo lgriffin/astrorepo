@@ -42,8 +42,10 @@ export async function readRaster(path: string): Promise<{ image: RasterImage; he
   }
 }
 
-export async function inspectPath(path: string): Promise<ImageInspection> {
-  return inspectImage((await readRaster(path)).image)
+/** The inspector's figures and a colour preview from one read of the file, as opening it in the inspector needs. */
+export async function openPath(path: string, options: { maxWidth: number }): Promise<{ inspection: ImageInspection; preview: ImagePreview; header: WcsHeader }> {
+  const { image, header } = await readRaster(path)
+  return { inspection: inspectImage(image), preview: previewImage(image, options), header }
 }
 
 export async function previewPath(path: string, options: { maxWidth: number; channel?: PreviewChannel }): Promise<{ preview: ImagePreview; header: WcsHeader }> {
