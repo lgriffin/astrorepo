@@ -94,6 +94,15 @@ describe('carrying on', () => {
     expect(runKey(`${OSC}\n# edited`, frames)).not.toBe(key)
   })
 
+  it('[PRV-005] Given a frame rewritten in place or one left in a folder by hand, When keyed with the input folders, Then the key changes', () => {
+    const at = new Date('2026-01-10T22:00:00Z')
+    const inputs = [{ folder: 'lights' as const, name: 'L1.fit', sizeBytes: 100, modifiedAt: at }, { folder: 'darks' as const, name: 'D1.fit', sizeBytes: 50, modifiedAt: at }]
+    const key = runKey(OSC, frames, inputs)
+    expect(runKey(OSC, frames, [...inputs].reverse())).toBe(key)
+    expect(runKey(OSC, frames, [{ ...inputs[0], modifiedAt: new Date('2026-01-11T22:00:00Z') }, inputs[1]])).not.toBe(key)
+    expect(runKey(OSC, frames, [...inputs, { folder: 'darks', name: 'by-hand.fit', sizeBytes: 50, modifiedAt: at }])).not.toBe(key)
+  })
+
   it('[PRV-004] [PRV-005] Given saved progress, When the step to start from is asked, Then it carries on only for the same key and step count', () => {
     const progress = { step: 3, of: 10, key: 'k', label: 'calibrate flat' }
     expect(resumeFrom(progress, 'k', 10)).toBe(3)
@@ -157,6 +166,25 @@ describe('publishing', () => {
       frames: { lights: [{ name: 'L1.fit', source: '/a/L1.fit' }, { name: 'L2.fit', source: '/a/L2.fit' }], darks: [], flats: [{ name: 'F1.fit', source: '/a/F1.fit' }], biases: [] },
       rejected: ['/a/L3.fit', '/a/L9.fit']
     })
+  })
+
+  it('[PRV-001] Given a frame in the input folders the app did not place, When the manifest is made, Then it is listed with no source', () => {
+    const m = stackManifest({
+      result: { path: '/w/result_60s.fit', sizeBytes: 1, modifiedAt: null },
+      target: { id: 'm42', name: null },
+      job: { id: 'j1', title: 'Stack', startedAt: null },
+      finishedAt: new Date('2026-09-30T02:00:00Z'),
+      program: 'siril-cli',
+      script: 'x.ssf',
+      steps: [],
+      placements: [{ from: '/a/L1.fit', folder: 'lights', name: 'L1.fit' }],
+      inputs: [
+        { folder: 'lights', name: 'L1.fit', sizeBytes: 1, modifiedAt: null },
+        { folder: 'darks', name: 'master_dark.fit', sizeBytes: 1, modifiedAt: null }
+      ],
+      rejected: []
+    })
+    expect(m.frames).toEqual({ lights: [{ name: 'L1.fit', source: '/a/L1.fit' }], darks: [{ name: 'master_dark.fit', source: null }], flats: [], biases: [] })
   })
 })
 

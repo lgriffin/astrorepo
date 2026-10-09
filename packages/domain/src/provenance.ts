@@ -107,13 +107,24 @@ function fingerprint(text: string): string {
   return h.toString(16).padStart(8, '0')
 }
 
+/** A frame in one of the work folder's input folders, as Siril will read it. */
+export interface InputFrame {
+  folder: SirilFolder
+  name: string
+  sizeBytes: number
+  modifiedAt: Date | null
+}
+
 /**
- * What a stack's steps depend on: the script and every frame laid out for it. A run may carry on
- * from an earlier one's steps only while this is unchanged.
+ * What a stack's steps depend on: the script, every frame laid out for it and, when known, every
+ * frame actually in the input folders with its size and modified time, so a frame rewritten in
+ * place or one left there by hand changes it too. A run may carry on from an earlier one's steps
+ * only while this is unchanged.
  */
-export function runKey(script: string, placements: Pick<SirilPlacement, 'folder' | 'name' | 'from'>[]): string {
+export function runKey(script: string, placements: Pick<SirilPlacement, 'folder' | 'name' | 'from'>[], inputs: InputFrame[] = []): string {
   const frames = placements.map(p => `${p.folder}/${p.name}<${p.from}`).sort()
-  return `${fingerprint(script)}-${fingerprint(frames.join('\n'))}-${placements.length}`
+  const versions = inputs.map(f => `${f.folder}/${f.name}:${f.sizeBytes}:${f.modifiedAt?.getTime() ?? ''}`).sort()
+  return `${fingerprint(script)}-${fingerprint([...frames, ...versions].join('\n'))}-${placements.length}`
 }
 
 export interface StepProgress {
@@ -128,7 +139,22 @@ export interface StepProgress {
   published?: string[]
   /** The step a resumed run carried on from, zero-based. */
   resumedFrom?: number
+  /** Results in the work folder when the run first started, so only what it wrote is its own. */
+  baseline?: StoredResult[]
 }
+
+/** A result file as progress keeps it: dates as ISO text. */
+export interface StoredResult {
+  path: string
+  sizeBytes: number
+  modifiedAt: string | null
+}
+
+export const storeResults = (files: ResultFile[]): StoredResult[] =>
+  files.map(f => ({ path: f.path, sizeBytes: f.sizeBytes, modifiedAt: f.modifiedAt?.toISOString() ?? null }))
+
+export const storedResults = (files: StoredResult[]): ResultFile[] =>
+  files.map(f => ({ path: f.path, sizeBytes: f.sizeBytes, modifiedAt: f.modifiedAt === null ? null : new Date(f.modifiedAt) }))
 
 /** The step to start from: where an earlier run of the same script and frames stopped, else the first. */
 export function resumeFrom(progress: StepProgress | null, key: string, steps: number): number {
@@ -172,7 +198,8 @@ export interface StackManifest {
   job: { id: string; title: string; startedAt: string | null; finishedAt: string }
   siril: { program: string; script: string }
   steps: { label: string; seconds: number | null; resumed: boolean }[]
-  frames: Record<SirilFolder, { name: string; source: string }[]>
+  /** Every frame Siril read; `source` is null for one that was in the folder but not placed by the app. */
+  frames: Record<SirilFolder, { name: string; source: string | null }[]>
   /** Lights frame grading left out. */
   rejected: string[]
 }
@@ -186,6 +213,8 @@ export interface ManifestInput {
   script: string
   steps: { label: string; seconds: number | null; resumed: boolean }[]
   placements: SirilPlacement[]
+  /** What was in the input folders when the run started; without it the placements stand in. */
+  inputs?: InputFrame[]
   rejected: string[]
 }
 
@@ -194,7 +223,9 @@ const baseName = (p: string) => p.split(/[\\/]/).pop() ?? p
 /** What made a master: the script, each step, every frame it used and the lights it left out. */
 export function stackManifest(input: ManifestInput): StackManifest {
   const frames: StackManifest['frames'] = { lights: [], darks: [], flats: [], biases: [] }
-  for (const p of [...input.placements].sort((a, b) => a.name.localeCompare(b.name))) frames[p.folder].push({ name: p.name, source: p.from })
+  const sourceOf = new Map(input.placements.map(p => [`${p.folder}/${p.name}`, p.from]))
+  const used = input.inputs ?? input.placements
+  for (const f of [...used].sort((a, b) => a.name.localeCompare(b.name))) frames[f.folder].push({ name: f.name, source: sourceOf.get(`${f.folder}/${f.name}`) ?? null })
   return {
     format: 'astrorepo-stack-manifest',
     version: 1,

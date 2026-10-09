@@ -50,11 +50,11 @@ Siril's stock scripts and builds the same habits around them:
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| PRV-001 | Event | When every step of a stack has succeeded, the system shall write beside each result it wrote a manifest naming the target, the script, each step and how long it took, every frame by folder with its source, and the lights grading left out. |
-| PRV-002 | Unwanted | If a step of a stack fails or the stack is cancelled, then the system shall move any result the run wrote into the work folder's failed folder and publish nothing. |
+| PRV-001 | Event | When every step of a stack has succeeded, the system shall write beside each result it wrote a manifest naming the target, the script, each step and how long it took, every frame in its input folders by folder with its source (none for a frame the app did not place there), and the lights grading left out. |
+| PRV-002 | Unwanted | If a step of a stack fails, the stack is cancelled (before or during a step, or before its result is published), or its result cannot be published with its manifest, then the system shall move any result the run wrote, with any manifest beside it, into the work folder's failed folder, publish nothing, and start no further step. |
 | PRV-003 | Ubiquitous | The system shall run a stock Siril script one step at a time, each step a separate Siril run from the work folder that ends on a command that saves its work, show the step running, and run a script it cannot split whole. |
-| PRV-004 | Event | When a stack stopped by the app closing starts again with the same script and frames, the system shall carry on from the step it stopped at and say so in its log and manifest. |
-| PRV-005 | Unwanted | If the script or the frames laid out for a stack changed since it stopped, then the system shall start it again from the first step. |
+| PRV-004 | Event | When a stack stopped by the app closing starts again with the same script and frames, the system shall carry on from the step it stopped at and say so in its log and manifest, treating only results that were not in the work folder when the run first started as its own. |
+| PRV-005 | Unwanted | If the script, the frames laid out for a stack, or any frame in its input folders (by name, size or modified time) changed since it stopped, then the system shall set aside what the stopped attempt wrote and start it again from the first step. |
 | PRV-006 | Unwanted | If a job fails with a Siril message the system knows, then the system shall add to its note and log what the message usually means and what to do. |
 | PRV-007 | Ubiquitous | The system shall list each target's runs on its Stack and process page with how far each got, whether it carried on from an earlier run, and the results it published. |
 

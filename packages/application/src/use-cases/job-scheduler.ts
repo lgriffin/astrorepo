@@ -12,6 +12,8 @@ import {
   stackManifest,
   stepScript,
   stockScriptOf,
+  storeResults,
+  storedResults,
   type Job,
   type JobSettings,
   type MachineLoad,
@@ -31,7 +33,7 @@ export interface JobSchedulerDeps {
   runner: ProcessRunner
   logs: JobLogs
   /** Free space where a job writes, and the stacks a run leaves there. */
-  workspace: Pick<SirilWorkspace, 'workAreaSpace'> & Partial<Pick<SirilWorkspace, 'stackResults'>>
+  workspace: Pick<SirilWorkspace, 'workAreaSpace'> & Partial<Pick<SirilWorkspace, 'stackResults' | 'inputFrames'>>
   /**
    * When wired, a stack job runs Siril's stock script a step at a time, carries on after an
    * interruption, publishes a result only when every step succeeded, and writes its manifest
@@ -173,9 +175,21 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
   ) => {
     const area = deps.runArea as RunArea
     const results = deps.workspace.stackResults as NonNullable<typeof deps.workspace.stackResults>
-    const key = runKey(run.text, run.prep.placements)
+    const inputs = deps.workspace.inputFrames ? await deps.workspace.inputFrames(run.workDir) : undefined
+    const key = runKey(run.text, run.prep.placements, inputs)
     const from = resumeFrom(job.progress, key, run.steps.length)
-    const before = from > 0 ? [] : await results(run.workDir)
+    const earlier = job.progress?.baseline ? storedResults(job.progress.baseline) : null
+    if (from === 0 && earlier) {
+      // An earlier attempt of this job stopped part way; what it wrote is not a finished stack.
+      const left = newResults(earlier, await results(run.workDir)).map(r => r.path)
+      if (left.length > 0) {
+        const moved = await area.setAside(run.workDir, job.id, left)
+        deps.logs.append(job.id, `Set aside in ${FAILED_FOLDER} what the earlier attempt wrote: ${moved.join(', ')}.\n`)
+      }
+    }
+    // Results already there belong to earlier stacks: never republished, never set aside.
+    const before = from > 0 ? (earlier ?? []) : await results(run.workDir)
+    const baseline = storeResults(before)
     const timings: { label: string; seconds: number | null; resumed: boolean }[] = run.steps.map((s, i) => ({ label: s.label, seconds: null, resumed: i < from }))
     if (from > 0) deps.logs.append(job.id, `Carrying on from step ${from + 1} of ${run.steps.length}: steps 1 to ${from} finished in an earlier run over the same frames.\n\n`)
     else if (job.progress) deps.logs.append(job.id, 'Starting from the first step: the script or the frames changed since the earlier run.\n\n')
@@ -185,6 +199,7 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
       key,
       label: run.steps[step]?.label ?? null,
       ...(from > 0 ? { resumedFrom: from } : {}),
+      baseline,
       ...extra
     })
 
@@ -195,12 +210,16 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
       deps.logs.append(job.id, `\nSet aside in ${FAILED_FOLDER}: ${moved.join(', ')}, so it is never taken for a finished stack.\n`)
       return `${note} What it wrote is in the work folder's ${FAILED_FOLDER} folder.`
     }
+    const cancelled = async (when: string) => finish(job.id, 'cancelled', null, await setAside(`Cancelled ${when}.`))
 
     for (let i = from; i < run.steps.length; i++) {
       const step = run.steps[i]
       await deps.store.update(job.id, { progress: progress(i) })
       deps.onChange?.()
       const path = await area.writeStep(run.workDir, `step-${String(i + 1).padStart(2, '0')}.ssf`, stepScript(step))
+      // A quit or cancel that came while the step was being written stops it before it starts.
+      if (stopping) return
+      if (entry.cancelled) return cancelled(`before step ${i + 1} of ${run.steps.length} (${step.label})`)
       deps.logs.append(job.id, `── Step ${i + 1} of ${run.steps.length}: ${step.label}\n`)
       const started = deps.clock.now().getTime()
       entry.process = deps.runner.run(sirilStackCommand(run.program, path, run.workDir), text => deps.logs.append(job.id, text))
@@ -220,24 +239,35 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
       await deps.store.update(job.id, { progress: progress(i + 1) })
     }
 
-    const finishedAt = deps.clock.now()
-    const published = newResults(before, await results(run.workDir))
-    const name = deps.targetName ? await deps.targetName(job.targetId) : null
-    for (const result of published) {
-      const manifest = stackManifest({
-        result,
-        target: { id: job.targetId, name },
-        job: { id: job.id, title: job.title, startedAt: job.startedAt },
-        finishedAt,
-        program: run.program,
-        script: run.script,
-        steps: timings,
-        placements: run.prep.placements,
-        rejected: run.prep.rejectedPaths
-      })
-      deps.logs.append(job.id, `\nPublished ${result.path} with its manifest ${await area.writeManifest(result.path, manifest)}.\n`)
+    if (stopping) return
+    if (entry.cancelled) return cancelled('after its last step, before its result was published')
+    let published: Awaited<ReturnType<typeof results>>
+    try {
+      const finishedAt = deps.clock.now()
+      published = newResults(before, await results(run.workDir))
+      const name = deps.targetName ? await deps.targetName(job.targetId) : null
+      for (const result of published) {
+        const manifest = stackManifest({
+          result,
+          target: { id: job.targetId, name },
+          job: { id: job.id, title: job.title, startedAt: job.startedAt },
+          finishedAt,
+          program: run.program,
+          script: run.script,
+          steps: timings,
+          placements: run.prep.placements,
+          inputs,
+          rejected: run.prep.rejectedPaths
+        })
+        deps.logs.append(job.id, `\nPublished ${result.path} with its manifest ${await area.writeManifest(result.path, manifest)}.\n`)
+      }
+      await deps.store.update(job.id, { progress: progress(run.steps.length, { published: published.map(r => r.path) }) })
+    } catch (error) {
+      // Never a result without its manifest: set it aside with whatever was written beside it.
+      const reason = error instanceof Error ? error.message : String(error)
+      await finish(job.id, 'failed', 0, await setAside(`Siril finished, but publishing the result failed: ${reason.replace(/\.?$/, '.')}`))
+      return
     }
-    await deps.store.update(job.id, { progress: progress(run.steps.length, { published: published.map(r => r.path) }) })
     await finish(job.id, 'succeeded', 0, published.length === 0 ? 'Siril finished, but no result file appeared in the work folder.' : null)
   }
 

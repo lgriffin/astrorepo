@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
 import type { FrameDetail, PlacementResult, SirilWorkspace, WorkAreaSpace } from '@astro/application'
-import type { FrameIndexSettings, SirilFolder, SirilPlacement } from '@astro/domain'
+import type { FrameIndexSettings, InputFrame, SirilFolder, SirilPlacement } from '@astro/domain'
 import { parseUtc } from './sqlite-frame-catalogue'
 
 const FITS_EXTENSIONS = new Set(['.fit', '.fits', '.fts'])
@@ -170,6 +170,20 @@ export class NodeSirilWorkspace implements SirilWorkspace {
     return results.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime())
   }
 
+  async inputFrames(workDir: string): Promise<InputFrame[]> {
+    const frames: InputFrame[] = []
+    for (const folder of SIRIL_FOLDERS) {
+      const dir = path.join(workDir, folder)
+      for (const e of await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+        if (!FITS_EXTENSIONS.has(path.extname(e.name).toLowerCase())) continue
+        // Siril reads through links, so a frame's size and time are its target's.
+        const stat = await fs.promises.stat(path.join(dir, e.name)).catch(() => null)
+        if (stat?.isFile()) frames.push({ folder, name: e.name, sizeBytes: stat.size, modifiedAt: stat.mtime })
+      }
+    }
+    return frames.sort((a, b) => `${a.folder}/${a.name}`.localeCompare(`${b.folder}/${b.name}`))
+  }
+
   async copyBytes(placements: SirilPlacement[], workDir: string): Promise<number> {
     // The work folder need not exist yet; its nearest existing ancestor is on the volume it will be.
     const work = await fs.promises.stat(await nearestExisting(workDir)).catch(() => null)
@@ -209,14 +223,14 @@ export class WorkFolderLinksOutError extends Error {
  * does not exist. Throws when it is a link, or resolves outside the work area, so nothing the app
  * writes or removes can reach a source folder through it.
  */
-async function ownFolder(workDir: string, folder: SirilFolder): Promise<string | null> {
+export async function ownFolder(workDir: string, folder: string): Promise<string | null> {
   const dir = path.join(workDir, folder)
   const stat = await fs.promises.lstat(dir).catch(() => null)
   if (!stat) return null
   if (stat.isSymbolicLink() || !stat.isDirectory()) throw new WorkFolderLinksOutError(dir)
   const [real, root] = await Promise.all([fs.promises.realpath(dir), fs.promises.realpath(workDir)])
   const rel = path.relative(root, real)
-  if ((process.platform === 'win32' ? rel.toLowerCase() : rel) !== folder) throw new WorkFolderLinksOutError(dir)
+  if ((process.platform === 'win32' ? rel.toLowerCase() : rel) !== (process.platform === 'win32' ? folder.toLowerCase() : folder).split('/').join(path.sep)) throw new WorkFolderLinksOutError(dir)
   return real
 }
 

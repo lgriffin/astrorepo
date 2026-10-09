@@ -45,4 +45,27 @@ describe('NodeRunArea', () => {
     expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual(manifest)
     expect(fs.readdirSync(work)).toEqual(['result_60s.fit.astrorepo.json'])
   })
+
+  it('[PRV-002] Given a result that had a manifest from an earlier run, When set aside, Then its manifest goes with it', async () => {
+    const work = workDir()
+    const result = path.join(work, 'result_60s.fit')
+    fs.writeFileSync(result, 'partial')
+    fs.writeFileSync(`${result}.astrorepo.json`, '{}')
+    await new NodeRunArea().setAside(work, 'job-2', [result])
+    expect(fs.readdirSync(work).sort()).toEqual(['failed'])
+    expect(fs.readdirSync(path.join(work, 'failed', 'job-2')).sort()).toEqual(['result_60s.fit', 'result_60s.fit.astrorepo.json'])
+  })
+
+  it('[NFR-015] Given the step or failed folder links outside the work folder, When written to, Then it is refused and nothing lands outside', async () => {
+    const work = workDir()
+    const elsewhere = workDir()
+    fs.symlinkSync(elsewhere, path.join(work, STEP_FOLDER), 'dir')
+    await expect(new NodeRunArea().writeStep(work, 'step-01.ssf', 'x')).rejects.toThrow(/links to a folder outside the work area/)
+    const other = workDir()
+    fs.symlinkSync(elsewhere, path.join(other, 'failed'), 'dir')
+    fs.writeFileSync(path.join(other, 'result_60s.fit'), 'partial')
+    await expect(new NodeRunArea().setAside(other, 'job-3', [path.join(other, 'result_60s.fit')])).rejects.toThrow(/links to a folder outside the work area/)
+    expect(fs.readdirSync(elsewhere)).toEqual([])
+    expect(fs.existsSync(path.join(other, 'result_60s.fit'))).toBe(true)
+  })
 })

@@ -334,13 +334,16 @@ A queued stack runs Siril's stock script one step at a time: convert, calibrate,
 stack each run on their own. The Jobs page and step **4 · Runs** show the step that is running.
 
 - **When the app closes during a stack**, the next start carries on from the step it stopped
-  at. If the frames changed since (a light graded out, a new night added) or Siril's script
-  changed, it starts from the first step, and the log says why.
+  at. If the frames changed since (a light graded out, a new night added, a frame rewritten or
+  one dropped into the work folder by hand) or Siril's script changed, it starts from the first
+  step, sets aside anything the stopped attempt wrote, and the log says why. Results an earlier
+  stack left in the work folder are never claimed by a later run.
 - **When every step succeeds**, each result Siril saved gets a manifest beside it, for example
   `result_3600s.fit.astrorepo.json`. The manifest records the script, each step and how long it
   took, every frame by folder with its source, and the lights grading left out.
-- **When a step fails or you cancel**, any result the run wrote is moved to the work folder's
-  `failed` folder, so it is never mistaken for a finished stack. When the failure is one Siril
+- **When a step fails, you cancel, or the manifest cannot be written**, any result the run wrote
+  is moved, with any manifest beside it, to the work folder's `failed` folder, so it is never
+  mistaken for a finished stack. A cancel between steps stops the next step from starting. When the failure is one Siril
   often hits (a full disk, too little memory, too few stars to register, frames of different
   sizes, a file another program holds open), the job says what it usually means and what to do.
 

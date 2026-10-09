@@ -166,6 +166,106 @@ describe('stacks run step by step', () => {
     expect(await again.s.log(job.id)).toContain('Starting from the first step: the script or the frames changed since the earlier run.')
   })
 
+  it('[PRV-004] Given an earlier stack\'s result in the work folder, When a stack resumes and finishes, Then only its own result is published and the earlier one is left alone', async () => {
+    const first = harness()
+    const old = { path: '/work/result_60s.fit', sizeBytes: 900, modifiedAt: new Date(2026, 0, 1) }
+    first.world.results.push(old)
+    const job = await first.add()
+    await first.s.tick()
+    await first.step(0)
+    await first.step(0)
+    await flush()
+    first.s.shutdown()
+    await first.s.idle()
+
+    const again = harness(first.world)
+    await again.s.recover()
+    await again.s.tick()
+    await again.step(0)
+    again.world.results.push({ path: '/work/result_120s.fit', sizeBytes: 5000, modifiedAt: new Date() })
+    await again.step(0)
+    await again.s.idle()
+    expect(await again.world.store.get(job.id)).toMatchObject({ state: 'succeeded', progress: { published: ['/work/result_120s.fit'] } })
+    expect([...again.world.area.manifests.keys()]).toEqual(['/work/result_120s.fit'])
+  })
+
+  it('[PRV-004] Given an earlier stack\'s result, When a resumed stack fails, Then only what the resumed run wrote is set aside', async () => {
+    const first = harness()
+    first.world.results.push({ path: '/work/result_60s.fit', sizeBytes: 900, modifiedAt: new Date(2026, 0, 1) })
+    await first.add()
+    await first.s.tick()
+    await first.step(0)
+    await flush()
+    first.s.shutdown()
+    await first.s.idle()
+
+    const again = harness(first.world)
+    await again.s.recover()
+    await again.s.tick()
+    again.world.results.push({ path: '/work/result_partial.fit', sizeBytes: 10, modifiedAt: new Date() })
+    await again.step(1)
+    await again.s.idle()
+    expect(again.world.area.setAsideFiles).toEqual(['/work/result_partial.fit'])
+  })
+
+  it('[PRV-005] Given a run that stopped part way and the frames changed since, When it starts again, Then what the earlier attempt wrote is set aside first', async () => {
+    const first = harness()
+    const job = await first.add()
+    await first.s.tick()
+    await first.step(0)
+    first.world.results.push({ path: '/work/result_partial.fit', sizeBytes: 10, modifiedAt: new Date() })
+    await first.step(0)
+    await flush()
+    first.s.shutdown()
+    await first.s.idle()
+
+    first.world.frames = lights(4)
+    const again = harness(first.world)
+    await again.s.recover()
+    await again.s.tick()
+    await flush()
+    await flush()
+    expect(again.world.area.setAsideFiles).toEqual(['/work/result_partial.fit'])
+    expect(await again.s.log(job.id)).toContain('Set aside in failed what the earlier attempt wrote')
+  })
+
+  it('[PRV-002] Given a cancel that arrives between steps, When the next step would start, Then it never starts and the stack is cancelled', async () => {
+    const t = harness()
+    const job = await t.add()
+    const write = t.world.area.writeStep.bind(t.world.area)
+    let cancelling: Promise<unknown> | null = null
+    t.world.area.writeStep = async (workDir, name, text) => {
+      if (name === 'step-02.ssf') {
+        cancelling = t.s.cancel(job.id)
+        await flush()
+      }
+      return write(workDir, name, text)
+    }
+    await t.s.tick()
+    await t.step(0)
+    await t.s.idle()
+    await cancelling
+    expect(t.runner.runs).toHaveLength(1)
+    expect(await t.world.store.get(job.id)).toMatchObject({ state: 'cancelled', note: 'Cancelled before step 2 of 4 (register light).' })
+  })
+
+  it('[PRV-001] [PRV-002] Given every step succeeds but the manifest cannot be written, When the stack ends, Then it fails and the result is set aside', async () => {
+    const t = harness()
+    t.world.area.writeManifest = async () => {
+      throw new Error('EACCES: permission denied')
+    }
+    const job = await t.add()
+    await t.s.tick()
+    for (let i = 0; i < 3; i++) await t.step(0)
+    t.world.results.push({ path: '/work/result_120s.fit', sizeBytes: 5000, modifiedAt: new Date() })
+    await t.step(0)
+    await t.s.idle()
+    const done = await t.world.store.get(job.id)
+    expect(done?.state).toBe('failed')
+    expect(done?.note).toMatch(/^Siril finished, but publishing the result failed: EACCES: permission denied\. What it wrote is in the work folder's failed folder\.$/)
+    expect(t.world.area.setAsideFiles).toEqual(['/work/result_120s.fit'])
+  })
+
   it('[PRV-003] Given a script that cannot be read, When the stack runs, Then the stock script runs whole as before', async () => {
     const t = harness()
     t.world.area.texts.clear()
