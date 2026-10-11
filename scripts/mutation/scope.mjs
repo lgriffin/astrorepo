@@ -13,11 +13,11 @@ export const RUNTIME_PORTS = ['packages/application/src/ports/archive.ts']
 export const SKIPPED_NOTE = 'skipped.txt'
 
 /**
- * The break threshold used when MUTATION_BREAK is not set. The first full run (2026-10-11) scored
- * 76.8% overall with the weakest sizeable files near 67%; the floor sits below those so a pull
- * request touching one of them still passes. Raise it as survivors are killed; never lower it.
+ * The break threshold used when MUTATION_BREAK is not set: 80, Leigh's minimum. Every core file
+ * scored at least 80 when it was set (2026-10-11), so a pull request touching any of them passes
+ * only if it keeps its tests as sharp. Raise it as survivors are killed; never lower it.
  */
-export const DEFAULT_BREAK = 65
+export const DEFAULT_BREAK = 80
 
 /** Normalises a repository-relative path to forward slashes, whatever the platform. */
 export function toPosix(file) {
