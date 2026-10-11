@@ -65,7 +65,10 @@ export async function readTiffExif(src: ByteSource): Promise<RawExif> {
   if (!MAGICS.has(u16(head, 2))) throw new TiffReadError('Not a TIFF-based camera RAW file: its TIFF header is not one the app knows.')
 
   const readAt = async (offset: number, length: number) => {
-    if (offset < 0 || length < 0 || offset + length > src.size) throw new TiffReadError('A tag in this file points past its end, so the file is damaged or cut short.')
+    // An offset read from a RATIONAL or FLOAT tag can be a fraction or NaN, which no byte sits at.
+    if (!Number.isSafeInteger(offset) || offset < 0 || length < 0 || offset + length > src.size) {
+      throw new TiffReadError('A tag in this file points past its end, so the file is damaged or cut short.')
+    }
     return src.read(offset, length)
   }
 

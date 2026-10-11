@@ -272,3 +272,28 @@ describe('FITS Parser', () => {
     expect(missing.error).toMatch(/ENOENT/)
   })
 })
+
+describe('FITS parser on malformed headers', () => {
+  it('[ING-006, FUZ-003] Given a BITPIX that is not a pixel format, with axes whose pixels would take a fraction of a byte, When stats are computed, Then there are none, at once', () => {
+    const filePath = createTemp(['SIMPLE  =                    T', 'BITPIX  =                 1e-9', 'NAXIS   =                    2', 'NAXIS1  =              1000000', 'NAXIS2  =              1000000'], Buffer.alloc(2880))
+    const started = Date.now()
+    const result = parseFitsFile(filePath, { computeStats: true })
+    expect(result.isValid).toBe(true)
+    expect(result.imageStats).toBeNull()
+    expect(Date.now() - started).toBeLessThan(1000)
+  })
+
+  it('[ING-006, FUZ-004] Given a float image whose pixels are all NaN, When stats are computed, Then there are none rather than an infinite minimum', () => {
+    const data = Buffer.alloc(16)
+    for (let i = 0; i < 4; i++) data.writeFloatBE(NaN, i * 4)
+    const filePath = createTemp(['SIMPLE  =                    T', 'BITPIX  =                  -32', 'NAXIS   =                    2', 'NAXIS1  =                    2', 'NAXIS2  =                    2'], data)
+    expect(parseFitsFile(filePath, { computeStats: true }).imageStats).toBeNull()
+  })
+
+  it('[FUZ-005] Given values with a D exponent or too large for a double, When read, Then the D exponent is a number and the overflow stays text', () => {
+    const filePath = createTemp(['SIMPLE  =                    T', 'BITPIX  =                   16', 'NAXIS   =                    0', 'BSCALE  =                1.5D2', 'HUGE    =                1e400'])
+    const result = parseFitsFile(filePath)
+    expect(result.headerMap.get('BSCALE')?.value).toBe(150)
+    expect(result.headerMap.get('HUGE')?.value).toBe('1e400')
+  })
+})

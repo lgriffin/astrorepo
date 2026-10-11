@@ -45,7 +45,9 @@ function changeDir(cwd: string, target: string): string | null {
       parts.pop()
     } else parts.push(part)
   }
-  return parts.join('/')
+  const next = parts.join('/')
+  // "a/../~/x" or "a/../C:/x" lands on a folder that reads as the home folder or a drive once joined.
+  return /^([a-z]:|~)/i.test(next) ? null : next
 }
 
 const unquote = (s: string) => s.trim().replace(/^"(.*)"$/, '$1')

@@ -433,3 +433,23 @@ describe('panels of a mosaic', () => {
     expect(ranked.map(a => (a.kind === 'mosaic-tile' ? a.id : a.kind))).toEqual(['mosaic-tile:m31:1', 'mosaic-tile:m31:2', 'mosaic-tile:m31:3'])
   })
 })
+
+describe('solver output with no real place or scale', () => {
+  it('[SKY-001, FUZ-004] Given a Siril log with a garbled or zero resolution or an RA past 24h, When read, Then it is not taken as a solution', () => {
+    const log = (resolution: string, centre = "alpha: 00h42m44s, delta: +41°16'08\"") => `log: Resolution: ${resolution} arcsec/px\nlog: Image center: ${centre}\n`
+    const unusable = { ok: false, reason: 'Siril printed a solution with no usable position or scale.' }
+    expect(parseSirilSolve(log('..2.390'), 100, 100)).toEqual(unusable)
+    expect(parseSirilSolve(log('0'), 100, 100)).toEqual(unusable)
+    expect(parseSirilSolve(log('1.2', 'alpha: 25 00 00, delta: 10 00 00'), 100, 100)).toEqual(unusable)
+    expect(parseSirilSolve(log('1.2', 'alpha: 01 00 00, delta: 95 00 00'), 100, 100)).toEqual(unusable)
+    const rotationGarbled = parseSirilSolve(`${log('1.2')}log: Rotation: . deg\n`, 100, 100)
+    expect(rotationGarbled.ok && rotationGarbled.field.rotationDeg).toBe(0)
+  })
+
+  it('[SKY-004, FUZ-004] Given WCS cards so large that the scale or the centre overflows, When read, Then there is no field', () => {
+    const solved = 'PLTSOLVD=T\nCRVAL1=10\nCRVAL2=20\n'
+    expect(parseAstapResult(`${solved}CDELT1=0.001e308\nCDELT2=0.001e308\n`, 100, 100)).toEqual({ ok: false, reason: 'ASTAP said it solved the image but wrote no usable position.' })
+    expect(fieldFromWcs({ CRVAL1: 10, CRVAL2: 0, CRPIX1: 1, CRPIX2: -1e308, CD1_1: 0.001, CD2_2: 10 }, 100, 100)).toBeNull()
+    expect(fieldFromWcs({ CRVAL1: 359.99999999, CRVAL2: 0, CDELT1: 0.001, CDELT2: 0.001 }, 100, 100)?.raDeg).toBe(0)
+  })
+})

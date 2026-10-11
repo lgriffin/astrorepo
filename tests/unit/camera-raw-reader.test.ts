@@ -119,3 +119,12 @@ describe('camera RAW as the scanner reads it', () => {
     expect(cameraRawNotMeasured('/data/IMG_0001.cr3')).toBe('Camera RAW (CR3) pixels are not measured, so this light is not graded and stays in the stack.')
   })
 })
+
+describe('the TIFF reader on offsets that are not byte positions', () => {
+  it('[RIG-003, FUZ-002] Given SubIFD and EXIF pointers stored as rationals, one dividing by zero, When the tags are read, Then the file is refused with TiffReadError, not a RangeError', async () => {
+    for (const values of [[[1, 0]], [[1, 2]], [[17, 2]]] as [number, number][][]) {
+      const buf = tiffBytes({ ifd0: [{ tag: 0x014a, type: 5, values }, { tag: 0x8769, type: 5, values }] })
+      await expect(readTiffExif(source(buf))).rejects.toBeInstanceOf(TiffReadError)
+    }
+  })
+})

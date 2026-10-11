@@ -167,3 +167,10 @@ describe('tool hub warnings', () => {
     expect(toolWarnings(tools([], { 'rc-astro': '/usr/local/bin/rc-astro' }), false)).toEqual([])
   })
 })
+
+describe('object types that are also object properties', () => {
+  it('[PPR-001, FUZ-004] Given an object type of constructor or toString, When a profile is picked, Then it is the broadband default', () => {
+    expect(profileForObjectType('constructor').profile).toBe('broadband')
+    expect(profileForObjectType('toString').profile).toBe('broadband')
+  })
+})

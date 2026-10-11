@@ -211,3 +211,11 @@ describe('known Siril failures', () => {
     expect(KNOWN_SIRIL_FAILURES.length).toBeGreaterThanOrEqual(9)
   })
 })
+
+describe('a cd that lands on the home folder or a drive', () => {
+  it('[PRV-003, FUZ-001] Given a script whose cd goes up and into ~ or a drive, When it is split, Then it is not split, so it runs whole', () => {
+    expect(splitSirilScript('cd lights/../~/elsewhere\nconvert light\n')).toBeNull()
+    expect(splitSirilScript('cd lights/../C:/Windows\nconvert light\n')).toBeNull()
+    expect(splitSirilScript('cd lights/../process\nconvert light\n')?.[0].cwd).toBe('')
+  })
+})

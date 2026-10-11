@@ -58,7 +58,8 @@ export function parseSyqonModels(stdout: string): SyqonModel[] {
     if (!id || !MODEL_ID.test(id) || HEADER.has(id.toLowerCase())) continue
     const status = word.replace(/[^\w-]/g, '').toLowerCase()
     const description = rest.join(' ')
-    const known = SYQON_KNOWN_MODELS[id.toLowerCase()]
+    // Own keys only: a model the CLI calls "constructor" is not Object's constructor.
+    const known = Object.hasOwn(SYQON_KNOWN_MODELS, id.toLowerCase()) ? SYQON_KNOWN_MODELS[id.toLowerCase()] : undefined
     const step = known ?? SYQON_STEPS.find(s => SYQON_STEP_INFO[s].words.test(description)) ?? null
     if (models.some(m => m.id === id)) continue
     models.push({ id, available: AVAILABLE.has(status), status: status || 'unknown', step, description })
@@ -70,7 +71,7 @@ export function parseSyqonModels(stdout: string): SyqonModel[] {
 export function syqonModelsFor(step: SyqonStep, models: SyqonModel[]): SyqonModel[] {
   return models
     .filter(m => m.available && m.step === step)
-    .sort((a, b) => Number(!(a.id in SYQON_KNOWN_MODELS)) - Number(!(b.id in SYQON_KNOWN_MODELS)) || a.id.localeCompare(b.id))
+    .sort((a, b) => Number(!Object.hasOwn(SYQON_KNOWN_MODELS, a.id)) - Number(!Object.hasOwn(SYQON_KNOWN_MODELS, b.id)) || a.id.localeCompare(b.id))
 }
 
 /** Whether a file is a SyQon step's output (`<stem>_starless.fit` and the like), not a stack of its own. */

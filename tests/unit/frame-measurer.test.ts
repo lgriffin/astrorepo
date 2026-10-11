@@ -150,3 +150,20 @@ describe('NodeFrameMeasurer on a worker thread', () => {
     expect(workers).toHaveLength(2)
   })
 })
+
+describe('readFitsImage on a header that claims more than the file holds', () => {
+  it('[NFR-019, FUZ-002] Given a header claiming a 10000 × 10000 float image with no pixels, When read, Then it is refused as truncated before room for the pixels is allocated', async () => {
+    const file = write('huge.fit', fitsBytes({ BITPIX: -32, NAXIS: 2, NAXIS1: 10000, NAXIS2: 10000 }))
+    const before = process.memoryUsage().arrayBuffers
+    await expect(readFitsImage(file)).rejects.toThrow('The pixel data is truncated.')
+    expect(process.memoryUsage().arrayBuffers - before).toBeLessThan(100 * 1024 * 1024)
+  })
+
+  it('[FUZ-005] Given a card written with a D exponent, When the image reader reads it, Then it reads the number as the scanner does', async () => {
+    const header = fitsBytes({ BITPIX: 8, NAXIS: 2, NAXIS1: 1, NAXIS2: 1 }).toString('latin1')
+    const withD = header.replace('END' + ' '.repeat(77), 'BSCALE  =                1.0D1'.padEnd(80) + 'END'.padEnd(80)).slice(0, 2880)
+    const image = await readFitsImage(write('d.fit', Buffer.concat([Buffer.from(withD, 'latin1'), Buffer.from([3]), Buffer.alloc(2879)])))
+    expect(image.headers.get('BSCALE')).toBe(10)
+    expect(image.planes[0][0]).toBe(30)
+  })
+})

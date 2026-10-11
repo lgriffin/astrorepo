@@ -80,3 +80,11 @@ describe('SyQon CLI', () => {
     expect(parseLiveProgress('x'.repeat(300))?.line).toHaveLength(200)
   })
 })
+
+describe('model names that are also object properties', () => {
+  it('[HUB-007, FUZ-004] Given models the CLI names constructor and toString, When the list is read, Then they are unknown models with no step, not Object\'s own properties', () => {
+    const models = parseSyqonModels('constructor available\ntoString yes star removal\nhasOwnProperty available')
+    expect(models.map(m => [m.id, m.step])).toEqual([['constructor', null], ['toString', 'star-separation'], ['hasOwnProperty', null]])
+    expect(syqonModelsFor('star-separation', [...models, ...parseSyqonModels('axiom-mini available')]).map(m => m.id)).toEqual(['axiom-mini', 'toString'])
+  })
+})

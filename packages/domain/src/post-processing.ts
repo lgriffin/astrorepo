@@ -31,7 +31,7 @@ const PROFILE_OF: Record<string, Profile> = {
 
 /** The v2 profile for an object type, as its SIMBAD mapping would pick; broadband when unsure. */
 export function profileForObjectType(objectType: string | null): { profile: Profile; reason: string } {
-  const profile = objectType ? PROFILE_OF[objectType] : undefined
+  const profile = objectType && Object.hasOwn(PROFILE_OF, objectType) ? PROFILE_OF[objectType] : undefined
   if (!profile) return { profile: 'broadband', reason: "The object type does not say, so the broadband profile, Siril_Scripts' conservative default." }
   return { profile, reason: `It is ${article(objectType ?? '')} ${(objectType ?? '').replace(/_/g, ' ')}, so the ${profile} profile.` }
 }
