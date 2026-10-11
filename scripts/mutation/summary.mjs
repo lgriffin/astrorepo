@@ -2,7 +2,9 @@
 //
 //   node scripts/mutation/summary.mjs [reports/mutation/mutation.json] >> "$GITHUB_STEP_SUMMARY"
 import fs from 'node:fs'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { SKIPPED_NOTE } from './scope.mjs'
 
 const DETECTED = ['Killed', 'Timeout']
 const UNDETECTED = ['Survived', 'NoCoverage']
@@ -45,7 +47,10 @@ export function summarise(report, top = 15) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(process.argv[1])) {
   const file = process.argv[2] ?? 'reports/mutation/mutation.json'
-  if (!fs.existsSync(file)) {
+  const skipped = path.join(path.dirname(file), SKIPPED_NOTE)
+  if (!fs.existsSync(file) && fs.existsSync(skipped)) {
+    console.log(`## Mutation score\n\nSkipped. ${fs.readFileSync(skipped, 'utf8').trim()}\n`)
+  } else if (!fs.existsSync(file)) {
     console.log(`## Mutation score\n\nNo report at ${file}: the run did not get as far as testing mutants.\n`)
   } else {
     console.log(summarise(JSON.parse(fs.readFileSync(file, 'utf8')), Number(process.argv[3] ?? 15)))

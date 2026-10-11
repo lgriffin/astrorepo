@@ -1,7 +1,8 @@
 name: Mutation
 
 # Mutation testing of the hexagonal core (spec 030, docs/testing/mutation.md).
-# Pull requests mutate only the core files they change; the nightly and manual runs mutate all of it.
+# Pull requests mutate the core files they change (and the ones their changed core tests cover, or one
+# smoke file when only the gate's set-up changed); the nightly and manual runs mutate all of it.
 
 on:
   pull_request:
@@ -12,6 +13,9 @@ on:
       - 'vitest.mutation.config.ts'
       - 'tsconfig.mutation.json'
       - 'scripts/mutation/**'
+      - '.github/workflows/mutation.yml'
+      - 'package.json'
+      - 'package-lock.json'
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:

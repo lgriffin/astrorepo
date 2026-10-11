@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest'
+import { spawnSync } from 'child_process'
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { pathToFileURL } from 'url'
 import { score, summarise } from '../../scripts/mutation/summary.mjs'
-import { DEFAULT_BREAK, breakThreshold, changedTargets, isMutable, listMutable } from '../../scripts/mutation/scope.mjs'
+import {
+  DEFAULT_BREAK, SKIPPED_NOTE, SMOKE_TARGET, breakThreshold, changedTargets, isMutable, listMutable, sourcesForTest
+} from '../../scripts/mutation/scope.mjs'
 
 const root = path.resolve(__dirname, '../..')
 
@@ -50,7 +54,7 @@ describe('mutation gate scope', () => {
       'packages/domain/src/index.ts',
       'packages/domain/test/jobs.test.ts'
     ]
-    const exists = (f: string) => f !== 'packages/domain/src/removed.ts'
+    const exists = (f: string) => f !== 'packages/domain/src/removed.ts' && !f.includes('/use-cases/jobs.ts')
     expect(changedTargets(changed, exists)).toEqual([
       'packages/application/src/use-cases/archive-target.ts',
       'packages/domain/src/jobs.ts'
@@ -58,7 +62,32 @@ describe('mutation gate scope', () => {
   })
 
   it('[MUT-003] Given only non-core changes, When targeted, Then the run is skipped with nothing to mutate', () => {
-    expect(changedTargets(['README.md', 'src/main/composition.ts', 'packages/domain/test/x.test.ts'], () => true)).toEqual([])
+    const exists = (f: string) => !f.startsWith('packages/domain/src/')
+    expect(changedTargets(['README.md', 'src/main/composition.ts', 'packages/domain/test/x.test.ts'], exists)).toEqual([])
+  })
+
+  it('[MUT-002] Given a changed core test, When targeted, Then the source it is named after is mutated', () => {
+    expect(changedTargets(['packages/domain/test/jobs.test.ts', 'packages/application/test/archive-target.test.ts'])).toEqual([
+      'packages/application/src/use-cases/archive-target.ts',
+      'packages/domain/src/jobs.ts'
+    ])
+    expect(sourcesForTest('packages/domain/test/helpers.ts')).toEqual([])
+  })
+
+  it('[MUT-007] Given only the gate\'s own set-up changed, When targeted, Then the smoke file is mutated', () => {
+    for (const file of ['stryker.config.mjs', 'package-lock.json', 'scripts/mutation/changed.mjs', '.github/workflows/mutation.yml']) {
+      expect(changedTargets(['README.md', file])).toEqual([SMOKE_TARGET])
+    }
+    expect(changedTargets(['package.json', 'packages/domain/src/jobs.ts'])).toEqual(['packages/domain/src/jobs.ts'])
+    expect(isMutable(SMOKE_TARGET) && fs.existsSync(path.join(root, SMOKE_TARGET))).toBe(true)
+  })
+
+  it('[MUT-008] Given --base with no ref, When the changed-files mode starts, Then it is refused with its usage and status 2', () => {
+    for (const args of [['--base'], ['--base', '--', '--concurrency', '1']]) {
+      const run = spawnSync(process.execPath, [path.join(root, 'scripts/mutation/changed.mjs'), ...args], { cwd: root, encoding: 'utf8' })
+      expect(run.status).toBe(2)
+      expect(run.stderr).toContain('Usage: node scripts/mutation/changed.mjs')
+    }
   })
 
   it('[MUT-004] Given the Stryker config, When loaded, Then it fails the run below the gate threshold', async () => {
@@ -112,5 +141,20 @@ describe('mutation gate scope', () => {
     const md = summarise({ files: { 'packages/domain/src/a.ts': { mutants: mutants('Ignored') } } })
     expect(md).toContain('## Mutation score: n/a')
     expect(md).not.toContain('| File |')
+  })
+
+  it('[MUT-009] Given a skipped changed-files run and no report, When summarised in CI, Then the summary says it was skipped, not failed', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mutation-summary-'))
+    try {
+      const summary = (file: string) =>
+        spawnSync(process.execPath, [path.join(root, 'scripts/mutation/summary.mjs'), file], { encoding: 'utf8' }).stdout
+      expect(summary(path.join(dir, 'mutation.json'))).toContain('did not get as far as testing mutants')
+      fs.writeFileSync(path.join(dir, SKIPPED_NOTE), 'nothing to mutate.\n')
+      const md = summary(path.join(dir, 'mutation.json'))
+      expect(md).toContain('Skipped. nothing to mutate.')
+      expect(md).not.toContain('did not get as far')
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

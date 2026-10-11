@@ -14,7 +14,7 @@ Requirements: [specs/030-mutation-testing](../../specs/030-mutation-testing/requ
 | Command | What it mutates |
 |---|---|
 | `npm run test:mutation` | The whole core. Around 9,900 mutants: allow over an hour on four cores. |
-| `npm run test:mutation:changed` | Only core files changed against `origin/main` (committed, uncommitted and untracked). Exits at once when there are none. |
+| `npm run test:mutation:changed` | Only core files changed against `origin/main` (committed, uncommitted and untracked), plus the source a changed core test is named after (`test/x.test.ts` → `src/x.ts` or `src/use-cases/x.ts`). When only the gate's own set-up changed (its configs, `scripts/mutation/`, its workflow, `package.json` or the lockfile) it mutates one smoke file, `packages/domain/src/scan-pacing.ts`, so the gate still runs end to end. Exits at once, and notes the skip for the CI summary, when there is nothing to mutate. |
 | `npm run test:mutation:changed -- --base origin/my-branch` | The same, against another base. |
 | `npm run test:mutation -- --mutate packages/domain/src/jobs.ts` | One file, while you work on its tests. |
 
