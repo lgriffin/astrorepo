@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
-import { SqliteFrameCatalogue, parseUtc } from '../../src/main/adapters/sqlite-frame-catalogue'
+import { SqliteFrameCatalogue } from '../../src/main/adapters/sqlite-frame-catalogue'
+import { parseUtc } from '../../src/main/adapters/shared/sql'
 import { composeCore } from '../../src/main/composition'
 import { setupTestDb, teardownTestDb, seedFitsScan, seedFitsFile, seedTarget } from '../helpers/setup'
 

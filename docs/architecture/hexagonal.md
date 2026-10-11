@@ -135,7 +135,14 @@ better-sqlite3 without any gain.
 
 | Rule | Enforced by |
 |---|---|
-| Domain imports only its own files; application imports only itself and the domain (NFR-004) | `tests/architecture/hexagon-boundaries.test.ts` |
+| Domain imports only its own files; application imports only itself and the domain (NFR-004). Side-effect, dynamic and `require` imports count too (HEX-011) | `tests/architecture/hexagon-boundaries.test.ts`, which reads the source with the TypeScript compiler (`tests/architecture/source-graph.ts`) |
+| The core never reads the clock or randomness and never uses a host global (`process`, `console`, timers, `fetch`, ...); it takes them through ports (HEX-001) | the same test, and ESLint's core override (no Node or browser globals) |
+| The renderer reaches the main process only through the preload bridge and `@shared` types (HEX-002); `src/shared` imports nothing else (HEX-003) | the same test, and ESLint's renderer `no-restricted-imports` |
+| Adapters never import legacy services, `db/connection`, IPC, composition or each other; shared helpers live in `src/main/adapters/shared/`, presenters may share wording helpers (HEX-004) | the same test |
+| Use cases (`make*`) are built only in `composition.ts` (HEX-005) | the same test |
+| The testkit never imports the desktop app (HEX-006); legacy services and codecs never import adapters, IPC or composition (HEX-007) | the same test |
+| Only `system-clock.ts` reads the time; every other adapter takes a Clock (HEX-010) | the same test |
+| Legacy code only shrinks: `getSqlite()` calls, legacy service files and legacy calls from the IPC handlers may fall, never rise (HEX-008, HEX-009) | `tests/architecture/legacy-ratchet.test.ts` against `legacy-ratchet.json`; lower the numbers there when a service moves into the core |
 | Every adapter of a port passes the port's contract suite (NFR-006) | `packages/testkit/src/contracts/*.contract.ts`, run in `tests/contracts/` |
 | Core code takes its dependencies as arguments; no `getSqlite()`, no `vi.mock` of modules in core tests | Review; adapters take a `Database` in their constructor |
 | Every requirement ID is cited by a test; no test cites an unknown ID (NFR-005, NFR-007) | `npm run ears` in CI |
@@ -150,7 +157,8 @@ better-sqlite3 without any gain.
 4. Add an in-memory adapter to `packages/testkit` and a contract suite for the port.
 5. Implement the port in `src/main/adapters` against the existing tables and run the same contract suite on it.
    New tables go in `src/main/db/migrations.ts` only, guarded so a second run changes nothing.
-6. Wire it in `src/main/composition.ts` and point the IPC handler at the use case. Delete the old service code.
+6. Wire it in `src/main/composition.ts` and point the IPC handler at the use case. Delete the old service code,
+   then lower the counts in `tests/architecture/legacy-ratchet.json` to lock the gain in.
 7. Update `docs/roadmap.md`, the user guide in `docs/guides/`, and the charter if a principle moved.
 
 ## EARS

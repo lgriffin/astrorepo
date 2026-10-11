@@ -1,5 +1,6 @@
 import { execFile } from 'child_process'
 import type { AppPathsRegistry } from '@astro/application'
+import { systemClock } from './system-clock'
 
 /** Runs a program with an argument array and gives back what it printed; rejects when it fails. */
 export type ExecFile = (program: string, args: string[]) => Promise<string>
@@ -22,7 +23,7 @@ export class WindowsAppPathsRegistry implements AppPathsRegistry {
   constructor(
     private readonly windows = process.platform === 'win32',
     private readonly exec: ExecFile = execFileText,
-    private readonly now: () => number = Date.now,
+    private readonly now: () => number = () => systemClock.now().getTime(),
     /** How long a lookup is reused, since every page that finds tools asks again. */
     private readonly lifetimeMs = 30_000
   ) {}

@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach } from 'vitest'
-import { InMemoryDisk, InMemoryFileHashStore } from '@astro/testkit'
+import { FixedClock, InMemoryDisk, InMemoryFileHashStore } from '@astro/testkit'
 import { contentHasherContract, fileHashStoreContract, fileIndexContract } from '@astro/testkit/contracts/file-hashing.contract'
 import { SqliteFileHashStore, SqliteFileIndex } from '../../src/main/adapters/sqlite-file-hashing'
 import { NodeContentHasher } from '../../src/main/adapters/node-content-hasher'
@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 fileHashStoreContract('in-memory', () => new InMemoryFileHashStore())
-fileHashStoreContract('SQLite', () => new SqliteFileHashStore(setupTestDb()))
+fileHashStoreContract('SQLite', () => new SqliteFileHashStore(setupTestDb(), new FixedClock()))
 
 fileIndexContract('in-memory', ({ files }) => {
   const disk = new InMemoryDisk()

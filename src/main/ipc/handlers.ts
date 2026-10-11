@@ -22,7 +22,7 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
-import { composeCore, composeGallery, composeGrading } from '../composition'
+import { clock, composeCore, composeGallery, composeGrading } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
@@ -563,7 +563,7 @@ export function registerIpcHandlers(): void {
     })
   ))
 
-  handle('jobs:list', validated('jobs:list', async (args) => toJobsView(await jobs().snapshot(), new Date(), args?.target_id)))
+  handle('jobs:list', validated('jobs:list', async (args) => toJobsView(await jobs().snapshot(), clock.now(), args?.target_id)))
 
   /** A refusal the user can act on comes back as a message; anything else is a bug and throws. */
   const refusable = async (work: () => Promise<{ title: string }>) => {

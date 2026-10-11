@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { CometStore } from '@astro/application'
+import type { Clock, CometStore } from '@astro/application'
 import type { CometOrbit } from '@astro/domain'
 
 interface OrbitRow {
@@ -15,7 +15,7 @@ interface OrbitRow {
 
 /** Comet orbits in the index, one per target; removing the target removes its orbit (RIG-011). */
 export class SqliteCometStore implements CometStore {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database, private readonly clock: Clock) {}
 
   async get(targetId: string): Promise<CometOrbit | null> {
     const r = this.db.prepare('SELECT * FROM comet_orbits WHERE target_id = ?').get(targetId) as OrbitRow | undefined
@@ -45,6 +45,6 @@ export class SqliteCometStore implements CometStore {
            e = excluded.e, inclination_deg = excluded.inclination_deg, node_deg = excluded.node_deg, peri_deg = excluded.peri_deg,
            epoch = excluded.epoch, updated_at = excluded.updated_at`
       )
-      .run(targetId, orbit.name, orbit.perihelionAt.toISOString(), orbit.q, orbit.e, orbit.inclinationDeg, orbit.nodeDeg, orbit.periDeg, orbit.epoch, new Date().toISOString())
+      .run(targetId, orbit.name, orbit.perihelionAt.toISOString(), orbit.q, orbit.e, orbit.inclinationDeg, orbit.nodeDeg, orbit.periDeg, orbit.epoch, this.clock.now().toISOString())
   }
 }
