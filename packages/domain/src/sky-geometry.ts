@@ -54,8 +54,9 @@ const RAD = Math.PI / 180
 
 /** An angle in (-180, 180]. */
 export function normaliseAngle(deg: number): number {
-  const a = ((deg % 360) + 360) % 360
-  return a > 180 ? a - 360 : a
+  // The remainder is exact; only a turn added or taken away rounds, so an angle in range comes back unchanged.
+  const a = deg % 360
+  return (a > 180 ? a - 360 : a <= -180 ? a + 360 : a) + 0
 }
 
 /** Angle between two positions given in degrees. */
@@ -482,7 +483,8 @@ export function offsetPosition(centre: { raDeg: number; decDeg: number }, xiDeg:
   const denom = Math.cos(dec0) - eta * Math.sin(dec0)
   const ra = ra0 + Math.atan2(xi, denom)
   const dec = Math.atan2(Math.sin(dec0) + eta * Math.cos(dec0), Math.sqrt(xi * xi + denom * denom))
-  return { raDeg: round(((ra / RAD) % 360 + 360) % 360, 6), decDeg: round(dec / RAD, 6) }
+  // Rounding can carry 359.9999999 up to 360, which is 0.
+  return { raDeg: round(((ra / RAD) % 360 + 360) % 360, 6) % 360, decDeg: round(dec / RAD, 6) }
 }
 
 function panelsAlong(targetDeg: number, fieldDeg: number, overlap: number): number {

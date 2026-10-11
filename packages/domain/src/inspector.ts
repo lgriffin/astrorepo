@@ -77,12 +77,14 @@ export const HISTOGRAM_BINS = 256
 /** Counts of the values in `bins` equal steps from min to max; values outside go to the end bins. */
 export function histogram(values: ArrayLike<number>, range: { min: number; max: number }, bins = HISTOGRAM_BINS): Histogram {
   const counts = new Array<number>(bins).fill(0)
-  const span = range.max - range.min
+  // Halved, so a range across most of a double's span (a 64-bit float image) does not overflow to Infinity.
+  const half = (n: number) => n / 2
+  const span = half(range.max) - half(range.min)
   for (let i = 0; i < values.length; i++) {
     const v = values[i]
     if (!Number.isFinite(v)) continue
-    const b = span > 0 ? Math.floor(((v - range.min) / span) * bins) : 0
-    counts[Math.max(0, Math.min(bins - 1, b))]++
+    const b = span > 0 ? Math.floor(((half(v) - half(range.min)) / span) * bins) : 0
+    counts[Number.isNaN(b) ? 0 : Math.max(0, Math.min(bins - 1, b))]++
   }
   return { min: range.min, max: range.max, counts }
 }

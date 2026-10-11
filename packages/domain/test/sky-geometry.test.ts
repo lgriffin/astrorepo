@@ -453,3 +453,19 @@ describe('solver output with no real place or scale', () => {
     expect(fieldFromWcs({ CRVAL1: 359.99999999, CRVAL2: 0, CDELT1: 0.001, CDELT2: 0.001 }, 100, 100)?.raDeg).toBe(0)
   })
 })
+
+describe('a position just west of RA 0', () => {
+  it('[SKY-007, FUZ-006] Given an offset a hair west of a centre at RA 0, When put on the sky, Then its RA is 0, never 360', () => {
+    expect(offsetPosition({ raDeg: 0, decDeg: 0 }, -2.8421709430404014e-14, 0).raDeg).toBe(0)
+    expect(offsetPosition({ raDeg: 0, decDeg: 10 }, -1e-9, 0).raDeg).toBe(0)
+  })
+})
+
+describe('normalising an angle already in range', () => {
+  it('[SKY-006, FUZ-006] Given an angle already in (-180, 180], When normalised, Then it comes back unchanged to the last bit', () => {
+    expect(normaliseAngle(171.54509027511654)).toBe(171.54509027511654)
+    expect(normaliseAngle(-188.4549097248835)).toBe(normaliseAngle(normaliseAngle(-188.4549097248835)))
+    expect(normaliseAngle(-180)).toBe(180)
+    expect(normaliseAngle(-0)).toBe(0)
+  })
+})

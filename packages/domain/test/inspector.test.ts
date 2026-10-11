@@ -232,3 +232,11 @@ describe('clipping worth a warning', () => {
     expect(clipping({ saturatedShare: null, blackShare: 0 })).toEqual({ saturated: false, black: false })
   })
 })
+
+describe('a histogram across most of a double\'s range', () => {
+  it('[INS-001, FUZ-006] Given a 64-bit image whose values span almost every double, When binned, Then every value is counted in a bin', () => {
+    const h = histogram([1.7e308, -1.7e308, 0], { min: -1.7e308, max: 1.7e308 }, 4)
+    expect(h.counts).toEqual([1, 0, 1, 1])
+    expect(Object.keys(h.counts)).toEqual(['0', '1', '2', '3'])
+  })
+})

@@ -188,3 +188,10 @@ describe('motion and the positions file', () => {
     )
   })
 })
+
+describe('a frame name with a carriage return', () => {
+  it('[RIG-014, FUZ-006] Given a light whose name holds a carriage return, When the positions file is written, Then the name is quoted so the row does not break', () => {
+    const csv = cometPositionsCsv([{ frame: 'cr\r.fit', at: new Date('2024-01-01T00:00:00Z'), raDeg: 1, decDeg: 2 }])
+    expect(csv.split('\n')[1]).toBe('"cr\r.fit",2024-01-01T00:00:00.000Z,1.000000,2.000000')
+  })
+})
