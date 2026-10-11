@@ -1,4 +1,4 @@
-import type { ChannelGap, FilterSuggestion, Job, NextAction, StackingSuggestion } from '@astro/domain'
+import { activeStackJobs, type ChannelGap, type FilterSuggestion, type Job, type NextAction, type StackingSuggestion } from '@astro/domain'
 import { mosaicPlannerLink } from '@shared/navigation'
 import type { Recommendation } from '@shared/types'
 import { targetLink } from '@shared/navigation'
@@ -95,12 +95,7 @@ export function toNextActionRecommendation(a: NextAction): Recommendation {
  * so Home says where the work is instead of asking for it again, and its action opens Jobs.
  */
 export function withQueuedJobs(recommendations: Recommendation[], jobs: Pick<Job, 'targetId' | 'kind' | 'state' | 'timing'>[]): Recommendation[] {
-  const active = new Map<string, Pick<Job, 'state' | 'timing'>>()
-  for (const job of jobs) {
-    if (job.kind !== 'stack' || (job.state !== 'queued' && job.state !== 'running')) continue
-    // A running job says more than a queued one for the same target.
-    if (!active.has(job.targetId) || job.state === 'running') active.set(job.targetId, job)
-  }
+  const active = activeStackJobs(jobs)
   return recommendations.map(r => {
     const job = r.category === 'stacking' && r.targetId ? active.get(r.targetId) : undefined
     if (!job) return r

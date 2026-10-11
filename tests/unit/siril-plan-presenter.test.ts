@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import type { SirilRunEstimate } from '@astro/application'
-import { stackAdvice } from '@astro/testkit'
+import { sirilEstimate, stackAdvice } from '@astro/testkit'
 import { toSirilPlanView } from '../../src/main/adapters/siril-plan-presenter'
 
 const GB = 1024 ** 3
 
-const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
+const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => sirilEstimate({
   counts: { lights: 120, darks: 20, flats: 0, biases: 1 },
   rejectedLights: 0,
   sensor: 'colour',

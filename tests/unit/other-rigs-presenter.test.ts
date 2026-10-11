@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CometPlan, ScriptEstimate, SirilRunEstimate } from '@astro/application'
 import type { FilterSuggestion, NextAction, TonightPlan } from '@astro/domain'
-import { stackAdvice } from '@astro/testkit'
+import { scriptEstimate, sirilEstimate, stackAdvice } from '@astro/testkit'
 import { rawNote, toFilterPlanView, toSirilPlanView } from '../../src/main/adapters/siril-plan-presenter'
 import { formatDec, formatRa, orbitText, toCometPlanView } from '../../src/main/adapters/comet-presenter'
 import { captureFilter, filterLine, toNextActionRecommendation } from '../../src/main/adapters/stacking-suggestion-presenter'
@@ -9,7 +9,7 @@ import { toForwardPlanView } from '../../src/main/adapters/planning-presenter'
 
 const GB = 1024 ** 3
 
-const mono = (over: Partial<ScriptEstimate> = {}): ScriptEstimate => ({
+const mono = (over: Partial<ScriptEstimate> = {}): ScriptEstimate => scriptEstimate({
   script: 'Mono_Preprocessing',
   label: 'Mono, with biases, flats and darks',
   missing: [],
@@ -21,7 +21,7 @@ const mono = (over: Partial<ScriptEstimate> = {}): ScriptEstimate => ({
   shortBytes: null,
   memory: null,
   ...over
-})
+}, { lights: 40 })
 
 const filters = (): NonNullable<SirilRunEstimate['filters']> => ({
   darks: 20,
@@ -35,7 +35,7 @@ const filters = (): NonNullable<SirilRunEstimate['filters']> => ({
   ]
 })
 
-const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => ({
+const estimate = (over: Partial<SirilRunEstimate> = {}): SirilRunEstimate => sirilEstimate({
   counts: { lights: 60, darks: 20, flats: 15, biases: 1 },
   rejectedLights: 0,
   sensor: 'mono',
@@ -94,15 +94,16 @@ describe('the per-filter plan', () => {
 
   it('[RIG-007] Given channel masters for some, all or none of the filters, When presented, Then the note says what is left to do', () => {
     const f = filters()
-    expect(toFilterPlanView(f, 100 * GB).mastersNote).toBe("1 of 2 channels has a master. Stack the rest, then combine them in Siril's RGB composition.")
+    expect(toFilterPlanView(f).mastersNote).toBe("1 of 2 channels has a master. Stack the rest, then combine them in Siril's RGB composition.")
     f.stacks[1].master = { path: 'C:\\work\\filters\\SII\\result_6000s.fit', sizeBytes: 1, modifiedAt: null }
-    const all = toFilterPlanView(f, 100 * GB)
+    const all = toFilterPlanView(f)
     expect(all.mastersNote).toBe("Every channel has a master. Combine them in Siril's RGB composition.")
     expect(all.stacks[1].master).toBe('result_6000s.fit')
     f.stacks.forEach(s => (s.master = null))
-    expect(toFilterPlanView(f, null)).toMatchObject({ mastersNote: "Each finished stack leaves its channel master in its filter's work folder, listed here." })
-    expect(toFilterPlanView(f, null).stacks[0]).toMatchObject({ verdict: 'unknown', canQueue: false })
-    expect(toFilterPlanView({ ...f, stacks: [{ ...f.stacks[0], script: mono({ fits: false, shortBytes: 2 * GB, headroomBytes: null }) }] }, GB).stacks[0]).toMatchObject({ verdict: 'short', verdictText: 'Short by 2.0 GB' })
+    expect(toFilterPlanView(f)).toMatchObject({ mastersNote: "Each finished stack leaves its channel master in its filter's work folder, listed here." })
+    const unknownSpace = { ...f, stacks: [{ ...f.stacks[0], script: scriptEstimate(mono(), { lights: 40, freeBytes: null }) }] }
+    expect(toFilterPlanView(unknownSpace).stacks[0]).toMatchObject({ verdict: 'unknown', canQueue: false })
+    expect(toFilterPlanView({ ...f, stacks: [{ ...f.stacks[0], script: mono({ fits: false, shortBytes: 2 * GB, headroomBytes: null }) }] }).stacks[0]).toMatchObject({ verdict: 'short', verdictText: 'Short by 2.0 GB' })
   })
 })
 

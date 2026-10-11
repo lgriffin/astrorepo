@@ -1,4 +1,4 @@
-import { parentDir, postProcessCommand, sirilStackCommand, SYQON_STEP_INFO, toolSpec, type Job, type JobTiming, type SirilScriptId } from '@astro/domain'
+import { parentDir, postProcessCommand, sirilStackCommand, SYQON_STEP_INFO, toolSpec, type Job, type JobTiming, type SirilScriptId, type StackRefusal } from '@astro/domain'
 import type { Clock } from '../ports/clock'
 import type { JobStore } from '../ports/jobs'
 import type { StackCatalogue } from '../ports/stack-catalogue'
@@ -40,6 +40,22 @@ export type QueueStack = (request: QueueStackRequest) => Promise<Job>
  * disk rather than taken from the page, so a job only ever runs Siril with a stock script over
  * the target's own frames, with its calibration present and room on the disk.
  */
+/** Why a stack was refused, in the words the page shows. */
+function stackRefusalText(refusal: StackRefusal, script: string, missing: string[], filters: number): string {
+  switch (refusal) {
+    case 'mixes-filters':
+      return `These mono lights carry ${filters} filters, and one stack would mix them. Queue each filter's stack on its own.`
+    case 'no-lights':
+      return 'There are no light frames to stack.'
+    case 'missing-calibration':
+      return `${script} needs ${missing.join(', ')}, which this target does not have.`
+    case 'space-unknown':
+      return "The work area's disk does not report its free space, so the run could fill it."
+    case 'short-of-space':
+      return `The work area's disk is short of the space ${script} needs.`
+  }
+}
+
 export function makeQueueStack(deps: QueueStackDeps): QueueStack {
   return async request => {
     const filter = request.filter?.trim() || undefined
@@ -51,15 +67,11 @@ export function makeQueueStack(deps: QueueStackDeps): QueueStack {
     const workDir = planned?.workDir ?? request.workDir
     const [estimate, target] = await Promise.all([deps.estimate(request.sourceDir, workDir, filter ? { filter } : {}), deps.stacks.describeTarget(request.targetId)])
     // One stack over several filters would mix them in one master (RIG-018).
-    if (!filter && estimate.filters) {
-      throw new JobRefusedError(`These mono lights carry ${estimate.filters.stacks.length} filters, and one stack would mix them. Queue each filter's stack on its own.`)
-    }
+    if (!filter && estimate.filters) throw new JobRefusedError(stackRefusalText('mixes-filters', request.script, [], estimate.filters.stacks.length))
     const script = estimate.scripts.find(s => s.script === request.script)
     if (!script) throw new JobRefusedError(`${request.script} is not a stock Siril script for these frames' sensor.`)
-    if (estimate.counts.lights === 0) throw new JobRefusedError('There are no light frames to stack.')
-    if (script.missing.length > 0) throw new JobRefusedError(`${request.script} needs ${script.missing.join(', ')}, which this target does not have.`)
-    if (estimate.freeBytes === null) throw new JobRefusedError("The work area's disk does not report its free space, so the run could fill it.")
-    if (!script.fits) throw new JobRefusedError(`The work area's disk is short of the space ${request.script} needs.`)
+    // The plan was worked out again above, so its refusal is the one the page offered the script by.
+    if (script.refusal) throw new JobRefusedError(stackRefusalText(script.refusal, request.script, script.missing, 0))
     const siril = (await deps.tools.locate()).find(t => t.id === 'siril')?.path ?? null
     if (!siril) throw new JobRefusedError('Siril was not found. Set where siril-cli is in Settings → Tools.')
     const scriptPath = await deps.tools.stockScript(`${request.script}.ssf`)

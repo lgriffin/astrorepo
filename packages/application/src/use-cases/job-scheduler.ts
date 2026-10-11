@@ -3,6 +3,7 @@ import {
   explainSirilFailure,
   FAILED_FOLDER,
   interpretExit,
+  estimateJobSeconds,
   jobHistory,
   parseLiveProgress,
   runToolOf,
@@ -18,6 +19,7 @@ import {
   storeResults,
   storedResults,
   type Job,
+  type JobEstimate,
   type JobSettings,
   type MachineLoad,
   type Schedule,
@@ -65,6 +67,8 @@ export interface JobsSnapshot {
   schedule: Schedule
   settings: JobSettings
   load: MachineLoad
+  /** How long the running job is expected to take, from this PC's past runs (JOB-006); null when none runs. */
+  runningEstimate: JobEstimate | null
 }
 
 export interface JobScheduler {
@@ -114,8 +118,10 @@ export function makeJobScheduler(deps: JobSchedulerDeps): JobScheduler {
     const [jobs, settings, load] = await Promise.all([deps.store.list(), deps.settings.read(), deps.machine.sample()])
     const queued = jobs.filter(j => j.state === 'queued')
     const free = await Promise.all(queued.map(async j => [j.id, (await deps.workspace.workAreaSpace(j.spaceDir)).freeBytes] as const))
-    const schedule = scheduleJobs({ now: deps.clock.now(), settings, jobs, history: jobHistory(jobs), load, freeBytes: Object.fromEntries(free) })
-    return { jobs, schedule, settings, load }
+    const history = jobHistory(jobs)
+    const schedule = scheduleJobs({ now: deps.clock.now(), settings, jobs, history, load, freeBytes: Object.fromEntries(free) })
+    const running = jobs.find(j => j.state === 'running')
+    return { jobs, schedule, settings, load, runningEstimate: running ? estimateJobSeconds(running.kind, running.neededBytes, history) : null }
   }
 
   const finish = async (id: string, state: Job['state'], exitCode: number | null, note: string | null) => {

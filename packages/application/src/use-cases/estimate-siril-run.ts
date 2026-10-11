@@ -19,6 +19,10 @@ import {
   recommendSirilScript,
   SIRIL_SCRIPTS,
   spaceVerdict,
+  spaceState,
+  stackRefusal,
+  type SpaceState,
+  type StackRefusal,
   type CalibrationCheck,
   type CalibrationFrame,
   type DrizzleAdvice,
@@ -56,6 +60,10 @@ export interface ScriptEstimate extends SpaceVerdict {
   stages: SpaceStage[]
   /** Memory the stack needs and whether the PC has it (ADV-001, ADV-002); null without a frame size. */
   memory: (MemoryNeed & { fit: MemoryFit; text: string }) | null
+  /** Whether the space is known, and fits. */
+  space: SpaceState
+  /** Why queueing this script would be refused; null when it can be queued. The queue applies the same rule. */
+  refusal: StackRefusal | null
 }
 
 /** Advice beside the stacking plan (specs/020-stacking-advice). */
@@ -169,6 +177,7 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
           ...spaceVerdict(estimate.totalBytes + prepBytes, space.freeBytes)
         }
       })
+      .map(s => ({ ...s, space: spaceState(s), refusal: null as StackRefusal | null }))
       .sort((a, b) => Number(b.script === recommended.script) - Number(a.script === recommended.script))
 
     const advice = await adviseStack({ deps, lights, details, placements, sensor, keptLights: counts.lights, scripts, recommended: recommended.script, allLights: lightPathsOf(selected.frames) })
@@ -194,6 +203,8 @@ export function makeEstimateSirilRun(deps: EstimateSirilRunDeps): EstimateSirilR
       }
       filters = { ...rest, stacks }
     }
+
+    for (const s of scripts) s.refusal = stackRefusal({ lights: counts.lights, missing: s.missing, verdict: s, mixesFilters: filters !== null })
 
     return {
       advice,

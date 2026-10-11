@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  frameKind,
+  solveFolderName,
+  workFolderName,
   duplicateCandidates,
   groupDuplicates,
   isHashCurrent,
@@ -95,5 +98,32 @@ describe('Siril workspace plan', () => {
       { path: '/src/b/noext', name: 'noext', imageType: null }
     ])
     expect(plan.map(p => `${p.folder}/${p.name}`)).toEqual(['lights/Light_1.fit', 'lights/LIGHT_1_2.fit', 'lights/noext', 'lights/noext_2'])
+  })
+})
+
+describe('work folder names', () => {
+  it('[HEX-014] [ING-013] Given source folders with the same name in different places, When named, Then each keeps its name and a different digest', () => {
+    const a = workFolderName('/nights/2026-10-01/lights')
+    expect(a).toMatch(/^lights-[0-9a-f]+$/)
+    expect(workFolderName('/nights/2026-10-02/lights')).not.toBe(a)
+    expect(workFolderName('/nights/2026-10-01/lights')).toBe(a)
+    expect(workFolderName('C:\\Astro\\M 31 <odd>')).toMatch(/^M 31 _odd_-[0-9a-f]+$/)
+    expect(workFolderName('/')).toMatch(/^target-/)
+    expect(workFolderName('D:\\')).toMatch(/^target-/)
+  })
+
+  it('[HEX-014] [NFR-018] Given target ids with separators or nothing safe, When a solve folder is named, Then it holds no separator', () => {
+    expect(solveFolderName('M 31/panel\\2')).toBe('M_31_panel_2')
+    expect(solveFolderName('')).toBe('target')
+  })
+})
+
+describe('what kind of frame', () => {
+  it('[HEX-015] Given IMAGETYP values as Seestar, NINA, ASIAIR and Siril write them, When read, Then each is one kind whatever its case', () => {
+    expect(['LIGHT', 'Light Frame', 'light'].map(frameKind)).toEqual(['light', 'light', 'light'])
+    expect(['Dark', 'DARK FLAT', 'Flat Frame', 'Bias', 'OFFSET'].map(frameKind)).toEqual(['dark', 'dark', 'flat', 'bias', 'bias'])
+    expect([null, '', 'Master'].map(frameKind)).toEqual(['unknown', 'unknown', 'unknown'])
+    expect(sirilFolderFor('Light_M 81_10.0s.fit', null)).toBe('lights')
+    expect(sirilFolderFor('x.fit', 'Flat Frame')).toBe('flats')
   })
 })

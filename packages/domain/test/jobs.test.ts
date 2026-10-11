@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  activeStackJobs,
   afterInterruption,
   DEFAULT_JOB_SETTINGS,
   estimateJobSeconds,
@@ -232,5 +233,20 @@ describe('interruptions and commands', () => {
       cwd: 'D:/m42'
     })
     expect(postProcessCommand('/home/l/S/v2/postprocess.sh', ['x.fit'], null, '/data')).toEqual({ program: '/home/l/S/v2/postprocess.sh', args: ['x.fit'], cwd: '/data' })
+  })
+})
+
+describe('the stack job each target has in hand', () => {
+  it('[UX-007] [HEX-013] Given queued, running, finished and post-processing jobs, When read, Then each target keeps its stack job and a running one wins', () => {
+    const j = (targetId: string, kind: 'stack' | 'post-process', state: 'queued' | 'running' | 'succeeded') => ({ targetId, kind, state })
+    const active = activeStackJobs([
+      j('m31', 'stack', 'queued'),
+      j('m31', 'stack', 'running'),
+      j('m31', 'stack', 'queued'),
+      j('m42', 'stack', 'succeeded'),
+      j('m42', 'post-process', 'queued'),
+      j('m45', 'stack', 'queued')
+    ])
+    expect([...active].map(([id, job]) => [id, job.state])).toEqual([['m31', 'running'], ['m45', 'queued']])
   })
 })

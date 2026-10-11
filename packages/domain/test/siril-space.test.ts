@@ -6,6 +6,8 @@ import {
   recommendSirilScript,
   SIRIL_SCRIPTS,
   spaceVerdict,
+  spaceState,
+  stackRefusal,
   type FrameCounts
 } from '@astro/domain'
 
@@ -83,5 +85,28 @@ describe('space verdict', () => {
 
   it('[RCP-003] Given free space the system will not report, When judged, Then no verdict of short is made', () => {
     expect(spaceVerdict(100, null)).toEqual({ neededBytes: 100, fits: true, headroomBytes: null, shortBytes: null })
+  })
+})
+
+describe('one rule for queueing a stack', () => {
+  const fits = spaceVerdict(10, 100)
+  const short = spaceVerdict(100, 10)
+  const unknown = spaceVerdict(10, null)
+  const facts = { lights: 40, missing: [] as string[], verdict: fits, mixesFilters: false }
+
+  it('[HEX-012] [JOB-007] Given a known, fitting, short or unknown space, When summarised, Then it reads fits, short or unknown', () => {
+    expect([fits, short, unknown].map(spaceState)).toEqual(['fits', 'short', 'unknown'])
+  })
+
+  it('[HEX-012] [JOB-001] Given lights, calibration and room on the disk, When asked, Then nothing stops the stack', () => {
+    expect(stackRefusal(facts)).toBeNull()
+  })
+
+  it('[HEX-012] [RIG-018] [JOB-001] [JOB-007] Given each thing that stops a stack, When asked, Then the first one is the refusal', () => {
+    expect(stackRefusal({ ...facts, mixesFilters: true, lights: 0 })).toBe('mixes-filters')
+    expect(stackRefusal({ ...facts, lights: 0, missing: ['flats'] })).toBe('no-lights')
+    expect(stackRefusal({ ...facts, missing: ['flats'], verdict: short })).toBe('missing-calibration')
+    expect(stackRefusal({ ...facts, verdict: unknown })).toBe('space-unknown')
+    expect(stackRefusal({ ...facts, verdict: short })).toBe('short-of-space')
   })
 })

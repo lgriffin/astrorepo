@@ -449,3 +449,14 @@ export function previewImage(image: RasterImage, options: { maxWidth?: number; c
   })
   return { width, height, channels, data, scale: 1 / (factor * shown.bin), sourceWidth: image.width, sourceHeight: image.height }
 }
+
+/** Clipping above this share of a channel's pixels loses detail worth a warning (INS-001). */
+export const CLIP_WARNING_SHARE = 0.001
+
+/** Whether a channel has lost detail at either end. */
+export function clipping(c: Pick<ChannelStats, 'saturatedShare' | 'blackShare'>): { saturated: boolean; black: boolean } {
+  return {
+    saturated: c.saturatedShare !== null && c.saturatedShare > CLIP_WARNING_SHARE,
+    black: c.blackShare > CLIP_WARNING_SHARE
+  }
+}

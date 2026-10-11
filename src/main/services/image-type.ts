@@ -1,9 +1,6 @@
-export function normalizeImageType(raw: string | null): 'light' | 'dark' | 'flat' | 'bias' | 'unknown' {
-  if (!raw) return 'unknown'
-  const lower = raw.toLowerCase().trim()
-  if (lower.includes('light')) return 'light'
-  if (lower.includes('dark')) return 'dark'
-  if (lower.includes('flat')) return 'flat'
-  if (lower.includes('bias') || lower.includes('offset')) return 'bias'
-  return 'unknown'
+import { frameKind, type FrameKind } from '@astro/domain'
+
+/** The legacy services' name for the domain's frameKind, so every part of the app reads IMAGETYP alike. */
+export function normalizeImageType(raw: string | null): FrameKind {
+  return frameKind(raw)
 }

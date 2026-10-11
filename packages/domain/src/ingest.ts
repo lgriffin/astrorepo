@@ -103,11 +103,23 @@ export type SirilFolder = 'lights' | 'darks' | 'flats' | 'biases'
  * file name (Seestar and ASIAIR put the frame type first, for example "Light_M 81_10.0s...").
  */
 export function sirilFolderFor(fileName: string, imageType: string | null): SirilFolder {
-  const probe = (imageType ?? fileName).toLowerCase()
-  if (probe.includes('dark')) return 'darks'
-  if (probe.includes('flat')) return 'flats'
-  if (probe.includes('bias') || probe.includes('offset')) return 'biases'
-  return 'lights'
+  const kind = frameKind(imageType ?? fileName)
+  return kind === 'dark' ? 'darks' : kind === 'flat' ? 'flats' : kind === 'bias' ? 'biases' : 'lights'
+}
+
+export type FrameKind = 'light' | 'dark' | 'flat' | 'bias' | 'unknown'
+
+/**
+ * What kind of frame an IMAGETYP value (or a name) says, the one reading the whole app uses.
+ * Calibration words win over "light", so a "dark flat" is a dark and a "flat light" a flat.
+ */
+export function frameKind(text: string | null): FrameKind {
+  const probe = (text ?? '').toLowerCase()
+  if (probe.includes('dark')) return 'dark'
+  if (probe.includes('flat')) return 'flat'
+  if (probe.includes('bias') || probe.includes('offset')) return 'bias'
+  if (probe.includes('light')) return 'light'
+  return 'unknown'
 }
 
 export interface SirilPlacement {
@@ -129,4 +141,22 @@ export function planSirilWorkspace(files: { path: string; name: string; imageTyp
     used.add(`${folder}/${name.toLowerCase()}`)
     return { from: f.path, folder, name }
   })
+}
+
+/**
+ * The work folder for one source folder, from its absolute path: named after the folder and made
+ * unique by a short digest of the whole path, so two folders called "lights" never share one.
+ */
+export function workFolderName(absoluteSourceDir: string): string {
+  // A drive root (D:\) has no folder name of its own, so it is named "target", as it always was.
+  const last = absoluteSourceDir.split(/[\\/]+/).filter(Boolean).pop()
+  const base = (last && !/^[A-Za-z]:$/.test(last) ? last.replace(/[^\w .-]+/g, '_') : '') || 'target'
+  let h = 0
+  for (const c of absoluteSourceDir) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0
+  return `${base}-${h.toString(16)}`
+}
+
+/** The folder a target's plate solves run in, inside the work area's solve folder (NFR-018). */
+export function solveFolderName(targetId: string): string {
+  return targetId.replace(/[^\w.-]+/g, '_') || 'target'
 }

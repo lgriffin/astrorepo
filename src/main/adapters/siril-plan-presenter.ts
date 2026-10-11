@@ -43,13 +43,13 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
       file: `${s.script}.ssf`,
       script: s.script,
       // Mono lights of several filters are stacked one filter at a time, never mixed (RIG-006).
-      canQueue: e.counts.lights > 0 && e.freeBytes !== null && s.missing.length === 0 && s.fits && !e.filters,
+      canQueue: s.refusal === null,
       label: s.label,
       recommended: s.script === e.recommended.script,
       needed: formatBytes(s.neededBytes),
-      verdict: e.freeBytes === null ? 'unknown' : s.fits ? 'fits' : 'short',
+      verdict: s.space,
       verdictText:
-        e.freeBytes === null
+        s.space === 'unknown'
           ? 'Free space unknown'
           : s.fits
             ? `Fits, ${formatBytes(s.headroomBytes ?? 0)} to spare`
@@ -60,7 +60,7 @@ export function toSirilPlanView(e: SirilRunEstimate): SirilPlanView {
     })),
     advice: toAdviceView(e.advice),
     rawNote: rawNote(e.cameraRaw ?? null),
-    filters: e.filters ? toFilterPlanView(e.filters, e.freeBytes) : null
+    filters: e.filters ? toFilterPlanView(e.filters) : null
   }
 }
 
@@ -75,7 +75,7 @@ export function rawNote(raw: SirilRunEstimate['cameraRaw']): string | null {
 }
 
 /** One stack per filter for mono lights (RIG-006 to RIG-008). */
-export function toFilterPlanView(f: NonNullable<SirilRunEstimate['filters']>, freeBytes: number | null): FilterPlanView {
+export function toFilterPlanView(f: NonNullable<SirilRunEstimate['filters']>): FilterPlanView {
   const notes: string[] = []
   if (f.unfilteredLights > 0) notes.push(`${plural(f.unfilteredLights, 'light')} ${f.unfilteredLights === 1 ? 'records' : 'record'} no filter, so no filter's stack takes ${f.unfilteredLights === 1 ? 'it' : 'them'}.`)
   if (f.unfilteredFlats > 0) notes.push(`${plural(f.unfilteredFlats, 'flat')} ${f.unfilteredFlats === 1 ? 'records' : 'record'} no filter, so no filter's stack takes ${f.unfilteredFlats === 1 ? 'it' : 'them'}.`)
@@ -93,10 +93,10 @@ export function toFilterPlanView(f: NonNullable<SirilRunEstimate['filters']>, fr
         frames: [plural(c.lights, 'light'), plural(c.flats, 'flat'), plural(c.darks, 'dark'), plural(c.biases, 'bias', 'biases')].join(', ') +
           (s.rejectedLights > 0 ? `; ${plural(s.rejectedLights, 'light')} rejected by grading left out` : ''),
         needed: script ? formatBytes(script.neededBytes) : null,
-        verdict: !script || freeBytes === null ? 'unknown' : script.fits ? 'fits' : 'short',
-        verdictText: !script || freeBytes === null ? 'Free space unknown' : script.fits ? `Fits, ${formatBytes(script.headroomBytes ?? 0)} to spare` : `Short by ${formatBytes(script.shortBytes ?? 0)}`,
+        verdict: script?.space ?? 'unknown',
+        verdictText: !script || script.space === 'unknown' ? 'Free space unknown' : script.fits ? `Fits, ${formatBytes(script.headroomBytes ?? 0)} to spare` : `Short by ${formatBytes(script.shortBytes ?? 0)}`,
         missing: script && script.missing.length > 0 ? `Needs ${LIST(script.missing)} for this filter, which this folder does not have.` : null,
-        canQueue: !!script && c.lights > 0 && freeBytes !== null && script.missing.length === 0 && script.fits,
+        canQueue: !!script && script.refusal === null,
         master: s.master ? s.master.path.split(/[\\/]/).pop() ?? s.master.path : null
       }
     }),
