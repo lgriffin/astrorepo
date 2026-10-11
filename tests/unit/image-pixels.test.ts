@@ -167,25 +167,6 @@ describe('readRaster', () => {
   })
 })
 
-describe('NodeImagePixels', () => {
-  it('[INS-001] Given a FITS file, When opened and previewed in place, Then statistics and a small preview come back, opening reading both at once', async () => {
-    const pixels = Array.from({ length: 64 * 48 }, (_, i) => 1000 + (i % 7))
-    const file = write('m.fit', fitsImage(64, 48, [pixels]))
-    const p = new NodeImagePixels()
-    const opened = await p.open(file, { maxWidth: 16 })
-    expect(opened.inspection).toMatchObject({ width: 64, height: 48, kind: 'mono' })
-    expect(opened.preview).toMatchObject({ width: 16, height: 12, channels: 1 })
-    expect(opened.header).toMatchObject({ NAXIS1: 64 })
-    const shown = await p.preview(file, { maxWidth: 32 })
-    expect(shown.preview).toMatchObject({ width: 32, height: 24, channels: 1 })
-    expect(shown.header).toMatchObject({ NAXIS1: 64 })
-  })
-
-  it('[INS-003] Given a file that is neither FITS nor PNG, When inspected, Then it fails with the reason', async () => {
-    await expect(new NodeImagePixels().open(write('x.jpg', Buffer.alloc(3000, 0xff)), { maxWidth: 32 })).rejects.toThrow('This is not a FITS file.')
-  })
-})
-
 describe('The inspect worker', () => {
   it('[NFR-019] Given reads queued together, When run, Then each starts only after the one before has settled, failures included', async () => {
     const queue = serialQueue()

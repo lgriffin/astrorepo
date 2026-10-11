@@ -37,3 +37,20 @@ export function fitsImage(width: number, height: number, planes: ArrayLike<numbe
   const header = fitsBytes(cards)
   return Buffer.concat([header, data, Buffer.alloc((2880 - (data.length % 2880)) % 2880)])
 }
+
+/** A starfield: background 1000 with small deterministic noise and a grid of round stars. */
+export function starfield(width: number, height: number, sigma: number, peak = 3000): number[] {
+  const out: number[] = []
+  let seed = 3
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31
+      let v = 1000 + ((seed / 2 ** 31) - 0.5) * 30
+      const sx = Math.round(x / 24) * 24
+      const sy = Math.round(y / 24) * 24
+      if (sx > 0 && sy > 0 && sx < width - 4 && sy < height - 4) v += peak * Math.exp(-((x - sx) ** 2 + (y - sy) ** 2) / (2 * sigma * sigma))
+      out.push(v)
+    }
+  }
+  return out
+}

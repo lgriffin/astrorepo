@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { InMemoryFrameGradeStore, measurement } from '@astro/testkit'
-import { frameGradeStoreContract } from '@astro/testkit/contracts/frame-grades.contract'
+import { FixedGradeLimits, InMemoryFrameGradeStore, measurement } from '@astro/testkit'
+import { frameGradeStoreContract, gradeLimitsSourceContract } from '@astro/testkit/contracts/frame-grades.contract'
 import { SqliteFrameGradeStore, SqliteGradeLimits } from '../../src/main/adapters/sqlite-frame-grades'
-import { DEFAULT_GRADE_LIMITS, GRADE_LIMIT_KEYS } from '@astro/domain'
+import { DEFAULT_GRADE_LIMITS, GRADE_LIMIT_KEYS, type GradeLimits } from '@astro/domain'
 import { seedFitsFile, seedFitsScan, seedTarget, setupTestDb, teardownTestDb } from '../helpers/setup'
 
 frameGradeStoreContract('in-memory', async lights => {
@@ -29,6 +29,23 @@ frameGradeStoreContract('SQLite', async lights => {
   seedFitsFile(db, scan, { filePath: '/data/m42/stack.fit', targetId: 'm42', isStacked: true })
   seedFitsFile(db, scan, { filePath: '/data/m42/Dark_001.fit', targetId: 'm42', imageType: 'Dark' })
   return new SqliteFrameGradeStore(db)
+})
+
+gradeLimitsSourceContract('fixed', () => {
+  const source = new FixedGradeLimits()
+  return { source, save: async limits => void (source.limits = { ...source.limits, ...limits }) }
+})
+
+gradeLimitsSourceContract('SQLite', () => {
+  const db = setupTestDb()
+  const put = db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)')
+  return {
+    source: new SqliteGradeLimits(db),
+    // Settings saves a cleared limit as an empty value.
+    save: async limits => {
+      for (const [key, value] of Object.entries(limits) as [keyof GradeLimits, number | null][]) put.run(GRADE_LIMIT_KEYS[key], value === null ? '' : String(value))
+    }
+  }
 })
 
 describe('SqliteFrameGradeStore', () => {

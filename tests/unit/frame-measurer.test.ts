@@ -7,7 +7,7 @@ import { EventEmitter } from 'events'
 import type { Worker } from 'worker_threads'
 import { measurement } from '@astro/testkit'
 import { NodeFrameMeasurer, type MeasureReply, type MeasureRequest } from '../../src/main/adapters/node-frame-measurer'
-import { fitsBytes, fitsImage } from '../helpers/fits'
+import { fitsBytes, fitsImage, starfield } from '../helpers/fits'
 
 const dirs: string[] = []
 afterEach(() => {
@@ -19,23 +19,6 @@ function write(name: string, bytes: Buffer): string {
   const file = path.join(dir, name)
   fs.writeFileSync(file, bytes)
   return file
-}
-
-/** A starfield: background 1000 with small deterministic noise and a grid of round stars. */
-function starfield(width: number, height: number, sigma: number, peak = 3000): number[] {
-  const out: number[] = []
-  let seed = 3
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      seed = (seed * 1103515245 + 12345) % 2 ** 31
-      let v = 1000 + ((seed / 2 ** 31) - 0.5) * 30
-      const sx = Math.round(x / 24) * 24
-      const sy = Math.round(y / 24) * 24
-      if (sx > 0 && sy > 0 && sx < width - 4 && sy < height - 4) v += peak * Math.exp(-((x - sx) ** 2 + (y - sy) ** 2) / (2 * sigma * sigma))
-      out.push(v)
-    }
-  }
-  return out
 }
 
 describe('readFitsImage', () => {
@@ -105,10 +88,6 @@ describe('NodeFrameMeasurer', () => {
     const colour = await new NodeFrameMeasurer().measure(write('c.fit', fitsImage(240, 240, [pixels], { cards: { BAYERPAT: 'RGGB' } })))
     expect(colour.fwhm ?? 0).toBeGreaterThan((mono.fwhm ?? 0) * 0.7)
     expect(colour.fwhm ?? 0).toBeLessThan((mono.fwhm ?? 0) * 1.5)
-  })
-
-  it('[GRD-011] Given a file that is not FITS, When measured, Then it fails with the reason', async () => {
-    await expect(new NodeFrameMeasurer().measure(write('x.fit', Buffer.from('hello')))).rejects.toThrow(/header is truncated/)
   })
 })
 

@@ -70,7 +70,7 @@ export function galleryContract(adapterName: string, setup: (seed: GallerySeed) 
   }
   const at = new Date('2026-10-01T08:00:00Z')
 
-  describe(`Gallery contract: ${adapterName}`, () => {
+  describe(`GalleryCatalogue and PaletteStore contract: ${adapterName}`, () => {
     it('[INS-001] Given an indexed file, When looked up by id, Then its path and name come back, and an unknown id gives nothing', async () => {
       const h = await setup(seed)
       expect(await h.catalogue.fileById('m1')).toEqual({ path: h.masterPath('master_Ha.fit'), name: 'master_Ha.fit' })
