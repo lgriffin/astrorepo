@@ -34,7 +34,9 @@ checker drops mutants that would not compile before any test runs.
 
 The first full run (2026-10-11) tested 6,272 valid mutants and killed 4,819: a score of **76.8%**
 (domain 76.9%, application 76.4%), with 22 files under 80% and the weakest near 67%. About 250
-sharper tests then brought every one of those files to between 84% and 100% on its own run.
+sharper tests then brought every one of those files to between 84% and 100% on its own run. The
+whole-core re-run that followed killed 5,598 of 6,276 valid mutants: **89.2%** (domain 88.3%,
+application 92.7%), with no file under 80%.
 
 `DEFAULT_BREAK` is **80**, Leigh's minimum, for the whole core and for each changed-files run. A
 pull request that touches a core file must keep that file's tests sharp enough to stay above it.

@@ -111,7 +111,8 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   over every parser of untrusted input, nightly at 20,000 runs per parser.
 - **Mutation testing** (spec 030): Stryker mutates the hexagonal core; pull requests mutate the
   core files they change and fail below the 80% floor, and the whole core runs nightly. The first
-  full run scored 76.8%; about 250 sharper tests then brought every core file to at least 80%.
+  full run scored 76.8%; about 250 sharper tests then brought every core file to at least 80% and
+  the whole core to 89.2%.
 
 ## [0.2.0] - 2026-09-30
 
