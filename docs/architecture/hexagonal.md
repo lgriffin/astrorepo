@@ -143,7 +143,7 @@ better-sqlite3 without any gain.
 | The testkit never imports the desktop app (HEX-006); legacy services and codecs never import adapters, IPC or composition (HEX-007) | the same test |
 | Only `system-clock.ts` reads the time; every other adapter takes a Clock (HEX-010) | the same test |
 | Legacy code only shrinks: `getSqlite()` calls, legacy service files and legacy calls from the IPC handlers may fall, never rise (HEX-008, HEX-009) | `tests/architecture/legacy-ratchet.test.ts` against `legacy-ratchet.json`; lower the numbers there when a service moves into the core |
-| Every adapter of a port passes the port's contract suite (NFR-006) | `packages/testkit/src/contracts/*.contract.ts`, run in `tests/contracts/` |
+| Every adapter of a port passes the port's contract suite (NFR-006) | `packages/testkit/src/contracts/*.contract.ts`, run in `tests/contracts/` on the testkit fake and the real adapter; `tests/contracts/coverage.test.ts` fails a port without a suite run on both |
 | Core code takes its dependencies as arguments; no `getSqlite()`, no `vi.mock` of modules in core tests | Review; adapters take a `Database` in their constructor |
 | Every requirement ID is cited by a test; no test cites an unknown ID (NFR-005, NFR-007) | `npm run ears` in CI |
 | Core and adapters keep high coverage | `vitest.config.ts` per-path thresholds |
