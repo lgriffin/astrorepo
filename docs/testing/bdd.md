@@ -21,7 +21,7 @@ features/
 
 ```gherkin
 Feature: Stacks run in the night window, one at a time
-  A sentence or two on why Leigh cares, in her words.
+  A sentence or two on why Leigh cares, in Leigh's own words.
 
   Background:
     Given the run window is 02:00 to 03:00, a job waits for 10 idle minutes and CPU under 30%
