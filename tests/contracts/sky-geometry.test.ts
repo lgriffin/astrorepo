@@ -4,7 +4,7 @@ import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { SolveIO } from '@astro/application'
 import { astapResultPath, type JobCommand } from '@astro/domain'
-import { FakePlateSolver, InMemoryMosaicStore, InMemorySolveStore, skyFile } from '@astro/testkit'
+import { FakePlateSolver, FixedClock, InMemoryMosaicStore, InMemorySolveStore, skyFile } from '@astro/testkit'
 import {
   CONTRACT_SOLUTION,
   MOSAIC_TARGET,
@@ -195,7 +195,7 @@ mosaicStoreContract('SQLite', () => {
   seedIntegrationGoal(db, { targetId: 'm31', filter: 'Ha', goalSeconds: 3600 })
   seedTarget(db, { id: 'm31-p2', canonicalName: 'M 31 panel 2' })
   seedTarget(db, { id: 'm31-p3', canonicalName: 'M 31 panel 3' })
-  return new SqliteMosaicStore(db)
+  return new SqliteMosaicStore(db, new FixedClock())
 })
 
 describe('SqliteMosaicStore', () => {
@@ -203,7 +203,7 @@ describe('SqliteMosaicStore', () => {
     const db = setupTestDb()
     for (const id of ['m31', 'm31-p2', 'm31-p3']) seedTarget(db, { id, canonicalName: id })
     db.prepare("INSERT INTO target_relationships (id, source_target_id, related_target_id, relationship_type, created_at) VALUES ('old', 'm31-p2', 'm31', 'part_of_mosaic', '2026-10-01')").run()
-    const store = new SqliteMosaicStore(db)
+    const store = new SqliteMosaicStore(db, new FixedClock())
     await store.linkPanels('m31', ['m31-p2', 'm31-p2'])
     await store.linkPanels('m31-p2', ['m31'])
     await store.linkPanels('m31-p3', ['m31'])

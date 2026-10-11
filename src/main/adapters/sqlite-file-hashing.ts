@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
 import fs from 'fs'
-import type { FileHashStore, FileIndex } from '@astro/application'
+import type { Clock, FileHashStore, FileIndex } from '@astro/application'
 import type { FileHash, FileStamp } from '@astro/domain'
 
 /**
@@ -28,7 +28,7 @@ export class SqliteFileIndex implements FileIndex {
 
 /** FileHashStore over the file_hashes table. */
 export class SqliteFileHashStore implements FileHashStore {
-  constructor(private readonly db: Database.Database, private readonly now: () => Date = () => new Date()) {}
+  constructor(private readonly db: Database.Database, private readonly clock: Clock) {}
 
   async listHashes(): Promise<FileHash[]> {
     const rows = this.db.prepare(
@@ -49,7 +49,7 @@ export class SqliteFileHashStore implements FileHashStore {
        ON CONFLICT(file_path) DO UPDATE SET size_bytes = excluded.size_bytes, modified_at = excluded.modified_at,
          quick_key = excluded.quick_key, full_hash = excluded.full_hash, hashed_at = excluded.hashed_at`
     )
-    const at = this.now().toISOString()
+    const at = this.clock.now().toISOString()
     this.db.transaction(() => {
       for (const h of hashes) upsert.run(h.path, h.sizeBytes, h.modifiedAt, h.quickKey, h.fullHash, at)
     })()

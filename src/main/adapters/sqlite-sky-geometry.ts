@@ -1,10 +1,9 @@
 import path from 'path'
 import type Database from 'better-sqlite3'
 import { ulid } from 'ulid'
-import type { MosaicStore, MosaicTarget, SavedMosaic, SolveStore, StoredSolve } from '@astro/application'
+import type { Clock, MosaicStore, MosaicTarget, SavedMosaic, SolveStore, StoredSolve } from '@astro/application'
 import { WCS_KEYWORDS, type SkyFile, type SolveSource, type WcsCards } from '@astro/domain'
-import { IS_LIGHT, parseUtc } from './sqlite-frame-catalogue'
-import { HEADER_NUMBER, IS_INTEGRATED_LIGHT } from './sqlite-stack-catalogue'
+import { HEADER_NUMBER, IS_INTEGRATED_LIGHT, IS_LIGHT, parseUtc } from './shared/sql'
 
 interface FileRow {
   id: string
@@ -155,7 +154,7 @@ const toPlan = (r: PlanRow): SavedMosaic => ({
 
 /** MosaicStore over targets, integration_goals, mosaic_plans and target_relationships (part_of_mosaic). */
 export class SqliteMosaicStore implements MosaicStore {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database, private readonly clock: Clock) {}
 
   async target(targetId: string): Promise<MosaicTarget | null> {
     const row = this.db
@@ -200,7 +199,7 @@ export class SqliteMosaicStore implements MosaicStore {
       `INSERT OR IGNORE INTO target_relationships (id, source_target_id, related_target_id, relationship_type, created_at)
        VALUES (?, ?, ?, 'part_of_mosaic', ?)`
     )
-    const now = new Date().toISOString()
+    const now = this.clock.now().toISOString()
     this.db.transaction(() => {
       for (const other of new Set(panelTargetIds)) {
         if (other === targetId) continue

@@ -65,6 +65,13 @@ import { NodeToolProbe } from './adapters/node-tool-probe'
 import { WindowsAppPathsRegistry } from './adapters/windows-app-paths'
 import { SqliteMosaicStore, SqliteSolveStore } from './adapters/sqlite-sky-geometry'
 import { AstapPlateSolver, SirilPlateSolver } from './adapters/node-plate-solvers'
+import { NodeImagePixels } from './adapters/node-image-pixels'
+import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
+import { SqliteCometStore } from './adapters/sqlite-comet-store'
+import { settingReader } from './adapters/shared/app-settings'
+
+/** The app's clock, for hosts that stamp what they show (the IPC handlers). */
+export const clock = systemClock
 
 /** ASTAP first, Siril's own solver as the fallback (specs/024-sky-geometry). */
 const plateSolvers = () => [new AstapPlateSolver(), new SirilPlateSolver()]
@@ -73,9 +80,6 @@ const plateSolvers = () => [new AstapPlateSolver(), new SirilPlateSolver()]
 export function solveWorkDir(workArea: string, targetId: string): string {
   return path.join(workArea, 'solve', targetId.replace(/[^\w.-]+/g, '_') || 'target')
 }
-import { NodeImagePixels } from './adapters/node-image-pixels'
-import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
-import { SqliteCometStore } from './adapters/sqlite-comet-store'
 
 /** One measurer for the app, so every request shares its worker thread. */
 let frameMeasurer = new NodeFrameMeasurer()
@@ -84,7 +88,7 @@ let frameMeasurer = new NodeFrameMeasurer()
 export const targetHolds = makeTargetHolds()
 
 /** SyQon's model list, reused for two minutes per syqon-cli path; a health check in Settings lists afresh. */
-const syqonModels = makeSyqonModelCache(() => Date.now(), 2 * 60_000)
+const syqonModels = makeSyqonModelCache(() => systemClock.now().getTime(), 2 * 60_000)
 
 /** One registry reader for the app, so its short-lived lookups are shared across calls. */
 const appPaths = new WindowsAppPathsRegistry()
@@ -138,12 +142,12 @@ export function composeGrading(db: Database.Database) {
 export function composeCore(db: Database.Database, options: { workArea?: string } = {}) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
-  const hashes = new SqliteFileHashStore(db, () => systemClock.now())
+  const hashes = new SqliteFileHashStore(db, systemClock)
   const archives = new SqliteArchiveStore(db)
   const listStackingSuggestions = makeListStackingSuggestions({ frames, dismissals, archives })
-  const readSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
+  const setting = settingReader(db)
   const tools = new NodeToolHub({
-    setting: key => (readSetting.get(key) as { value: string } | undefined)?.value ?? null,
+    setting,
     registry: appPaths
   })
   const probe = new NodeToolProbe()
@@ -163,11 +167,11 @@ export function composeCore(db: Database.Database, options: { workArea?: string 
     clock: systemClock
   })
   const solves = new SqliteSolveStore(db)
-  const mosaics = new SqliteMosaicStore(db)
+  const mosaics = new SqliteMosaicStore(db, systemClock)
   const sky = { store: solves, mosaics, settings: planningSettings, ephemeris, clock: systemClock }
-  const workArea = options.workArea ?? ((readSetting.get('work_area_path') as { value: string } | undefined)?.value || path.join(os.tmpdir(), 'astrorepo-work'))
+  const workArea = options.workArea ?? (setting('work_area_path') || path.join(os.tmpdir(), 'astrorepo-work'))
   const planMosaic = makePlanMosaic(sky)
-  const comets = new SqliteCometStore(db)
+  const comets = new SqliteCometStore(db, systemClock)
   return {
     listStackingSuggestions,
     listNextActions: makeListNextActions({

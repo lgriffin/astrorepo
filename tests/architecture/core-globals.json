@@ -1,0 +1,7 @@
+[
+  "process", "console", "Buffer", "require", "module", "exports", "__dirname", "__filename", "global", "globalThis",
+  "window", "self", "document", "navigator", "location", "history", "screen",
+  "fetch", "XMLHttpRequest", "WebSocket", "EventSource", "Worker", "localStorage", "sessionStorage", "indexedDB", "caches",
+  "performance", "crypto", "structuredClone", "alert", "confirm", "prompt",
+  "setTimeout", "setInterval", "setImmediate", "clearTimeout", "clearInterval", "clearImmediate", "queueMicrotask", "requestAnimationFrame"
+]

@@ -1,7 +1,8 @@
 import type Database from 'better-sqlite3'
 import type { FrameGradeStore, GradeLimitsSource } from '@astro/application'
 import { parseGradeLimits, type FrameMeasurement, type GradableLight, type GradeLimits, type GradeOverride } from '@astro/domain'
-import { IS_LIGHT, parseUtc } from './sqlite-frame-catalogue'
+import { IS_LIGHT, parseUtc } from './shared/sql'
+import { settingReader } from './shared/app-settings'
 
 interface LightRow {
   id: string
@@ -142,7 +143,6 @@ export class SqliteGradeLimits implements GradeLimitsSource {
   constructor(private readonly db: Database.Database) {}
 
   async read(): Promise<GradeLimits> {
-    const get = this.db.prepare('SELECT value FROM app_settings WHERE key = ?')
-    return parseGradeLimits(key => (get.get(key) as { value: string } | undefined)?.value ?? null)
+    return parseGradeLimits(settingReader(this.db))
   }
 }

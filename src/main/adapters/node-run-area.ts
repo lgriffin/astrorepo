@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { RunArea } from '@astro/application'
 import { FAILED_FOLDER, MANIFEST_SUFFIX, STEP_FOLDER, type StackManifest } from '@astro/domain'
-import { ownFolder } from './node-siril-workspace'
+import { ownFolder } from './shared/work-folders'
 
 export { STEP_FOLDER }
 

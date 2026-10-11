@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3'
 import type { PlanningSettings, TargetPosition, TargetPositions } from '@astro/application'
 import { isValidSite, type Site } from '@astro/domain'
+import { settingReader } from './shared/app-settings'
 
 /** Settings keys the Sky Planner and Settings pages already write. */
 export const SITE_KEYS = { latitude: 'observer_latitude', longitude: 'observer_longitude', elevation: 'observer_elevation' } as const
@@ -11,8 +12,7 @@ export class SqlitePlanningSettings implements PlanningSettings {
   constructor(private readonly db: Database.Database) {}
 
   private read(key: string): string | null {
-    const row = this.db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key) as { value: string } | undefined
-    const value = row?.value.trim()
+    const value = settingReader(this.db)(key)?.trim()
     return value ? value : null
   }
 

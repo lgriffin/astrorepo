@@ -3,8 +3,7 @@ import path from 'path'
 import type Database from 'better-sqlite3'
 import type { GalleryCatalogue, GalleryImage, PaletteStore } from '@astro/application'
 import { PALETTE_IDS, type CatalogueObject, type FilterIntegration, type PaletteId } from '@astro/domain'
-import { IS_LIGHT, parseUtc } from './sqlite-frame-catalogue'
-import { IS_INTEGRATED_LIGHT } from './sqlite-stack-catalogue'
+import { IS_INTEGRATED_LIGHT, IS_LIGHT, parseUtc } from './shared/sql'
 
 /** Finished images the inspector can read: FITS, and PNG as Siril_Scripts and most editors export. */
 const FINISHED = /\.(png|fits?|fts)$/i

@@ -82,6 +82,15 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   a time and rests in between, shows live file counts, can be cancelled, and carries on from where
   a cancelled scan stopped.
 
+### Changed
+- **Hexagon hardening** (spec 027): the architecture check reads the source with the TypeScript
+  compiler and covers every layer: the core may not use the clock, randomness or host globals;
+  the renderer reaches the main process only through the bridge; adapters never import legacy
+  services, IPC, composition or each other; use cases are built only in composition. A ratchet
+  stops legacy code (`getSqlite()` calls, services, legacy IPC calls) from growing. Adapters take
+  the Clock port instead of calling `new Date()`, and share SQL and settings helpers from
+  `src/main/adapters/shared/`.
+
 ## [0.2.0] - 2026-09-30
 
 The first release since the cockpit blueprint. Discovery, planning, stacking and job running now

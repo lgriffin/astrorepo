@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3'
 import type { FrameCatalogue } from '@astro/application'
+import { IS_LIGHT, parseUtc } from './shared/sql'
 import type { CalibrationFrame, CalibrationKind, FilterGoal, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
 
 interface FrameRow {
@@ -21,17 +22,6 @@ interface TargetRow {
   processed: number | null
   final: number | null
 }
-
-/** FITS DATE-OBS is UTC but usually written without a zone; read it as UTC, not local time. */
-export function parseUtc(value: string | null): Date | null {
-  if (!value) return null
-  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/.test(value)
-  const d = new Date(hasZone ? value : `${value}Z`)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
-/** Light frames as the scanners record them: typed as light, or untyped. */
-export const IS_LIGHT = `(f.image_type IS NULL OR LOWER(f.image_type) LIKE '%light%')`
 
 /**
  * FrameCatalogue over the desktop app's existing fits_files table.

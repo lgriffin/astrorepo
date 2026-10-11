@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3'
 import { ulid } from 'ulid'
 import type { JobPatch, JobSettingsSource, JobStore } from '@astro/application'
 import { parseJobSettings, type Job, type JobSettings, type NewJob } from '@astro/domain'
+import { settingReader } from './shared/app-settings'
 
 interface JobRow {
   id: string
@@ -124,7 +125,6 @@ export class SqliteJobSettings implements JobSettingsSource {
   constructor(private readonly db: Database.Database) {}
 
   async read(): Promise<JobSettings> {
-    const get = this.db.prepare('SELECT value FROM app_settings WHERE key = ?')
-    return parseJobSettings(key => (get.get(key) as { value: string } | undefined)?.value ?? null)
+    return parseJobSettings(settingReader(this.db))
   }
 }
