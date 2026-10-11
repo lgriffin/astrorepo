@@ -12,7 +12,7 @@
     "dist": "npm run build && electron-forge make",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src/ tests/ packages/ scripts/",
+    "lint": "eslint src/ tests/ packages/ scripts/ features/",
     "ears": "tsx scripts/ears/cli.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
@@ -21,7 +21,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "{src,packages,scripts}/**/*.{ts,tsx}": [
+    "{src,packages,scripts,features}/**/*.{ts,tsx}": [
       "eslint --max-warnings=0"
     ]
   },
@@ -36,6 +36,9 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@cucumber/cucumber-expressions": "^20.1.0",
+    "@cucumber/gherkin": "^42.0.1",
+    "@cucumber/messages": "^34.2.1",
     "@electron-forge/cli": "^7.6.0",
     "@electron-forge/maker-squirrel": "^7.6.0",
     "@electron-forge/maker-zip": "^7.6.0",

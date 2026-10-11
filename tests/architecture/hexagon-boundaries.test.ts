@@ -120,7 +120,7 @@ describe('The architecture check itself', () => {
   }
   const reasons = (found: string[]) => found.map(v => v.replace(/^.*? imports /, ''))
 
-  it('[NFR-004] [HEX-011] Given a core file with static, side-effect, dynamic, require, computed and re-export imports, When checked, Then each escape is reported', () => {
+  it('[NFR-004] [HEX-011] Given a core file with static, side-effect, dynamic, require, computed and re-export imports, When checked, Then each escape is refused', () => {
     const tmp = probe({
       'probe.ts': [
         "import fs from 'fs'",

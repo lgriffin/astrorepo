@@ -145,7 +145,7 @@ better-sqlite3 without any gain.
 | Legacy code only shrinks: `getSqlite()` calls, legacy service files and legacy calls from the IPC handlers may fall, never rise (HEX-008, HEX-009) | `tests/architecture/legacy-ratchet.test.ts` against `legacy-ratchet.json`; lower the numbers there when a service moves into the core |
 | Every adapter of a port passes the port's contract suite (NFR-006) | `packages/testkit/src/contracts/*.contract.ts`, run in `tests/contracts/` on the testkit fake and the real adapter; `tests/contracts/coverage.test.ts` fails a port without a suite run on both |
 | Core code takes its dependencies as arguments; no `getSqlite()`, no `vi.mock` of modules in core tests | Review; adapters take a `Database` in their constructor |
-| Every requirement ID is cited by a test; no test cites an unknown ID (NFR-005, NFR-007) | `npm run ears` in CI |
+| Every requirement ID is cited by a test title or Gherkin tag; no test cites an unknown ID (NFR-005, NFR-007, TRC-001 to TRC-008) | `npm run ears` in CI |
 | Core and adapters keep high coverage | `vitest.config.ts` per-path thresholds |
 | Production and tests build the schema from `src/main/db/migrations.ts` (NFR-008) | `tests/helpers/setup.ts` imports it; `tests/integration/migrations.test.ts` |
 
@@ -164,13 +164,24 @@ better-sqlite3 without any gain.
 ## EARS
 
 Requirements live in `specs/<nnn>/requirements.md` as a table of ID, pattern and text. The gate
-(`scripts/ears/`) reads every such table and every `*.test.ts` and `*.contract.ts` file, and fails
-the build on an uncited requirement, an unknown or duplicate ID, or wording that does not match the
-declared pattern. A test cites a requirement by putting its ID in square brackets in the test name:
+(`scripts/ears/`) reads every such table, every `*.test.ts` and `*.contract.ts` file and every
+`features/**/*.feature`, and fails the build on an uncited requirement, an unknown or duplicate ID,
+wording that does not match the declared pattern, an Unwanted requirement with no failure test, or
+a `specs/` folder from 009 on without a `requirements.md`. A test cites a requirement by putting
+its ID in square brackets in the test name; an ID in a comment or any other string does not count:
 
 ```ts
 it('[DSC-010] Given 8 h of subs and no stack, When assessed, Then it is ready to stack', ...)
 ```
+
+A Gherkin scenario cites one with a tag (`@DSC-010`); see [docs/testing/bdd.md](../testing/bdd.md).
+An Unwanted ("If ..., then ...") requirement needs at least one citing test whose title names the
+failure (fails, refused, rejected, error, invalid, missing, cannot, not, warns, quarantined,
+skipped, stopped, cancelled, unknown, empty, corrupt, throws) or a tagged Gherkin scenario.
+
+`npm run ears` prints cited/total per spec. `npm run ears -- --json <path>` also writes the report
+as JSON, with each requirement's citing test count and files, and in GitHub Actions the gate
+appends a markdown table to the job summary (`$GITHUB_STEP_SUMMARY`).
 
 Only requirements a slice is building go into a spec, so the blueprint's full list is a backlog and
 the gate never asks for tests of work nobody has started.

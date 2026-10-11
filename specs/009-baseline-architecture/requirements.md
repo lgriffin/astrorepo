@@ -6,8 +6,14 @@ pattern it follows, and the requirement text. `npm run ears` fails when:
 - a requirement ID is not cited by any test (write the ID in square brackets in the test name,
   for example `it('[DSC-010] Given ..., When ..., Then ...')`),
 - a test cites an ID that no `specs/*/requirements.md` defines,
-- an ID is defined twice, or
-- the text does not read as its pattern.
+- an ID is defined twice,
+- the text does not read as its pattern,
+- an Unwanted requirement has no citing test whose title names the failure, and no Gherkin
+  scenario tagged with it, or
+- a `specs/` folder numbered 009 or later has no `requirements.md` (see specs/028-ears-bdd).
+
+Only a test title (the first string of an `it`, `test` or `describe` call) or a tag on a Gherkin
+scenario cites an ID; an ID in a comment or any other string does not.
 
 | Pattern | Shape |
 |---|---|
