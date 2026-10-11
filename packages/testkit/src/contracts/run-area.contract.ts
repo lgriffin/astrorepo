@@ -83,5 +83,15 @@ export function runAreaContract(adapterName: string, setup: () => Promise<RunAre
       await expect(h.area.readText(`${result}${MANIFEST_SUFFIX}`)).rejects.toThrow()
       expect(JSON.parse(await h.area.readText(h.join(h.workDir, FAILED_FOLDER, 'job-2', `result_60s.fit${MANIFEST_SUFFIX}`)))).toEqual(manifest(result))
     })
+
+    it('[NFR-006] [PRV-002] Given a result with a half-written manifest beside it, When set aside, Then the temporary manifest goes with it', async () => {
+      const h = await setup()
+      const result = h.join(h.workDir, 'result_60s.fit')
+      await h.write(result, 'partial')
+      await h.write(`${result}${MANIFEST_SUFFIX}.tmp`, '{"half":')
+      await h.area.setAside(h.workDir, 'job-4', [result])
+      await expect(h.area.readText(`${result}${MANIFEST_SUFFIX}.tmp`)).rejects.toThrow()
+      expect(await h.area.readText(h.join(h.workDir, FAILED_FOLDER, 'job-4', `result_60s.fit${MANIFEST_SUFFIX}.tmp`))).toBe('{"half":')
+    })
   })
 }

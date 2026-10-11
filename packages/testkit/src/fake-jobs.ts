@@ -166,11 +166,17 @@ export class InMemoryRunArea implements RunArea {
     return mine.map(p => {
       this.setAsideFiles.push(p)
       this.onSetAside(p)
-      for (const [from, to] of [[p, `${dir}/${baseName(p)}`], [`${p}${MANIFEST_SUFFIX}`, `${dir}/${baseName(p)}${MANIFEST_SUFFIX}`]]) {
-        const text = this.texts.get(from)
+      // The result and any manifest beside it, finished or half-written, move together (as NodeRunArea does).
+      for (const side of ['', MANIFEST_SUFFIX, `${MANIFEST_SUFFIX}.tmp`]) {
+        const text = this.texts.get(`${p}${side}`)
         if (text === undefined) continue
-        this.texts.delete(from)
-        this.texts.set(to, text)
+        this.texts.delete(`${p}${side}`)
+        this.texts.set(`${dir}/${baseName(p)}${side}`, text)
+      }
+      const manifest = this.manifests.get(p)
+      if (manifest) {
+        this.manifests.delete(p)
+        this.manifests.set(`${dir}/${baseName(p)}`, manifest)
       }
       return `${dir}/${baseName(p)}`
     })
