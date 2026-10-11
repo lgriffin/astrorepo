@@ -65,7 +65,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ['tests/**/*.ts', 'packages/*/test/**/*.ts'],
+    files: ['tests/**/*.ts', 'packages/*/test/**/*.ts', 'features/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node

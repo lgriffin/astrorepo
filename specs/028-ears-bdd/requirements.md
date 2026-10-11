@@ -17,6 +17,9 @@ application use cases and the in-memory testkit fakes.
   at least one test whose title names the failure, or by a Gherkin scenario.
 - **Every slice has requirements.** Each `specs/NNN-*/` folder from 009 on must have a
   `requirements.md`.
+- **Gherkin in vitest.** `features/<area>/*.feature` files with step definitions in
+  `*.steps.ts`, run by a small runner in `packages/testkit/src/bdd`. See
+  [docs/testing/bdd.md](../../docs/testing/bdd.md).
 
 ## Traceability check
 
@@ -30,3 +33,18 @@ application use cases and the in-memory testkit fakes.
 | TRC-006 | Unwanted | If a spec folder numbered 009 or later has no requirements.md, then the traceability check shall fail and name the folder. |
 | TRC-007 | Unwanted | If an Unwanted requirement is cited only by tests whose titles name no failure, and by no Gherkin scenario, then the traceability check shall fail and name the requirement. |
 | TRC-008 | Ubiquitous | The traceability check shall read only table rows that have a requirement ID, a pattern and requirement text, and ignore every other table. |
+
+## BDD runner
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| TRC-010 | Ubiquitous | The BDD runner shall register one vitest suite per Gherkin feature and rule, and one test per scenario and per Scenario Outline example row, with the scenario's requirement tags written in square brackets at the start of the test title. |
+| TRC-011 | Ubiquitous | The BDD runner shall run a feature's Background steps before each of its scenarios' own steps. |
+| TRC-012 | Event | When a Scenario Outline runs, the BDD runner shall substitute each example row's values into the scenario name, step text, data tables and doc strings. |
+| TRC-013 | Ubiquitous | The BDD runner shall pass a step's data table or doc string to its step definition after the expression's parameters. |
+| TRC-014 | Ubiquitous | The BDD runner shall create a fresh World for each scenario and run its steps in order, awaiting asynchronous steps. |
+| TRC-015 | Unwanted | If a step matches no step definition, then the BDD runner shall fail the scenario before running any step, naming the step and suggesting a step definition to add. |
+| TRC-016 | Unwanted | If a step matches more than one step definition, then the BDD runner shall fail the scenario before running any step and list every matching definition. |
+| TRC-017 | Ubiquitous | The BDD runner shall match And and But steps against the step definitions like any other step, and treat them as the Given, When or Then step before them. |
+| TRC-018 | Unwanted | If a step fails, then the BDD runner shall stop the scenario, skip its remaining steps and name the failing step and its line. |
+| TRC-019 | Unwanted | If a feature file cannot be parsed, then the BDD runner shall fail with the file name, the line and the parse error. |
