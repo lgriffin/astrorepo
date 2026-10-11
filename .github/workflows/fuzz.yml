@@ -1,0 +1,43 @@
+name: Fuzz
+
+# The fuzz tests with many runs per property (specs/029-property-fuzz, FUZ-008). Each push runs
+# them briefly through `npm test`; this runs them long, every night and on demand.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Runs per property
+        default: '20000'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Fuzz
+        shell: bash
+        env:
+          FUZZ_RUNS: ${{ github.event.inputs.runs || '20000' }}
+        run: npm run test:fuzz 2>&1 | tee fuzz.log
+      - name: Collect the failing seeds
+        if: failure()
+        shell: bash
+        run: grep -E 'FAIL |seed: |Counterexample' fuzz.log > fuzz-seeds.txt || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-failures
+          path: |
+            fuzz.log
+            fuzz-seeds.txt

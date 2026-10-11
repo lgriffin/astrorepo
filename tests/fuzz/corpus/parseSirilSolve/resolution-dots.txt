@@ -1,0 +1,3 @@
+log: Resolution:     ..2.390 arcsec/px
+log: Rotation:        -12.34 deg
+log: Image center: alpha: 00h42m44s, delta: +41°16'08"

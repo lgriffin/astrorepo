@@ -1,0 +1,3 @@
+cd biases
+cd ../~k bias rej 3 3 -nonorm -out=../masters/bias_stacked
+convert bias

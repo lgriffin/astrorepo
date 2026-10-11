@@ -1,0 +1,2 @@
+cd lights/../C:/Windows
+convert light
