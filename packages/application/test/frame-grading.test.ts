@@ -79,6 +79,90 @@ describe('FrameGrading', () => {
   })
 })
 
+describe('FrameGrading in detail', () => {
+  it('[NFR-014] Given a smaller batch asked for, When measured, Then only that many are measured and the last one tried is named', async () => {
+    const { grading, measurer } = setup(5)
+    expect(await grading.measureBatch('m42', { batch: 2 })).toEqual({ measured: 2, failed: 0, remaining: 3, last: 'f2' })
+    expect(measurer.measured).toEqual(['/data/M 42/Light_001.fit', '/data/M 42/Light_002.fit'])
+  })
+
+  it('[GRD-011] Given failed lights, When measured again without retry, Then they are skipped even after a named light', async () => {
+    const { grading, measurer } = setup(3)
+    measurer.set('/data/M 42/Light_001.fit', 'Truncated.').set('/data/M 42/Light_003.fit', 'Truncated.')
+    expect(await grading.measureBatch('m42')).toEqual({ measured: 1, failed: 2, remaining: 0, last: 'f3' })
+    measurer.measured.length = 0
+    expect(await grading.measureBatch('m42', { retryAfter: 'f1' })).toEqual({ measured: 0, failed: 0, remaining: 0, last: null })
+    expect(measurer.measured).toEqual([])
+  })
+
+  it('[GRD-011] Given failed lights and a retry after one of them, When retried, Then only failed lights after it are tried; an unknown one starts from the first', async () => {
+    const { grading, measurer } = setup(3)
+    measurer.set('/data/M 42/Light_001.fit', 'Truncated.').set('/data/M 42/Light_003.fit', 'Truncated.')
+    await grading.measureBatch('m42')
+    measurer.measured.length = 0
+    expect(await grading.measureBatch('m42', { retry: true, retryAfter: 'f1' })).toEqual({ measured: 0, failed: 1, remaining: 0, last: 'f3' })
+    expect(measurer.measured).toEqual(['/data/M 42/Light_003.fit'])
+    measurer.measured.length = 0
+    expect(await grading.measureBatch('m42', { retry: true, retryAfter: 'gone' })).toMatchObject({ failed: 2, last: 'f3' })
+    expect(measurer.measured).toEqual(['/data/M 42/Light_001.fit', '/data/M 42/Light_003.fit'])
+  })
+
+  it('[GRD-011] Given a measurer that fails with something other than an error, When measured, Then that is the reason saved, with the time', async () => {
+    const store = new InMemoryFrameGradeStore().add('m42', { fileId: 'f1', path: '/x.fit' })
+    const measurer = { measure: async (): Promise<never> => Promise.reject('disk gone') }
+    const grading = makeFrameGrading({ store, measurer, limits: new FixedGradeLimits(), clock })
+    expect(await grading.measureBatch('m42')).toEqual({ measured: 0, failed: 1, remaining: 0, last: 'f1' })
+    expect(store.lights.get('f1')?.measureError).toBe('disk gone')
+    expect(store.saved).toEqual([{ fileId: 'f1', at: new Date('2026-10-09T12:00:00Z') }])
+  })
+
+  it('[GRD-007] Given paths from a target, When the report for them is asked, Then only those lights are in it and its counts are theirs', async () => {
+    const { grading, measurer, store } = setup(4)
+    measurer.set('/data/M 42/Light_002.fit', measurement({ eccentricity: 0.9 }))
+    measurer.set('/data/M 42/Light_004.fit', 'Truncated.')
+    await grading.measureBatch('m42')
+    store.add('m42', { fileId: 'f5', path: '/data/M 42/Light_005.fit' })
+    const report = await grading.reportFor(['/data/M 42/Light_002.fit', '/data/M 42/Light_003.fit', '/data/M 42/Light_004.fit'])
+    expect(report.grades.map(g => [g.fileId, g.verdict])).toEqual([['f2', 'reject'], ['f3', 'keep'], ['f4', 'unmeasured']])
+    expect(report).toMatchObject({ kept: 1, rejected: 1, unmeasured: 1 })
+    expect(report.nights.map(n => [n.night, n.frames])).toEqual([['2026-01-10', 4], ['Unknown date', 1]])
+    expect([...(await grading.rejected(['/data/M 42/Light_001.fit', '/data/M 42/Light_002.fit']))]).toEqual(['/data/M 42/Light_002.fit'])
+  })
+
+  it('[ADV-008] Given a stack’s lights over two nights, When one night is left out and used again, Then only its lights change and a hand choice stays', async () => {
+    const store = new InMemoryFrameGradeStore()
+    const measurer = new FakeFrameMeasurer()
+    const at = (day: number, i: number) => new Date(Date.UTC(2026, 0, day, 21, i))
+    for (const [id, day] of [['a1', 10], ['a2', 10], ['a3', 10], ['b1', 12]] as const) {
+      store.add('m42', { fileId: id, path: `/d/${id}.fit`, capturedAt: at(day, id.length) })
+      measurer.set(`/d/${id}.fit`, measurement())
+    }
+    store.add('m42', { fileId: 'u1', path: '/d/u1.fit' })
+    const grading = makeFrameGrading({ store, measurer, limits: new FixedGradeLimits(), clock })
+    await grading.measureBatch('m42')
+    await grading.setOverride('a2', 'keep')
+    const paths = ['/d/a1.fit', '/d/a2.fit', '/d/a3.fit', '/d/b1.fit', '/d/u1.fit']
+    expect(await grading.setNightLeftOut(paths, '2026-01-10', true)).toBe(2)
+    expect((await grading.reportFor(paths)).grades.map(g => [g.fileId, g.verdict])).toEqual([['a1', 'reject'], ['a2', 'keep'], ['a3', 'reject'], ['b1', 'keep'], ['u1', 'unmeasured']])
+    expect(await grading.setNightLeftOut(paths, 'Unknown date', true)).toBe(1)
+    expect(await grading.setNightLeftOut(paths, '2026-01-10', false)).toBe(2)
+    expect(await grading.setNightLeftOut(paths, '2026-02-01', true)).toBe(0)
+    expect((await grading.reportFor(paths)).rejected).toBe(1)
+  })
+
+  it('[GRD-010] Given limits saved in Settings, When they are asked for, Then they are the saved ones', async () => {
+    const { grading, limits } = setup(1)
+    limits.limits = { ...DEFAULT_GRADE_LIMITS, maxFwhmPixels: 4 }
+    expect(await grading.limits()).toEqual({ ...DEFAULT_GRADE_LIMITS, maxFwhmPixels: 4 })
+  })
+
+  it('[GRD-008] Given a graded target, When exported, Then each row carries its light’s grade', async () => {
+    const { grading } = setup(1)
+    await grading.measureBatch('m42')
+    expect((await grading.exportCsv('m42')).split('\r\n')[1]).toBe('/data/M 42/Light_001.fit,2026-01-10,,2026-01-10T21:01:00.000Z,keep,,3,0.3,400,1000,20,50,1,')
+  })
+})
+
 describe('Stacking with grades', () => {
   function stackable() {
     const { grading, measurer } = setup()
