@@ -143,6 +143,8 @@ function program(files: string[], virtual: Record<string, string>) {
   return ts.createProgram([...files, ...Object.keys(virtual), NODE_TYPES], options, host)
 }
 
+const compilerPath = (file: string) => file.split(path.sep).join('/')
+
 /** True when the name is declared only in a library's typings (the host), not by the project's own code. */
 function isHostSymbol(symbol: ts.Symbol | undefined): boolean {
   const decls = symbol?.declarations ?? []
@@ -161,15 +163,19 @@ function isDeclarationName(node: ts.Identifier): boolean {
  * so a local or parameter that shadows a global is not a use of it. `virtual` maps a file name to
  * its source, for checking code that is not on disk.
  */
-export function ambientUses(files: string[], virtual: Record<string, string> = {}): string[] {
+export function ambientUses(diskFiles: string[], virtualFiles: Record<string, string> = {}): string[] {
+  // The compiler names files with forward slashes on every OS, so Windows paths are converted first.
+  const files = diskFiles.map(compilerPath)
+  const virtual = Object.fromEntries(Object.entries(virtualFiles).map(([name, code]) => [compilerPath(name), code]))
   const prog = program(files, virtual)
   const checker = prog.getTypeChecker()
   const out: string[] = []
   for (const name of [...files, ...Object.keys(virtual)]) {
     const sf = prog.getSourceFile(name)
-    if (!sf) continue
+    // A file the program did not load would pass silently, so it is an error instead.
+    if (!sf) throw new Error(`The architecture check could not load ${name}`)
     const at = (node: ts.Node, what: string) =>
-      out.push(`${name in virtual ? path.basename(name) : rel(name)}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1} ${what}`)
+      out.push(`${name in virtual ? path.posix.basename(name) : rel(name)}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1} ${what}`)
     const isGlobal = (id: ts.Identifier) => isHostSymbol(checker.getSymbolAtLocation(id))
     const visit = (node: ts.Node): void => {
       if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Date' && (node.arguments?.length ?? 0) === 0 && isGlobal(node.expression)) {
