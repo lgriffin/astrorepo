@@ -329,4 +329,69 @@ describe('comets', () => {
     expect(p.status === 'comet' && p.positions.map(x => x.frame)).toEqual(['Light_001.fit', 'Light_003.fit'])
     expect(p.status === 'comet' && p.written).toBe(false)
   })
+
+  it('[RIG-014] Given work folders written with backslashes, mixed separators or a trailing separator, When planned, Then the file path keeps the folder\'s own separator', async () => {
+    const { plan } = cometSetup()
+    const fileFor = async (workDir: string) => {
+      const p = await plan('2p', null, workDir)
+      return p.status === 'comet' ? p.file : 'not a comet'
+    }
+    expect(await fileFor('D:\\work\\2P')).toBe('D:\\work\\2P\\comet_positions.csv')
+    expect(await fileFor('D:\\work\\2P\\\\')).toBe('D:\\work\\2P\\comet_positions.csv')
+    expect(await fileFor('D:\\work/2P')).toBe('D:\\work/2P/comet_positions.csv')
+    expect(await fileFor('/work/2P//')).toBe('/work/2P/comet_positions.csv')
+    expect(await fileFor('work')).toBe('work/comet_positions.csv')
+    expect(await plan('2p', null, null)).toEqual({ status: 'comet', orbit: null, positions: [], undated: 0, motion: null, fromSite: false, file: null, written: false })
+  })
+
+  it('[RIG-011] [RIG-016] Given a target not typed as a comet but with an orbit set, When planned without a source folder, Then it is a comet with nothing placed yet', async () => {
+    const { plan, setOrbit, ws } = cometSetup(null)
+    expect(await plan('2p', '/data/2P', '/work/2P')).toEqual({ status: 'not-comet' })
+    await setOrbit('2p', ENCKE_LINE)
+    const p = await plan('2p', null, '/work/2P', { write: true })
+    expect(p).toMatchObject({ status: 'comet', orbit: { name: '2P/Encke' }, positions: [], undated: 0, motion: null, fromSite: false, file: '/work/2P/comet_positions.csv', written: false })
+    expect(ws.written.size).toBe(0)
+  })
+
+  it('[RIG-014] [NFR-020] Given a work folder that holds the source folder, When the file is asked for, Then it is refused and nothing is written', async () => {
+    const { plan, setOrbit, ws } = cometSetup()
+    await setOrbit('2p', ENCKE_LINE)
+    await expect(plan('2p', '/data/2P', '/data', { write: true })).rejects.toThrow(WorkAreaOverlapsSourceError)
+    expect(ws.written.size).toBe(0)
+  })
+
+  it('[RIG-013] [RIG-015] Given only undated lights, or lights taken at the same moment, When planned, Then nothing is written for undated ones and same-time lights are in name order with their distance', async () => {
+    const ws = new InMemorySirilWorkspace().addSource('/data/C', { name: 'B.fit' }, { name: 'A.fit' }, { name: 'C.fit' })
+    const comets = new InMemoryCometStore()
+    await makeSetCometOrbit({ comets })('c', ENCKE_LINE)
+    const plan = makePlanComet({ comets, workspace: ws, ephemeris: new FakeEphemeris(), settings: new InMemoryPlanningSettings(null), targets: new InMemoryStackCatalogue().addTarget('c', { name: 'C', objectType: 'comet' }) })
+    const none = await plan('c', '/data/C', '/work/C', { write: true })
+    expect(none).toMatchObject({ status: 'comet', positions: [], undated: 3, motion: null, written: false })
+    expect(ws.written.size).toBe(0)
+    const at = new Date(Date.UTC(1990, 9, 6, 2))
+    for (const n of ['A.fit', 'B.fit']) ws.describe(`/data/C/${n}`, { settings: settings({ exposureSec: null, capturedAt: at }) })
+    const p = await plan('c', '/data/C', '/work/C')
+    if (p.status !== 'comet') throw new Error('expected a comet')
+    expect(p.positions.map(x => [x.frame, x.at.toISOString()])).toEqual([
+      ['A.fit', '1990-10-06T02:00:00.000Z'],
+      ['B.fit', '1990-10-06T02:00:00.000Z']
+    ])
+    expect(p.undated).toBe(1)
+    expect(p.motion).toBeNull()
+    // Meeus' example 33.a puts Encke 0.824 AU from the Earth that night.
+    expect(p.positions[0].distanceAu).toBeCloseTo(0.824, 2)
+    expect(p.positions[0].raDeg).toBe(p.positions[1].raDeg)
+  })
+
+  it('[RIG-013] Given lights whose names run against their capture times, When planned, Then the positions are in time order, not name order', async () => {
+    const ws = new InMemorySirilWorkspace().addSource('/data/C', { name: 'A.fit' }, { name: 'B.fit' }, { name: 'C.fit' })
+    const hour = (h: number) => settings({ exposureSec: null, capturedAt: new Date(Date.UTC(1990, 9, 6, h)) })
+    ws.describe('/data/C/A.fit', { settings: hour(5) }).describe('/data/C/B.fit', { settings: hour(3) }).describe('/data/C/C.fit', { settings: hour(4) })
+    const comets = new InMemoryCometStore()
+    await makeSetCometOrbit({ comets })('c', ENCKE_LINE)
+    const plan = makePlanComet({ comets, workspace: ws, ephemeris: new FakeEphemeris(), settings: new InMemoryPlanningSettings(null), targets: new InMemoryStackCatalogue().addTarget('c', { name: 'C', objectType: 'comet' }) })
+    const p = await plan('c', '/data/C', null)
+    expect(p.status === 'comet' && p.positions.map(x => x.frame)).toEqual(['B.fit', 'C.fit', 'A.fit'])
+    expect(p.status === 'comet' && p.motion?.spanHours).toBe(2)
+  })
 })

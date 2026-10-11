@@ -213,3 +213,145 @@ describe('A removal that stops part way', () => {
     expect(new FolderRemovalError([], 'process', 'in use.').message).toBe("The work folder's process could not be removed: in use.")
   })
 })
+
+describe('Archive this target, edge by edge', () => {
+  const job = (targetId: string) => ({ kind: 'stack' as const, targetId, title: 'Stack', timing: 'now' as const, command: { program: 'siril-cli', args: [], cwd: WORK }, prepare: null, spaceDir: WORK, neededBytes: 0 })
+
+  it('[ARC-001] Given a stacked target, When previewed, Then the preview names the target, its work folder, the free space, shared files and the last archive', async () => {
+    const w = world()
+    w.area.free = 5000
+    const p = await w.archive.preview(w.request)
+    expect(p).toMatchObject({ target: { id: 'target-m-42', name: 'M 42' }, workDir: WORK, freeBytes: 5000, shared: [], record: null, blocked: null })
+    expect(p.options.map(o => o.space.verdict)).toEqual(['fits', 'fits'])
+    await w.archive.archive({ ...w.request, mode: 'linked', remove: [] })
+    expect((await w.archive.preview(w.request)).record).toMatchObject({ targetId: 'target-m-42', path: DEST, removed: [], freedBytes: 0 })
+  })
+
+  it('[ARC-007] Given an archive folder that holds the work folder, inside a read-only folder, or already there, When previewed, Then each is refused in full words', async () => {
+    const w = world()
+    expect((await w.archive.preview({ ...w.request, archiveRoot: '/work' })).blocked).toBe(
+      `The archive folder /work and the work folder ${WORK} overlap. Choose another archive folder in Settings → Folders.`
+    )
+    expect((await w.archive.preview({ ...w.request, archiveRoot: `${WORK}/archive` })).blocked).toBe(
+      `The archive folder ${WORK}/archive and the work folder ${WORK} overlap. Choose another archive folder in Settings → Folders.`
+    )
+    expect((await w.archive.preview({ ...w.request, readOnlyDirs: ['/elsewhere', '/nas'], archiveRoot: '/nas/archive' })).blocked).toBe(
+      'The archive folder /nas/archive is inside /nas, which the app only reads. Choose another archive folder in Settings → Folders.'
+    )
+    w.area.put(`${DEST}/old.txt`, 'x')
+    expect((await w.archive.preview(w.request)).blocked).toBe(`${DEST} already exists. Move or rename it, then archive again.`)
+    expect((await w.archive.preview({ ...w.request, workDir: '/work/siril/empty' })).blocked).toBe(
+      'The work folder /work/siril/empty is empty or missing, so there is nothing to archive. Stack the target first.'
+    )
+  })
+
+  it('[ARC-008] Given a running job for the target, When previewed, Then it is refused; finished jobs and jobs for other targets are not counted', async () => {
+    const w = world()
+    const other = await w.jobs.add(job('target-m-31'), new Date())
+    const done = await w.jobs.add(job('target-m-42'), new Date())
+    await w.jobs.update(done.id, { state: 'succeeded' })
+    expect((await w.archive.preview(w.request)).blocked).toBeNull()
+    await w.jobs.update(other.id, { state: 'running' })
+    expect((await w.archive.preview(w.request)).blocked).toBeNull()
+    const running = await w.jobs.add(job('target-m-42'), new Date())
+    await w.jobs.update(running.id, { state: 'running' })
+    expect((await w.archive.preview(w.request)).blocked).toBe('A job for this target is queued or running. Let it finish, or cancel it in Jobs, then archive.')
+  })
+
+  it('[ARC-009] Given the first folder fails to go, or the removal fails with no folder named, When archived, Then nothing is listed as removed and the reason ends with one full stop', async () => {
+    const first = world()
+    first.area.failRemoval = 'failed'
+    const error = await first.archive.archive({ ...first.request, mode: 'linked', remove: ['process', 'failed'] }).catch(e => e)
+    expect(error).toBeInstanceOf(ArchiveRemovalError)
+    expect(error.name).toBe('ArchiveRemovalError')
+    expect(error.message).toBe(`The archive was made in ${DEST}. The work folder's failed could not be removed: EBUSY: a file in it is in use. Remove the rest by hand, or archive again another day.`)
+    expect(error.record).toMatchObject({ removed: [], freedBytes: 0 })
+    expect(await first.store.get('target-m-42')).toMatchObject({ removed: [], freedBytes: 0 })
+
+    const plain = world()
+    plain.area.removeFolders = async () => Promise.reject('disk gone')
+    const e2 = await plain.archive.archive({ ...plain.request, mode: 'linked', remove: ['process'] }).catch(e => e)
+    expect(e2.message).toBe(`The archive was made in ${DEST}. disk gone. Remove the rest by hand, or archive again another day.`)
+    const e3 = await (() => {
+      const w = world()
+      w.area.removeFolders = async () => Promise.reject(new Error('Disk gone.'))
+      return w.archive.archive({ ...w.request, mode: 'linked', remove: ['process'] }).catch(e => e)
+    })()
+    expect(e3.message).toBe(`The archive was made in ${DEST}. Disk gone. Remove the rest by hand, or archive again another day.`)
+    expect(e3.record.removed).toEqual([])
+  })
+
+  it('[ARC-010] Given a target with no frames listed and no holds wired, When archived, Then the record has no fingerprint and the archive is made', async () => {
+    const w = world()
+    const archive = makeArchiveTarget({
+      area: w.area,
+      store: w.store,
+      frames: new InMemoryFrameCatalogue(),
+      stacks: new InMemoryStackCatalogue(),
+      jobs: w.jobs,
+      workspace: new InMemorySirilWorkspace(),
+      clock: new FixedClock(new Date(2026, 9, 9, 21, 0))
+    })
+    const p = await archive.preview(w.request)
+    expect(p.target).toEqual({ id: 'target-m-42', name: null })
+    expect(p.destination).toBe('/archive/target 2026-10-09')
+    const out = await archive.archive({ ...w.request, mode: 'linked', remove: ['process'] })
+    expect(out.record).toMatchObject({ fingerprint: '', path: '/archive/target 2026-10-09', removed: ['process'], freedBytes: 300 })
+    const fingerprinted = await w.archive.archive({ ...w.request, archiveRoot: '/archive2', mode: 'linked', remove: [] })
+    expect(fingerprinted.record.fingerprint).not.toBe('')
+  })
+
+  it('[ARC-010] Given frames for another target listed first, When archived, Then the record is fingerprinted from this target\'s frames only', async () => {
+    const one = world()
+    const alone = (await one.archive.archive({ ...one.request, mode: 'linked', remove: [] })).record.fingerprint
+    const two = world()
+    two.frames.add(target('M 31', { subs: subs(5, 60, '2026-01-01T21:00:00Z') }))
+    const archive = makeArchiveTarget({
+      area: two.area,
+      store: two.store,
+      frames: { listTargetFrames: async () => [...(await two.frames.listTargetFrames())].reverse() },
+      stacks: new InMemoryStackCatalogue().addTarget('target-m-42', { name: 'M 42' }),
+      jobs: two.jobs,
+      workspace: new InMemorySirilWorkspace(),
+      clock: new FixedClock(new Date(2026, 9, 9, 21, 0))
+    })
+    expect((await two.frames.listTargetFrames()).map(t => t.targetId)).toContain('target-m-31')
+    expect((await archive.archive({ ...two.request, mode: 'linked', remove: [] })).record.fingerprint).toBe(alone)
+  })
+
+  it('[ARC-007] Given a disk short of the space, When archived, Then the refusal says what to do', async () => {
+    const w = world()
+    w.area.free = 10
+    const error = await w.archive.archive({ ...w.request, mode: 'linked', remove: [] }).catch(e => e)
+    expect(error.name).toBe('ArchiveRefusedError')
+    expect(error.message).toBe("The archive folder's disk is short of the space this archive needs. Free space there, or choose another archive folder in Settings → Folders.")
+  })
+
+  it('[ARC-001] Given a manifest that cannot be read, When previewed, Then it is not counted and nothing fails', async () => {
+    const w = world()
+    w.area.readText = async () => Promise.reject(new Error('EACCES'))
+    const p = await w.archive.preview(w.request)
+    expect(p.manifests).toBe(0)
+    expect(p.blocked).toBeNull()
+  })
+})
+
+describe('Target holds', () => {
+  it('[ARC-008] Given a hold let go and the target held again, When the first release is called twice, Then a second hold is refused and the stale release does not let the new hold go', () => {
+    const holds = makeTargetHolds()
+    expect(holds.held('m42')).toBe(false)
+    const first = holds.hold('m42')
+    expect(holds.held('m42')).toBe(true)
+    expect(holds.held('m31')).toBe(false)
+    expect(holds.hold('m42')).toBeNull()
+    first?.()
+    expect(holds.held('m42')).toBe(false)
+    const second = holds.hold('m42')
+    expect(second).not.toBeNull()
+    first?.()
+    expect(holds.held('m42')).toBe(true)
+    expect(holds.hold('m42')).toBeNull()
+    second?.()
+    expect(holds.held('m42')).toBe(false)
+  })
+})
