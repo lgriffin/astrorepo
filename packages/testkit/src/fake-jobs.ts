@@ -1,5 +1,5 @@
 import type { JobLogs, JobPatch, JobSettingsSource, JobStore, MachineMonitor, ProcessRunner, RunArea, RunningProcess } from '@astro/application'
-import { DEFAULT_JOB_SETTINGS, type Job, type JobCommand, type JobSettings, type MachineLoad, type NewJob, type StackManifest } from '@astro/domain'
+import { DEFAULT_JOB_SETTINGS, FAILED_FOLDER, MANIFEST_SUFFIX, STEP_FOLDER, type Job, type JobCommand, type JobSettings, type MachineLoad, type NewJob, type StackManifest } from '@astro/domain'
 
 export class InMemoryJobStore implements JobStore {
   private readonly jobs = new Map<string, Job>()
@@ -129,11 +129,18 @@ export class InMemoryJobLogs implements JobLogs {
   }
 }
 
-/** A run area over maps: scripts to read, steps written, results set aside and manifests. */
+const baseName = (p: string) => p.split(/[\\/]/).pop() ?? p
+
+/**
+ * A run area over maps, with '/' paths: the files it can read (scripts, steps, manifests and
+ * anything a test puts there), steps written, results set aside and manifests written.
+ */
 export class InMemoryRunArea implements RunArea {
+  /** Every file the area can read, by path. */
   readonly texts = new Map<string, string>()
   readonly steps: { path: string; text: string }[] = []
   readonly setAsideFiles: string[] = []
+  /** Every manifest written, by its result. */
   readonly manifests = new Map<string, StackManifest>()
   /** Called with each set-aside path, so a fake work area can drop it. */
   onSetAside: (path: string) => void = () => {}
@@ -145,21 +152,34 @@ export class InMemoryRunArea implements RunArea {
   }
 
   async writeStep(workDir: string, name: string, text: string): Promise<string> {
-    const path = `${workDir}/.astrorepo/${name}`
+    if (name !== baseName(name) || name === '..' || name === '.') throw new Error(`${name} is not a plain file name.`)
+    const path = `${workDir}/${STEP_FOLDER}/${name}`
+    this.texts.set(path, text)
     this.steps.push({ path, text })
     return path
   }
 
   async setAside(workDir: string, run: string, paths: string[]): Promise<string[]> {
-    return paths.map(p => {
+    // Only files of the work folder move; anything else is left where it is.
+    const mine = paths.filter(p => p.startsWith(`${workDir}/`) && !p.slice(workDir.length + 1).split('/').includes('..'))
+    const dir = `${workDir}/${FAILED_FOLDER}/${baseName(run)}`
+    return mine.map(p => {
       this.setAsideFiles.push(p)
       this.onSetAside(p)
-      return `${workDir}/failed/${run}/${p.split('/').pop()}`
+      for (const [from, to] of [[p, `${dir}/${baseName(p)}`], [`${p}${MANIFEST_SUFFIX}`, `${dir}/${baseName(p)}${MANIFEST_SUFFIX}`]]) {
+        const text = this.texts.get(from)
+        if (text === undefined) continue
+        this.texts.delete(from)
+        this.texts.set(to, text)
+      }
+      return `${dir}/${baseName(p)}`
     })
   }
 
   async writeManifest(resultPath: string, manifest: StackManifest): Promise<string> {
+    const path = `${resultPath}${MANIFEST_SUFFIX}`
     this.manifests.set(resultPath, structuredClone(manifest))
-    return `${resultPath}.astrorepo.json`
+    this.texts.set(path, `${JSON.stringify(manifest, null, 2)}\n`)
+    return path
   }
 }
