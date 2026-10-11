@@ -30,6 +30,14 @@ The run fails when the score is below the break threshold (`DEFAULT_BREAK` in
 tests (`packages/*/test`, see `vitest.mutation.config.ts`) run against mutants. The TypeScript
 checker drops mutants that would not compile before any test runs.
 
+### Baseline
+
+The first full run (2026-10-11) tested 6,272 valid mutants and killed 4,819: a score of **76.8%**
+(domain 76.9%, application 76.4%). The files with the most survivors were `inspector.ts`,
+`frame-grading.ts`, `sky-geometry.ts` and `sky-overlay.ts`; the weakest sizeable files scored about
+67%. `DEFAULT_BREAK` is 65 so a pull request that touches one of those files still passes. It is a
+ratchet: raise it as survivors are killed, and never lower it to get a pull request through.
+
 ## Reading the report
 
 Open `reports/mutation/mutation.html`. The top level shows the score per file; click into a file

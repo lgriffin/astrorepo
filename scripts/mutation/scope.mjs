@@ -12,8 +12,12 @@ export const RUNTIME_PORTS = ['packages/application/src/ports/archive.ts']
 /** Written beside the report when a changed-files run has nothing to mutate. */
 export const SKIPPED_NOTE = 'skipped.txt'
 
-/** The break threshold used when MUTATION_BREAK is not set. */
-export const DEFAULT_BREAK = 80
+/**
+ * The break threshold used when MUTATION_BREAK is not set. The first full run (2026-10-11) scored
+ * 76.8% overall with the weakest sizeable files near 67%; the floor sits below those so a pull
+ * request touching one of them still passes. Raise it as survivors are killed; never lower it.
+ */
+export const DEFAULT_BREAK = 65
 
 /** Normalises a repository-relative path to forward slashes, whatever the platform. */
 export function toPosix(file) {

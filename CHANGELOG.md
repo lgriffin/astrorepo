@@ -110,7 +110,8 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 - **Property and fuzz tests** (spec 029, #56): 67 properties over the domain rules and a fuzz suite
   over every parser of untrusted input, nightly at 20,000 runs per parser.
 - **Mutation testing** (spec 030): Stryker mutates the hexagonal core; pull requests mutate the
-  core files they change and fail below the floor, and the whole core runs nightly.
+  core files they change and fail below the floor (65%; the first full run scored 76.8%), and the
+  whole core runs nightly.
 
 ## [0.2.0] - 2026-09-30
 
