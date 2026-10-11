@@ -109,6 +109,7 @@ describe('work folder names', () => {
     expect(workFolderName('/nights/2026-10-01/lights')).toBe(a)
     expect(workFolderName('C:\\Astro\\M 31 <odd>')).toMatch(/^M 31 _odd_-[0-9a-f]+$/)
     expect(workFolderName('/')).toMatch(/^target-/)
+    expect(workFolderName('D:\\')).toMatch(/^target-/)
   })
 
   it('[HEX-014] [NFR-018] Given target ids with separators or nothing safe, When a solve folder is named, Then it holds no separator', () => {

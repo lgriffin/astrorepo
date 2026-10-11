@@ -148,7 +148,9 @@ export function planSirilWorkspace(files: { path: string; name: string; imageTyp
  * unique by a short digest of the whole path, so two folders called "lights" never share one.
  */
 export function workFolderName(absoluteSourceDir: string): string {
-  const base = absoluteSourceDir.split(/[\\/]+/).filter(Boolean).pop()?.replace(/[^\w .-]+/g, '_') || 'target'
+  // A drive root (D:\) has no folder name of its own, so it is named "target", as it always was.
+  const last = absoluteSourceDir.split(/[\\/]+/).filter(Boolean).pop()
+  const base = (last && !/^[A-Za-z]:$/.test(last) ? last.replace(/[^\w .-]+/g, '_') : '') || 'target'
   let h = 0
   for (const c of absoluteSourceDir) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0
   return `${base}-${h.toString(16)}`

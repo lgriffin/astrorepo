@@ -186,10 +186,10 @@ describe('StackingService', () => {
       expect(oiii!.frameCount).toBe(3)
     })
 
-    it('[HEX-015] Given lights written as LIGHT, Light or untyped and a dark, When integration is counted, Then every light counts and the dark does not', () => {
+    it('[HEX-015] Given lights written as LIGHT, Light or untyped, a dark and a "Flat Light", When integration is counted, Then every light counts and the calibration frames do not', () => {
       const scanId = seedFitsScan(sqlite)
       const t1 = seedTarget(sqlite, { canonicalName: 'M 81' })
-      for (const imageType of ['LIGHT', 'Light', 'Light Frame', null, 'Dark']) {
+      for (const imageType of ['LIGHT', 'Light', 'Light Frame', null, 'Dark', 'Flat Light', 'Dark Light']) {
         seedFitsFile(sqlite, scanId, { targetId: t1, filter: 'L', exposureSec: 10, imageType, isStacked: false })
       }
       const l = getIntegrationProgress()[0].filters.find(f => f.filter === 'L')
