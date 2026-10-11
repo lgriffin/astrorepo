@@ -1,7 +1,9 @@
 /**
  * EARS traceability: every requirement in specs/<feature>/requirements.md must be cited by at
  * least one test, every cited ID must exist, and every requirement must read as its declared
- * EARS pattern. Pure functions here; cli.ts does the file I/O.
+ * EARS pattern. A citation counts only where a person reads it as the name of a test: the title
+ * of an it/test/describe call, or a tag on a Gherkin feature or scenario. Pure functions here;
+ * cli.ts does the file I/O.
  */
 
 export type EarsPattern = 'Ubiquitous' | 'Event' | 'State' | 'Unwanted' | 'Optional' | 'Complex'
@@ -13,24 +15,46 @@ export interface Requirement {
   source: string
 }
 
+/** test: an it/test/describe title. scenario, feature: a tag on that Gherkin element. */
+export type CitationKind = 'test' | 'scenario' | 'feature'
+
 export interface Citation {
   id: string
   file: string
+  title: string
+  kind: CitationKind
+}
+
+export interface SpecFolder {
+  name: string
+  hasRequirements: boolean
 }
 
 export interface TraceReport {
   requirements: Requirement[]
+  /** Requirement ID to the files that cite it. */
   coverage: Map<string, string[]>
+  /** Requirement ID to every citation of it (one per test title or Gherkin tag). */
+  citations: Map<string, Citation[]>
   uncited: Requirement[]
   unknown: Citation[]
   duplicates: string[]
   patternErrors: { requirement: Requirement; reason: string }[]
+  /** Unwanted requirements whose citing tests none name a failure, and none is a Gherkin scenario. */
+  unwantedUntested: Requirement[]
+  /** Spec folders numbered 009 or later that have no requirements.md. */
+  missingRequirementFiles: string[]
 }
 
 const ID = '[A-Z]{2,4}-\\d{3}'
 const ROW = new RegExp(`^\\|\\s*(${ID})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(.+?)\\s*\\|\\s*$`)
 const CITATION = new RegExp(`\\[(${ID}(?:\\s*,\\s*${ID})*)\\]`, 'g')
+const TAG_ID = new RegExp(`^@(${ID})$`)
 const PATTERNS: EarsPattern[] = ['Ubiquitous', 'Event', 'State', 'Unwanted', 'Optional', 'Complex']
+
+/** Words that show a test title is about the failure an Unwanted requirement handles. */
+export const FAILURE_WORDS =
+  /\b(?:fail|refus|reject|error|invalid|missing|cannot|not\b|warn|quarantin|skip|stop|cancel|unknown|empty|corrupt|throw)/i
 
 /** Reads the requirement rows of a markdown table: | ID | Pattern | Requirement | */
 export function parseRequirements(markdown: string, source: string): Requirement[] {
@@ -43,11 +67,200 @@ export function parseRequirements(markdown: string, source: string): Requirement
   return out
 }
 
-/** Finds every [ABC-123] or [ABC-123, DEF-456] citation in a test file. */
+interface StringLiteral {
+  end: number
+  value: string
+}
+
+const REGEX_AFTER = new Set('(,=:[!&|?{};+-*%<>~^')
+const REGEX_AFTER_WORD = new Set(['return', 'typeof', 'case', 'in', 'of', 'void', 'delete', 'throw', 'new', 'yield', 'await'])
+
+/**
+ * A small TypeScript lexer: blanks comments, string, template and regex contents out of the code
+ * (so calls inside them are not seen) and remembers each string literal by its opening quote.
+ */
+function lex(code: string): { masked: string; strings: Map<number, StringLiteral> } {
+  const n = code.length
+  const out = code.split('')
+  const strings = new Map<number, StringLiteral>()
+  const blank = (from: number, to: number) => {
+    for (let k = from; k < to && k < n; k++) if (out[k] !== '\n') out[k] = ' '
+  }
+
+  const regexAllowed = (i: number): boolean => {
+    let p = i - 1
+    while (p >= 0 && /\s/.test(out[p])) p--
+    if (p < 0) return true
+    if (REGEX_AFTER.has(out[p])) return true
+    if (!/[\w$]/.test(out[p])) return false
+    let s = p
+    while (s > 0 && /[\w$]/.test(out[s - 1])) s--
+    return REGEX_AFTER_WORD.has(out.slice(s, p + 1).join(''))
+  }
+
+  const scanTemplate = (i: number): number => {
+    let j = i + 1
+    while (j < n) {
+      if (code[j] === '\\') { j += 2; continue }
+      if (code[j] === '`') return j + 1
+      if (code[j] === '$' && code[j + 1] === '{') { j = scanCode(j + 2, true); continue }
+      j++
+    }
+    return n
+  }
+
+  function scanCode(start: number, untilBrace: boolean): number {
+    let i = start
+    let depth = 0
+    while (i < n) {
+      const c = code[i]
+      const next = code[i + 1]
+      if (c === '/' && next === '/') {
+        const e = code.indexOf('\n', i)
+        const end = e < 0 ? n : e
+        blank(i, end)
+        i = end
+      } else if (c === '/' && next === '*') {
+        const e = code.indexOf('*/', i + 2)
+        const end = e < 0 ? n : e + 2
+        blank(i, end)
+        i = end
+      } else if (c === '\'' || c === '"') {
+        let j = i + 1
+        while (j < n && code[j] !== c && code[j] !== '\n') j += code[j] === '\\' ? 2 : 1
+        strings.set(i, { end: j + 1, value: code.slice(i + 1, j) })
+        blank(i + 1, j)
+        i = j + 1
+      } else if (c === '`') {
+        const end = scanTemplate(i)
+        strings.set(i, { end, value: code.slice(i + 1, end - 1) })
+        blank(i + 1, end - 1)
+        i = end
+      } else if (c === '/' && regexAllowed(i)) {
+        let j = i + 1
+        let inClass = false
+        while (j < n && code[j] !== '\n') {
+          if (code[j] === '\\') { j += 2; continue }
+          if (code[j] === '[') inClass = true
+          else if (code[j] === ']') inClass = false
+          else if (code[j] === '/' && !inClass) break
+          j++
+        }
+        blank(i + 1, j)
+        i = j + 1
+      } else {
+        if (untilBrace && c === '{') depth++
+        else if (untilBrace && c === '}') {
+          if (depth === 0) return i + 1
+          depth--
+        }
+        i++
+      }
+    }
+    return n
+  }
+
+  scanCode(0, false)
+  return { masked: out.join(''), strings }
+}
+
+const TEST_CALL = /(?<![\w$.])(?:it|test|describe)\b/g
+/** Chained modifiers that take their own arguments before the title: it.each([...])('title'). */
+const TAKES_ARGS = new Set(['each', 'for', 'runIf', 'skipIf'])
+
+/**
+ * Returns the title of every it/test/describe call (and chained forms such as it.each, test.skip,
+ * describe.skipIf(x)) whose first argument is a string or template literal. Calls in comments or
+ * strings are ignored.
+ */
+export function extractTestTitles(code: string): string[] {
+  const { masked, strings } = lex(code)
+  const skipWs = (k: number) => {
+    while (k < masked.length && /\s/.test(masked[k])) k++
+    return k
+  }
+  const titles: string[] = []
+  for (const m of masked.matchAll(TEST_CALL)) {
+    let k = m.index! + m[0].length
+    let last = m[0]
+    for (;;) {
+      k = skipWs(k)
+      if (masked[k] === '.') {
+        const name = /^[\w$]+/.exec(masked.slice(skipWs(k + 1)))
+        if (!name) break
+        last = name[0]
+        k = skipWs(k + 1) + name[0].length
+      } else if (masked[k] === '`' && TAKES_ARGS.has(last)) {
+        const s = strings.get(k)
+        if (!s) break
+        k = s.end
+        last = ''
+      } else if (masked[k] === '(') {
+        const s = strings.get(skipWs(k + 1))
+        if (s) { titles.push(s.value); break }
+        if (!TAKES_ARGS.has(last)) break
+        let depth = 0
+        do {
+          if (masked[k] === '(') depth++
+          else if (masked[k] === ')') depth--
+          k++
+        } while (depth > 0 && k < masked.length)
+        last = ''
+      } else break
+    }
+  }
+  return titles
+}
+
+const idsIn = (title: string): string[] =>
+  [...title.matchAll(CITATION)].flatMap(m => m[1].split(',').map(id => id.trim()))
+
+/** Finds every [ABC-123] or [ABC-123, DEF-456] citation in the test titles of a test file. */
 export function parseCitations(code: string, file: string): Citation[] {
+  return extractTestTitles(code).flatMap(title =>
+    idsIn(title).map(id => ({ id, file, title, kind: 'test' as const })))
+}
+
+const GHERKIN_ELEMENT = /^(Feature|Rule|Scenario Outline|Scenario Template|Scenario|Example|Examples|Scenarios):\s*(.*)$/
+
+/**
+ * Finds every @ABC-123 tag on a Gherkin feature, rule, scenario or examples block. Tags in
+ * comments, doc strings or step text do not count.
+ */
+export function parseFeatureCitations(text: string, file: string): Citation[] {
   const out: Citation[] = []
-  for (const m of code.matchAll(CITATION)) {
-    for (const id of m[1].split(',')) out.push({ id: id.trim(), file })
+  let pending: string[] = []
+  let docString: string | null = null
+  let outline = ''
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (docString) {
+      if (line.startsWith(docString)) docString = null
+      continue
+    }
+    if (line.startsWith('"""') || line.startsWith('```')) {
+      docString = line.slice(0, 3)
+      pending = []
+      continue
+    }
+    if (line === '' || line.startsWith('#')) continue
+    if (line.startsWith('@')) {
+      pending.push(...line.replace(/\s#.*$/, '').split(/\s+/).filter(t => t.startsWith('@')))
+      continue
+    }
+    const el = GHERKIN_ELEMENT.exec(line)
+    if (el) {
+      const keyword = el[1]
+      let title = el[2]
+      if (keyword.startsWith('Scenario') || keyword === 'Example') outline = title
+      if (keyword === 'Examples' || keyword === 'Scenarios') title = outline
+      const kind: CitationKind = keyword === 'Feature' || keyword === 'Rule' ? 'feature' : 'scenario'
+      for (const tag of pending) {
+        const m = TAG_ID.exec(tag)
+        if (m) out.push({ id: m[1], file, title, kind })
+      }
+    }
+    pending = []
   }
   return out
 }
@@ -81,46 +294,144 @@ export function checkPattern(r: Requirement): string | null {
   }
 }
 
-export function trace(requirements: Requirement[], citations: Citation[]): TraceReport {
+/** Spec folders numbered 009 or later (when specs gained requirements.md) that lack one. */
+export function checkSpecFolders(folders: SpecFolder[]): string[] {
+  return folders
+    .filter(f => { const n = /^(\d+)-/.exec(f.name); return n !== null && Number(n[1]) >= 9 && !f.hasRequirements })
+    .map(f => f.name)
+    .sort()
+}
+
+/** True when a citation shows the failure path of an Unwanted requirement. */
+export function showsFailure(c: Citation): boolean {
+  return c.kind === 'scenario' || (c.kind === 'test' && FAILURE_WORDS.test(c.title))
+}
+
+export function trace(requirements: Requirement[], citations: Citation[], specFolders: SpecFolder[] = []): TraceReport {
   const coverage = new Map<string, string[]>()
+  const byId = new Map<string, Citation[]>()
   const seen = new Set<string>()
   const duplicates: string[] = []
   for (const r of requirements) {
     if (seen.has(r.id)) duplicates.push(r.id)
     seen.add(r.id)
     coverage.set(r.id, [])
+    byId.set(r.id, [])
   }
   const unknown: Citation[] = []
   for (const c of citations) {
     const files = coverage.get(c.id)
-    if (!files) unknown.push(c)
-    else if (!files.includes(c.file)) files.push(c.file)
+    if (!files) { unknown.push(c); continue }
+    byId.get(c.id)!.push(c)
+    if (!files.includes(c.file)) files.push(c.file)
   }
   return {
     requirements,
     coverage,
+    citations: byId,
     uncited: requirements.filter(r => coverage.get(r.id)!.length === 0),
     unknown,
     duplicates,
     patternErrors: requirements
       .map(requirement => ({ requirement, reason: checkPattern(requirement) }))
-      .filter((e): e is { requirement: Requirement; reason: string } => e.reason !== null)
+      .filter((e): e is { requirement: Requirement; reason: string } => e.reason !== null),
+    unwantedUntested: requirements.filter(r => {
+      const cs = byId.get(r.id)!
+      return r.pattern === 'Unwanted' && cs.length > 0 && !cs.some(showsFailure)
+    }),
+    missingRequirementFiles: checkSpecFolders(specFolders)
   }
 }
 
 export function passes(report: TraceReport): boolean {
   return report.uncited.length === 0 && report.unknown.length === 0 &&
-    report.duplicates.length === 0 && report.patternErrors.length === 0
+    report.duplicates.length === 0 && report.patternErrors.length === 0 &&
+    report.unwantedUntested.length === 0 && report.missingRequirementFiles.length === 0
+}
+
+export interface SpecSummary {
+  source: string
+  cited: number
+  total: number
+  requirements: { id: string; pattern: EarsPattern; tests: number; files: string[] }[]
+}
+
+/** Cited count per spec, and per requirement how many tests (titles or scenario tags) cite it. */
+export function summariseBySpec(report: TraceReport): SpecSummary[] {
+  const specs = new Map<string, SpecSummary>()
+  for (const r of report.requirements) {
+    let s = specs.get(r.source)
+    if (!s) { s = { source: r.source, cited: 0, total: 0, requirements: [] }; specs.set(r.source, s) }
+    const tests = report.citations.get(r.id)?.length ?? 0
+    s.total++
+    if (tests > 0) s.cited++
+    s.requirements.push({ id: r.id, pattern: r.pattern, tests, files: report.coverage.get(r.id) ?? [] })
+  }
+  return [...specs.values()]
+}
+
+/** The machine-readable form written by `npm run ears -- --json <path>`. */
+export function toJson(report: TraceReport) {
+  return {
+    ok: passes(report),
+    requirements: report.requirements.length,
+    cited: report.requirements.length - report.uncited.length,
+    failures: {
+      uncited: report.uncited.map(r => ({ id: r.id, source: r.source })),
+      unknown: report.unknown.map(c => ({ id: c.id, file: c.file, title: c.title })),
+      duplicates: report.duplicates,
+      patternErrors: report.patternErrors.map(e => ({ id: e.requirement.id, reason: e.reason })),
+      unwantedUntested: report.unwantedUntested.map(r => ({ id: r.id, source: r.source })),
+      missingRequirementFiles: report.missingRequirementFiles
+    },
+    specs: summariseBySpec(report)
+  }
+}
+
+function failureLines(report: TraceReport): string[] {
+  const lines: string[] = []
+  for (const r of report.uncited) lines.push(`UNCITED   ${r.id} (${r.source}) has no test naming [${r.id}]`)
+  for (const c of report.unknown) lines.push(`UNKNOWN   ${c.file} cites ${c.id}, which no requirements.md defines`)
+  for (const id of report.duplicates) lines.push(`DUPLICATE ${id} is defined more than once`)
+  for (const e of report.patternErrors) lines.push(`PATTERN   ${e.requirement.id}: ${e.reason}`)
+  for (const r of report.unwantedUntested) {
+    lines.push(`UNWANTED  ${r.id} (${r.source}) is an "If ..., then ..." requirement but no citing test title names the failure and no Gherkin scenario cites it`)
+  }
+  for (const f of report.missingRequirementFiles) lines.push(`NOSPEC    specs/${f}/ has no requirements.md`)
+  return lines
 }
 
 export function formatReport(report: TraceReport): string {
   const lines: string[] = []
   const cited = report.requirements.length - report.uncited.length
   lines.push(`EARS traceability: ${cited}/${report.requirements.length} requirements cited by tests`)
-  for (const r of report.uncited) lines.push(`  UNCITED   ${r.id} (${r.source}) has no test naming [${r.id}]`)
-  for (const c of report.unknown) lines.push(`  UNKNOWN   ${c.file} cites ${c.id}, which no requirements.md defines`)
-  for (const id of report.duplicates) lines.push(`  DUPLICATE ${id} is defined more than once`)
-  for (const e of report.patternErrors) lines.push(`  PATTERN   ${e.requirement.id}: ${e.reason}`)
+  for (const s of summariseBySpec(report)) {
+    const thin = s.requirements.filter(r => r.tests === 1).length
+    lines.push(`  ${s.source}: ${s.cited}/${s.total} cited${thin ? `, ${thin} by a single test` : ''}`)
+  }
+  for (const l of failureLines(report)) lines.push(`  ${l}`)
   lines.push(passes(report) ? 'OK' : 'FAILED')
   return lines.join('\n')
+}
+
+/** A markdown summary for $GITHUB_STEP_SUMMARY. */
+export function formatMarkdown(report: TraceReport): string {
+  const cited = report.requirements.length - report.uncited.length
+  const lines = [
+    `## EARS traceability ${passes(report) ? 'passed' : 'FAILED'}`,
+    '',
+    `${cited}/${report.requirements.length} requirements cited by tests.`,
+    '',
+    '| Spec | Cited | Tests per requirement (min / max) |',
+    '|---|---|---|'
+  ]
+  for (const s of summariseBySpec(report)) {
+    const counts = s.requirements.map(r => r.tests)
+    lines.push(`| ${s.source} | ${s.cited}/${s.total} | ${Math.min(...counts)} / ${Math.max(...counts)} |`)
+  }
+  const failures = failureLines(report)
+  if (failures.length > 0) {
+    lines.push('', '### Failures', '', ...failures.map(l => `- \`${l.replace(/\s+/, ' ')}\``))
+  }
+  return lines.join('\n') + '\n'
 }

@@ -245,7 +245,7 @@ describe('FITS Parser', () => {
     expect(result.imageStats).toBeNull()
   })
 
-  it('[ING-015] Given a large file with no END card, When parsed, Then it is reported unreadable after the header limit without reading the rest', async () => {
+  it('[ING-015] Given a large file with no END card, When parsed, Then it is reported invalid after the header limit without reading the rest', async () => {
     const filePath = path.join(os.tmpdir(), `noend-${Date.now()}-${Math.random().toString(36).slice(2)}.fit`)
     tempFiles.push(filePath)
     const block = Buffer.from(padRecord('SIMPLE  =                    T') + ' '.repeat(BLOCK_SIZE - RECORD_SIZE), 'ascii')

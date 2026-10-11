@@ -187,7 +187,7 @@ describe('scheduling', () => {
     expect(scheduleJobs(input({ jobs: [unknown], freeBytes: {} })).queue[0].wait).toEqual({ code: 'space-unknown' })
   })
 
-  it('[JOB-005] Given a job predicted to run past the close, When a shorter one is queued behind it, Then the shorter one starts and the longer carries to the next window', () => {
+  it('[JOB-005] Given a job predicted to run past the close, When a shorter one is queued behind it, Then the longer one is not started: the shorter one starts and the longer carries to the next window', () => {
     const long = job({ neededBytes: 30 * GB }) // 45 minutes at the first-run guess
     const short = job({ neededBytes: 5 * GB }) // 7.5 minutes
     const s = scheduleJobs(input({ now: local(2, 30), jobs: [long, short] }))

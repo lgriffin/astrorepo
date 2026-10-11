@@ -282,7 +282,7 @@ describe('comets', () => {
     expect(await plan('m42', '/data/2P', '/work/2P')).toEqual({ status: 'not-comet' })
   })
 
-  it('[RIG-013] [RIG-015] Given a comet with dated and undated lights, When planned, Then each dated light has a mid-exposure position in time order and the undated one is counted', async () => {
+  it('[RIG-013] [RIG-015] Given a comet with dated and undated lights, When planned, Then each dated light has a mid-exposure position in time order and the undated one is skipped and counted', async () => {
     const { plan, setOrbit, ws } = cometSetup()
     expect(await plan('2p', '/data/2P', '/work/2P')).toMatchObject({ status: 'comet', orbit: null, positions: [], file: '/work/2P/comet_positions.csv' })
     await setOrbit('2p', ENCKE_LINE)

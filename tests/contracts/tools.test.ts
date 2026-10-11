@@ -91,9 +91,10 @@ describe('NodeToolHub', () => {
     expect(found).toMatchObject({ path: null })
   })
 
-  it('[HUB-004] Given nothing installed, When tools are located, Then each lists every place it looked, in order', async () => {
+  it('[HUB-004] Given nothing installed, When tools are located, Then each is not found and lists every place it looked, in order', async () => {
     const statuses = await windowsHub([], {}, 'E:\\bin').locate()
     const rc = statuses.find(s => s.id === 'rc-astro')
+    expect(statuses.filter(s => s.path !== null)).toEqual([])
     expect(rc?.looked).toEqual([win('E:\\bin\\rc-astro.exe'), win('C:/Program Files/RC-Astro/CLI/rc-astro.exe')])
   })
 

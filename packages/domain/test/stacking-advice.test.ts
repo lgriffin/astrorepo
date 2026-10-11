@@ -57,7 +57,7 @@ describe('memory', () => {
     expect(stackChannels('OSC_Preprocessing_WithoutDBF')).toBe(3)
   })
 
-  it('[ADV-002] Given the PC\'s memory, When a stack is checked, Then it fits in one pass, in blocks, or is short with what to do', () => {
+  it('[ADV-002] Given the PC\'s memory, When a stack is checked, Then it fits in one pass, falls back to blocks, or warns that it is short and what to do', () => {
     const need = { onePassBytes: 10 * GB, minimumBytes: 2 * GB }
     expect(memoryFit(need, { totalBytes: 32 * GB, availableBytes: 20 * GB })).toEqual({ fit: 'one-pass', text: 'Fits in memory: 10 GB of 20 GB free.' })
     expect(memoryFit(need, { totalBytes: 32 * GB, availableBytes: 4 * GB }).fit).toBe('blocks')

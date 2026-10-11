@@ -50,7 +50,7 @@ describe('Planning a SyQon step', () => {
     )
   })
 
-  it('[HUB-014] Given the output already beside the stack, When planned without Replace it, Then it is blocked; with it, the overwrite flag is passed', async () => {
+  it('[HUB-014] Given the output already beside the stack, When planned without Replace it, Then it is refused with the reason; with it, the overwrite flag is passed', async () => {
     const s = setup()
     s.tools.folders.set('D:/work/M31', ['result_3600s.fit', 'result_3600s_denoised.fit'])
     const kept = await s.plan('m31', { step: 'denoise' })
