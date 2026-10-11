@@ -452,4 +452,198 @@ describe('tiles with no lights in next actions', () => {
     expect((await noSite())[0]).toMatchObject({ nights: [], lookedAt: 0 })
     expect(await makeListMosaicGaps({ store, mosaics: new InMemoryMosaicStore(), settings, ephemeris, clock })()).toEqual([])
   })
+
+  it('[SKY-012] Given no saved plan, When the gaps are listed, Then the sky is not even looked at', async () => {
+    const { gaps, ephemeris } = plannerSetup()
+    expect(await gaps()).toEqual([])
+    expect(ephemeris.nightsRequested).toEqual([])
+  })
+})
+
+const quietIo = () => {
+  const log: string[] = []
+  const steps: [number, number, string | null][] = []
+  return {
+    log,
+    steps,
+    io: {
+      run: async () => ({ exitCode: 0, error: null, output: '' }),
+      log: (t: string) => void log.push(t),
+      progress: async (step: number, of: number, label: string | null) => void steps.push([step, of, label]),
+      cancelled: () => false
+    }
+  }
+}
+const solveJob = (files: string[], hint: { raDeg: number; decDeg: number } | null = null) =>
+  ({ solve: { solver: 'siril', program: 's', workDir: '/w', files: files.map(path => ({ path, widthPx: 1, heightPx: 1, hint, optics: null })) } }) as unknown as Job
+
+describe('the solver and the queue, in detail', () => {
+  it('[SKY-002] Given ASTAP and Siril found but only a Siril adapter, When a solver is chosen, Then it is Siril', async () => {
+    const chosen = await makePreferredSolver({ tools: new FakeToolHub().installAll(), solvers: [new FakePlateSolver('siril')] })()
+    expect(chosen).toMatchObject({ solver: { id: 'siril' } })
+  })
+
+  it('[SKY-003] Given a file in a finished solve job and one in a running job, When asked again, Then only the finished one is queued again', async () => {
+    const { store, jobs, queue } = queueSetup()
+    store.add(skyFile({ path: '/a/1.fit', capturedAt: new Date('2026-10-01T21:00:00Z') }), skyFile({ path: '/a/2.fit', capturedAt: new Date('2026-10-02T21:00:00Z') }))
+    const add = async (path: string) =>
+      jobs.add({ kind: 'solve', targetId: 'm31', title: 't', timing: 'now', command: { program: 'astap', args: [], cwd: '/w' }, prepare: null, spaceDir: '/w', neededBytes: 0, solve: { solver: 'astap', program: 'astap', workDir: '/w', files: [{ path, widthPx: 1, heightPx: 1, hint: null, optics: null }] } }, new Date())
+    await jobs.update((await add('/a/1.fit')).id, { state: 'succeeded' })
+    await jobs.update((await add('/a/2.fit')).id, { state: 'running' })
+    const result = await queue('m31')
+    expect(result.job?.solve?.files.map(f => f.path)).toEqual(['/a/1.fit'])
+  })
+
+  it('[SKY-002] [SKY-004] Given two files with a WCS and one to solve but no solver, When asked, Then the header note leads the reason and nothing is queued', async () => {
+    const { store, queue } = queueSetup(new FakeToolHub())
+    const wcs = { CRVAL1: 10.7, CRVAL2: 41.3, CDELT1: -0.000664, CDELT2: 0.000664 }
+    store.add(
+      skyFile({ path: '/a/1.fit', capturedAt: new Date('2026-10-01T21:00:00Z'), wcs }),
+      skyFile({ path: '/a/2.fit', capturedAt: new Date('2026-10-02T21:00:00Z'), wcs }),
+      skyFile({ path: '/a/3.fit', capturedAt: new Date('2026-10-03T21:00:00Z') })
+    )
+    expect(await queue('m31')).toEqual({ fromHeaders: 2, toSolve: 1, job: null, solver: null, message: `2 files already carried a position in its headers. ${NO_SOLVER}` })
+  })
+
+  it('[SKY-003] Given a target with no catalogue position, When solves are queued, Then the files carry no hint', async () => {
+    const { store, queue } = queueSetup()
+    store.add(skyFile({ path: '/b/1.fit', targetId: 'm31-p2' }))
+    const result = await queue('m31-p2')
+    expect(result.job?.solve?.files[0].hint).toBeNull()
+    expect(result.job?.title).toBe('Plate solve M 31 panel 2 with ASTAP (1 file)')
+  })
+})
+
+describe('running a solve job, in detail', () => {
+  it('[SKY-003] Given a job with no solve task, When run directly, Then it fails with a plain reason', async () => {
+    const run = makeRunSolveJob({ solvers: [new FakePlateSolver('siril')], store: new InMemorySolveStore(), clock: new FixedClock() })
+    expect(await run({ solve: null } as unknown as Job, quietIo().io)).toEqual({ state: 'failed', note: 'This job has no files to plate solve.' })
+  })
+
+  it('[SKY-003] Given three files that fail, When the job runs, Then each is logged and named, with nothing more, and the job fails', async () => {
+    const run = makeRunSolveJob({ solvers: [new FakePlateSolver('siril')], store: new InMemorySolveStore(), clock: new FixedClock() })
+    const { io, log, steps } = quietIo()
+    const result = await run(solveJob(['/d/1.fit', '/d/2.fit', '/d/3.fit']), io)
+    expect(result).toEqual({
+      state: 'failed',
+      note: 'Solved 0 of 3 files. Not solved: 1.fit: ASTAP found no solution. 2.fit: ASTAP found no solution. 3.fit: ASTAP found no solution.'
+    })
+    expect(log[0]).toBe('── 1 of 3: /d/1.fit\n')
+    expect(log[1]).toBe('Not solved: ASTAP found no solution.\n\n')
+    expect(log[4]).toBe('── 3 of 3: /d/3.fit\n')
+    expect(steps).toEqual([[0, 3, '1.fit'], [1, 3, '2.fit'], [2, 3, '3.fit'], [3, 3, null]])
+  })
+
+  it('[SKY-003] Given four failures, When the job runs, Then three are named and the rest counted', async () => {
+    const run = makeRunSolveJob({ solvers: [new FakePlateSolver('siril')], store: new InMemorySolveStore(), clock: new FixedClock() })
+    const { note } = await run(solveJob(['/1.fit', '/2.fit', '/3.fit', '/4.fit']), quietIo().io)
+    expect(note).toBe('Solved 0 of 4 files. Not solved: 1.fit: ASTAP found no solution. 2.fit: ASTAP found no solution. 3.fit: ASTAP found no solution. And 1 more.')
+  })
+
+  it('[SKY-003] Given every file solved in an earlier run, When the job runs again, Then nothing is solved and it does not fail', async () => {
+    const store = new InMemorySolveStore()
+    for (const path of ['/a.fit', '/b.fit']) await store.save({ path, field: solvedField(1, 2), source: 'siril', solvedAt: new Date(), error: null })
+    const solver = new FakePlateSolver('siril')
+    const run = makeRunSolveJob({ solvers: [solver], store, clock: new FixedClock() })
+    expect(await run(solveJob(['/a.fit', '/b.fit']), quietIo().io)).toEqual({ state: 'succeeded', note: 'Solved 0 of 0 files. 2 files solved in an earlier run.' })
+    expect(solver.solved).toEqual([])
+  })
+
+  it('[SKY-003] Given a job cancelled before it starts, When it runs, Then no file is solved', async () => {
+    const solver = new FakePlateSolver('siril')
+    const run = makeRunSolveJob({ solvers: [solver], store: new InMemorySolveStore(), clock: new FixedClock() })
+    const { io } = quietIo()
+    expect(await run(solveJob(['/a.fit']), { ...io, cancelled: () => true })).toEqual({ state: 'succeeded', note: 'Solved 0 of 0 files.' })
+    expect(solver.solved).toEqual([])
+  })
+
+  it('[SKY-005] [SKY-003] Given a hinted solve with no match that is cancelled meanwhile, When the job runs, Then the whole sky is not tried', async () => {
+    const solver = new FakePlateSolver('siril')
+    const store = new InMemorySolveStore()
+    const run = makeRunSolveJob({ solvers: [solver], store, clock: new FixedClock() })
+    const { io } = quietIo()
+    await run(solveJob(['/a.fit', '/b.fit'], { raDeg: 10, decDeg: 41 }), { ...io, cancelled: () => solver.solved.length > 0 })
+    expect(solver.solved).toEqual(['/a.fit'])
+    expect(store.stored.size).toBe(0)
+  })
+})
+
+describe("what a target's solves say, in detail", () => {
+  it('[SKY-005] [SKY-006] Given a solved master and an undated light beside other targets\' files, When described, Then only this target\'s files count and the rotation is not taken from them', async () => {
+    const { store, describe: describeGeometry } = geometrySetup()
+    store.add(
+      skyFile({ path: '/a/n1/1.fit', capturedAt: new Date('2026-10-01T21:00:00Z') }),
+      skyFile({ path: '/a/stack.fit', kind: 'master', capturedAt: new Date('2026-10-02T21:00:00Z') }),
+      skyFile({ path: '/a/undated/1.fit', capturedAt: null }),
+      skyFile({ path: '/c/m42/1.fit', targetId: 'm42' }),
+      skyFile({ path: '/c/m42/n2/1.fit', targetId: 'm42', capturedAt: new Date('2026-10-05T21:00:00Z') })
+    )
+    await store.save({ path: '/a/n1/1.fit', field: solvedField(10.68, 41.27, { rotationDeg: 0 }), source: 'astap', solvedAt: new Date(), error: null })
+    await store.save({ path: '/a/stack.fit', field: solvedField(10.68, 41.27, { rotationDeg: 40 }), source: 'astap', solvedAt: new Date(), error: null })
+    await store.save({ path: '/a/undated/1.fit', field: solvedField(10.68, 41.27, { rotationDeg: 80 }), source: 'astap', solvedAt: new Date(), error: null })
+    const g = await describeGeometry('m31')
+    expect(g?.unsolved).toBe(0)
+    expect(g?.solves.map(s => [s.path, s.night])).toEqual([['/a/undated/1.fit', null], ['/a/n1/1.fit', '2026-10-01'], ['/a/stack.fit', '2026-10-02']])
+    expect(g?.rotation).toEqual({ nights: [{ night: '2026-10-01', rotationDeg: 0 }], spreadDeg: 0 })
+  })
+
+  it('[SKY-011] Given only a solved master, When described, Then it is not a mosaic panel', async () => {
+    const { store, describe: describeGeometry } = geometrySetup()
+    store.add(skyFile({ path: '/a/stack.fit', kind: 'master' }))
+    await store.save({ path: '/a/stack.fit', field: solvedField(10.68, 41.27), source: 'astap', solvedAt: new Date(), error: null })
+    expect((await describeGeometry('m31'))?.mosaic.grouping.panels).toEqual([])
+  })
+
+  it('[SKY-011] Given a saved plan with no other target in it, When saved, Then no link is written', async () => {
+    const { store, mosaics: m } = geometrySetup()
+    const calls: string[][] = []
+    m.linkPanels = async (_id: string, ids: string[]) => void calls.push(ids)
+    store.add(skyFile({ path: '/a/p1/1.fit' }))
+    await store.save({ path: '/a/p1/1.fit', field: solvedField(10.68, 41.27), source: 'astap', solvedAt: new Date(), error: null })
+    await makeSaveMosaicPlan({ store, mosaics: m, clock: new FixedClock() })('m31', { field: seestar, rotationDeg: 0, overlap: 0.2 })
+    expect(calls).toEqual([])
+  })
+})
+
+describe('planning a mosaic, in detail', () => {
+  it('[SKY-010] Given a target with a right ascension but no declination, When planned, Then it is refused for having no position', async () => {
+    const { plan, mosaics: m } = plannerSetup()
+    m.addTarget({ id: 'half', name: 'Half', raHours: 1, decDeg: null, sizeArcmin: 100 })
+    expect(await plan({ targetId: 'half', field: seestar })).toMatchObject({ status: 'no-position' })
+  })
+
+  it('[SKY-010] Given solved lights only under another target, or a master or failed solve of its own, When planned with no equipment, Then the field is unknown', async () => {
+    const { plan, store } = plannerSetup()
+    store.add(skyFile({ path: '/c/m31/1.fit' }), skyFile({ path: '/c/m42/1.fit', targetId: 'm42' }), skyFile({ path: '/c/m42/stack.fit', targetId: 'm42', kind: 'master' }))
+    await store.save({ path: '/c/m31/1.fit', field: solvedField(10.68, 41.27), source: 'astap', solvedAt: new Date(), error: null })
+    await store.save({ path: '/c/m42/1.fit', field: null, source: 'astap', solvedAt: new Date(), error: 'ASTAP found no solution.' })
+    await store.save({ path: '/c/m42/stack.fit', field: solvedField(83.8, -5.4), source: 'astap', solvedAt: new Date(), error: null })
+    expect(await plan({ targetId: 'm42' })).toMatchObject({ status: 'no-field' })
+  })
+
+  it('[SKY-007] Given two solved lights of different fields, When planned with no equipment, Then the smaller of the two middle values is used', async () => {
+    const { plan, store } = plannerSetup()
+    store.add(skyFile({ path: '/a/n1/1.fit', capturedAt: new Date('2026-10-01T21:00:00Z') }), skyFile({ path: '/a/n2/1.fit', capturedAt: new Date('2026-10-02T21:00:00Z') }))
+    await store.save({ path: '/a/n1/1.fit', field: solvedField(10.68, 41.27, { widthPx: 2000, heightPx: 3000 }), source: 'astap', solvedAt: new Date(), error: null })
+    await store.save({ path: '/a/n2/1.fit', field: solvedField(10.68, 41.27, { widthPx: 1000, heightPx: 1500 }), source: 'astap', solvedAt: new Date(), error: null })
+    const r = await plan({ targetId: 'm31' })
+    if (r.status !== 'ok') throw new Error(r.status)
+    expect(r.plan.field.widthDeg).toBeCloseTo((1000 * 2.39) / 3600, 9)
+    expect(r.plan.field.heightDeg).toBeCloseTo((1500 * 2.39) / 3600, 9)
+  })
+
+  it('[SKY-008] Given a night the sky gives nothing for, When planned, Then that night is not marked', async () => {
+    const { plan, ephemeris } = plannerSetup()
+    ephemeris.noDarkness('2026-10-10')
+    const r = await plan({ targetId: 'm31', field: seestar })
+    if (r.status !== 'ok') throw new Error(r.status)
+    expect(r.nights?.map(n => n.night)).not.toContain('2026-10-10')
+    expect(r.nights).toHaveLength(9)
+  })
+
+  it('[SKY-009] Given a target name with runs of spaces and symbols, When exported, Then each run becomes one underscore', async () => {
+    const { plan, mosaics: m } = plannerSetup()
+    m.addTarget({ id: 'odd', name: 'Sh2  101 / Tulip', raHours: 20, decDeg: 35, sizeArcmin: 16 })
+    expect((await makeExportMosaicCsv(plan)({ targetId: 'odd', field: seestar }))?.fileName).toBe('Sh2_101_Tulip-mosaic.csv')
+  })
 })

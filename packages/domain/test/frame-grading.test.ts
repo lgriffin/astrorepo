@@ -301,3 +301,328 @@ describe('exporting grades', () => {
     expect(gradesCsv(report).split('\r\n')[1].startsWith(`"'=HYPERLINK(""x""),1.fit"`)).toBe(true)
   })
 })
+
+describe('grading limits at their edges', () => {
+  const read = (saved: Record<string, string>) => parseGradeLimits(k => saved[k] ?? null)
+
+  it('[GRD-010] Given each limit saved at the ends of its range, When read, Then both ends are accepted', () => {
+    const low = read({
+      [GRADE_LIMIT_KEYS.maxEccentricity]: '0.05',
+      [GRADE_LIMIT_KEYS.maxFwhmRatio]: '1',
+      [GRADE_LIMIT_KEYS.minStarRatio]: '0',
+      [GRADE_LIMIT_KEYS.maxBackgroundRatio]: '1',
+      [GRADE_LIMIT_KEYS.maxFwhmPixels]: '0.5'
+    })
+    expect(low).toEqual({ maxEccentricity: 0.05, maxFwhmRatio: 1, minStarRatio: 0, maxBackgroundRatio: 1, maxFwhmPixels: 0.5 })
+    const high = read({
+      [GRADE_LIMIT_KEYS.maxEccentricity]: '1',
+      [GRADE_LIMIT_KEYS.maxFwhmRatio]: '10',
+      [GRADE_LIMIT_KEYS.minStarRatio]: '1',
+      [GRADE_LIMIT_KEYS.maxBackgroundRatio]: '100',
+      [GRADE_LIMIT_KEYS.maxFwhmPixels]: '100'
+    })
+    expect(high).toEqual({ maxEccentricity: 1, maxFwhmRatio: 10, minStarRatio: 1, maxBackgroundRatio: 100, maxFwhmPixels: 100 })
+  })
+
+  it('[GRD-010] Given each limit saved just outside its range, blank or not a number, When read, Then it is rejected for the default', () => {
+    expect(read({
+      [GRADE_LIMIT_KEYS.maxEccentricity]: '0.04',
+      [GRADE_LIMIT_KEYS.maxFwhmRatio]: '0.99',
+      [GRADE_LIMIT_KEYS.minStarRatio]: '-0.01',
+      [GRADE_LIMIT_KEYS.maxBackgroundRatio]: '0.99',
+      [GRADE_LIMIT_KEYS.maxFwhmPixels]: '0.49'
+    })).toEqual(DEFAULT_GRADE_LIMITS)
+    expect(read({
+      [GRADE_LIMIT_KEYS.maxEccentricity]: '1.01',
+      [GRADE_LIMIT_KEYS.maxFwhmRatio]: '10.01',
+      [GRADE_LIMIT_KEYS.minStarRatio]: '1.01',
+      [GRADE_LIMIT_KEYS.maxBackgroundRatio]: '100.01',
+      [GRADE_LIMIT_KEYS.maxFwhmPixels]: '100.01'
+    })).toEqual(DEFAULT_GRADE_LIMITS)
+    // A blank star ratio would read as 0 if it were taken as a number.
+    expect(read({ [GRADE_LIMIT_KEYS.minStarRatio]: '   ', [GRADE_LIMIT_KEYS.maxFwhmPixels]: 'Infinity' })).toEqual(DEFAULT_GRADE_LIMITS)
+    expect(read({ [GRADE_LIMIT_KEYS.maxFwhmPixels]: ' 4 ' }).maxFwhmPixels).toBe(4)
+  })
+})
+
+describe('grading at the limits', () => {
+  it('[GRD-003] Given measurements exactly at each limit, When graded, Then none is rejected; just past each, Then each is named', () => {
+    const limits = { ...DEFAULT_GRADE_LIMITS, maxFwhmPixels: 4.5 }
+    // Medians of the five: fwhm 3, stars 400, background 1000.
+    const at = [light(), light(), light({ measurement: m({ eccentricity: 0.6, fwhm: 4.5, starCount: 200, background: 1500 }) }), light(), light()]
+    expect(gradeFrames(at, limits).grades.map(g => g.verdict)).toEqual(['keep', 'keep', 'keep', 'keep', 'keep'])
+    const past = [light(), light(), light({ measurement: m({ eccentricity: 0.6049, fwhm: 4.54, starCount: 199, background: 1500.5 }) }), light(), light()]
+    expect(gradeFrames(past, limits).grades[2].reasons).toEqual([
+      'Eccentricity 0.6 is above the limit of 0.6 (stars are trailed).',
+      'FWHM 4.5 px is above the fixed limit of 4.5 px.',
+      "FWHM 4.5 px is more than 1.5× the night's median of 3 px.",
+      "199 stars is under 50% of the night's median of 400 (cloud or haze).",
+      "Background is more than 1.5× the night's median (moon, dawn or cloud)."
+    ])
+  })
+
+  it('[GRD-003] Given measurements to many places, When a limit is named, Then the numbers are rounded for reading', () => {
+    const lights = [light({ measurement: m({ fwhm: 2.04 }) }), light({ measurement: m({ fwhm: 2.06, starCount: 401 }) }), light({ measurement: m({ eccentricity: 0.7251, fwhm: 9.96, starCount: 10 }) }), light({ measurement: m({ fwhm: 2.1, starCount: 401 }) })]
+    const report = gradeFrames(lights, { ...DEFAULT_GRADE_LIMITS, minStarRatio: 0.333, maxFwhmPixels: 9.9 })
+    expect(report.grades[2].reasons).toEqual([
+      'Eccentricity 0.73 is above the limit of 0.6 (stars are trailed).',
+      'FWHM 10 px is above the fixed limit of 9.9 px.',
+      "FWHM 10 px is more than 1.5× the night's median of 2.1 px.",
+      "10 stars is under 33% of the night's median of 401 (cloud or haze)."
+    ])
+  })
+
+  it('[GRD-003] Given a frame with no FWHM or eccentricity, When graded, Then those limits are skipped and only the counts judge it', () => {
+    const lights = [light(), light({ measurement: m({ fwhm: null, eccentricity: null }) })]
+    const report = gradeFrames(lights, { ...DEFAULT_GRADE_LIMITS, maxFwhmPixels: 1 })
+    expect(report.grades.map(g => g.verdict)).toEqual(['reject', 'keep'])
+    expect(report.nights[0].medianFwhm).toBe(3)
+  })
+
+  it('[GRD-004] Given a night whose median background or star count is zero or below, When graded, Then those ratios are not judged', () => {
+    const lights = [
+      light({ measurement: m({ background: -100, starCount: 0 }) }),
+      light({ measurement: m({ background: -100, starCount: 0 }) }),
+      light({ measurement: m({ background: -40, starCount: 0 }) })
+    ]
+    expect(gradeFrames(lights, DEFAULT_GRADE_LIMITS).rejected).toBe(0)
+  })
+
+  it('[GRD-005] Given hand choices, When graded, Then who made each is kept: by frame unless said, by night when its night was left out, and none without one', () => {
+    const report = gradeFrames([light({ override: 'keep' }), light({ override: 'reject', overrideBy: 'night' }), light(), light({ override: 'reject', overrideBy: null })], DEFAULT_GRADE_LIMITS)
+    expect(report.grades.map(g => [g.verdict, g.overrideBy, g.reasons[0]])).toEqual([
+      ['keep', 'frame', 'Kept by hand.'],
+      ['reject', 'night', 'Left out with its night.'],
+      ['keep', null, undefined],
+      ['reject', 'frame', 'Rejected by hand.']
+    ])
+    expect(report).toMatchObject({ kept: 2, rejected: 2, unmeasured: 0 })
+  })
+
+  it('[GRD-006] Given kept frames with SNR, one with none and one rejected, When weighted, Then weights are rounded to three places and only kept frames with SNR are weighted', () => {
+    const report = gradeFrames(
+      [light({ measurement: m({ snr: 40 }) }), light({ measurement: m({ snr: 30 }) }), light({ measurement: m({ snr: null }) }), light({ measurement: m({ snr: 0 }) }), light({ measurement: null }), light({ override: 'reject', measurement: m({ snr: 90 }) })],
+      DEFAULT_GRADE_LIMITS
+    )
+    expect(report.grades.map(g => g.weight)).toEqual([1, 0.563, null, 0, null, null])
+  })
+
+  it('[GRD-006] Given kept frames that all have zero SNR, When weighted, Then none is weighted', () => {
+    const report = gradeFrames([light({ measurement: m({ snr: 0 }) }), light({ measurement: m({ snr: 0 }) })], DEFAULT_GRADE_LIMITS)
+    expect(report.grades.map(g => g.weight)).toEqual([null, null])
+  })
+
+  it('[GRD-009] Given frames over nights and filters, When summarised, Then each night and filter has its own row in date then filter order, with unmeasured frames counted as kept', () => {
+    const later = new Date(Date.UTC(2026, 0, 12, 22))
+    const lights = [
+      light({ capturedAt: later, filter: 'Ha' }),
+      light({ filter: 'OIII', measurement: m({ eccentricity: 0.9 }) }),
+      light({ filter: 'Ha', measurement: null }),
+      light({ filter: 'Ha', measurement: m({ fwhm: 4, starCount: 300, background: 900 }) }),
+      light({ filter: null })
+    ]
+    const report = gradeFrames(lights, DEFAULT_GRADE_LIMITS)
+    expect(report.nights).toEqual([
+      { night: '2026-01-10', filter: null, frames: 1, kept: 1, rejected: 0, medianFwhm: 3, medianStars: 400, medianBackground: 1000 },
+      { night: '2026-01-10', filter: 'Ha', frames: 2, kept: 2, rejected: 0, medianFwhm: 4, medianStars: 300, medianBackground: 900 },
+      { night: '2026-01-10', filter: 'OIII', frames: 1, kept: 0, rejected: 1, medianFwhm: 3, medianStars: 400, medianBackground: 1000 },
+      { night: '2026-01-12', filter: 'Ha', frames: 1, kept: 1, rejected: 0, medianFwhm: 3, medianStars: 400, medianBackground: 1000 }
+    ])
+    expect(report).toMatchObject({ kept: 3, rejected: 1, unmeasured: 1 })
+    expect(report.grades[0]).toMatchObject({ night: '2026-01-12', filter: 'Ha', capturedAt: later, path: lights[0].path })
+  })
+
+  it('[GRD-009] Given a night with two filters and an undated frame, When its trend is read, Then only that night and filter come back, undated first', () => {
+    const a = light({ filter: 'Ha', capturedAt: new Date(Date.UTC(2026, 0, 10, 22)) })
+    const b = light({ filter: 'OIII', capturedAt: new Date(Date.UTC(2026, 0, 10, 21)) })
+    const c = light({ filter: 'Ha', capturedAt: new Date(Date.UTC(2026, 0, 10, 21)) })
+    const report = gradeFrames([a, b, c, light({ filter: 'Ha', capturedAt: null })], DEFAULT_GRADE_LIMITS)
+    expect(nightTrend(report, '2026-01-10', 'Ha').map(g => g.fileId)).toEqual([c.fileId, a.fileId])
+    expect(nightTrend(report, '2026-01-10', null)).toEqual([])
+  })
+})
+
+describe('exporting grades exactly', () => {
+  it('[GRD-008] Given a measured and an unmeasured frame, When exported, Then each cell is written to its precision and the file ends with a line break', () => {
+    const at = new Date(Date.UTC(2026, 0, 10, 21, 30))
+    const report = gradeFrames(
+      [
+        light({ path: '/d/a.fit', capturedAt: at, filter: 'L', measurement: m({ fwhm: 2.34567, eccentricity: 0.123456, starCount: 321, background: -5.12345, noise: 3.33333, snr: 12.3456 }) }),
+        light({ path: '/d/b.fit', capturedAt: null, filter: null, measurement: null, override: 'keep' })
+      ],
+      DEFAULT_GRADE_LIMITS
+    )
+    expect(gradesCsv(report)).toBe(
+      [
+        GRADE_CSV_COLUMNS.join(','),
+        '/d/a.fit,2026-01-10,L,2026-01-10T21:30:00.000Z,keep,,2.346,0.123,321,-5.123,3.333,12.35,1,',
+        '/d/b.fit,,,,keep,keep,,,,,,,,Kept by hand.',
+        ''
+      ].join('\r\n')
+    )
+  })
+
+  it('[GRD-008] Given a measured frame with no shape, When exported, Then FWHM, eccentricity and SNR are blank and the rest are written', () => {
+    const report = gradeFrames([light({ path: '/d/c.fit', measurement: m({ fwhm: null, eccentricity: null, snr: null }) })], DEFAULT_GRADE_LIMITS)
+    expect(gradesCsv(report).split('\r\n')[1]).toBe('/d/c.fit,2026-01-10,,' + report.grades[0].capturedAt?.toISOString() + ',keep,,,,400,1000,20,,,')
+  })
+
+  it('[GRD-008] Given cells with line breaks, quotes or a leading sign, When exported, Then they are quoted or made safe', () => {
+    const report = gradeFrames(
+      [light({ path: 'a\nb.fit', filter: '+R', measurement: null, measureError: 'Bad "header"\r' }), light({ path: '@x.fit', filter: '-B', measurement: null })],
+      DEFAULT_GRADE_LIMITS
+    )
+    const csv = gradesCsv(report)
+    expect(csv).toContain(`"a\nb.fit",`)
+    expect(csv).toContain(`,'+R,`)
+    expect(csv).toContain(`"Not measured: Bad ""header""\r"`)
+    expect(csv).toContain(`'@x.fit,`)
+    expect(csv).toContain(`,'-B,`)
+  })
+})
+
+/** A plane drawn from a function of x and y. */
+const planeOf = (width: number, height: number, f: (x: number, y: number) => number): Plane => {
+  const data = new Float32Array(width * height)
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) data[y * width + x] = f(x, y)
+  return { width, height, data }
+}
+
+describe('measuring pixels exactly', () => {
+  // A lopsided star on a sky of 10: brighter to the right and below, with a faint pixel at the box's corner and one just outside it.
+  const STAR: Record<string, number> = { '4,4': 100, '5,4': 50, '3,4': 20, '4,5': 30, '4,3': 10, '5,5': 5, '1,1': 2, '7,4': 4 }
+  const star = planeOf(9, 9, (x, y) => 10 + (STAR[`${x},${y}`] ?? 0))
+
+  it('[GRD-001] Given a lopsided star, When its shape is measured, Then the centroid, flux, FWHM and eccentricity come from the second moments inside the box', () => {
+    const s = measureStar(star, 4, 4, 10, 3)
+    expect(s?.x).toBeCloseTo(4.1855203619909505, 10)
+    expect(s?.y).toBeCloseTo(4.085972850678733, 10)
+    expect(s?.flux).toBe(221)
+    expect(s?.fwhm).toBeCloseTo(1.5142144248573095, 10)
+    expect(s?.eccentricity).toBeCloseTo(0.7501581320661836, 10)
+  })
+
+  it('[GRD-001] Given a smaller box, When the star is measured, Then pixels outside it are not counted', () => {
+    const s = measureStar(star, 4, 4, 10, 2)
+    expect(s?.flux).toBe(215)
+    expect(s?.x).toBeCloseTo(4.162790697674419, 10)
+    expect(s?.y).toBeCloseTo(4.116279069767442, 10)
+    expect(s?.fwhm).toBeCloseTo(1.198552397969788, 10)
+    expect(s?.eccentricity).toBeCloseTo(0.6271793040883397, 10)
+  })
+
+  it('[GRD-001] Given peaks a box away from each edge, When measured, Then the box may touch the edge but not cross it, so those across are skipped', () => {
+    expect(measureStar(star, 3, 3, 10, 3)?.flux).toBe(217)
+    expect(measureStar(star, 5, 5, 10, 3)?.flux).toBe(219)
+    expect(measureStar(star, 6, 4, 10, 3)).toBeNull()
+    expect(measureStar(star, 4, 6, 10, 3)).toBeNull()
+    expect(measureStar(star, 2, 4, 10, 3)).toBeNull()
+    expect(measureStar(star, 4, 2, 10, 3)).toBeNull()
+  })
+
+  it('[GRD-001] Given a single hot pixel, or nothing above the background, When measured, Then no shape is reported', () => {
+    const hot = planeOf(9, 9, (x, y) => (x === 4 && y === 4 ? 50 : 10))
+    expect(measureStar(hot, 4, 4, 10, 3)).toBeNull()
+    expect(measureStar(hot, 4, 4, 60, 3)).toBeNull()
+  })
+
+  it('[GRD-001] Given a skewed sky, When the sky is measured, Then it is clipped at 3σ three times', () => {
+    const values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 18, 25, 33, 45, 60, 80, 110]
+    const { background, noise } = skyStatistics({ width: values.length, height: 1, data: Float32Array.from(values) })
+    expect(background).toBe(7)
+    expect(noise).toBeCloseTo(4.4478, 10)
+  })
+
+  it('[GRD-001] Given pixels that are not numbers, When the sky is measured, Then they are left out; an empty plane reads as zero', () => {
+    expect(skyStatistics({ width: 5, height: 1, data: Float32Array.from([1, 2, 3, NaN, NaN]) })).toEqual({ background: 2, noise: 1.4826 })
+    expect(skyStatistics({ width: 0, height: 0, data: new Float32Array(0) })).toEqual({ background: 0, noise: 0 })
+  })
+
+  it('[GRD-001] Given a plane larger than the sample, When the sky is measured, Then evenly spaced pixels are sampled', () => {
+    // 100,000 pixels sampled at every second one: only even columns, which are all faint.
+    const big = planeOf(400, 250, x => (x % 2 ? 1000 + x : x % 7))
+    expect(skyStatistics(big)).toEqual({ background: 3, noise: 2.9652 })
+  })
+
+  it('[GRD-001] Given isolated spikes, When peaks are found, Then only strict local maxima above the threshold count, away from the edge, brightest first, one per radius', () => {
+    const spikes: Record<string, number> = { '5,5': 10, '8,5': 9, '5,9': 8, '1,1': 7, '0,10': 50, '10,0': 50, '15,15': 3, '15,5': 6, '16,5': 6, '18,18': 4.5, '19,12': 50, '12,19': 50 }
+    const plane = planeOf(20, 20, (x, y) => spikes[`${x},${y}`] ?? 0)
+    expect(findPeaks(plane, 3, 3)).toEqual([
+      { x: 5, y: 5, value: 10 },
+      { x: 5, y: 9, value: 8 },
+      { x: 1, y: 1, value: 7 },
+      { x: 18, y: 18, value: 4.5 }
+    ])
+    // A radius of zero still keeps peaks apart by one pixel, so (8, 5) three pixels away stands alone.
+    expect(findPeaks(plane, 3, 0).map(p => p.value)).toEqual([10, 9, 8, 7, 4.5])
+  })
+
+  it('[GRD-001] Given fainter peaks just inside and just outside the radius in every direction, When found, Then each is dropped only when within the radius', () => {
+    const spikes: Record<string, number> = {
+      '20,20': 100,
+      '20,16': 90, // 4 up: within
+      '25,20': 80, // 5 right: kept
+      '13,20': 70, // 7 left: kept
+      '20,24': 60, // 4 down: within
+      '17,17': 40, // 3 left and 3 up: just outside
+      '22,18': 30, // 2 right and 2 up: within
+      '16,20': 20 // 4 left: within
+    }
+    const plane = planeOf(40, 40, (x, y) => spikes[`${x},${y}`] ?? 0)
+    expect(findPeaks(plane, 1, 4).map(p => p.value)).toEqual([100, 80, 70, 40])
+  })
+})
+
+describe('measuring a frame’s stars', () => {
+  it('[GRD-001] Given more stars than the search measures, When measured, Then only that many brightest are measured, and under five gives no shape', () => {
+    const plane = field(1.5, 1.5)
+    expect(measureFrame(plane, { binned: false, search: { maxStars: 4 } })).toMatchObject({ fwhm: null, eccentricity: null, snr: null, starCount: 36 })
+    expect(measureFrame(plane, { binned: false, search: { maxStars: 5 } }).fwhm).not.toBeNull()
+  })
+
+  it('[GRD-011] Given exactly five stars, When measured, Then the shape is reported; with four it is not', () => {
+    expect(measureFrame(field(1.5, 1.5, { count: 5 }), { binned: false }).fwhm).toBeCloseTo(1.5 * FWHM_PER_SIGMA, 0)
+    expect(measureFrame(field(1.5, 1.5, { count: 4 }), { binned: false }).fwhm).toBeNull()
+  })
+
+  it('[GRD-001] Given a saturation level equal to the brightest peak, When measured, Then that peak is not measured either', () => {
+    const plane = field(1.5, 1.5, { count: 5 })
+    const brightest = Math.max(...findPeaks(plane, 1100, 6).map(p => p.value))
+    expect(measureFrame(plane, { binned: false, search: { saturation: brightest } })).toMatchObject({ starCount: 5, fwhm: null })
+    expect(measureFrame(plane, { binned: false, search: { saturation: brightest + 1 } }).fwhm).not.toBeNull()
+  })
+
+  it('[GRD-001] Given blobs wider than the measuring box, When measured, Then they are counted but not taken for stars', () => {
+    // Twelve bright knots, each ringed by nebulosity at the edge of the box: a shape about 11 px wide.
+    const plane = planeOf(200, 80, (x, y) => 1000 + ((x * 7 + y * 13) % 5) - 2)
+    for (let i = 0; i < 12; i++) {
+      const cx = 20 + 30 * (i % 6)
+      const cy = i < 6 ? 20 : 55
+      for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) if (Math.abs(dx) === 6 || Math.abs(dy) === 6) plane.data[(cy + dy) * 200 + cx + dx] = 1500
+      plane.data[cy * 200 + cx] = 3000
+    }
+    expect(measureStar(plane, 20, 20, 1000, 6)?.fwhm).toBeGreaterThan(9)
+    expect(measureFrame(plane, { binned: false })).toMatchObject({ starCount: 12, fwhm: null, eccentricity: null, snr: null })
+  })
+
+  it('[GRD-001] Given a frame, When measured, Then FWHM, eccentricity and SNR are the medians of the stars measured in the default box', () => {
+    const plane = field(1.5, 1.5)
+    const m = measureFrame(plane, { binned: false })
+    const peaks = findPeaks(plane, m.background + 5 * m.noise, 6)
+    const shapes = peaks.map(p => measureStar(plane, p.x, p.y, m.background, 6)).filter(s => s !== null)
+    const mid = (v: number[]) => {
+      const s = [...v].sort((a, b) => a - b)
+      return (s[17] + s[18]) / 2
+    }
+    expect(shapes).toHaveLength(36)
+    expect(m.fwhm).toBeCloseTo(mid(shapes.map(s => s.fwhm)), 10)
+    expect(m.eccentricity).toBeCloseTo(mid(shapes.map(s => s.eccentricity)), 10)
+    expect(m.snr).toBeCloseTo(mid(shapes.map(s => s.flux)) / (m.noise * 13), 10)
+  })
+
+  it('[GRD-001] Given a detection threshold above the stars, When measured, Then none are found', () => {
+    const plane = field(1.5, 1.5)
+    expect(measureFrame(plane, { binned: false, search: { sigma: 250 } })).toMatchObject({ starCount: 0, fwhm: null })
+    expect(measureFrame(plane, { binned: false, search: { sigma: 100 } }).starCount).toBe(36)
+  })
+})

@@ -81,4 +81,38 @@ describe('rankNextActions', () => {
   it('[DSC-007] Given a closing target not up tonight, When ranked, Then it adds no capture', () => {
     expect(rankNextActions([], tonight(['M31', 7]), [{ targetId: 'target-M13', daysLeft: 3 }]).map(a => a.kind === 'capture' && a.targetName)).toEqual(['M31'])
   })
+
+  it('[DSC-007] Given captures that tie on days left or on hours, When ranked, Then more hours lead and then the name decides', () => {
+    const ranked = rankNextActions(
+      [],
+      tonight(['M8', 3], ['M2', 3], ['M5', 4], ['M9', 2], ['M7', 2]),
+      [
+        { targetId: 'target-M9', daysLeft: 5 },
+        { targetId: 'target-M7', daysLeft: 5 }
+      ]
+    )
+    expect(labels(ranked)).toEqual(['shoot M7', 'shoot M9', 'shoot M5', 'shoot M2', 'shoot M8'])
+  })
+
+  it('[DSC-007] [SKY-012] Given captures, mosaic tiles and stacks, When ranked, Then tiles come between them, soonest visible, then by target and tile', () => {
+    const gap = (targetName: string, tile: number, nights: string[]) => ({ targetId: `id-${targetName}`, targetName, tile, of: 4, nights, lookedAt: 30, goalSec: 3600 })
+    const ranked = rankNextActions(
+      [ready('M42', 3)],
+      tonight(['M13', 2]),
+      [],
+      [gap('NGC 7000', 3, ['2026-10-10']), gap('M 31', 4, ['2026-10-10']), gap('M 31', 2, ['2026-10-10']), gap('IC 1396', 1, []), gap('M 33', 1, ['2026-10-09'])]
+    )
+    expect(ranked.map(a => (a.kind === 'mosaic-tile' ? `${a.targetName}#${a.tile}` : a.kind))).toEqual([
+      'capture', 'M 33#1', 'M 31#2', 'M 31#4', 'NGC 7000#3', 'IC 1396#1', 'stack'
+    ])
+    expect(ranked[1]).toEqual({ kind: 'mosaic-tile', id: 'mosaic-tile:id-M 33:1', targetId: 'id-M 33', targetName: 'M 33', tile: 1, of: 4, nights: ['2026-10-09'], lookedAt: 30, goalSec: 3600 })
+  })
+
+  it('[DSC-016] [RIG-010] Given a filter-wheel target with a filter to capture, When ranked, Then the capture carries that filter', () => {
+    const plan = tonight(['M31', 7])
+    const filter = { filter: 'Ha', family: 'narrowband' as const, brightMoon: true, suitsMoon: true, haveSec: 600, lag: null }
+    const [m31] = rankNextActions([], { ...plan, choices: plan.choices.map(c => ({ ...c, filter })) }, [])
+    expect(m31.kind === 'capture' && m31.filter).toEqual(filter)
+    expect(m31.kind === 'capture' && m31.closesInDays).toBeNull()
+  })
 })

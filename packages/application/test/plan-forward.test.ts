@@ -193,6 +193,40 @@ describe('PlanForward', () => {
     expect(ephemeris.nightsRequested.length).toBe(35)
   })
 
+  it('[FWD-006] Given the very moment last night\'s darkness ends, When the plan is made, Then tonight is the coming evening; a millisecond before, it is still last night', async () => {
+    // The fake night of 29 September ends at 04:00 site mean time: 04:00:31.2 UTC at 0.13° west.
+    expect((await okPlan(setup('2026-09-30T04:00:31.200Z').plan)).tonight?.night).toBe('2026-09-30')
+    expect((await okPlan(setup('2026-09-30T04:00:31.199Z').plan)).tonight?.night).toBe('2026-09-29')
+  })
+
+  it('[FWD-004] Given a window ending tonight and new moons on and just past the 90th night, When the plan is made, Then the first two are listed and the last is not', async () => {
+    const { ephemeris, plan } = setup()
+    ephemeris.setNewMoons(['2026-09-26T13:00:00Z', '2026-12-28T13:00:00Z', '2026-12-29T13:00:00Z'])
+    const p = await okPlan(plan)
+    expect(p.windows.map(w => [w.newMoon, w.start, w.end])).toEqual([
+      ['2026-09-26', '2026-09-23', '2026-09-29'],
+      ['2026-12-28', '2026-12-25', '2026-12-31']
+    ])
+    const scoped = await okPlan(() => plan({ scope: 'tonight' }))
+    expect(scoped.windows).toEqual([])
+  })
+
+  it('[FWD-001] Given a target that never rises and one that never sets, When seasons are made, Then the first has no best month and the second\'s best is its first month', async () => {
+    const { frames, positions, plan } = setup()
+    frames.add(target('South', { subs: subs(4, 300, '2026-09-20T21:00:00Z') })).add(target('Pole', { subs: subs(4, 300, '2026-09-20T21:00:00Z') }))
+    positions.add({ targetId: 'target-south', raHours: 12, decDeg: -80, objectType: 'galaxy' }).add({ targetId: 'target-pole', raHours: 2.5, decDeg: 89.2, objectType: 'galaxy' })
+    const p = await okPlan(plan)
+    const south = p.seasons.find(s => s.targetName === 'South')
+    expect(south?.bestMonth).toBeNull()
+    expect(south?.months.every(m => m.hoursPerNight === 0)).toBe(true)
+    const pole = p.seasons.find(s => s.targetName === 'Pole')
+    expect(new Set(pole?.months.map(m => m.hoursPerNight)).size).toBe(1)
+    expect(pole?.bestMonth).toBe('2026-09')
+    expect(p.closing.map(c => c.targetName)).not.toContain('South')
+    expect(p.tonight?.choices.map(c => c.targetName)).toContain('Pole')
+    expect(p.tonight?.choices.map(c => c.targetName)).not.toContain('South')
+  })
+
   it('[NFR-009] Given many targets, When the plan is made, Then each night is computed once, and adding targets computes no more nights', async () => {
     const small = setup()
     await small.plan()

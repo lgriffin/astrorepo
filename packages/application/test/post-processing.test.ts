@@ -91,5 +91,23 @@ describe('ListTools', () => {
     expect(report.tools.find(t => t.id === 'rc-astro')?.warning).toMatch(/Siril_Scripts v2 runs this from C:\/Program Files\/RC-Astro/)
     const linux = await makeListTools({ tools: new FakeToolHub(false) })()
     expect(linux.tools.find(t => t.id === 'bash')?.notNeeded).toBe(true)
+    expect(linux.windows).toBe(false)
+    expect(linux.tools.filter(t => t.notNeeded).map(t => t.id)).toEqual(['bash'])
+    const windows = await makeListTools({ tools: new FakeToolHub() })()
+    expect(windows.windows).toBe(true)
+    expect(windows.tools.filter(t => t.notNeeded)).toEqual([])
+    expect(report.tools.filter(t => t.warning !== null).map(t => t.id)).toEqual(['rc-astro'])
+  })
+
+  it('[HUB-001] Given a hub that reports nothing for some tools, When listed, Then each still appears, not found, with nowhere looked and its catalogues not checked', async () => {
+    const hub = new FakeToolHub().install('siril', 'C:/Program Files/Siril/bin/siril-cli.exe')
+    const locate = hub.locate.bind(hub)
+    hub.locate = async () => (await locate()).filter(s => s.id === 'siril')
+    const report = await makeListTools({ tools: hub })()
+    expect(report.tools.map(t => t.id)).toEqual(['siril', 'siril-scripts', 'rc-astro', 'bash', 'syqon', 'astap'])
+    const { spec, ...astap } = report.tools[5]
+    expect(spec.id).toBe('astap')
+    expect(astap).toEqual({ id: 'astap', path: null, source: null, settingMissing: false, looked: [], notNeeded: false, warning: null })
+    expect(report.catalogues.map(c => [c.id, c.state])).toEqual([['astap-stars', 'not-checked'], ['siril-spcc', 'present'], ['rc-astro-models', 'not-checked']])
   })
 })

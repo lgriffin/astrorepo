@@ -33,10 +33,15 @@ checker drops mutants that would not compile before any test runs.
 ### Baseline
 
 The first full run (2026-10-11) tested 6,272 valid mutants and killed 4,819: a score of **76.8%**
-(domain 76.9%, application 76.4%). The files with the most survivors were `inspector.ts`,
-`frame-grading.ts`, `sky-geometry.ts` and `sky-overlay.ts`; the weakest sizeable files scored about
-67%. `DEFAULT_BREAK` is 65 so a pull request that touches one of those files still passes. It is a
-ratchet: raise it as survivors are killed, and never lower it to get a pull request through.
+(domain 76.9%, application 76.4%), with 22 files under 80% and the weakest near 67%. About 250
+sharper tests then brought every one of those files to between 84% and 100% on its own run. The
+whole-core re-run that followed killed 5,598 of 6,276 valid mutants: **89.2%** (domain 88.3%,
+application 92.7%), with no file under 80%.
+
+`DEFAULT_BREAK` is **80**, Leigh's minimum, for the whole core and for each changed-files run. A
+pull request that touches a core file must keep that file's tests sharp enough to stay above it.
+The floor is a ratchet: raise it as survivors are killed, and never lower it to get a pull request
+through.
 
 ## Reading the report
 
