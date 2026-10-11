@@ -69,6 +69,7 @@ import { NodeImagePixels } from './adapters/node-image-pixels'
 import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
 import { SqliteCometStore } from './adapters/sqlite-comet-store'
 import { settingReader } from './adapters/shared/app-settings'
+import { AppFolders } from './adapters/app-folders'
 
 /** The app's clock, for hosts that stamp what they show (the IPC handlers). */
 export const clock = systemClock
@@ -76,9 +77,17 @@ export const clock = systemClock
 /** ASTAP first, Siril's own solver as the fallback (specs/024-sky-geometry). */
 const plateSolvers = () => [new AstapPlateSolver(), new SirilPlateSolver()]
 
-/** The folder a target's plate solves run in, inside the work area (NFR-018). */
-export function solveWorkDir(workArea: string, targetId: string): string {
-  return path.join(workArea, 'solve', targetId.replace(/[^\w.-]+/g, '_') || 'target')
+/** The app's data folder; the app sets it at start, tests leave the temporary default. */
+let appDataDir = path.join(os.tmpdir(), 'astrorepo')
+
+/** Puts the work area's default and the job logs under the app's data folder. The app calls this at start. */
+export function useAppData(dir: string): void {
+  appDataDir = dir
+}
+
+/** Where the app reads and writes: read-only folders, the work area and the archive. */
+export function composeFolders(db: Database.Database): AppFolders {
+  return new AppFolders(db, appDataDir)
 }
 
 /** One measurer for the app, so every request shares its worker thread. */
@@ -139,7 +148,7 @@ export function composeGrading(db: Database.Database) {
  * Composition root for the hexagonal core inside the desktop app. IPC handlers call these use
  * cases instead of services as each service is strangled out of src/main/services.
  */
-export function composeCore(db: Database.Database, options: { workArea?: string } = {}) {
+export function composeCore(db: Database.Database) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
   const hashes = new SqliteFileHashStore(db, systemClock)
@@ -169,7 +178,7 @@ export function composeCore(db: Database.Database, options: { workArea?: string 
   const solves = new SqliteSolveStore(db)
   const mosaics = new SqliteMosaicStore(db, systemClock)
   const sky = { store: solves, mosaics, settings: planningSettings, ephemeris, clock: systemClock }
-  const workArea = options.workArea ?? (setting('work_area_path') || path.join(os.tmpdir(), 'astrorepo-work'))
+  const folders = composeFolders(db)
   const planMosaic = makePlanMosaic(sky)
   const comets = new SqliteCometStore(db, systemClock)
   return {
@@ -217,7 +226,7 @@ export function composeCore(db: Database.Database, options: { workArea?: string 
       preferred: makePreferredSolver({ tools, solvers: plateSolvers() }),
       jobs: jobStore,
       clock: systemClock,
-      workDir: id => solveWorkDir(workArea, id)
+      workDir: id => folders.solveWorkDir(id)
     }),
     describeTargetGeometry: makeDescribeTargetGeometry({ store: solves, mosaics }),
     planMosaic,
@@ -233,7 +242,6 @@ export interface JobsHostOptions {
   logsDir: string
   /** Seconds since the last keyboard or mouse input (Electron's powerMonitor). */
   userIdleSeconds: () => number | null
-  readOnlyDirs: () => string[]
   onChange: () => void
 }
 
@@ -250,7 +258,7 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     prepare: makePrepareSirilWorkspace({ workspace, selection: composeGrading(db) }),
     runArea: new NodeRunArea(),
     targetName: async id => (await new SqliteStackCatalogue(db).describeTarget(id))?.name ?? null,
-    readOnlyDirs: options.readOnlyDirs,
+    readOnlyDirs: () => composeFolders(db).readOnlyDirs(),
     clock: systemClock,
     solve: makeRunSolveJob({ solvers: plateSolvers(), store: new SqliteSolveStore(db), clock: systemClock }),
     onChange: options.onChange,

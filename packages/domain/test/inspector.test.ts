@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clipping,
+  CLIP_WARNING_SHARE,
   applyStretch,
   autoStretch,
   bayerChannels,
@@ -220,5 +222,13 @@ describe('Previews', () => {
       expect(previewImage(image, { channel }).channels).toBe(1)
     }
     expect(previewImage(image).channels).toBe(3)
+  })
+})
+
+describe('clipping worth a warning', () => {
+  it('[INS-001] [HEX-013] Given channels clipped above, at and below a tenth of a percent, When judged, Then only the share above it is clipping worth a warning', () => {
+    expect(clipping({ saturatedShare: 0.002, blackShare: 0.0005 })).toEqual({ saturated: true, black: false })
+    expect(clipping({ saturatedShare: CLIP_WARNING_SHARE, blackShare: 0.01 })).toEqual({ saturated: false, black: true })
+    expect(clipping({ saturatedShare: null, blackShare: 0 })).toEqual({ saturated: false, black: false })
   })
 })

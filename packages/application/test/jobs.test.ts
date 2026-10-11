@@ -14,7 +14,7 @@ import {
   type SirilWorkspaceResult
 } from '@astro/application'
 import { DEFAULT_JOB_SETTINGS, type PostProcessRecipe } from '@astro/domain'
-import { FakeMachine, FakeProcessRunner, FakeToolHub, FixedClock, FixedJobSettings, InMemoryJobLogs, InMemoryJobStore, InMemoryStackCatalogue, stackAdvice } from '@astro/testkit'
+import { FakeMachine, FakeProcessRunner, FakeToolHub, FixedClock, FixedJobSettings, InMemoryJobLogs, InMemoryJobStore, InMemoryStackCatalogue, sirilEstimate, stackAdvice } from '@astro/testkit'
 
 const GB = 1024 ** 3
 /** 02:30 local time on 30 September 2026: inside the default window. */
@@ -22,7 +22,7 @@ const inWindow = () => new Date(2026, 8, 30, 2, 30)
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
 function estimate(over: Partial<SirilRunEstimate['scripts'][number]> = {}, lights = 40): SirilRunEstimate {
-  return {
+  return sirilEstimate({
     counts: { lights, darks: 10, flats: 10, biases: 10 },
     rejectedLights: 0,
     sensor: 'colour',
@@ -38,7 +38,7 @@ function estimate(over: Partial<SirilRunEstimate['scripts'][number]> = {}, light
       { script: 'OSC_Preprocessing', label: 'Colour', missing: [], scriptBytes: 5 * GB, stages: [], neededBytes: 5 * GB, fits: true, headroomBytes: 95 * GB, shortBytes: null, memory: null, ...over }
     ],
     advice: stackAdvice()
-  }
+  })
 }
 
 function stackSetup(est: SirilRunEstimate = estimate(), tools = new FakeToolHub().installAll()) {
@@ -74,7 +74,7 @@ describe('queueing a stack', () => {
       [stackSetup(estimate({}, 0)), request, /no light frames/],
       [stackSetup(estimate({ missing: ['flats'] })), request, /needs flats/],
       [stackSetup(estimate({ fits: false, shortBytes: GB })), request, /short/],
-      [stackSetup({ ...estimate(), freeBytes: null }), request, /does not report its free space/],
+      [stackSetup(sirilEstimate({ ...estimate(), freeBytes: null })), request, /does not report its free space/],
       [stackSetup(estimate(), new FakeToolHub()), request, /Siril was not found/]
     ]
     const noScript = stackSetup()
@@ -511,6 +511,21 @@ describe('the job runner', () => {
     await t.add({ prepare: null, neededBytes: 2 * GB })
     const snap = await t.s.snapshot()
     expect(snap.schedule.queue[0].estimate).toEqual({ seconds: 1200, basis: 'history' })
+  })
+
+  it('[JOB-006] [HEX-013] Given a job running after one that succeeded, When the snapshot is taken, Then it carries the running job\'s expected length from that run', async () => {
+    const t = scheduler()
+    await t.add({ prepare: null, neededBytes: GB })
+    expect((await t.s.snapshot()).runningEstimate).toBeNull()
+    await t.s.tick()
+    await flush()
+    t.clock.set(new Date(2026, 8, 30, 2, 40).toISOString())
+    t.runner.last?.exit(0)
+    await t.s.idle()
+    await t.add({ prepare: null, neededBytes: 2 * GB, timing: 'now' })
+    await t.s.tick()
+    await flush()
+    expect((await t.s.snapshot()).runningEstimate).toEqual({ seconds: 1200, basis: 'history' })
   })
 
   it('[JOB-008] Given jobs left running when the app closed, When recovered, Then one queues again and one that already started twice fails', async () => {

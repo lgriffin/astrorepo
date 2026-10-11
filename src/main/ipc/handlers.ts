@@ -1,5 +1,4 @@
-import { ipcMain, IpcMainInvokeEvent, dialog, shell, app } from 'electron'
-import path from 'path'
+import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
 import { z } from 'zod'
 import { schemas, type Channel, type SchemaMap } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
@@ -22,7 +21,7 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
-import { clock, composeCore, composeGallery, composeGrading } from '../composition'
+import { clock, composeCore, composeFolders, composeGallery, composeGrading } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
@@ -46,34 +45,10 @@ import { importNinaSequence } from '../services/nina-import'
 import { getRecommendations } from '../services/recommendations'
 import fs from 'fs'
 
-/** One work folder per source folder, named after it and made unique by a short path digest. */
-function sirilFolderName(sourceDir: string): string {
-  const base = path.basename(path.resolve(sourceDir)).replace(/[^\w .-]+/g, '_') || 'target'
-  let h = 0
-  for (const c of path.resolve(sourceDir)) h = (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0
-  return `${base}-${h.toString(16)}`
-}
-
-/** Where Prep for Siril lays out a source folder: the work area setting, else the app's data folder. */
-/** Folders the app only reads: the home and FITS master folders and every scanned folder. */
-export function readOnlyDirs(): string[] {
-  const scanned = (getSqlite().prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
-  return [getSetting('home_folder_path'), getSetting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
-}
-
-/** The work area: the user's setting, else the app's data folder. */
-function workAreaPath(): string {
-  return getSetting('work_area_path') || path.join(app.getPath('userData'), 'work')
-}
-
-function sirilWorkDir(sourceDir: string): string {
-  return path.join(workAreaPath(), 'siril', sirilFolderName(sourceDir))
-}
-
-/** Where archives go: the archive folder setting, else the work area's archive folder (ARC-012). */
-function archiveRoot(): string {
-  return getSetting('archive_root') || path.join(workAreaPath(), 'archive')
-}
+/** The folders the app reads from and writes to, from the composition root. */
+const folders = () => composeFolders(getSqlite())
+const sirilWorkDir = (sourceDir: string) => folders().sirilWorkDir(sourceDir)
+const readOnlyDirs = () => folders().readOnlyDirs()
 
 /** A mosaic request from the renderer, in the core's shape. */
 function mosaicOptions(args: { target_id: string; field_width_deg?: number; field_height_deg?: number; rotation_deg?: number; overlap?: number }) {
@@ -629,7 +604,7 @@ export function registerIpcHandlers(): void {
   // from the page, so an archive only ever reads and removes inside that target's work folder.
   const archiveRequest = (targetId: string) => {
     const rawPath = targetRawPath(targetId)
-    return { targetId, workDir: rawPath ? sirilWorkDir(rawPath) : null, archiveRoot: archiveRoot(), readOnlyDirs: readOnlyDirs() }
+    return { targetId, workDir: rawPath ? sirilWorkDir(rawPath) : null, archiveRoot: folders().archiveRoot(), readOnlyDirs: readOnlyDirs() }
   }
 
   handle('archive:preview', validated('archive:preview', async args => toArchivePreviewView(await composeCore(getSqlite()).archive.preview(archiveRequest(args.target_id)))))
@@ -865,7 +840,7 @@ export function registerIpcHandlers(): void {
   handle('planning:forward', async () => toForwardPlanView(await composeCore(getSqlite()).planForward()))
 
   handle('sky:solve-target', validated('sky:solve-target', async (args) => {
-    const result = await composeCore(getSqlite(), { workArea: workAreaPath() }).queueSolves(args.target_id, args.timing ?? 'now')
+    const result = await composeCore(getSqlite()).queueSolves(args.target_id, args.timing ?? 'now')
     if (result.job) kickJobs()
     return toSolveQueuedView(result)
   }))

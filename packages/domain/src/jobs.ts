@@ -321,3 +321,16 @@ export function postProcessCommand(entry: string, args: string[], bashPath: stri
   const script = entry.replace(/\.bat$/i, '.sh')
   return bashPath ? { program: bashPath, args: [script, ...args], cwd: stackDir } : { program: script, args, cwd: stackDir }
 }
+
+/**
+ * The stack job each target has in hand, queued or running (UX-007). A running job says more than a
+ * queued one for the same target, so it wins.
+ */
+export function activeStackJobs<J extends Pick<Job, 'targetId' | 'kind' | 'state'>>(jobs: J[]): Map<string, J> {
+  const active = new Map<string, J>()
+  for (const job of jobs) {
+    if (job.kind !== 'stack' || (job.state !== 'queued' && job.state !== 'running')) continue
+    if (!active.has(job.targetId) || job.state === 'running') active.set(job.targetId, job)
+  }
+  return active
+}

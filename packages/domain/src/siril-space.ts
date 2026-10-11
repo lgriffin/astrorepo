@@ -212,3 +212,33 @@ export function spaceVerdict(neededBytes: number, freeBytes: number | null): Spa
     ? { neededBytes, fits: true, headroomBytes: freeBytes - neededBytes, shortBytes: null }
     : { neededBytes, fits: false, headroomBytes: null, shortBytes: neededBytes - freeBytes }
 }
+
+/** What the space verdict says at a glance: unknown when the disk does not report its free space. */
+export type SpaceState = 'unknown' | 'fits' | 'short'
+
+export function spaceState(verdict: SpaceVerdict): SpaceState {
+  if (verdict.headroomBytes === null && verdict.shortBytes === null) return 'unknown'
+  return verdict.fits ? 'fits' : 'short'
+}
+
+/** Why a Siril stack cannot be queued, first reason first; the page and the queue share this rule (JOB-001, RIG-018). */
+export type StackRefusal = 'mixes-filters' | 'no-lights' | 'missing-calibration' | 'space-unknown' | 'short-of-space'
+
+export interface StackQueueFacts {
+  lights: number
+  /** Calibration the script needs that the target lacks. */
+  missing: string[]
+  verdict: SpaceVerdict
+  /** Mono lights of several filters that one stack would mix (RIG-018). */
+  mixesFilters: boolean
+}
+
+/** Null when the stack can be queued; otherwise the first thing that stops it. */
+export function stackRefusal(facts: StackQueueFacts): StackRefusal | null {
+  if (facts.mixesFilters) return 'mixes-filters'
+  if (facts.lights === 0) return 'no-lights'
+  if (facts.missing.length > 0) return 'missing-calibration'
+  const state = spaceState(facts.verdict)
+  if (state === 'unknown') return 'space-unknown'
+  return state === 'short' ? 'short-of-space' : null
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_JOB_SETTINGS, scheduleJobs, type Job, type JobSettings, type MachineLoad } from '@astro/domain'
+import { DEFAULT_JOB_SETTINGS, estimateJobSeconds, jobHistory, scheduleJobs, type Job, type JobSettings, type MachineLoad } from '@astro/domain'
 import { formatDuration, toJobsView, waitText, when } from '../../src/main/adapters/job-presenter'
 
 const GB = 1024 ** 3
@@ -30,7 +30,10 @@ function job(id: string, over: Partial<Job> = {}): Job {
 
 function view(jobs: Job[], now: Date, settings: JobSettings = DEFAULT_JOB_SETTINGS, load: MachineLoad = { userIdleSeconds: 1200, cpuPercent: 4 }) {
   const schedule = scheduleJobs({ now, settings, jobs, history: [], load, freeBytes: Object.fromEntries(jobs.map(j => [j.id, 1000 * GB])) })
-  return toJobsView({ jobs, schedule, settings, load }, now)
+  // As the scheduler's snapshot does: the running job's length comes from the past runs (JOB-006).
+  const running = jobs.find(j => j.state === 'running')
+  const runningEstimate = running ? estimateJobSeconds(running.kind, running.neededBytes, jobHistory(jobs)) : null
+  return toJobsView({ jobs, schedule, settings, load, runningEstimate }, now)
 }
 
 describe('job presenter', () => {
@@ -39,7 +42,7 @@ describe('job presenter', () => {
       job(id, { targetId, state: 'succeeded', startedAt: local(hour), finishedAt: local(hour, 30), exitCode: 0 })
     const jobs = [done('mine', 'm31', 1), ...Array.from({ length: 25 }, (_, i) => done(`other-${i}`, 'm42', 2 + (i % 20)))]
     const schedule = scheduleJobs({ now: local(23), settings: DEFAULT_JOB_SETTINGS, jobs, history: [], load: { userIdleSeconds: 1200, cpuPercent: 4 }, freeBytes: {} })
-    const snap = { jobs, schedule, settings: DEFAULT_JOB_SETTINGS, load: { userIdleSeconds: 1200, cpuPercent: 4 } }
+    const snap = { jobs, schedule, settings: DEFAULT_JOB_SETTINGS, load: { userIdleSeconds: 1200, cpuPercent: 4 }, runningEstimate: null }
     expect(toJobsView(snap, local(23)).history.map(j => j.id)).not.toContain('mine')
     expect(toJobsView(snap, local(23), 'm31').history.map(j => j.id)).toEqual(['mine'])
   })

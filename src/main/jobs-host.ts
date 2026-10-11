@@ -43,11 +43,10 @@ function holdAwake(): void {
 }
 
 /** Starts the job runner: recovers jobs the last session left running, then checks every minute. */
-export async function startJobs(readOnlyDirs: () => string[]): Promise<JobScheduler> {
+export async function startJobs(): Promise<JobScheduler> {
   scheduler = composeJobs(getSqlite(), {
     logsDir: path.join(app.getPath('userData'), 'jobs'),
     userIdleSeconds: () => powerMonitor.getSystemIdleTime(),
-    readOnlyDirs,
     onChange: () => {
       holdAwake()
       setTimeout(kickJobs, 0)

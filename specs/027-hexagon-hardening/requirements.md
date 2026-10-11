@@ -54,3 +54,12 @@ passed.
 | HEX-009 | Event | When a change lowers a legacy count, the architecture check shall fail until the recorded ratchet is lowered to match, so the count never rises again. |
 | HEX-010 | Ubiquitous | Adapters other than the system clock shall read the time only through the Clock port. |
 | HEX-011 | Unwanted | If a source file imports a module through a side-effect import, a dynamic import, `require` or a path alias, then the architecture check shall apply the same rules to it as to a relative static import, and shall refuse a specifier computed at run time that no rule can check. |
+
+## Rules in one place
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| HEX-012 | Ubiquitous | The system shall decide whether a Siril stack can be queued, and whether its space fits, is short or is unknown, with one domain rule that both the plan the page shows and the queue apply, so the page never offers a run the queue refuses. |
+| HEX-013 | Ubiquitous | Presenters shall hold wording only: every decision they show (whether something can be queued, a verdict, a warning threshold, a job's expected length, which job a suggestion reflects) shall come from the domain or a use case. |
+| HEX-014 | Ubiquitous | The system shall work out the folders it only reads, the work area with its default under the app's data folder, each source folder's Siril work folder, each target's solve folder and the archive folder in one place that the IPC handlers, the job runner and the core all use. |
+| HEX-015 | Ubiquitous | The system shall read what kind of frame a file is (light, dark, flat or bias) from IMAGETYP with one rule, whatever its case, in the core, its adapters and the legacy services alike, with calibration words winning over "light". |

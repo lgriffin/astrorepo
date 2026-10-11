@@ -5,7 +5,8 @@ import type {
   TargetIntegrationProgress, FilterProgress, IntegrationGoal
 } from '@shared/types'
 
-const LIGHT_FRAME_PREDICATE = "(f.image_type = 'Light Frame' OR f.image_type = 'light' OR f.image_type IS NULL)"
+/** The same light frames as the core's IS_LIGHT (adapters/shared/sql.ts): untyped, or any IMAGETYP naming a light. */
+const LIGHT_FRAME_PREDICATE = "(f.image_type IS NULL OR LOWER(f.image_type) LIKE '%light%')"
 
 function filterKey(filter: string | null): string {
   return filter ?? 'No Filter'

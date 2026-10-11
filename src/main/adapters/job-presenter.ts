@@ -1,5 +1,5 @@
 import type { JobsSnapshot } from '@astro/application'
-import { estimateJobSeconds, formatClock, jobHistory, MANIFEST_SUFFIX, progressText, type Job, type JobEstimate, type WaitReason } from '@astro/domain'
+import { formatClock, MANIFEST_SUFFIX, progressText, type Job, type JobEstimate, type WaitReason } from '@astro/domain'
 import type { JobsView, JobView } from '@shared/types'
 import { formatBytes } from './discovery-presenter'
 
@@ -122,7 +122,7 @@ export function toJobsView(snap: JobsSnapshot, now: Date, historyFor?: string): 
     rules,
     windowStatus,
     load: loadParts.length > 0 ? `The PC was ${loadParts.join(', with ')}.` : null,
-    running: running ? toJobView(running, now, { estimate: estimateJobSeconds(running.kind, running.neededBytes, jobHistory(jobs)), waiting: null }) : null,
+    running: running ? toJobView(running, now, { estimate: snap.runningEstimate, waiting: null }) : null,
     queue: schedule.queue.map(q => {
       const job = byId.get(q.jobId) as Job
       return toJobView(job, now, { estimate: q.estimate, waiting: q.wait ? waitText(q.wait, q.estimate, now) : 'Starting now.' })

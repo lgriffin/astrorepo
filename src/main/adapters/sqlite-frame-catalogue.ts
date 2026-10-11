@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3'
 import type { FrameCatalogue } from '@astro/application'
 import { IS_LIGHT, parseUtc } from './shared/sql'
-import type { CalibrationFrame, CalibrationKind, FilterGoal, LightSetting, QuarantinedFile, TargetFrames, UnassignedLight } from '@astro/domain'
+import { frameKind, type CalibrationFrame, type CalibrationKind, type FilterGoal, type LightSetting, type QuarantinedFile, type TargetFrames, type UnassignedLight } from '@astro/domain'
 
 interface FrameRow {
   target_id: string
@@ -151,9 +151,8 @@ export class SqliteFrameCatalogue implements FrameCatalogue {
   }
 }
 
-/** Same reading of IMAGETYP as services/image-type.ts; "dark flat" counts as a dark. */
+/** A calibration frame's kind by the domain's frameKind; anything else that is not a light is a bias. */
 function calibrationKind(imageType: string): CalibrationKind {
-  if (imageType.includes('dark')) return 'dark'
-  if (imageType.includes('flat')) return 'flat'
-  return 'bias'
+  const kind = frameKind(imageType)
+  return kind === 'dark' || kind === 'flat' ? kind : 'bias'
 }

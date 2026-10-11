@@ -1,5 +1,6 @@
 import type { GalleryImage, Read, ShownImage, TargetPalettes } from '@astro/application'
 import {
+  clipping,
   formatDec,
   formatRa,
   PALETTES,
@@ -40,9 +41,6 @@ export function formatShare(share: number | null): string {
   return `${(share * 100).toFixed(share < 0.01 ? 2 : 1)}%`
 }
 
-/** Clipping above this share is worth a sentence. */
-const CLIP_WARNING = 0.001
-
 function channelView(c: ChannelStats): ChannelStatsView {
   return {
     channel: c.channel,
@@ -66,10 +64,11 @@ export function toInspectionView(result: Read<{ inspection: ImageInspection }>):
   const colour = i.channels.length > 1
   const warnings: string[] = []
   for (const c of i.channels) {
-    if (c.saturatedShare !== null && c.saturatedShare > CLIP_WARNING) {
+    const clipped = clipping(c)
+    if (clipped.saturated && c.saturatedShare !== null) {
       warnings.push(`${formatShare(c.saturatedShare)} of the ${which(c, colour)} are saturated, so the brightest stars or nebula there have lost detail.`)
     }
-    if (c.blackShare > CLIP_WARNING) warnings.push(`${formatShare(c.blackShare)} of the ${which(c, colour)} are clipped to black, so the faintest sky there has lost detail.`)
+    if (clipped.black) warnings.push(`${formatShare(c.blackShare)} of the ${which(c, colour)} are clipped to black, so the faintest sky there has lost detail.`)
   }
   return {
     error: null,
