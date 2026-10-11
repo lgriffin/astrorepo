@@ -43,7 +43,7 @@ export async function runScenario<W>(scenario: CompiledScenario, library: StepLi
     const step = scenario.steps[i]
     const { definition, args } = matches[i]
     try {
-      await definition.fn(world, ...args, ...(step.argument === null ? [] : [step.argument]))
+      await definition.fn(world, ...args(), ...(step.argument === null ? [] : [step.argument]))
     } catch (e) {
       const skipped = scenario.steps.slice(i + 1).map(s => `  skipped: ${stepLine(s)}`)
       const context = [`Step failed at ${scenario.uri}:${step.line}: ${stepLine(step)}`, ...skipped].join('\n')

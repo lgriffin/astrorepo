@@ -260,6 +260,16 @@ describe('BDD runner', () => {
     expect(world?.log).toEqual(['folder A'])
   })
 
+  it('[TRC-018] Given a parameter type whose transform throws, When the scenario runs, Then the failure names that step and the skipped steps', async () => {
+    const steps = defineSteps(() => ({}), ({ Given, defineParameterType }) => {
+      defineParameterType({ name: 'filter', regexp: /Ha|OIII/, transform: () => { throw new Error('no such filter') } })
+      Given('a {filter} light', () => {})
+      Given('it is stacked', () => {})
+    })
+    await expect(runScenario(only('Feature: x\n  Scenario: y\n    Given a Ha light\n    And it is stacked'), steps))
+      .rejects.toThrow('Step failed at inline.feature:3: Given a Ha light\n  skipped: And it is stacked\n\nno such filter')
+  })
+
   it('[TRC-018] Given a step that throws a non-Error, When the scenario runs, Then the failure still names the step', async () => {
     const steps = defineSteps(() => ({}), ({ Given }) => { Given('a bad step', () => { throw 'nope' }) })
     await expect(runScenario(only('Feature: x\n  Scenario: y\n    Given a bad step'), steps))

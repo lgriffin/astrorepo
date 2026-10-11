@@ -6,6 +6,8 @@
  * cli.ts does the file I/O.
  */
 
+import { compileFeature, type CompiledGroup, type CompiledScenario } from '../../packages/testkit/src/bdd/feature'
+
 export type EarsPattern = 'Ubiquitous' | 'Event' | 'State' | 'Unwanted' | 'Optional' | 'Complex'
 
 export interface Requirement {
@@ -44,6 +46,8 @@ export interface TraceReport {
   unwantedUntested: Requirement[]
   /** Spec folders numbered 009 or later that have no requirements.md. */
   missingRequirementFiles: string[]
+  /** Feature files no test file runs, so none of their scenarios ever runs. */
+  unrunFeatures: string[]
 }
 
 const ID = '[A-Z]{2,4}-\\d{3}'
@@ -221,48 +225,35 @@ export function parseCitations(code: string, file: string): Citation[] {
     idsIn(title).map(id => ({ id, file, title, kind: 'test' as const })))
 }
 
-const GHERKIN_ELEMENT = /^(Feature|Rule|Scenario Outline|Scenario Template|Scenario|Example|Examples|Scenarios):\s*(.*)$/
 
 /**
- * Finds every @ABC-123 tag on a Gherkin feature, rule, scenario or examples block. Tags in
- * comments, doc strings or step text do not count.
+ * One citation per runnable scenario (each Scenario Outline row is one) for every requirement tag
+ * that applies to it: its own and its examples' tags as "scenario", and the feature's or rule's
+ * tags it inherits as "feature". Read with the same Gherkin compiler the runner uses, so tags in
+ * comments, doc strings or step text never count and a feature without scenarios cites nothing.
  */
 export function parseFeatureCitations(text: string, file: string): Citation[] {
-  const out: Citation[] = []
-  let pending: string[] = []
-  let docString: string | null = null
-  let outline = ''
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim()
-    if (docString) {
-      if (line.startsWith(docString)) docString = null
-      continue
-    }
-    if (line.startsWith('"""') || line.startsWith('```')) {
-      docString = line.slice(0, 3)
-      pending = []
-      continue
-    }
-    if (line === '' || line.startsWith('#')) continue
-    if (line.startsWith('@')) {
-      pending.push(...line.replace(/\s#.*$/, '').split(/\s+/).filter(t => t.startsWith('@')))
-      continue
-    }
-    const el = GHERKIN_ELEMENT.exec(line)
-    if (el) {
-      const keyword = el[1]
-      let title = el[2]
-      if (keyword.startsWith('Scenario') || keyword === 'Example') outline = title
-      if (keyword === 'Examples' || keyword === 'Scenarios') title = outline
-      const kind: CitationKind = keyword === 'Feature' || keyword === 'Rule' ? 'feature' : 'scenario'
-      for (const tag of pending) {
-        const m = TAG_ID.exec(tag)
-        if (m) out.push({ id: m[1], file, title, kind })
-      }
-    }
-    pending = []
-  }
-  return out
+  const feature = compileFeature(text, file)
+  const scenarios = (g: CompiledGroup): CompiledScenario[] => [...g.scenarios, ...g.rules.flatMap(scenarios)]
+  return scenarios(feature).flatMap(sc => {
+    // The title lists the scenario's own and its examples' requirement tags; the rest are inherited.
+    const own = new Set([...sc.title.matchAll(/\[([A-Z]+-\d+)\]/g)].map(m => m[1]))
+    const seen = new Set<string>()
+    return sc.tags.flatMap(tag => {
+      const id = TAG_ID.exec(tag)?.[1]
+      if (!id || seen.has(id)) return []
+      seen.add(id)
+      return [{ id, file, title: sc.name, kind: (own.has(id) ? 'scenario' : 'feature') as CitationKind }]
+    })
+  })
+}
+
+/**
+ * The feature files a test file runs, from each `runFeature(new URL('./x.feature', import.meta.url), ...)`
+ * in it, as written: relative to the test file's folder.
+ */
+export function runFeatureTargets(code: string): string[] {
+  return [...code.matchAll(/runFeature\(\s*new URL\(\s*(['"`])([^'"`]+\.feature)\1/g)].map(m => m[2])
 }
 
 const LEADS = { When: /\bwhen\b/i, While: /\bwhile\b/i, If: /\bif\b/i, Where: /\bwhere\b/i }
@@ -307,7 +298,7 @@ export function showsFailure(c: Citation): boolean {
   return c.kind === 'scenario' || (c.kind === 'test' && FAILURE_WORDS.test(c.title))
 }
 
-export function trace(requirements: Requirement[], citations: Citation[], specFolders: SpecFolder[] = []): TraceReport {
+export function trace(requirements: Requirement[], citations: Citation[], specFolders: SpecFolder[] = [], unrunFeatures: string[] = []): TraceReport {
   const coverage = new Map<string, string[]>()
   const byId = new Map<string, Citation[]>()
   const seen = new Set<string>()
@@ -339,14 +330,16 @@ export function trace(requirements: Requirement[], citations: Citation[], specFo
       const cs = byId.get(r.id)!
       return r.pattern === 'Unwanted' && cs.length > 0 && !cs.some(showsFailure)
     }),
-    missingRequirementFiles: checkSpecFolders(specFolders)
+    missingRequirementFiles: checkSpecFolders(specFolders),
+    unrunFeatures
   }
 }
 
 export function passes(report: TraceReport): boolean {
   return report.uncited.length === 0 && report.unknown.length === 0 &&
     report.duplicates.length === 0 && report.patternErrors.length === 0 &&
-    report.unwantedUntested.length === 0 && report.missingRequirementFiles.length === 0
+    report.unwantedUntested.length === 0 && report.missingRequirementFiles.length === 0 &&
+    report.unrunFeatures.length === 0
 }
 
 export interface SpecSummary {
@@ -382,7 +375,8 @@ export function toJson(report: TraceReport) {
       duplicates: report.duplicates,
       patternErrors: report.patternErrors.map(e => ({ id: e.requirement.id, reason: e.reason })),
       unwantedUntested: report.unwantedUntested.map(r => ({ id: r.id, source: r.source })),
-      missingRequirementFiles: report.missingRequirementFiles
+      missingRequirementFiles: report.missingRequirementFiles,
+      unrunFeatures: report.unrunFeatures
     },
     specs: summariseBySpec(report)
   }
@@ -398,6 +392,7 @@ function failureLines(report: TraceReport): string[] {
     lines.push(`UNWANTED  ${r.id} (${r.source}) is an "If ..., then ..." requirement but no citing test title names the failure and no Gherkin scenario cites it`)
   }
   for (const f of report.missingRequirementFiles) lines.push(`NOSPEC    specs/${f}/ has no requirements.md`)
+  for (const f of report.unrunFeatures) lines.push(`UNRUN     ${f} is run by no test file (runFeature), so its tags cite nothing`)
   return lines
 }
 

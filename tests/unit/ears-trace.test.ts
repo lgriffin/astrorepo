@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   checkPattern, checkSpecFolders, extractTestTitles, formatMarkdown, formatReport, parseCitations, parseFeatureCitations,
-  parseRequirements, passes, summariseBySpec, toJson, trace, type Citation, type Requirement
+  parseRequirements, passes, runFeatureTargets, summariseBySpec, toJson, trace, type Citation, type Requirement
 } from '../../scripts/ears/trace'
 
 // Fixture IDs (ZZZ-...) sit in plain strings, which the tracer does not count, so this file does
@@ -134,13 +134,24 @@ describe('EARS traceability', () => {
       '      | 1 |'
     ].join('\n')
 
-    it('[TRC-001] Given tags on a feature, scenarios and examples, When parsed, Then each requirement tag is a citation', () => {
+    it('[TRC-001] Given tags on a feature, scenarios and examples, When parsed, Then each scenario cites its own tags and the feature tags it inherits', () => {
       expect(parseFeatureCitations(FEATURE, 'f.feature').map(c => [c.id, c.kind, c.title])).toEqual([
-        ['ZZZ-001', 'feature', 'Keeping sources safe'],
+        ['ZZZ-001', 'feature', 'Index a folder'],
         ['ZZZ-002', 'scenario', 'Index a folder'],
-        ['ZZZ-003', 'scenario', 'Space for <n>'],
-        ['ZZZ-004', 'scenario', 'Space for <n>']
+        ['ZZZ-001', 'feature', 'Space for 1 (n: 1)'],
+        ['ZZZ-003', 'scenario', 'Space for 1 (n: 1)'],
+        ['ZZZ-004', 'scenario', 'Space for 1 (n: 1)']
       ])
+    })
+
+    it('[TRC-001] Given a Scenario Outline with two example rows, When parsed, Then each row is its own citing test', () => {
+      const outline = FEATURE.replace('      | 1 |', '      | 1 |\n      | 2 |')
+      const report = trace([req('ZZZ-003', 'Ubiquitous', 'The system shall a.', 'specs/a.md')], parseFeatureCitations(outline, 'f.feature').filter(c => c.id === 'ZZZ-003'))
+      expect(summariseBySpec(report)[0].requirements[0].tests).toBe(2)
+    })
+
+    it('[TRC-002] Given a tagged feature with no scenarios, When parsed, Then it cites nothing', () => {
+      expect(parseFeatureCitations('@ZZZ-001\nFeature: Empty\n', 'f.feature')).toEqual([])
     })
 
     it('[TRC-002] Given requirement IDs in step text, comments and doc strings, When parsed, Then they are not counted', () => {
@@ -150,8 +161,18 @@ describe('EARS traceability', () => {
       expect(ids).not.toContain('ZZZ-010')
     })
 
-    it('[TRC-002] Given tags followed by a step instead of a scenario, When parsed, Then the tags are dropped', () => {
-      expect(parseFeatureCitations('Feature: x\n  @ZZZ-001\n  Given a step\n  Scenario: y', 'f.feature')).toEqual([])
+    it('[TRC-002] Given a feature file that is not valid Gherkin, When parsed, Then it fails with the file and line rather than counting its tags', () => {
+      expect(() => parseFeatureCitations('Feature: x\n  @ZZZ-001\n  Given a step\n  Scenario: y', 'f.feature')).toThrow(/f\.feature:3/)
+    })
+
+    it('[TRC-002] Given test files, When read for runFeature calls, Then the feature files they run are found', () => {
+      expect(runFeatureTargets("runFeature(new URL('./archive.feature', import.meta.url), archiveSteps)")).toEqual(['./archive.feature'])
+    })
+
+    it('[TRC-002] Given a feature file no test runs, When traced, Then the gate fails and names it', () => {
+      const report = trace([], [], [], ['features/orphan.feature'])
+      expect(passes(report)).toBe(false)
+      expect(formatReport(report)).toMatch(/UNRUN\s+features\/orphan\.feature is run by no test file/)
     })
   })
 

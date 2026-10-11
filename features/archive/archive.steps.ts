@@ -10,6 +10,10 @@ import {
 } from '@astro/testkit'
 import { defineSteps, type DataTable } from '@astro/testkit/bdd'
 
+/** Every file on the pretend disk with what it is: its file id (hard links share one), size, contents and whether it is a link. */
+const snapshot = (area: InMemoryArchiveArea) =>
+  [...area.disk.entries()].map(([path, e]) => `${path} ${JSON.stringify(e)}`).sort()
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 class Archiving {
@@ -70,7 +74,7 @@ export const archiveSteps = defineSteps(() => new Archiving(), ({ Given, When, T
       .put(`${w.work}/masters/dark_stacked.fit`, 'dark')
       .put(`${w.work}/result_60s.fit`, 'the stack')
       .put(`${w.work}/result_60s.fit.astrorepo.json`, JSON.stringify(manifest))
-    w.before = [...w.area.disk.keys()].sort()
+    w.before = snapshot(w.area)
   })
   Given('it is {int}:{int} on {int} {word} {int}', (w, h: number, m: number, day: number, month: string, year: number) => {
     w.clock.set(new Date(year, MONTHS.indexOf(month), day, h, m).toISOString())
@@ -119,7 +123,7 @@ export const archiveSteps = defineSteps(() => new Archiving(), ({ Given, When, T
     }))
     expect(shown).toEqual(table.hashes())
   })
-  Then('nothing on disk has changed', w => { expect([...w.area.disk.keys()].sort()).toEqual(w.before) })
+  Then('nothing on disk has changed', w => { expect(snapshot(w.area)).toEqual(w.before) })
   Then('the archive folder holds:', (w, table: DataTable) => {
     expect(w.area.listing(w.destination)).toEqual(table.raw().map(r => r[0]))
   })
@@ -134,6 +138,9 @@ export const archiveSteps = defineSteps(() => new Archiving(), ({ Given, When, T
   })
   Then('{string} still holds {word} and {word}', (w, dir: string, a: string, b: string) => {
     expect(w.area.listing(dir)).toEqual([a, b])
+    // Untouched, not just still there: the same file, size and contents as before archiving.
+    const under = (entries: string[]) => entries.filter(e => e.startsWith(`${dir}/`))
+    expect(under(snapshot(w.area))).toEqual(under(w.before))
   })
   Then("M 42's record says {word}, removed {word} and {word}, freeing {int} bytes",
     async (w, mode: string, a: string, b: string, freed: number) => {

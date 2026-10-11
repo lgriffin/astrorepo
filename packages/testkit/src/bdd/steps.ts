@@ -20,7 +20,8 @@ export interface StepDefinition<W> {
 
 export interface StepMatch<W> {
   definition: StepDefinition<W>
-  args: unknown[]
+  /** The parameter values, converted when called, so a transform that throws fails its own step. */
+  args: () => unknown[]
 }
 
 type Define<W> = (expression: string | RegExp, fn: StepFn<W>) => void
@@ -66,7 +67,7 @@ export class StepLibrary<W> {
     const out: StepMatch<W>[] = []
     for (const definition of this.definitions) {
       const args = definition.expression.match(text)
-      if (args) out.push({ definition, args: args.map(a => a.getValue(null)) })
+      if (args) out.push({ definition, args: () => args.map(a => a.getValue(null)) })
     }
     return out
   }

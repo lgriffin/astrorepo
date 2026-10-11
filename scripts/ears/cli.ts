@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import {
-  formatMarkdown, formatReport, parseCitations, parseFeatureCitations, parseRequirements, passes, toJson, trace
+  formatMarkdown, formatReport, parseCitations, parseFeatureCitations, parseRequirements, passes, runFeatureTargets, toJson, trace
 } from './trace'
 
 // Usage: npm run ears [-- --json <path>]
@@ -41,15 +41,19 @@ const specFolders = specDirs.map(e => ({
 const specFiles = specFolders.filter(f => f.hasRequirements).map(f => path.join(root, 'specs', f.name, 'requirements.md'))
 
 const requirements = specFiles.flatMap(f => parseRequirements(fs.readFileSync(f, 'utf8'), rel(f)))
+const testFiles = ['tests', 'packages', 'features']
+  .flatMap(d => walk(path.join(root, d), f => TEST_FILE.test(f)))
+  .map(f => ({ file: f, code: fs.readFileSync(f, 'utf8') }))
+// A feature's tags count only when a test file runs it; otherwise no scenario of it ever runs.
+const run = new Set(testFiles.flatMap(t => runFeatureTargets(t.code).map(target => path.resolve(path.dirname(t.file), target))))
+const featureFiles = walk(path.join(root, 'features'), f => FEATURE_FILE.test(f))
+const unrun = featureFiles.filter(f => !run.has(path.resolve(f)))
 const citations = [
-  ...['tests', 'packages', 'features']
-    .flatMap(d => walk(path.join(root, d), f => TEST_FILE.test(f)))
-    .flatMap(f => parseCitations(fs.readFileSync(f, 'utf8'), rel(f))),
-  ...walk(path.join(root, 'features'), f => FEATURE_FILE.test(f))
-    .flatMap(f => parseFeatureCitations(fs.readFileSync(f, 'utf8'), rel(f)))
+  ...testFiles.flatMap(t => parseCitations(t.code, rel(t.file))),
+  ...featureFiles.filter(f => run.has(path.resolve(f))).flatMap(f => parseFeatureCitations(fs.readFileSync(f, 'utf8'), rel(f)))
 ]
 
-const report = trace(requirements, citations, specFolders)
+const report = trace(requirements, citations, specFolders, unrun.map(rel))
 console.log(formatReport(report))
 
 const jsonPath = argValue('--json')
