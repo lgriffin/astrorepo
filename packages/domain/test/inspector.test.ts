@@ -239,4 +239,7 @@ describe('a histogram across most of a double\'s range', () => {
     expect(h.counts).toEqual([1, 0, 1, 1])
     expect(Object.keys(h.counts)).toEqual(['0', '1', '2', '3'])
   })
+  it('[INS-001, FUZ-006] Given values as small as the smallest double, When binned, Then they land in the first and last bins', () => {
+    expect(histogram([0, Number.MIN_VALUE], { min: 0, max: Number.MIN_VALUE }, 4).counts).toEqual([1, 0, 0, 1])
+  })
 })
