@@ -26,6 +26,14 @@ export default tseslint.config(
     }
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node
+      }
+    }
+  },
+  {
     // The hexagonal core takes the clock, randomness and the host through ports (spec 027, HEX-001).
     files: core,
     languageOptions: {

@@ -12,3 +12,7 @@ Thumbs.db
 .idea/
 coverage/
 *.tsbuildinfo
+
+# Mutation testing (Stryker)
+reports/
+.stryker-tmp/
