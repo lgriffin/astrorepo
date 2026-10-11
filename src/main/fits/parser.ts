@@ -60,8 +60,9 @@ function parseHeaderValue(raw: string): { value: string | number | boolean | nul
   if (valuePart === 'T') return { value: true, comment }
   if (valuePart === 'F') return { value: false, comment }
 
-  const num = Number(valuePart)
-  if (valuePart.length > 0 && !isNaN(num)) return { value: num, comment }
+  // FITS writes a double's exponent with D as well as E ("1.5D2"); a value too large for a double is kept as text.
+  const num = Number(valuePart.replace(/^([+-]?(?:\d+\.?\d*|\.\d+))D([+-]?\d+)$/i, '$1E$2'))
+  if (valuePart.length > 0 && Number.isFinite(num)) return { value: num, comment }
 
   return { value: valuePart || null, comment }
 }
@@ -81,7 +82,8 @@ function findClosingQuote(s: string): number {
   return -1
 }
 
-function parseRecord(record: string): FitsHeaderRecord {
+/** One 80-character header card: its keyword, its value (string, number, logical or none) and its comment. */
+export function parseHeaderCard(record: string): FitsHeaderRecord {
   const keyword = record.substring(0, 8).trimEnd()
   const hasValueIndicator = record.substring(8, 10) === '= '
 
@@ -138,7 +140,7 @@ class HeaderReader {
         continue
       }
 
-      const rec = parseRecord(record)
+      const rec = parseHeaderCard(record)
       this.headers.push(rec)
       if (rec.keyword) {
         this.headerMap.set(rec.keyword, rec)
@@ -201,6 +203,8 @@ export function computeImageStats(
   bzero: number
 ): FitsImageStats | null {
   if (naxis === 0 || naxis1 === 0 || naxis2 === 0) return null
+  // Any other BITPIX is not a pixel format: a fraction of a byte per pixel would loop for ever.
+  if (![8, 16, 32, -32, -64].includes(bitpix)) return null
 
   const bytesPerPixel = Math.abs(bitpix) / 8
   const totalPixels = naxis1 * naxis2
@@ -230,6 +234,8 @@ export function computeImageStats(
       const usableBytes = bytesRead - (bytesRead % bytesPerPixel)
       for (let i = 0; i < usableBytes; i += bytesPerPixel) {
         const val = readPixelValue(chunkBuf, i, bitpix, bscale, bzero)
+        // A float image's NaN marks a blank pixel: it has no value to count.
+        if (!Number.isFinite(val)) continue
         if (val < min) min = val
         if (val > max) max = val
         sum += val

@@ -1,0 +1,3 @@
+constructor available
+toString yes
+hasOwnProperty available star removal

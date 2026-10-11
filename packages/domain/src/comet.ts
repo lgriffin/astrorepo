@@ -230,7 +230,8 @@ export interface CometFramePosition {
   decDeg: number
 }
 
-const csvField = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
+// A carriage return is quoted too: spreadsheets and line readers take a lone one as a row's end.
+const csvField = (s: string) => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
 
 /** The positions file: one row per light, frame name, UTC date, RA and Dec in degrees, in time order. */
 export function cometPositionsCsv(rows: CometFramePosition[]): string {

@@ -1,0 +1,2 @@
+log: Resolution:  0 arcsec/px
+log: Image center: alpha: 00h42m44s, delta: +41°16'08"

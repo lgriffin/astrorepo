@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { parseHeaderCard } from './parser'
 
 const BLOCK = 2880
 const CARD = 80
@@ -18,30 +19,9 @@ export interface FitsImage {
   headers: Map<string, string | number | boolean>
 }
 
+/** A card's value as the scanner reads it (FUZ-005): one card parser for the whole app. */
 function cardValue(card: string): string | number | boolean | null {
-  if (card[8] !== '=') return null
-  const raw = card.slice(10)
-  const text = raw.trimStart()
-  if (text.startsWith("'")) {
-    let out = ''
-    for (let i = 1; i < text.length; i++) {
-      if (text[i] === "'") {
-        if (text[i + 1] === "'") {
-          out += "'"
-          i++
-          continue
-        }
-        break
-      }
-      out += text[i]
-    }
-    return out.trimEnd()
-  }
-  const value = text.split('/')[0].trim()
-  if (value === 'T') return true
-  if (value === 'F') return false
-  const n = Number(value.replace(/D/i, 'E'))
-  return value !== '' && Number.isFinite(n) ? n : null
+  return parseHeaderCard(card).value
 }
 
 /** Reads the primary header, and the byte offset where the pixel data starts. */
@@ -105,6 +85,9 @@ export async function readFitsImage(filePath: string): Promise<FitsImage> {
     const bytes = Math.abs(bitpix) / 8
     const bscale = num('BSCALE', 1)
     const bzero = num('BZERO', 0)
+    // A header can claim any size: check the file holds the pixels before allocating room for them.
+    const { size } = await handle.stat()
+    if (dataOffset + planeSize * channels * bytes > size) throw new Error('The pixel data is truncated.')
     const planes = Array.from({ length: channels }, () => new Float32Array(planeSize))
     const total = planeSize * channels
     const perChunk = Math.floor(READ_CHUNK / bytes)

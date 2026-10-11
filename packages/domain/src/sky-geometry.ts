@@ -54,8 +54,9 @@ const RAD = Math.PI / 180
 
 /** An angle in (-180, 180]. */
 export function normaliseAngle(deg: number): number {
-  const a = ((deg % 360) + 360) % 360
-  return a > 180 ? a - 360 : a
+  // The remainder is exact; only a turn added or taken away rounds, so an angle in range comes back unchanged.
+  const a = deg % 360
+  return (a > 180 ? a - 360 : a <= -180 ? a + 360 : a) + 0
 }
 
 /** Angle between two positions given in degrees. */
@@ -119,7 +120,7 @@ export function fieldFromWcs(cards: WcsCards, widthPx: number, heightPx: number)
     const [c1, c2, r] = [d1 ?? d2 ?? 0, d2 ?? d1 ?? 0, rotation * RAD]
     cd = [c1 * Math.cos(r), -c2 * Math.sin(r), c1 * Math.sin(r), c2 * Math.cos(r)]
   }
-  if (!(scaleDeg > 0)) return null
+  if (!(scaleDeg > 0) || !Number.isFinite(scaleDeg)) return null
   const px1 = cardNumber(cards, 'CRPIX1')
   const px2 = cardNumber(cards, 'CRPIX2')
   let centre = { raDeg: ra, decDeg: dec }
@@ -128,8 +129,8 @@ export function fieldFromWcs(cards: WcsCards, widthPx: number, heightPx: number)
     const dy = (heightPx + 1) / 2 - px2
     centre = offsetPosition({ raDeg: ra, decDeg: dec }, cd[0] * dx + cd[1] * dy, cd[2] * dx + cd[3] * dy)
   }
-  return {
-    raDeg: round(((centre.raDeg % 360) + 360) % 360, 6),
+  const field = {
+    raDeg: round(((centre.raDeg % 360) + 360) % 360, 6) % 360,
     decDeg: centre.decDeg,
     rotationDeg: round(normaliseAngle(rotation), 2),
     scaleArcsec: round(scaleDeg * 3600, 4),
@@ -138,6 +139,14 @@ export function fieldFromWcs(cards: WcsCards, widthPx: number, heightPx: number)
     // The sky as seen has a negative determinant (east to the left of north); positive is mirrored.
     flipped: cd[0] * cd[3] - cd[1] * cd[2] > 0
   }
+  // Cards far out of range (a CRPIX of 1e300, a CD of 1e-12) leave no real place or scale.
+  return isOnSky(field) ? field : null
+}
+
+/** A field that is a real place on the sky: finite, within range and with a scale. */
+function isOnSky(f: SolvedField): boolean {
+  return [f.raDeg, f.decDeg, f.rotationDeg, f.scaleArcsec].every(Number.isFinite) && f.raDeg >= 0 && f.raDeg < 360 &&
+    Math.abs(f.decDeg) <= 90 && f.scaleArcsec > 0
 }
 
 const round = (n: number, places: number) => Math.round(n * 10 ** places) / 10 ** places
@@ -233,18 +242,18 @@ export function parseSirilSolve(log: string, widthPx: number, heightPx: number):
   const ra = centre ? sexagesimal(centre[1]) : null
   const dec = centre ? sexagesimal(centre[2]) : null
   if (resolution && ra !== null && dec !== null && widthPx > 0 && heightPx > 0) {
-    return {
-      ok: true,
-      field: {
-        raDeg: round(ra * 15, 6),
-        decDeg: round(dec, 6),
-        rotationDeg: round(normaliseAngle(Number(rotation?.[1] ?? 0)), 2),
-        scaleArcsec: Number(resolution[1]),
-        widthPx,
-        heightPx,
-        ...(rotation && /flipped/i.test(rotation[2]) ? { flipped: true } : {})
-      }
+    const turned = Number(rotation?.[1] ?? 0)
+    const field: SolvedField = {
+      raDeg: round(ra * 15, 6),
+      decDeg: round(dec, 6),
+      rotationDeg: round(normaliseAngle(Number.isFinite(turned) ? turned : 0), 2),
+      scaleArcsec: Number(resolution[1]),
+      widthPx,
+      heightPx,
+      ...(rotation && /flipped/i.test(rotation[2]) ? { flipped: true } : {})
     }
+    // "Resolution: ." or an RA of 25h is a garbled log, not a place to store.
+    return isOnSky(field) ? { ok: true, field } : { ok: false, reason: 'Siril printed a solution with no usable position or scale.' }
   }
   const failure = text.split(/\r?\n/).find(l => /fail|not enough|could not|cannot|error/i.test(l))
   if (!failure) return { ok: false, reason: 'Siril finished without printing a solution.' }
@@ -474,7 +483,8 @@ export function offsetPosition(centre: { raDeg: number; decDeg: number }, xiDeg:
   const denom = Math.cos(dec0) - eta * Math.sin(dec0)
   const ra = ra0 + Math.atan2(xi, denom)
   const dec = Math.atan2(Math.sin(dec0) + eta * Math.cos(dec0), Math.sqrt(xi * xi + denom * denom))
-  return { raDeg: round(((ra / RAD) % 360 + 360) % 360, 6), decDeg: round(dec / RAD, 6) }
+  // Rounding can carry 359.9999999 up to 360, which is 0.
+  return { raDeg: round(((ra / RAD) % 360 + 360) % 360, 6) % 360, decDeg: round(dec / RAD, 6) }
 }
 
 function panelsAlong(targetDeg: number, fieldDeg: number, overlap: number): number {
