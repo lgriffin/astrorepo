@@ -15,8 +15,8 @@ edits the tests catch is the mutation score.
   pull request pays only for what it touched.
 - A `Mutation` workflow runs the changed-files gate on pull requests that touch the core or the gate, and the
   full run nightly and on demand. Both fail below the break threshold and upload the HTML report.
-- A first full-core baseline (76.8%) and a break threshold of 65 set just under the weakest
-  sizeable files, to be raised as survivors are killed.
+- A first full-core baseline (76.8%), then sharper tests that bring every core file to at least
+  80%, and a break threshold of 80 (Leigh's minimum), to be raised as survivors are killed.
 
 ## Decisions
 

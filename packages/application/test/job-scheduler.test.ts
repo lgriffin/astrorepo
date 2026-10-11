@@ -229,11 +229,13 @@ describe('the job runner, its controls', () => {
 
   it('[ARC-008] [JOB-004] Given the first job\'s target held, When ticked, Then nothing starts even though another target\'s job waits behind it', async () => {
     const t = setup()
-    await t.add({ prepare: null })
+    const first = await t.add({ prepare: null })
+    const other = await t.add({ prepare: null, targetId: 'm31', title: 'Stack M 31' })
     const release = t.holds.hold('m42')
     const snap = await t.s.tick()
     await flush()
-    expect(snap.schedule.start).not.toBeNull()
+    expect(snap.schedule.start).toBe(first.id)
+    expect(snap.jobs.map(j => j.id)).toContain(other.id)
     expect(t.runner.runs).toHaveLength(0)
     expect(t.s.busy()).toBe(false)
     release?.()
