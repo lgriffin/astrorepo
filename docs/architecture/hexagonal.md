@@ -175,6 +175,7 @@ it('[DSC-010] Given 8 h of subs and no stack, When assessed, Then it is ready to
 ```
 
 A Gherkin scenario cites one with a tag (`@DSC-010`); see [docs/testing/bdd.md](../testing/bdd.md).
+A tag counts only on a feature file some test runs with `runFeature`, once per scenario and outline row.
 An Unwanted ("If ..., then ...") requirement needs at least one citing test whose title names the
 failure (fails, refused, rejected, error, invalid, missing, cannot, not, warns, quarantined,
 skipped, stopped, cancelled, unknown, empty, corrupt, throws) or a tagged Gherkin scenario.
@@ -182,6 +183,11 @@ skipped, stopped, cancelled, unknown, empty, corrupt, throws) or a tagged Gherki
 `npm run ears` prints cited/total per spec. `npm run ears -- --json <path>` also writes the report
 as JSON, with each requirement's citing test count and files, and in GitHub Actions the gate
 appends a markdown table to the job summary (`$GITHUB_STEP_SUMMARY`).
+
+Beyond examples, the core is tested three more ways:
+[property and fuzz tests](../testing/property-and-fuzz.md) check invariants over generated input
+and every parser of untrusted files, and [mutation testing](../testing/mutation.md) checks that the
+tests notice when the core's code is changed.
 
 Only requirements a slice is building go into a spec, so the blueprint's full list is a backlog and
 the gate never asks for tests of work nobody has started.

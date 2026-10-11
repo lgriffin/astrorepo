@@ -72,6 +72,15 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   it shows for a Seestar or Vespera target.
 
 ### Fixed
+- A "Flat Light" or "Dark Light" frame no longer counts toward a target's integration (#53).
+- Bugs the fuzz and property tests found (#56): a FITS header could hang the scanner or make the
+  image reader allocate 400 MB; all-NaN images gave nonsense statistics; the two FITS header
+  readers disagreed; a camera RAW file could crash the tag reader; impossible ASTAP and Siril
+  solves were accepted; a model or object called `constructor` misbehaved; a Siril script could
+  step outside the work folder; histograms could drop values; and the comet CSV did not quote
+  carriage returns.
+- Several testkit fakes behaved unlike the real adapters (job logs, the process runner, the run
+  area and image pixels), so some use-case tests passed on behaviour the app does not have (#54).
 - **Other rigs review fixes** (spec 026): RAW darks and flats in folders such as `Darks_ISO800`,
   `Flats-L` or `Darks/ISO800` are no longer stacked as lights; impossible EXIF dates and time
   offsets, and comet perihelion days the month does not have, are refused; RAW frames are no
@@ -90,6 +99,19 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   stops legacy code (`getSqlite()` calls, services, legacy IPC calls) from growing. Adapters take
   the Clock port instead of calling `new Date()`, and share SQL and settings helpers from
   `src/main/adapters/shared/`.
+- **Rules in one place** (spec 027, #53): presenters hold wording only. Whether a stack can be
+  queued, its space verdict, the clipping threshold and which job a suggestion reflects are domain
+  rules the page and the queue share, and the app's folders come from one `AppFolders` adapter.
+- **Contract suites on both sides of every port** (#54): every port has a suite that runs on its
+  testkit fake and on a real adapter, and the build fails when one does not.
+- **Stricter EARS gate and BDD** (spec 028, #55): requirement IDs count only in test titles and
+  Gherkin tags; an "If ..., then ..." requirement needs a test that names the failure. 63 Gherkin
+  scenarios in `features/` walk Leigh's main journeys against the use cases.
+- **Property and fuzz tests** (spec 029, #56): 67 properties over the domain rules and a fuzz suite
+  over every parser of untrusted input, nightly at 20,000 runs per parser.
+- **Mutation testing** (spec 030): Stryker mutates the hexagonal core; pull requests mutate the
+  core files they change and fail below the floor (65%; the first full run scored 76.8%), and the
+  whole core runs nightly.
 
 ## [0.2.0] - 2026-09-30
 

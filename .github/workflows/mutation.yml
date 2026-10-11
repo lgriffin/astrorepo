@@ -1,0 +1,66 @@
+name: Mutation
+
+# Mutation testing of the hexagonal core (spec 030, docs/testing/mutation.md).
+# Pull requests mutate the core files they change (and the ones their changed core tests cover, or one
+# smoke file when only the gate's set-up changed); the nightly and manual runs mutate all of it.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/domain/**'
+      - 'packages/application/**'
+      - 'stryker.config.mjs'
+      - 'vitest.mutation.config.ts'
+      - 'tsconfig.mutation.json'
+      - 'scripts/mutation/**'
+      - '.github/workflows/mutation.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The changed-files mode diffs against the merge base with the PR's base branch.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Unchanged mutants keep their result from the last run on this branch, or on main.
+      - uses: actions/cache@v4
+        with:
+          path: reports/stryker-incremental.json
+          key: mutation-incremental-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            mutation-incremental-${{ github.ref }}-
+            mutation-incremental-refs/heads/main-
+      - name: Mutate changed core files
+        if: github.event_name == 'pull_request'
+        run: npm run test:mutation:changed -- --base origin/${{ github.base_ref }} -- --concurrency 4
+      - name: Mutate the whole core
+        if: github.event_name != 'pull_request'
+        run: npm run test:mutation -- --concurrency 4
+      - name: Write the score to the job summary
+        if: always()
+        run: node scripts/mutation/summary.mjs reports/mutation/mutation.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          if-no-files-found: ignore

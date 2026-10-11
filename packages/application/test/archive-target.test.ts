@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ArchiveRefusedError, ArchiveRemovalError, makeArchiveTarget, makeListStackingSuggestions, makeTargetHolds, type ArchiveRequest } from '@astro/application'
+import { ArchiveRefusedError, ArchiveRemovalError, FolderRemovalError, makeArchiveTarget, makeListStackingSuggestions, makeTargetHolds, type ArchiveRequest } from '@astro/application'
 import { stackManifest, type SirilPlacement } from '@astro/domain'
 import {
   FixedClock,
@@ -201,5 +201,15 @@ describe('Archive this target', () => {
     expect(await suggest()).toEqual([])
     w.frames.add(target('M 42', { subs: subs(2000, 10, '2026-03-01T21:00:00Z') }))
     expect((await suggest()).map(s => s.targetName)).toEqual(['M 42'])
+  })
+})
+
+describe('A removal that stops part way', () => {
+  it('[ARC-009] Given a folder that could not be removed, When the error is made, Then it names the folder, keeps what was removed and ends the reason with one full stop', () => {
+    const plain = new FolderRemovalError(['process'], 'failed', 'access denied')
+    expect(plain.message).toBe("The work folder's failed could not be removed: access denied.")
+    expect(plain.name).toBe('FolderRemovalError')
+    expect(plain.removed).toEqual(['process'])
+    expect(new FolderRemovalError([], 'process', 'in use.').message).toBe("The work folder's process could not be removed: in use.")
   })
 })
