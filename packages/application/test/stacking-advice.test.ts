@@ -92,6 +92,8 @@ describe('estimating a stack with advice', () => {
 
   it('[ADV-007] Given grading and lights over two nights, When estimated, Then each night shows with its flats and the shared flats are called out', async () => {
     const { workspace, grading } = target(4)
+    // A dark taken on the second night is not a flat for it.
+    workspace.describe('/data/NGC 7000/Dark_001.fit', { settings: settings({ sensorTempC: 5, capturedAt: new Date('2026-01-12T21:00:00Z') }) })
     await grading.measureBatch('ngc7000')
     const e = await makeEstimateSirilRun({ workspace, selection: grading })('/data/NGC 7000', '/work')
     expect(e.advice.nights?.nights.map(n => [n.night, n.lights, n.flats])).toEqual([['2026-01-10', 2, 1], ['2026-01-12', 2, 0]])

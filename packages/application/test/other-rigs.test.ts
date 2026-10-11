@@ -100,6 +100,9 @@ describe('mono cameras with filters', () => {
     expect(f?.stacks.map(s => s.script?.script)).toEqual(['Mono_Preprocessing', 'Mono_Preprocessing', 'Mono_Preprocessing'])
     expect(f?.stacks[2].script?.missing).toEqual(['flats'])
     expect(f?.stacks[0].script?.fits).toBe(true)
+    // One stack of every filter at once is refused; each filter's own stack is judged on its own.
+    expect(plan.scripts.map(s => s.refusal)).toEqual(['mixes-filters'])
+    expect(f?.stacks.map(s => s.script?.refusal)).toEqual([null, null, 'missing-calibration'])
   })
 
   it('[RIG-007] Given a finished Ha stack, When the plan is made, Then the newest result in Ha\'s work folder is its channel master and the others have none', async () => {

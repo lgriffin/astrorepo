@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { makeEstimateSirilRun, makePrepareSirilWorkspace } from '@astro/application'
+import { makeEstimateSirilRun, makePrepareSirilWorkspace, type FrameSelection } from '@astro/application'
 import { InMemorySirilWorkspace } from '@astro/testkit'
 
 /** A Seestar-like night: lights plus darks, flats and biases in typed folders. */
@@ -97,5 +97,95 @@ describe('EstimateSirilRun', () => {
     await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/work/M 31')
     expect(ws.placed.size).toBe(0)
     expect(ws.folders.size).toBe(0)
+  })
+})
+
+const indexed = { exposureSec: 300, gain: 100, sensorTempC: -10, filter: null, capturedAt: null, focalMm: 250, pixelUm: 2.9, scope: 'Vespera Pro' }
+
+describe('EstimateSirilRun, in detail', () => {
+  it('[RCP-001] Given colour lights with darks only, When the plan is made, Then the recommended script leads and the rest keep their order', async () => {
+    const ws = seestar(120, { darks: 1 })
+    for (let i = 1; i <= 120; i++) ws.describe(light(i), { width: 1000, height: 1000, colour: true, settings: indexed })
+    const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/w')
+    expect(plan.scripts.map(s => s.script)).toEqual([
+      'OSC_Preprocessing_WithoutFlat', 'OSC_Preprocessing', 'OSC_Preprocessing_WithoutDBF', 'OSC_Preprocessing_BayerDrizzle', 'OSC_Extract_Ha', 'OSC_Extract_HaOIII'
+    ])
+    expect(plan.scripts[0]).toMatchObject({ neededBytes: 3_138_000_000, missing: [], space: 'unknown', refusal: 'space-unknown' })
+    expect(plan.scripts[1]).toMatchObject({ missing: ['biases', 'flats'], refusal: 'missing-calibration' })
+    // Bayer drizzle would suit 120 lights at 2.39"/px, but its script needs both missing sets.
+    expect(plan.advice.drizzle).toEqual({
+      suggest: false,
+      reason: 'At 2.39"/px the stars are undersampled and 120 lights are enough: Bayer drizzle can recover finer detail, if the frames were dithered, but its script needs biases and flats, which this folder lacks.',
+      extraBytes: 0
+    })
+  })
+
+  it('[RCP-002] Given few lights and many flats, When the plan is made, Then the Bayer drizzle script\'s extra disk over the recommended one is stated exactly', async () => {
+    const ws = seestar(2, { darks: 1, flats: 50 })
+    for (let i = 1; i <= 2; i++) ws.describe(light(i), { width: 1000, height: 1000, colour: true, settings: indexed })
+    const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/w')
+    expect(plan.recommended.script).toBe('OSC_Preprocessing_WithoutFlat')
+    // Drizzle needs 370 MB with the flats' masters; darks only needs 70 MB.
+    expect(plan.advice.drizzle.extraBytes).toBe(300_000_000)
+  })
+
+  it('[RCP-002] Given a folder with no lights, When the plan is made, Then no script is chosen and drizzle has no extra disk to state', async () => {
+    const plan = await makeEstimateSirilRun({ workspace: seestar(0, { darks: 2 }) })('/data/M 31', '/w')
+    expect(plan.recommended.script).toBeNull()
+    expect(plan.advice.drizzle.extraBytes).toBeNull()
+    expect(plan.scripts.every(s => s.refusal === 'no-lights')).toBe(true)
+  })
+
+  it('[RCP-004] Given lights of equal area but turned the other way, When the plan is made, Then the first light\'s size is kept, not the second\'s, and the sizes differ', async () => {
+    const ws = seestar(2)
+    ws.describe(light(1), { width: 2000, height: 1000, colour: true })
+    ws.describe(light(2), { width: 1000, height: 2000, colour: true })
+    const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/w')
+    expect(plan).toMatchObject({ geometry: { width: 2000, height: 1000 }, geometryMixed: true, geometryApproximate: false })
+  })
+
+  it('[RCP-004] Given one light of three missing its height, When the plan is made, Then the figures are marked approximate', async () => {
+    const ws = seestar(3)
+    ws.describe(light(1), { width: 1000, height: 1000, colour: true })
+    ws.describe(light(2), { width: 1000, height: null, colour: true })
+    ws.describe(light(3), { width: 1000, height: 1000, colour: true })
+    expect((await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/w')).geometryApproximate).toBe(true)
+  })
+
+  it('[RCP-001] Given lights some read as colour and some as mono, When the plan is made, Then the sensor is taken as colour', async () => {
+    const ws = seestar(2)
+    ws.describe(light(1), { width: 1000, height: 1000, colour: false })
+    ws.describe(light(2), { width: 1000, height: 1000, colour: true })
+    const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/w')
+    expect(plan).toMatchObject({ sensor: 'colour', sensorKnown: true })
+  })
+
+  it('[RCP-001] [RIG-016] Given colour lights read through two filters, When the plan is made, Then no per-filter stacks are made and nothing mixes filters', async () => {
+    const ws = seestar(2)
+    ws.describe(light(1), { width: 1000, height: 1000, colour: true, settings: { ...indexed, filter: 'IRCUT' } })
+    ws.describe(light(2), { width: 1000, height: 1000, colour: true, settings: { ...indexed, filter: 'LP' } })
+    ws.space = { freeBytes: 1e12, usedBytes: 0 }
+    const plan = await makeEstimateSirilRun({ workspace: ws })('/data/M 31', '/w')
+    expect(plan.filters).toBeNull()
+    expect(plan.scripts[0]).toMatchObject({ script: 'OSC_Preprocessing_WithoutDBF', refusal: null, space: 'fits' })
+  })
+
+  it('[GRD-007] Given grading that would reject any frame it is shown, When the plan is made, Then only lights are put to it and calibration is never rejected', async () => {
+    const asked: string[][] = []
+    const selection = {
+      rejected: async (paths: string[]) => (asked.push(paths), new Set(paths)),
+      reportFor: async (paths: string[]) => (asked.push(paths), { grades: [] })
+    } as unknown as FrameSelection
+    const plan = await makeEstimateSirilRun({ workspace: seestar(2, { darks: 2 }), selection })('/data/M 31', '/w')
+    expect(plan.counts).toEqual({ lights: 0, darks: 2, flats: 0, biases: 0 })
+    expect(plan.rejectedLights).toBe(2)
+    // The nights table is asked about every light, rejected or not, and never about the darks.
+    expect(asked).toEqual([[light(1), light(2)], [light(1), light(2)]])
+  })
+
+  it('[ADV-007] Given grading but a folder with no lights, When the plan is made, Then there is no nights table', async () => {
+    const selection = { rejected: async () => new Set<string>(), reportFor: async () => ({ grades: [] }) } as unknown as FrameSelection
+    const plan = await makeEstimateSirilRun({ workspace: seestar(0, { flats: 2 }), selection })('/data/M 31', '/w')
+    expect(plan.advice.nights).toBeNull()
   })
 })

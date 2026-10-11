@@ -173,3 +173,100 @@ describe('reportHiddenData: unreadable and duplicate files', () => {
     expect(report.duplicates).toEqual({ files: 2, reclaimableBytes: 100, groups: 1 })
   })
 })
+
+describe('calibration matching at its edges', () => {
+  it('[DSC-006] Given a dark exactly 2 °C and 1 s from the lights, or a little beyond, When matched, Then the tolerance is inclusive', () => {
+    expect(calibrates(dark({ sensorTempC: -12 }), light())).toBe(true)
+    expect(calibrates(dark({ sensorTempC: -12.01 }), light())).toBe(false)
+    expect(calibrates(dark({ exposureSec: 299 }), light())).toBe(true)
+    expect(calibrates(dark({ exposureSec: 298.9 }), light())).toBe(false)
+    expect(calibrates(dark({ gain: 101 }), light())).toBe(false)
+    expect(calibrates({ kind: 'bias', exposureSec: 0, gain: 99, sensorTempC: null, filter: null }, light())).toBe(false)
+  })
+
+  it('[DSC-006] Given a looser policy, When matched or grouped, Then its tolerances apply', () => {
+    const loose = { darkTempToleranceC: 5, darkExposureToleranceSec: 100 }
+    expect(calibrates(dark({ sensorTempC: -14, exposureSec: 220 }), light(), loose)).toBe(true)
+    expect(findOrphanCalibration([dark({ sensorTempC: -14 })], [light()], loose)).toEqual([])
+    const report = reportHiddenData({ targets: [], unassigned: [], calibration: [dark({ sensorTempC: -14 })], lightSettings: [light()], policy: loose })
+    expect(report.orphanCalibration).toEqual([])
+  })
+
+  it('[DSC-014] Given a flat whose filter is blank or a light whose filter is missing, When matched, Then the missing filter is not a mismatch', () => {
+    const flat: CalibrationFrame = { kind: 'flat', exposureSec: 1, gain: 0, sensorTempC: null, filter: '  ' }
+    expect(calibrates(flat, light())).toBe(true)
+    expect(calibrates({ ...flat, filter: 'Ha' }, light({ filter: null }))).toBe(true)
+    expect(calibrates({ ...flat, filter: 'Ha' }, light({ filter: '   ' }))).toBe(true)
+    expect(calibrates({ ...flat, filter: 'OIII ' }, light({ filter: ' oiii' }))).toBe(true)
+  })
+
+  it('[DSC-006] Given orphan frames tying on count, with spaced filters and fractional temperatures, When grouped, Then kinds go alphabetically and settings are tidied', () => {
+    const groups = findOrphanCalibration(
+      [
+        { kind: 'flat', exposureSec: 2, gain: 0, sensorTempC: 20.6, filter: ' SII ' },
+        { kind: 'flat', exposureSec: 2, gain: 0, sensorTempC: 21.4, filter: 'SII' },
+        { kind: 'dark', exposureSec: null, gain: null, sensorTempC: 5.5, filter: '  ' },
+        { kind: 'dark', exposureSec: null, gain: null, sensorTempC: 5.6, filter: null },
+        { kind: 'bias', exposureSec: 0, gain: 300, sensorTempC: null, filter: null }
+      ],
+      [light({ filter: 'Ha', gain: 100, sensorTempC: -10, exposureSec: 300 })]
+    )
+    expect(groups).toEqual([
+      { kind: 'dark', exposureSec: null, gain: null, sensorTempC: 6, filter: null, count: 2 },
+      { kind: 'flat', exposureSec: 2, gain: 0, sensorTempC: 21, filter: 'SII', count: 2 },
+      { kind: 'bias', exposureSec: 0, gain: 300, sensorTempC: null, filter: null, count: 1 }
+    ])
+  })
+
+  it('[DSC-006] Given orphans that differ in one setting only, When grouped, Then each setting keeps its own group', () => {
+    const groups = findOrphanCalibration(
+      [dark({ gain: 7 }), dark({ gain: 7, exposureSec: 60 }), dark({ gain: 7, sensorTempC: 0 }), dark({ gain: 8 }), dark({ gain: 7, filter: 'L' })],
+      [light()]
+    )
+    expect(groups).toHaveLength(5)
+    expect(groups.map(g => g.count)).toEqual([1, 1, 1, 1, 1])
+    expect(groups.find(g => g.filter === 'L')).toMatchObject({ kind: 'dark', gain: 7, filter: 'L' })
+  })
+})
+
+describe('reportHiddenData, ties and defaults', () => {
+  it('[DSC-006] Given targets and folders tying on integration, When reported, Then they are ordered by name', () => {
+    const report = reportHiddenData({
+      targets: [target('M 9', { subs: subs(6, 10, '2026-03-01T21:00:00Z') }), target('M 3', { subs: subs(6, 10, '2026-03-01T21:00:00Z') })],
+      unassigned: [
+        { exposureSec: 10, capturedAt: null, folder: 'Zeta', objectName: null, rejected: false },
+        { exposureSec: 10, capturedAt: null, folder: null, objectName: '  Alpha  ', rejected: false },
+        { exposureSec: 10, capturedAt: null, folder: '  Mid ', objectName: 'ignored', rejected: false },
+        { exposureSec: 10, capturedAt: null, folder: null, objectName: '   ', rejected: false }
+      ],
+      calibration: [],
+      lightSettings: []
+    })
+    expect(report.neverStacked).toEqual([
+      { targetId: 'target-m-3', targetName: 'M 3', nights: 1, integrationSec: 60 },
+      { targetId: 'target-m-9', targetName: 'M 9', nights: 1, integrationSec: 60 }
+    ])
+    expect(report.unstackedNights).toBe(2)
+    expect(report.unstackedSec).toBe(120)
+    expect(report.unassigned.byFolder.map(f => f.folder)).toEqual(['Alpha', 'Mid', 'Unknown folder', 'Zeta'])
+    expect(report.unassigned.nights).toBe(0)
+  })
+
+  it('[DSC-006] Given a target with subs only without a capture time, When reported, Then it lists no unstacked night', () => {
+    const report = reportHiddenData({
+      targets: [target('M 1', { subs: [{ exposureSec: 30, capturedAt: null, filter: null, scope: null, rejected: false }] })],
+      unassigned: [], calibration: [], lightSettings: []
+    })
+    expect(report.neverStacked).toEqual([])
+  })
+
+  it('[DSC-015] Given three quarantined files or fewer and a duplicate report with no groups, When reported, Then every file is named and the counts are kept', () => {
+    const report = reportHiddenData({
+      targets: [], unassigned: [], calibration: [], lightSettings: [],
+      quarantined: [{ path: '/b.fit', error: 'x' }, { path: '/a.fit', error: 'y' }],
+      duplicates: { groups: [], duplicateFiles: 0, reclaimableBytes: 0 }
+    })
+    expect(report.quarantined).toEqual({ count: 2, examples: [{ path: '/a.fit', error: 'y' }, { path: '/b.fit', error: 'x' }] })
+    expect(report.duplicates).toEqual({ files: 0, reclaimableBytes: 0, groups: 0 })
+  })
+})
