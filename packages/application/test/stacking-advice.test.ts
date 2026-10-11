@@ -1,17 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { makeEstimateSirilRun, makeFrameGrading, type MemoryProbe } from '@astro/application'
-import type { FrameIndexSettings, MachineMemory } from '@astro/domain'
-import { FakeFrameMeasurer, FixedClock, FixedGradeLimits, InMemoryFrameGradeStore, InMemorySirilWorkspace, measurement } from '@astro/testkit'
+import { makeEstimateSirilRun, makeFrameGrading } from '@astro/application'
+import type { FrameIndexSettings } from '@astro/domain'
+import { FakeFrameMeasurer, FixedClock, FixedMemory, FixedGradeLimits, InMemoryFrameGradeStore, InMemorySirilWorkspace, measurement } from '@astro/testkit'
 
 const GB = 1024 ** 3
 const clock = new FixedClock(new Date('2026-10-09T12:00:00Z'))
-
-class FixedMemory implements MemoryProbe {
-  constructor(private readonly memory: MachineMemory | null) {}
-  async read() {
-    return this.memory
-  }
-}
 
 const settings = (over: Partial<FrameIndexSettings> = {}): FrameIndexSettings => ({
   exposureSec: 300, gain: 100, sensorTempC: -10, filter: null, capturedAt: null, focalMm: 250, pixelUm: 2.9, scope: 'Vespera Pro', ...over

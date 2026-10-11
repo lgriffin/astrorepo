@@ -8,9 +8,11 @@ import type { MachineMemory } from '@astro/domain'
  * MemAvailable, so reclaimable cache counts as free on both.
  */
 export class NodeMemoryProbe implements MemoryProbe {
+  constructor(private readonly system: Pick<typeof os, 'totalmem' | 'freemem'> = os) {}
+
   async read(): Promise<MachineMemory | null> {
-    const totalBytes = os.totalmem()
-    const availableBytes = os.freemem()
+    const totalBytes = this.system.totalmem()
+    const availableBytes = this.system.freemem()
     return totalBytes > 0 ? { totalBytes, availableBytes } : null
   }
 }
