@@ -51,25 +51,48 @@ export class FakeMachine implements MachineMonitor {
 /** A run the test finishes by hand. */
 export interface FakeRun {
   command: JobCommand
+  /** Output from the program; ignored once it has ended, as a real program writes nothing after it exits. */
   output: (text: string, stream?: 'stdout' | 'stderr') => void
+  /** Ends the program; only the first call counts. */
   exit: (exitCode: number | null, error?: string | null) => void
   cancelled: boolean
+  ended: boolean
 }
 
-/** Runs nothing: each started program waits until the test calls `exit` on its run. */
+/**
+ * Runs nothing: each started program waits until the test calls `exit` on its run, or until the
+ * `onStart` script given to the constructor ends it. Cancel stops a program that is still running
+ * as the real runner does: no exit code and the reason it stopped; once it has ended it does nothing.
+ */
 export class FakeProcessRunner implements ProcessRunner {
   readonly runs: FakeRun[] = []
+
+  constructor(private readonly onStart: (run: FakeRun) => void = () => {}) {}
 
   run(command: JobCommand, onOutput: (text: string, stream?: 'stdout' | 'stderr') => void): RunningProcess {
     let settle: (r: { exitCode: number | null; error: string | null }) => void = () => {}
     const done = new Promise<{ exitCode: number | null; error: string | null }>(resolve => (settle = resolve))
-    const run: FakeRun = { command, output: onOutput, exit: (exitCode, error = null) => settle({ exitCode, error }), cancelled: false }
+    const run: FakeRun = {
+      command,
+      output: (text, stream) => {
+        if (!run.ended) onOutput(text, stream)
+      },
+      exit: (exitCode, error = null) => {
+        if (run.ended) return
+        run.ended = true
+        settle({ exitCode, error })
+      },
+      cancelled: false,
+      ended: false
+    }
     this.runs.push(run)
+    this.onStart(run)
     return {
       done,
       cancel: () => {
+        if (run.ended) return
         run.cancelled = true
-        run.exit(null)
+        run.exit(null, `${command.program} was stopped (cancelled).`)
       }
     }
   }
@@ -79,13 +102,30 @@ export class FakeProcessRunner implements ProcessRunner {
   }
 }
 
+/** The end of a text, at most `maxBytes` of UTF-8, starting on a whole character. */
+function utf8Tail(text: string, maxBytes: number): string {
+  const bytes = new TextEncoder().encode(text)
+  let start = Math.max(0, bytes.length - Math.max(0, maxBytes))
+  // A UTF-8 continuation byte is the middle of a character cut in two: start after it.
+  while (start < bytes.length && (bytes[start] & 0xc0) === 0x80) start++
+  return new TextDecoder().decode(bytes.subarray(start))
+}
+
+/** Job logs in a map, refusing what is not a job id as the file logs do. */
 export class InMemoryJobLogs implements JobLogs {
   readonly text = new Map<string, string>()
-  append(jobId: string, text: string): void {
-    this.text.set(jobId, (this.text.get(jobId) ?? '') + text)
+
+  private check(jobId: string): string {
+    if (!/^[A-Za-z0-9_-]+$/.test(jobId)) throw new Error(`Not a job id: ${jobId}`)
+    return jobId
   }
+
+  append(jobId: string, text: string): void {
+    this.text.set(this.check(jobId), (this.text.get(jobId) ?? '') + text)
+  }
+
   async read(jobId: string, maxBytes: number): Promise<string> {
-    return (this.text.get(jobId) ?? '').slice(-maxBytes)
+    return utf8Tail(this.text.get(this.check(jobId)) ?? '', maxBytes)
   }
 }
 

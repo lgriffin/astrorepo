@@ -30,7 +30,10 @@ export class FileJobLogs implements JobLogs {
       const length = Math.min(size, maxBytes)
       const buffer = Buffer.alloc(length)
       await handle.read(buffer, 0, length, size - length)
-      return buffer.toString('utf8')
+      // The cut can fall inside a character; start after its continuation bytes rather than show a broken one.
+      let start = 0
+      while (start < length && (buffer[start] & 0xc0) === 0x80) start++
+      return buffer.subarray(start).toString('utf8')
     } finally {
       await handle.close()
     }
