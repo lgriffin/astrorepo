@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import fs from 'fs'
 import path from 'path'
-import { importsOf, rel, root, sourceFiles } from './source-graph'
+import { callsThroughImports, callsTo, rel, root, sourceFiles } from './source-graph'
 import recorded from './legacy-ratchet.json'
 
 /**
@@ -15,7 +14,7 @@ interface LegacyCounts {
   getSqliteCalls: number
   /** Files in src/main/services. */
   legacyServices: number
-  /** Legacy service functions the IPC handlers call directly. */
+  /** Calls the IPC handlers make into legacy services, counted at each call site. */
   handlerLegacyCalls: number
 }
 
@@ -23,15 +22,14 @@ function measure(base = root): LegacyCounts {
   const main = path.join(base, 'src', 'main')
   const getSqliteCalls = sourceFiles(main)
     .filter(f => rel(f) !== 'src/main/db/connection.ts')
-    .reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/\bgetSqlite\(/g)?.length ?? 0), 0)
+    .reduce((n, f) => n + callsTo(f, 'getSqlite'), 0)
   const legacyServices = sourceFiles(path.join(main, 'services')).length
-  const handlers = sourceFiles(path.join(main, 'ipc'))
-  const handlerLegacyCalls = handlers
-    .flatMap(f => importsOf(f))
-    .filter(i => i.spec.startsWith('../services/'))
-    .reduce((n, i) => n + i.names.length, 0)
+  const handlerLegacyCalls = sourceFiles(path.join(main, 'ipc'))
+    .reduce((n, f) => n + callsThroughImports(f, isLegacyService), 0)
   return { getSqliteCalls, legacyServices, handlerLegacyCalls }
 }
+
+const isLegacyService = (to: string) => to.startsWith('src/main/services/')
 
 /** What to tell a contributor about each count that moved. */
 function compare(now: LegacyCounts, before: LegacyCounts): string[] {
@@ -52,6 +50,24 @@ describe('Legacy ratchet', () => {
     expect(compare({ ...before, getSqliteCalls: 11 }, before)).toEqual([
       'getSqliteCalls rose from 10 to 11: put new logic in packages/ behind a port instead'
     ])
+  })
+
+  it('[HEX-008] Given getSqlite in a comment and a string, When counted, Then only real calls count', () => {
+    const file = path.join(root, 'src', 'main', 'probe.ts')
+    expect(callsTo(file, 'getSqlite', "// never calls getSqlite()\nconst s = 'getSqlite()'\nconst db = getSqlite()\ngetSqlite().prepare('x')")).toBe(2)
+  })
+
+  it('[HEX-008] Given a handler calling legacy services by name, through a namespace and through the @main alias, When counted, Then every call site counts', () => {
+    const file = path.join(root, 'src', 'main', 'ipc', 'probe.ts')
+    const code = [
+      "import { getSetting } from '../services/settings'",
+      "import * as targets from '@main/services/target'",
+      "import { composeCore } from '../composition'",
+      "getSetting('a'); getSetting('b')",
+      "targets.searchTargets('m31')",
+      'composeCore(db)'
+    ].join('\n')
+    expect(callsThroughImports(file, isLegacyService, code)).toBe(3)
   })
 
   it('[HEX-009] Given a change that moves a service into the core, When compared, Then the check asks for the ratchet to be lowered', () => {

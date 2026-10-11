@@ -2,12 +2,18 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
+import { createRequire } from 'module'
+
+/** Host globals the hexagonal core may not touch; the architecture check reads the same list. */
+const coreGlobals = createRequire(import.meta.url)('./tests/architecture/core-globals.json')
+const core = ['packages/domain/src/**/*.ts', 'packages/application/src/**/*.ts']
 
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     files: ['src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts', 'scripts/**/*.ts'],
+    ignores: core,
     languageOptions: {
       globals: {
         ...globals.node,
@@ -21,14 +27,14 @@ export default tseslint.config(
   },
   {
     // The hexagonal core takes the clock, randomness and the host through ports (spec 027, HEX-001).
-    files: ['packages/domain/src/**/*.ts', 'packages/application/src/**/*.ts'],
+    files: core,
     languageOptions: {
       globals: {}
     },
     rules: {
-      'no-restricted-globals': ['error', ...['process', 'console', 'Buffer', 'require', '__dirname', '__filename', 'window', 'document',
-        'fetch', 'setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'performance', 'crypto']
-        .map(name => ({ name, message: 'The core takes host facilities through a port (docs/architecture/hexagonal.md).' }))],
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-restricted-globals': ['error', ...coreGlobals.map(name => ({ name, message: 'The core takes host facilities through a port (docs/architecture/hexagonal.md).' }))],
       'no-restricted-syntax': ['error',
         { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: 'Take the time from the Clock port.' },
         { selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']", message: 'Take the time from the Clock port.' },

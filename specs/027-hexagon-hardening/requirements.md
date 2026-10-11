@@ -24,8 +24,9 @@ passed.
   imports. It checks the rules below for the domain, application, testkit, adapters, codecs,
   legacy services, the renderer and the shared types.
 - **The core cannot reach the host.** Domain and application code that reads the clock or
-  randomness, or uses a host global such as `process`, `console`, `setTimeout` or `fetch`, fails
-  the check. ESLint gives the core no Node or browser globals, so editors flag the same thing as
+  randomness, or uses a host global such as `process`, `console`, `setTimeout`, `fetch` or
+  `navigator`, fails the check. Names are resolved by scope, so a parameter that happens to be
+  called `process` is not a use of the global. ESLint gives the core no Node or browser globals, so editors flag the same thing as
   you type.
 - **A ratchet on the legacy code.** `tests/architecture/legacy-ratchet.json` records three counts:
   - the `getSqlite()` calls;
@@ -52,4 +53,4 @@ passed.
 | HEX-008 | Unwanted | If a change adds a `getSqlite()` call, a legacy service file or a legacy service call from the IPC handlers, then the architecture check shall fail and name the count that rose. |
 | HEX-009 | Event | When a change lowers a legacy count, the architecture check shall fail until the recorded ratchet is lowered to match, so the count never rises again. |
 | HEX-010 | Ubiquitous | Adapters other than the system clock shall read the time only through the Clock port. |
-| HEX-011 | Unwanted | If a source file imports a module through a side-effect import, a dynamic import or `require`, then the architecture check shall apply the same rules to it as to a static import. |
+| HEX-011 | Unwanted | If a source file imports a module through a side-effect import, a dynamic import, `require` or a path alias, then the architecture check shall apply the same rules to it as to a relative static import, and shall refuse a specifier computed at run time that no rule can check. |
