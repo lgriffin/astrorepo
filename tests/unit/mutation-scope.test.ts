@@ -57,11 +57,11 @@ describe('mutation gate scope', () => {
     ])
   })
 
-  it('[MUT-003] Given only non-core changes, When targeted, Then there is nothing to mutate', () => {
+  it('[MUT-003] Given only non-core changes, When targeted, Then the run is skipped with nothing to mutate', () => {
     expect(changedTargets(['README.md', 'src/main/composition.ts', 'packages/domain/test/x.test.ts'], () => true)).toEqual([])
   })
 
-  it('[MUT-004] Given the Stryker config, When loaded, Then it breaks below the gate threshold', async () => {
+  it('[MUT-004] Given the Stryker config, When loaded, Then it fails the run below the gate threshold', async () => {
     const configPath: string = pathToFileURL(path.join(root, 'stryker.config.mjs')).href
     const config = (await import(configPath)).default
     expect(config.thresholds.break).toBe(breakThreshold())
