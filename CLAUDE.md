@@ -1,21 +1,36 @@
 ﻿# astrorepo Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-07-15
+Auto-generated from all feature plans, then kept by hand. Last updated: 2026-10-12
 
 ## Active Technologies
 
-- TypeScript 5.x (Node.js 20 LTS) + Electron, React 18, better-sqlite3, Drizzle ORM, astronomy-engine, Vite (001-universal-observatory)
+- TypeScript 5.x (Node.js 20 LTS), Electron (electron-vite, Electron Forge), React 18 with react-router and Tailwind, Vite
+- better-sqlite3 with plain SQL migrations in `src/main/db/migrations.ts`; Zod validates every IPC input
+- astronomy-engine for sun, moon and sidereal time (behind the Ephemeris port)
+- Testing: Vitest with coverage-v8, an own Gherkin runner (`packages/testkit/src/bdd`), fast-check property and fuzz tests, Stryker mutation testing
 
 ## Project Structure
 
 ```text
+packages/
+  domain/        pure rules, no I/O (new logic goes here)
+  application/   use cases and the ports they need
+  testkit/       in-memory fakes, port contract suites, BDD runner
 src/
-tests/
+  main/          Electron main: adapters (src/main/adapters), composition root, IPC, jobs host, legacy services
+  preload/       the api.invoke() bridge
+  renderer/      React app
+  shared/        types and navigation shared by main and renderer
+specs/<nnn>/     requirements.md (EARS IDs) per feature
+features/<area>/ Gherkin features run by tests
+tests/           unit, integration, contracts, architecture, fuzz
+scripts/         ears gate, mutation scope, fuzz runner
 ```
 
 ## Commands
 
-npm test; npm run lint; npm run ears (EARS traceability gate)
+npm test; npm run lint; npm run typecheck; npm run ears (EARS traceability gate); npm run test:fuzz;
+npm run test:mutation:changed (mutation gate on changed core files, floor 80%)
 
 Architecture: hexagonal core in `packages/` (see docs/architecture/hexagonal.md). New logic goes in
 `packages/domain` / `packages/application`; requirement IDs from `specs/*/requirements.md` go in test names.
