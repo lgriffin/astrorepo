@@ -13,6 +13,7 @@ import { Library } from './pages/Library'
 import { Poster } from './pages/Poster'
 import { Settings } from './pages/Settings'
 import { Jobs } from './pages/Jobs'
+import { Vespera } from './pages/Vespera'
 import { FitsAnalyzer } from './pages/FitsAnalyzer'
 import { StorageAnalytics } from './pages/StorageAnalytics'
 import { Calibration } from './pages/Calibration'
@@ -48,6 +49,7 @@ export function App(): React.ReactElement {
             <Route path="/timeline" element={<SessionTimeline />} />
             <Route path="/poster" element={<Poster />} />
             <Route path="/jobs" element={<Jobs />} />
+            <Route path="/vespera" element={<Vespera />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Layout>

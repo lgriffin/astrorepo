@@ -36,3 +36,5 @@ export type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore, WcsHead
 export * from './use-cases/gallery'
 export type { CometStore } from './ports/comet-store'
 export * from './use-cases/plan-comet'
+export { CopyCancelledError, ScopeUnreachableError, type LandingArea, type ScopeConnection, type ScopeFiles } from './ports/scope'
+export * from './use-cases/vespera-control'

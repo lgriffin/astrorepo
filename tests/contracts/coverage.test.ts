@@ -26,7 +26,8 @@ const NOT_PORTS: Record<string, string> = {
   SavedMosaic: 'what MosaicStore saves',
   TargetPosition: 'what TargetPositions lists',
   StackFile: 'what StackCatalogue lists',
-  ProbeResult: 'what ToolProbe.run returns'
+  ProbeResult: 'what ToolProbe.run returns',
+  ScopeConnection: 'the handle ScopeFiles.open returns; covered by the ScopeFiles suite'
 }
 
 const read = (dir: string, suffix: string) =>

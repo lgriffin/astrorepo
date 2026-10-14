@@ -17,6 +17,9 @@ The app never moves, renames, modifies or deletes a file inside a folder it inde
 to its own database and to a work area it owns. Anything that needs files arranged differently
 (for example a Siril run) works on hard links or copies in the work area (ING-001, ING-013).
 Nothing the app finds, duplicates included, is deleted by the app; it reports and the user acts.
+The one exception is bringing files in from a scope at the user's request (spec 033): the app adds
+new files to the folder copies land in, and never overwrites, moves or deletes one there; on the
+scope itself it only reads (VSP-005, VSP-006).
 
 ### II. Discovery and usability come first
 
