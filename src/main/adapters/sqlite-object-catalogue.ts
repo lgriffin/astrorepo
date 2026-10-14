@@ -60,7 +60,7 @@ export class SqliteObjectCatalogue implements ObjectCatalogue {
       .prepare(
         `SELECT COUNT(*) AS frames, COALESCE(SUM(f.exposure_sec), 0) AS seconds,
                 COUNT(DISTINCT ${NIGHT}) AS nights, MAX(${NIGHT}) AS last_night
-         FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 0 AND ${IS_LIGHT}`
+         FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 0 AND f.exposure_sec IS NOT NULL AND ${IS_LIGHT}`
       )
       .get(objectId) as { frames: number; seconds: number; nights: number; last_night: string | null }
     const masters = this.db.prepare(`SELECT COUNT(*) AS n FROM fits_files f WHERE f.target_id = ? AND f.is_stacked = 1 AND ${IS_INTEGRATED_LIGHT}`).get(objectId) as { n: number }

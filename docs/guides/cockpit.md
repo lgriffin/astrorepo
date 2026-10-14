@@ -540,8 +540,8 @@ a target or trying out a plan links nothing.
 
 **Files → Gallery** shows every PNG and JPEG in the `images` folder of your home folder, and in
 the folders inside it, as a grid of thumbnails, newest first. Search by file or object name, or
-sort by file name or by object. Hidden folders and links are left out, and nothing in the folder
-is ever moved or renamed.
+sort by file name or by object. Hidden folders and links are left out (an `images` folder that is
+itself a link is not shown), and nothing in the folder is ever moved or renamed.
 
 Each picture is captioned with the object it shows, read from its name:
 
@@ -567,7 +567,9 @@ for each object the name names:
 
 A picture named for an object the app's catalogues do not hold says so; add it as a target and the
 gallery picks it up next time. Thumbnails are made 400 pixels wide and the large view 2048, by the
-system's own thumbnailer on Windows, so a folder of large exports stays quick.
+system's own thumbnailer on Windows, so a folder of large exports stays quick. A picture saved
+after the gallery was opened shows once you open the gallery again. The gallery only shows; the
+counts and cover pictures on each target come from **Rescan** on the Library page.
 
 ## Inspecting an image
 

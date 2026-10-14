@@ -67,7 +67,7 @@ way in: every finished picture at once, as a gallery, each one leading back to i
 | GAL-008 | Event | When the user picks a picture whose name names a catalogue object, the system shall link to its target page's overview, files, stack and process, and notes and nights, its mosaic plan in the Sky planner, its collections and the picture's folder, and open its SIMBAD or Wikipedia page in the browser from an address the app builds from the catalogue. |
 | GAL-009 | Unwanted | If neither a picture's name nor its folders name a catalogue object, then the side panel shall say so and how to name the file so it is recognised. |
 | GAL-010 | Unwanted | If a picture's name holds a designation the app's catalogues do not hold, then the side panel shall say that designation is not in the catalogue. |
-| GAL-011 | Unwanted | If the window asks for a picture the images folder did not list, then the system shall refuse it without reading it. |
+| GAL-011 | Unwanted | If the window asks for a picture that is not in the gallery's last listing, that was listed under a home folder since changed, or that is no longer a plain file inside the images folder (an images folder or picture that is a link), then the system shall refuse it without reading it or walking the folder again. |
 | GAL-012 | State | While no home folder is set or it has no images folder, the gallery shall say so and link to Settings → Folders. |
 | GAL-013 | Unwanted | If a picture cannot be read, then the system shall show why in its place. |
 
@@ -75,4 +75,4 @@ way in: every finished picture at once, as a gallery, each one leading back to i
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| NFR-021 | Ubiquitous | The system shall send the window thumbnails at most 400 pixels wide and the larger view at most 2048 pixels wide, shrunk in the main process when the picture can be decoded, shall not send a file over 50 MB that it could not shrink, and shall never write, rename or move a file in the images folder. |
+| NFR-021 | Ubiquitous | The system shall send the window thumbnails at most 400 pixels wide and the larger view at most 2048 pixels wide, shrunk in the main process when the picture can be decoded, shall not send or decode in the main process a file over 50 MB that the system's thumbnailer could not shrink, shall keep at most 64 MB of shrunk pictures in memory, and shall never write, rename or move a file in the images folder. |

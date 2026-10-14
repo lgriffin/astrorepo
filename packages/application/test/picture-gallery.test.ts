@@ -104,6 +104,7 @@ describe('a picture’s side panel', () => {
   it('[GAL-007] Given an emission nebula and no site, When opened, Then it is marked for narrowband and has no altitude', async () => {
     const { folder, gallery } = world(null)
     folder.add('M42/final.png')
+    await gallery.browse()
     const details = await gallery.details('/home/images/M42/final.png')
     expect(details.readFrom).toBe('folder')
     expect(details.objects[0]).toMatchObject({ narrowband: true, highestAltitudeDeg: null, bestMonth: 11 })
@@ -113,12 +114,14 @@ describe('a picture’s side panel', () => {
   it('[GAL-007] Given an object without coordinates, When opened, Then it has no month and no altitude', async () => {
     const { folder, gallery } = world()
     folder.add('NGC 9.png')
+    await gallery.browse()
     expect((await gallery.details('/home/images/NGC 9.png')).objects[0]).toMatchObject({ bestMonth: null, highestAltitudeDeg: null })
   })
 
   it('[GAL-009] [GAL-010] Given a picture naming no known object, When opened, Then the panel has no object and reports a designation the catalogue does not hold', async () => {
     const { folder, gallery } = world()
     folder.add('NGC 891 final.png').add('widefield.png')
+    await gallery.browse()
     expect(await gallery.details('/home/images/NGC 891 final.png')).toMatchObject({ readFrom: null, objects: [], unknown: ['NGC 891'] })
     expect(await gallery.details('/home/images/widefield.png')).toMatchObject({ readFrom: null, objects: [], unknown: [] })
   })
@@ -150,17 +153,33 @@ describe('reading a picture', () => {
     expect(folder.listings).toBe(listings)
   })
 
-  it('[GAL-001] Given a picture added since the gallery was opened, When read, Then the folder is listed again and it is read', async () => {
+  it('[GAL-011] Given a picture added since the gallery was opened, When read before browsing again, Then it is refused without walking the folder, and browsing again lets it be read', async () => {
     const { folder, gallery } = world()
     await gallery.browse()
+    const listings = folder.listings
     folder.add('new.png')
+    await expect(gallery.picture('/home/images/new.png', 400)).rejects.toThrow(PictureRefusedError)
+    await expect(gallery.details('/home/images/new.png')).rejects.toThrow(PictureRefusedError)
+    expect(folder.listings).toBe(listings)
+    await gallery.browse()
     expect(await gallery.picture('/home/images/new.png', 400)).toMatchObject({ ok: true })
+  })
+
+  it('[GAL-011] Given the home folder changed since the gallery was opened, When a picture listed before is asked for, Then it is refused and nothing is read', async () => {
+    const { folder, gallery } = world()
+    folder.add('M31.png')
+    await gallery.browse()
+    folder.rootPath = '/other/images'
+    await expect(gallery.picture('/home/images/M31.png', 400)).rejects.toThrow(PictureRefusedError)
+    await expect(gallery.details('/home/images/M31.png')).rejects.toThrow(PictureRefusedError)
+    expect(folder.reads).toEqual([])
   })
 
   it('[GAL-013] Given a picture that cannot be read, When read, Then the reason comes back instead of failing', async () => {
     const { folder, gallery } = world()
     folder.add('M31.png')
     folder.failures.set('/home/images/M31.png', 'The file is damaged.')
+    await gallery.browse()
     expect(await gallery.picture('/home/images/M31.png', 400)).toEqual({ ok: false, error: 'The file is damaged.' })
     folder.read = async () => {
       throw 'plain'

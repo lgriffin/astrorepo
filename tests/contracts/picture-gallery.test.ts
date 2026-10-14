@@ -78,6 +78,57 @@ describe('NodePictureFolder', () => {
     expect(await new NodePictureFolder(settings({ home_folder_path: home })).list()).toEqual([])
   })
 
+  it('[GAL-011] Given an images folder that is a link to another folder, When asked, Then there is no root and nothing is listed', async () => {
+    const home = tempHome()
+    const outside = tempHome()
+    fs.writeFileSync(path.join(outside, 'secret.png'), 'x')
+    try {
+      fs.symlinkSync(outside, path.join(home, 'images'), 'junction')
+    } catch {
+      return // Links need rights this machine does not give; nothing to check.
+    }
+    const folder = new NodePictureFolder(settings({ home_folder_path: home }))
+    expect(await folder.root()).toBeNull()
+    expect(await folder.list()).toEqual([])
+    await expect(folder.read(path.join(home, 'images', 'secret.png'), 400)).rejects.toThrow(/no longer a picture in the images folder/)
+  })
+
+  it('[GAL-011] Given a listed picture swapped for a link, a file outside the root, or a folder, When read, Then the read is refused and nothing is shrunk', async () => {
+    const home = tempHome()
+    const outside = tempHome()
+    fs.mkdirSync(path.join(home, 'images', 'M42'), { recursive: true })
+    const secret = path.join(outside, 'secret.png')
+    fs.writeFileSync(secret, 'x')
+    const swapped = path.join(home, 'images', 'M31.png')
+    try {
+      fs.symlinkSync(secret, swapped)
+    } catch {
+      return // Links need rights this machine does not give; nothing to check.
+    }
+    const shrunk: string[] = []
+    const folder = new NodePictureFolder(settings({ home_folder_path: home }), async p => {
+      shrunk.push(p)
+      return { data: 'small', mime: 'image/jpeg', width: null, height: null }
+    })
+    await expect(folder.read(swapped, 400)).rejects.toThrow(/no longer a picture in the images folder/)
+    await expect(folder.read(secret, 400)).rejects.toThrow(/no longer a picture in the images folder/)
+    await expect(folder.read(path.join(home, 'images', 'M42'), 400)).rejects.toThrow(/no longer a picture in the images folder/)
+    await expect(folder.read(path.join(home, 'images', 'gone.png'), 400)).rejects.toThrow(/no longer there/)
+    expect(shrunk).toEqual([])
+  })
+
+  it('[GAL-011] Given a picture read after the home folder setting was cleared, When read, Then the read is refused', async () => {
+    const home = tempHome()
+    fs.mkdirSync(path.join(home, 'images'))
+    const file = path.join(home, 'images', 'M31.png')
+    fs.writeFileSync(file, 'x')
+    const values: Record<string, string> = { home_folder_path: home }
+    const folder = new NodePictureFolder(settings(values))
+    expect((await folder.read(file, 400)).data).toBe(Buffer.from('x').toString('base64'))
+    delete values.home_folder_path
+    await expect(folder.read(file, 400)).rejects.toThrow(/no longer a picture in the images folder/)
+  })
+
   it('[NFR-021] Given a shrinker, When a picture is read, Then the shrinker makes it at the width asked', async () => {
     const home = tempHome()
     fs.mkdirSync(path.join(home, 'images'))
@@ -168,6 +219,15 @@ describe('SqliteObjectCatalogue', () => {
     seedTarget(db, { id: 't1', canonicalName: 'Andromeda Galaxy' })
     db.prepare("INSERT INTO target_aliases (id, target_id, alias, source) VALUES ('a1', 't1', 'M 31', NULL)").run()
     expect(await new SqliteObjectCatalogue(db).namedObjects()).toEqual([{ id: 't1', designations: ['M31'], names: ['Andromeda Galaxy'] }])
+  })
+
+  it('[GAL-006] Given a light frame with no exposure, When the data is read, Then it is not counted, as the frame catalogue leaves it out too', async () => {
+    const db = setupTestDb()
+    seedTarget(db, { id: 't1' })
+    const scan = seedFitsScan(db)
+    seedFitsFile(db, scan, { id: 'l1', targetId: 't1', dateObs: '2026-02-10T22:00:00', exposureSec: 60, imageType: 'Light' })
+    seedFitsFile(db, scan, { id: 'l2', targetId: 't1', dateObs: '2026-02-11T22:00:00', exposureSec: null, imageType: 'Light' })
+    expect((await new SqliteObjectCatalogue(db).objectFacts('t1'))?.data).toMatchObject({ lightFrames: 1, integrationSec: 60, nights: 1, lastNight: '2026-02-10' })
   })
 
   it('[GAL-005] Given blank type, constellation and description, When read, Then they come back as unknown', async () => {

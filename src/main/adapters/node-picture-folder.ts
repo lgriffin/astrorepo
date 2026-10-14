@@ -18,6 +18,11 @@ export const MAX_UNSHRUNK_BYTES = 50 * 1024 * 1024
  */
 export type PictureShrinker = (filePath: string, maxWidth: number, modifiedMs: number) => Promise<Picture>
 
+const isInside = (root: string, file: string) => {
+  const rel = path.relative(root, file)
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)
+}
+
 const MIME: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }
 
 /**
@@ -36,7 +41,8 @@ export class NodePictureFolder implements PictureFolder {
     if (!home) return null
     const dir = path.join(home, 'images')
     try {
-      return fs.statSync(dir).isDirectory() ? dir : null
+      // lstat, so an images folder that is a link to somewhere else is not followed (GAL-011).
+      return fs.lstatSync(dir).isDirectory() ? dir : null
     } catch {
       return null
     }
@@ -73,12 +79,18 @@ export class NodePictureFolder implements PictureFolder {
   }
 
   async read(filePath: string, maxWidth: number): Promise<Picture> {
+    const name = path.basename(filePath)
+    const root = await this.root()
     let st: fs.Stats
+    let real: string
     try {
-      st = fs.statSync(filePath)
+      st = fs.lstatSync(filePath)
+      real = fs.realpathSync(filePath)
     } catch {
-      throw new Error(`${path.basename(filePath)} is no longer there. Open the gallery again to see what is.`)
+      throw new Error(`${name} is no longer there. Open the gallery again to see what is.`)
     }
+    // Checked again on every read, as the file may have been swapped for a link since it was listed (GAL-011).
+    if (!root || !st.isFile() || !isInside(fs.realpathSync(root), real)) throw new Error(`${name} is no longer a picture in the images folder. Open the gallery again to see what is.`)
     if (this.shrink) return this.shrink(filePath, maxWidth, st.mtimeMs)
     if (st.size > MAX_UNSHRUNK_BYTES) throw new Error(`${path.basename(filePath)} is too large to show here. Open its folder to view it.`)
     const mime = MIME[path.extname(filePath).toLowerCase()]

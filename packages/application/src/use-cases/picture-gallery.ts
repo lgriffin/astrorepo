@@ -79,8 +79,9 @@ const byNewest = (a: PictureFile, b: PictureFile) =>
 export function makePictureGallery(deps: PictureGalleryDeps) {
   let index: Promise<ObjectNameIndex> | null = null
   const names = () => (index ??= deps.catalogue.namedObjects().then(objectNameIndex))
-  /** The paths last listed, so reading a thumbnail does not walk the folder again. */
+  /** The paths last listed and the root they were listed under, so reading a thumbnail does not walk the folder again. */
   let listed = new Map<string, PictureFile>()
+  let listedRoot: string | null = null
 
   const label = (idx: ObjectNameIndex, objectId: string): string => {
     const o = idx.objects.get(objectId)
@@ -93,16 +94,15 @@ export function makePictureGallery(deps: PictureGalleryDeps) {
     objects: readImageName(file.name, file.folders, idx).matches.map(m => ({ objectId: m.objectId, label: label(idx, m.objectId) }))
   })
 
-  const list = async (): Promise<PictureFile[]> => {
-    const files = await deps.folder.list()
-    listed = new Map(files.map(f => [f.path, f]))
-    return files
-  }
-
-  /** A listed picture; the folder is listed again once before a path it has not listed is refused. */
+  /**
+   * A picture of the last listing. Any other path is refused without walking the folder again, and
+   * so is every path once the root has changed since that listing (GAL-011).
+   */
   const listedPicture = async (path: string): Promise<PictureFile> => {
-    const known = listed.get(path) ?? (await list(), listed.get(path))
-    if (!known) throw new PictureRefusedError('That picture is not in the images folder any more. Open the gallery again to see what is there.')
+    const known = listed.get(path)
+    if (!known || (await deps.folder.root()) !== listedRoot) {
+      throw new PictureRefusedError('That picture is not in the images folder any more. Open the gallery again to see what is there.')
+    }
     return known
   }
 
@@ -112,7 +112,9 @@ export function makePictureGallery(deps: PictureGalleryDeps) {
       // Each visit reads the catalogue afresh, so a target added since is matched.
       index = null
       // Without a root the folder lists nothing, so a path listed before is refused from now on.
-      const [root, files, idx] = await Promise.all([deps.folder.root(), list(), names()])
+      const [root, files, idx] = await Promise.all([deps.folder.root(), deps.folder.list(), names()])
+      listed = new Map(files.map(f => [f.path, f]))
+      listedRoot = root
       return { root, pictures: files.map(f => entry(idx, f)).sort(byNewest) }
     },
 
