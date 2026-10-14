@@ -72,6 +72,15 @@ describe('The Messier mosaic', () => {
     expect(m1).toMatchObject({ state: 'imaged', picture: { name: 'crab.png', kind: 'finished' } })
   })
 
+  it('[MES-002] Given a scan that counted a finished image since deleted, When put together, Then the tile is not imaged but stacked or captured from its frames', async () => {
+    const { mosaic, frames } = setup()
+    frames.add(target('M 87', { subs: subs(12, 300, '2026-04-01T21:00:00Z'), stacks: [stackAt('2026-04-02T10:00:00Z')], finalCount: 2 }))
+    const m = await mosaic.mosaic()
+    expect(m.tiles.find(t => t.number === 31)).toMatchObject({ state: 'captured', picture: null })
+    expect(m.tiles.find(t => t.number === 87)).toMatchObject({ state: 'stacked', picture: null })
+    expect(m.summary.imaged).toBe(0)
+  })
+
   it('[MES-010] Given no site, When put together, Then every tile has its state and picture but no outlook, and no sky is worked out', async () => {
     const { mosaic, settings, ephemeris, messier } = setup()
     settings.setSite(null)
@@ -285,8 +294,37 @@ describe('Messier gaps tonight', () => {
     const noPlan = async () => ({ status: 'no-site' as const })
     const actions = await makeListNextActions({ listStackingSuggestions: stacking, planForward: noPlan, listMessierGaps: () => mosaic.gapsTonight(3) })()
     expect(actions.map(a => a.kind)).toEqual(['messier-gap', 'stack'])
-    const failing = await makeListNextActions({ listStackingSuggestions: stacking, planForward: noPlan, listMessierGaps: () => Promise.reject(new Error('sky')), onPlanError: e => errors.push(e) })()
+    const planErrors: unknown[] = []
+    const failing = await makeListNextActions({ listStackingSuggestions: stacking, planForward: noPlan, listMessierGaps: () => Promise.reject(new Error('sky')), onPlanError: e => planErrors.push(e), onMessierError: e => errors.push(e) })()
     expect(failing.map(a => a.kind)).toEqual(['stack'])
-    expect(errors).toHaveLength(1)
+    expect(errors).toEqual([new Error('sky')])
+    expect(planErrors).toEqual([])
+  })
+
+  it('[MES-008] Given forward planning that fails, When Next actions are listed, Then no Messier gap claims to be up tonight and stacking still shows', async () => {
+    const { mosaic, messier } = setup()
+    messier.add(messierObject(29, { targetId: 'target-m-29', raHours: 20.4, decDeg: 38.52 }))
+    expect((await mosaic.gapsTonight(3)).length).toBeGreaterThan(0)
+    const planErrors: unknown[] = []
+    const stacking = async () => [{ kind: 'ready-to-stack' as const, id: 'r', targetId: 't', targetName: 'M 42', integrationSec: 7200, subCount: 24, nights: 2 }]
+    const actions = await makeListNextActions({ listStackingSuggestions: stacking, planForward: () => Promise.reject(new Error('ephemeris down')), listMessierGaps: () => mosaic.gapsTonight(3), onPlanError: e => planErrors.push(e) })()
+    expect(actions.map(a => a.kind)).toEqual(['stack'])
+    expect(planErrors).toHaveLength(1)
+  })
+
+  it('[MES-008] Given Home asking again for the same night and site, When the gaps are listed, Then no night sky is worked out again, and a new site works them out afresh', async () => {
+    const { mosaic, ephemeris, settings, messier } = setup()
+    messier.add(messierObject(29, { targetId: 'target-m-29', raHours: 20.4, decDeg: 38.52 }))
+    const first = await mosaic.gapsTonight(3)
+    const asked = ephemeris.nightsRequested.length
+    expect(await mosaic.gapsTonight(3)).toEqual(first)
+    expect(ephemeris.nightsRequested.length).toBe(asked)
+    await mosaic.mosaic()
+    const afterMosaic = ephemeris.nightsRequested.length
+    await mosaic.mosaic()
+    expect(ephemeris.nightsRequested.length).toBe(afterMosaic)
+    settings.setSite({ latitudeDeg: 40.4, longitudeDeg: -3.7, elevationM: 650 })
+    await mosaic.gapsTonight(3)
+    expect(ephemeris.nightsRequested.length).toBeGreaterThan(afterMosaic)
   })
 })

@@ -61,19 +61,22 @@ export class SqliteMessierCatalogue implements MessierCatalogue {
   }
 
   /**
-   * Images in the target's images folder. When the scan filed loose images at the top of the
-   * library's shared images folder, only those whose file name gives the object's Messier number
-   * belong to it; the rest are other objects' images.
+   * Finished images of the object: those in the target's own images folder, and loose images at the
+   * top of the library's shared images folder whose file names give its Messier number. A scan can
+   * file both under one target but records only one folder, so the shared folder is always looked
+   * at; its other images are other objects' (MES-003).
    */
   private finished(targetId: string): PictureCandidate[] {
     const dir = imagesFolderOf(this.db, targetId)
-    if (!dir) return []
     const home = this.setting('home_folder_path')
-    const shared = home !== null && path.resolve(dir) === path.resolve(home, 'images')
-    const numbers = shared ? this.numbersOf(targetId) : []
-    const named = (name: string) => numbers.some(n => new RegExp(`(^|[^A-Za-z0-9])M[\\s_-]*0*${n}(?![0-9])`, 'i').test(name))
-    return listFolderImages(dir, PICTURE)
-      .filter(f => !shared || (f.topLevel && named(f.name)))
+    const sharedDir = home ? path.resolve(home, 'images') : null
+    const own = dir && path.resolve(dir) !== sharedDir ? listFolderImages(dir, PICTURE) : []
+    const numbers = sharedDir ? this.numbersOf(targetId) : []
+    const names = numbers.map(n => new RegExp(`(^|[^A-Za-z0-9])M[\\s_-]*0*${n}(?![0-9])`, 'i'))
+    const loose = sharedDir && names.length > 0 ? listFolderImages(sharedDir, PICTURE, { maxDepth: 0, keep: name => names.some(re => re.test(name)) }) : []
+    const seen = new Set<string>()
+    return [...own, ...loose]
+      .filter(f => !seen.has(path.resolve(f.path)) && seen.add(path.resolve(f.path)))
       .map(f => ({ path: f.path, kind: 'finished' as const, colour: null, modifiedAt: f.modifiedAt }))
   }
 

@@ -15,7 +15,7 @@ Tiles run M 1 to M 110, eleven to a row. The dot in the corner says how far the 
 
 | Dot | Means |
 |---|---|
-| Green | Imaged: a finished image is in its images folder |
+| Green | Imaged: a finished image is in its images folder now (one deleted since the last scan no longer counts) |
 | Blue | Stacked, not finished: a master or processed image, but no finished one |
 | Amber | Captured, not stacked: light subs only |
 | Grey | Not captured yet |
@@ -27,7 +27,8 @@ say), the tile tries the next one. When none draws, the tile says why in its det
 
 Finished images are found where the image scan put them: the object's own folder under
 `<home>/images` and the folders directly inside it. Images loose in `<home>/images` itself count
-only when their file name gives the object's number ("M31_final.jpg", "m 31 v2.png").
+too, but only when their file name gives the object's number ("M31_final.jpg", "m 31 v2.png"),
+whether or not the object also has its own folder.
 
 Press **Refresh** after a scan to draw the tiles again.
 
@@ -54,7 +55,8 @@ and the Sky planner.
 
 Home's Next actions names the three Messier objects with nothing captured that are up tonight,
 closing seasons first and then the most hours. They come after tonight's captures and planned
-mosaic tiles and before stacking.
+mosaic tiles and before stacking. If tonight's plan cannot be worked out, they are left out with
+it. The night skies are kept between Home's refreshes, so listing them again costs little.
 
 ## Saving it
 
@@ -64,5 +66,6 @@ its designation and name beneath, gaps as dark squares.
 ## Limits for now
 
 - The picture is chosen for you. Picking one per object is a follow-up.
-- JPEG and TIFF are drawn by the desktop app (on Windows, the system's own thumbnails), so they
-  show in the app but not in tests.
+- JPEG and TIFF are drawn by the desktop app (on Windows and macOS, the system's own thumbnails),
+  so they show in the app but not in tests. Elsewhere TIFF is not drawn, and when there is no system
+  thumbnail a JPEG over 25 MB is not decoded; the tile tries its next image and says why.

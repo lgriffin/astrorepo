@@ -13,15 +13,18 @@ export const DETAIL_WIDTH = 512
  */
 const drawn = new Map<string, MessierPictureView>()
 let queue: Promise<unknown> = Promise.resolve()
+/** Moves on with each forget, so a picture asked for before it is never kept after it. */
+let generation = 0
 
 /** Asks for one picture after the one before has come back, so tiles load in order without flooding the main process. */
 function fetchPicture(number: number, width: number): Promise<MessierPictureView> {
   const key = `${number}:${width}`
   if (drawn.has(key)) return Promise.resolve(drawn.get(key) ?? null)
+  const asked = generation
   const run = queue.then(async () => {
-    if (drawn.has(key)) return drawn.get(key) ?? null
+    if (asked === generation && drawn.has(key)) return drawn.get(key) ?? null
     const view = await invoke<MessierPictureView>('messier:picture', { number, max_width: width })
-    drawn.set(key, view)
+    if (asked === generation) drawn.set(key, view)
     return view
   })
   queue = run.catch(() => undefined)
@@ -30,6 +33,7 @@ function fetchPicture(number: number, width: number): Promise<MessierPictureView
 
 /** Forgets drawn pictures, for a reload after a scan. */
 export function forgetPictures(): void {
+  generation++
   drawn.clear()
 }
 

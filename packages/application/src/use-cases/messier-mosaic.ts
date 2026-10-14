@@ -89,6 +89,8 @@ export const TILE_PICTURE_MAX_WIDTH = 512
 export const TILE_PICTURE_MIN_WIDTH = 32
 /** Drawn pictures kept, so reopening the mosaic redraws only what changed (MES-012). */
 export const TILE_PICTURE_CACHE = 300
+/** Night skies kept between calls, so Home's refreshes and reopening the mosaic do not work them out again. */
+export const NIGHT_SKY_CACHE = 128
 
 const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -106,6 +108,10 @@ interface Base {
  */
 export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolicy = DEFAULT_PLANNING_POLICY, horizon: PlanningHorizon = DEFAULT_HORIZON) {
   const drawn = new Map<string, TilePicture>()
+  /** Night skies by site and night: the ephemeris gives the same answer each time. */
+  const nightSkies = new Map<string, Promise<NightSky | null>>()
+  /** The last outlooks worked out, by site, night, filter and reach; positions do not move. */
+  let outlooks: { key: string; byNumber: Map<number, { outlook: MessierOutlook | null; months: MessierMonth[] }> } | null = null
   let queue: Promise<unknown> = Promise.resolve()
   /** Draws one picture at a time, however many tiles ask together (MES-012). */
   const oneAtATime = <T>(task: () => Promise<T>): Promise<T> => {
@@ -120,15 +126,29 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
     const framesOf = new Map(frames.map(f => [f.targetId, f]))
     if (!site) return { night: null, siteSet: false, rows: objects.map(object => ({ object, frames: framesOf.get(object.targetId), outlook: null, months: [] })) }
     const sky = await skies(site, full)
-    const rows = objects.map(object => ({ object, frames: framesOf.get(object.targetId), ...outlookOf(object, site, sky) }))
+    const key = `${sky.siteKey}|${sky.night}|${full}|${sky.hasNarrowbandFilter}`
+    if (outlooks?.key !== key) outlooks = { key, byNumber: new Map() }
+    const byNumber = outlooks.byNumber
+    const rows = objects.map(object => {
+      const known = object.raHours === null || object.decDeg === null ? undefined : byNumber.get(object.number)
+      const found = known ?? outlookOf(object, site, sky)
+      if (!known && object.raHours !== null && object.decDeg !== null) byNumber.set(object.number, found)
+      return { object, frames: framesOf.get(object.targetId), ...found }
+    })
     return { night: sky.night, siteSet: true, rows }
   }
 
   async function skies(site: Site, full: boolean) {
-    const cache = new Map<string, Promise<NightSky | null>>()
+    const siteKey = `${site.latitudeDeg},${site.longitudeDeg},${site.elevationM}`
     const skyOn = (night: string) => {
-      let sky = cache.get(night)
-      if (!sky) cache.set(night, (sky = deps.ephemeris.nightSky(site, night)))
+      const key = `${siteKey}|${night}`
+      let sky = nightSkies.get(key)
+      if (!sky) {
+        sky = deps.ephemeris.nightSky(site, night)
+        nightSkies.set(key, sky)
+        sky.catch(() => nightSkies.delete(key))
+        if (nightSkies.size > NIGHT_SKY_CACHE) nightSkies.delete(nightSkies.keys().next().value as string)
+      }
       return sky
     }
     const night = await tonightAt(deps.clock.now(), site, skyOn)
@@ -138,7 +158,7 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
     for (const n of new Set([...closingNights, ...seasonNights])) byNight.set(n, await skyOn(n))
     const tonight = byNight.get(night) ?? null
     const brightMoon = tonight ? peakMoonIllumination(tonight) > policy.brightMoonIllumination : false
-    return { night, closingNights, seasonNights, byNight, tonight, brightMoon, hasNarrowbandFilter: await deps.settings.hasNarrowbandFilter() }
+    return { siteKey, night, closingNights, seasonNights, byNight, tonight, brightMoon, hasNarrowbandFilter: await deps.settings.hasNarrowbandFilter() }
   }
 
   function outlookOf(object: MessierObject, site: Site, sky: Awaited<ReturnType<typeof skies>>): { outlook: MessierOutlook | null; months: MessierMonth[] } {
@@ -161,10 +181,13 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
     return { outlook: messierOutlook({ tonight, closing, months }, policy), months: months.map(m => ({ ...m, inSeason: m.hoursPerNight >= policy.minUsableHours })) }
   }
 
-  /** The tile's state: from its frames, and imaged whenever a finished image is there to show (MES-002). */
+  /**
+   * The tile's state (MES-002): imaged exactly when a finished image is there to show, whatever the
+   * last scan counted (a file deleted since leaves the count behind); otherwise from its frames.
+   */
   const stateOf = (frames: TargetFrames | undefined, pictures: PictureCandidate[]): MessierState => {
-    const state = messierState(frames ? deriveProgress(frames) : null)
-    return state !== 'imaged' && pictures.some(p => p.kind === 'finished') ? 'imaged' : state
+    if (pictures.some(p => p.kind === 'finished')) return 'imaged'
+    return messierState(frames ? deriveProgress({ ...frames, finalCount: 0 }) : null)
   }
 
   return {
@@ -243,7 +266,7 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
         })),
         MESSIER_COUNT
       )
-      // A gap whose finished image sits in its folder without a scan is not a gap after all.
+      // The finished images decide imaged (MES-002): a gap whose image is in its folder is not a gap after all.
       const gaps: MessierGap[] = []
       for (const gap of candidates) {
         if (limit !== undefined && gaps.length >= limit) break

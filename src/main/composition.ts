@@ -223,7 +223,8 @@ export function composeCore(db: Database.Database) {
       planForward,
       listMosaicGaps: makeListMosaicGaps(sky),
       listMessierGaps: () => composeMessier(db).gapsTonight(MESSIER_GAPS_IN_NEXT_ACTIONS),
-      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error)
+      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error),
+      onMessierError: error => console.error('Messier gaps failed; leaving them out of Next actions', error)
     }),
     dismissSuggestion: makeDismissSuggestion({ frames, dismissals, clock: systemClock }),
     discoverTargets: makeDiscoverTargets({ frames }),

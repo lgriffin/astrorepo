@@ -105,6 +105,26 @@ describe('SqliteMessierCatalogue', () => {
     expect(names).toEqual(['M31_final.jpg', 'm 31 v2.png'])
   })
 
+  it('[MES-003] Given an object with its own folder and loose images in the shared folder, When listed, Then both count, once each, even before a scan records a folder', async () => {
+    const db = setupTestDb()
+    const home = tempRoot()
+    const images = path.join(home, 'images')
+    const own = path.join(images, 'M31 Andromeda')
+    fs.mkdirSync(path.join(own, 'v1'), { recursive: true })
+    fs.writeFileSync(path.join(own, 'final.jpg'), 'x')
+    fs.writeFileSync(path.join(own, 'v1', 'older.png'), 'x')
+    for (const name of ['M31_loose.png', 'M33.png']) fs.writeFileSync(path.join(images, name), 'x')
+    db.prepare("INSERT INTO app_settings (key, value) VALUES ('home_folder_path', ?)").run(home)
+    db.prepare('INSERT INTO catalogues (id, name, abbreviation, created_at) VALUES (?, ?, ?, ?)').run('cat-M', 'Messier', 'M', new Date().toISOString())
+    seedTarget(db, { id: 'andromeda', canonicalName: 'Andromeda Galaxy' })
+    db.prepare('INSERT INTO catalogue_entries (id, catalogue_id, target_id, designation) VALUES (?, ?, ?, ?)').run('e-m31', 'cat-M', 'andromeda', 'M31')
+    const catalogue = new SqliteMessierCatalogue(db)
+    expect((await catalogue.pictures('andromeda')).map(p => path.basename(p.path))).toEqual(['M31_loose.png'])
+    db.prepare('INSERT INTO target_home_data (target_id, images_path, scanned_at) VALUES (?, ?, ?)').run('andromeda', own, new Date().toISOString())
+    const names = (await catalogue.pictures('andromeda')).map(p => path.basename(p.path)).sort()
+    expect(names).toEqual(['M31_loose.png', 'final.jpg', 'older.png'])
+  })
+
   it('[MES-003] Given a target’s own images folder, When listed, Then files one folder deep count and deeper ones and other files do not', async () => {
     const db = setupTestDb()
     const root = tempRoot()

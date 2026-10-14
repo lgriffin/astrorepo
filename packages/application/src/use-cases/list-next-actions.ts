@@ -12,6 +12,8 @@ export interface ListNextActionsDeps {
   listMessierGaps?: () => Promise<MessierGap[]>
   /** Told when planning fails, so the failure is recorded even though stacking still shows. */
   onPlanError?: (error: unknown) => void
+  /** Told when the Messier gaps cannot be listed; they are left out and the rest still shows. */
+  onMessierError?: (error: unknown) => void
 }
 
 export type ListNextActions = () => Promise<NextAction[]>
@@ -38,12 +40,14 @@ export function makeListNextActions(deps: ListNextActionsDeps): ListNextActions 
         : Promise.resolve([]),
       deps.listMessierGaps
         ? deps.listMessierGaps().catch((error: unknown): MessierGap[] => {
-            deps.onPlanError?.(error)
+            deps.onMessierError?.(error)
             return []
           })
         : Promise.resolve([])
     ])
-    if (!plan || plan.status !== 'ok') return rankNextActions(stacking, null, [], tiles, messier)
+    // A gap says it is up tonight, which only a plan that worked can back up.
+    if (!plan) return rankNextActions(stacking, null, [], tiles, [])
+    if (plan.status !== 'ok') return rankNextActions(stacking, null, [], tiles, messier)
     return rankNextActions(stacking, plan.tonight, plan.closing, tiles, messier)
   }
 }
