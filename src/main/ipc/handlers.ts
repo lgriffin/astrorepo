@@ -21,7 +21,7 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
-import { clock, composeCore, composeFolders, composeGallery, composeGrading } from '../composition'
+import { clock, composeCore, composeFolders, composeGallery, composeGrading, composeMessier } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
@@ -33,7 +33,8 @@ import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
-import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError } from '@astro/application'
+import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
+import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError, MessierRefusedError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
@@ -75,6 +76,10 @@ function validated<C extends Channel>(channel: C, handler: (args: z.infer<Schema
     return handler(args)
   }
 }
+
+/** The gallery and the Messier mosaic over the app's database; each keeps what it has read between requests. */
+const gallery = () => composeGallery(getSqlite())
+const messier = () => composeMessier(getSqlite())
 
 export function registerIpcHandlers(): void {
   handle('targets:search', validated('targets:search', (args) => {
@@ -498,7 +503,7 @@ export function registerIpcHandlers(): void {
       profile: args.profile,
       quality: args.quality
     })
-    return toPostProcessView(plan, await composeGallery(getSqlite()).chosenPalette(args.target_id))
+    return toPostProcessView(plan, await gallery().chosenPalette(args.target_id))
   }))
 
   // The inspector and gallery (spec 025). Pixels are read on a worker thread and only statistics
@@ -515,25 +520,37 @@ export function registerIpcHandlers(): void {
 
   // One read gives the figures and the preview, so opening a file decodes it once.
   handle('inspect:file', validated('inspect:file', async args => {
-    const result = await composeGallery(getSqlite()).openFile(args.file_id)
+    const result = await gallery().openFile(args.file_id)
     return result ? toOpenedView(result) : null
   }))
 
-  handle('gallery:images', validated('gallery:images', async args => toGalleryImagesView(await composeGallery(getSqlite()).images(args.target_id))))
+  handle('gallery:images', validated('gallery:images', async args => toGalleryImagesView(await gallery().images(args.target_id))))
 
   handle('gallery:preview', validated('gallery:preview', args =>
-    galleryRefusal(async () => toPreviewView(await composeGallery(getSqlite()).previewImage(args.target_id, args.path)))
+    galleryRefusal(async () => toPreviewView(await gallery().previewImage(args.target_id, args.path)))
   ))
 
-  handle('gallery:palettes', validated('gallery:palettes', async args => toPalettesView(await composeGallery(getSqlite()).palettes(args.target_id))))
+  // The Messier mosaic (specs/032-messier-mosaic): the window names an object by number, never a path.
+  handle('messier:mosaic', async () => toMessierMosaicView(await messier().mosaic()))
+
+  handle('messier:picture', validated('messier:picture', async args => {
+    try {
+      return toMessierPictureView(await messier().picture(args.number, args.max_width))
+    } catch (error) {
+      if (error instanceof MessierRefusedError) return { refused: error.message }
+      throw error
+    }
+  }))
+
+  handle('gallery:palettes', validated('gallery:palettes', async args => toPalettesView(await gallery().palettes(args.target_id))))
 
   handle('gallery:palette-preview', validated('gallery:palette-preview', args =>
-    galleryRefusal(async () => toPalettePreviewView(await composeGallery(getSqlite()).palettePreview(args.target_id, args.palette), args.palette))
+    galleryRefusal(async () => toPalettePreviewView(await gallery().palettePreview(args.target_id, args.palette), args.palette))
   ))
 
   handle('gallery:choose-palette', validated('gallery:choose-palette', args =>
     galleryRefusal(async () => {
-      await composeGallery(getSqlite()).choosePalette(args.target_id, args.palette)
+      await gallery().choosePalette(args.target_id, args.palette)
       return { ok: true }
     })
   ))

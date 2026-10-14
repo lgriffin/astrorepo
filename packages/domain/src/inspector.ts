@@ -430,11 +430,18 @@ export function applyStretch(v: number, s: Stretch): number {
 }
 
 /**
- * A small auto-stretched preview of an image or one of its channels, at most `maxWidth` pixels
- * wide, its first row the top of the picture. Each channel is stretched on its own, so a colour
- * cast in the sky does not tint it.
+ * How a preview maps pixel values to grey levels: `auto` stretches each channel on its own, for
+ * linear data; `linear` maps black to 0 and the ceiling to 255 in every channel alike, for an image
+ * already stretched and coloured (a finished image, specs/032-messier-mosaic).
  */
-export function previewImage(image: RasterImage, options: { maxWidth?: number; channel?: PreviewChannel } = {}): ImagePreview {
+export type PreviewStretch = 'auto' | 'linear'
+
+/**
+ * A small preview of an image or one of its channels, at most `maxWidth` pixels wide, its first
+ * row the top of the picture. Auto-stretched by default, each channel on its own, so a colour cast
+ * in the sky does not tint it; `stretch: 'linear'` keeps the image's own tones and colour.
+ */
+export function previewImage(image: RasterImage, options: { maxWidth?: number; channel?: PreviewChannel; stretch?: PreviewStretch } = {}): ImagePreview {
   const maxWidth = Math.max(1, Math.min(PREVIEW_MAX_WIDTH, options.maxWidth ?? PREVIEW_MAX_WIDTH))
   const shown = displayPlanes(image)
   const planes = pick(shown.planes, options.channel ?? 'colour')
@@ -443,6 +450,16 @@ export function previewImage(image: RasterImage, options: { maxWidth?: number; c
   const { width, height } = small[0]
   const channels = small.length === 3 ? 3 : 1
   const data = new Uint8Array(width * height * channels)
+  if (options.stretch === 'linear') {
+    let max = -Infinity
+    for (const plane of small.slice(0, channels)) for (let i = 0; i < plane.data.length; i++) if (plane.data[i] > max) max = plane.data[i]
+    const high = ceilingOf(image.saturation, max) ?? (max > image.black ? max : image.black + 1)
+    const span = high - image.black || 1
+    small.slice(0, channels).forEach((plane, c) => {
+      for (let i = 0; i < plane.data.length; i++) data[i * channels + c] = Math.round(Math.min(1, Math.max(0, (plane.data[i] - image.black) / span)) * 255)
+    })
+    return { width, height, channels, data, scale: 1 / (factor * shown.bin), sourceWidth: image.width, sourceHeight: image.height }
+  }
   small.slice(0, channels).forEach((plane, c) => {
     let max = -Infinity
     for (let i = 0; i < plane.data.length; i++) if (plane.data[i] > max) max = plane.data[i]

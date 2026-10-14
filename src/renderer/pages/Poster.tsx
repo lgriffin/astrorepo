@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { useNavigate } from 'react-router-dom'
 import { invoke } from '../hooks/useIPC'
+import { messierLink } from '@shared/navigation'
 import type { CollectionWithStats, TargetSummary } from '@shared/types'
 
 export function Poster(): React.ReactElement {
@@ -8,6 +10,7 @@ export function Poster(): React.ReactElement {
   const [selectedCollection, setSelectedCollection] = useState('')
   const [targets, setTargets] = useState<TargetSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     invoke<{ collections: CollectionWithStats[] }>('collections:list')
@@ -25,7 +28,13 @@ export function Poster(): React.ReactElement {
   }, [selectedCollection])
 
   return (
-    <PageContainer>
+    <PageContainer
+      actions={
+        <button onClick={() => navigate(messierLink())} className="px-3 py-1.5 text-sm rounded bg-astro-accent text-white">
+          View the Messier mosaic
+        </button>
+      }
+    >
       <div className="mb-6">
         <select
           value={selectedCollection}

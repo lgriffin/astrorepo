@@ -1,11 +1,11 @@
 import type { Worker } from 'worker_threads'
 import type { ImagePixels, WcsHeader } from '@astro/application'
-import type { ImageInspection, ImagePreview, PreviewChannel } from '@astro/domain'
+import type { ImageInspection, ImagePreview, PreviewChannel, PreviewStretch } from '@astro/domain'
 import { openPath, previewPath } from '../fits/inspect-image'
 
 export type PixelsRequest =
   | { id: number; op: 'open'; path: string; maxWidth: number }
-  | { id: number; op: 'preview'; path: string; maxWidth: number; channel?: PreviewChannel }
+  | { id: number; op: 'preview'; path: string; maxWidth: number; channel?: PreviewChannel; stretch?: PreviewStretch }
 
 export type PixelsReply =
   | { id: number; inspection?: ImageInspection; preview: ImagePreview; header: WcsHeader }
@@ -30,7 +30,7 @@ export function serialQueue(): <T>(task: () => Promise<T>) => Promise<T> {
 /** The worker's answer to one request, and the preview bytes to hand over rather than copy. */
 export async function answerPixels(request: PixelsRequest): Promise<{ reply: PixelsReply; transfer: ArrayBuffer[] }> {
   try {
-    const read = request.op === 'open' ? await openPath(request.path, { maxWidth: request.maxWidth }) : await previewPath(request.path, { maxWidth: request.maxWidth, channel: request.channel })
+    const read = request.op === 'open' ? await openPath(request.path, { maxWidth: request.maxWidth }) : await previewPath(request.path, { maxWidth: request.maxWidth, channel: request.channel, stretch: request.stretch })
     return { reply: { id: request.id, ...read }, transfer: [read.preview.data.buffer as ArrayBuffer] }
   } catch (error) {
     return { reply: { id: request.id, error: error instanceof Error ? error.message : String(error) }, transfer: [] }
@@ -55,7 +55,7 @@ export class NodeImagePixels implements ImagePixels {
     return this.send({ id: this.nextId++, op: 'open', path, ...options }) as Promise<Opened>
   }
 
-  preview(path: string, options: { maxWidth: number; channel?: PreviewChannel }): Promise<{ preview: ImagePreview; header: WcsHeader }> {
+  preview(path: string, options: { maxWidth: number; channel?: PreviewChannel; stretch?: PreviewStretch }): Promise<{ preview: ImagePreview; header: WcsHeader }> {
     if (!this.createWorker) return previewPath(path, options)
     return this.send({ id: this.nextId++, op: 'preview', path, ...options }) as Promise<{ preview: ImagePreview; header: WcsHeader }>
   }

@@ -2,6 +2,7 @@ import os from 'os'
 import path from 'path'
 import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
+import { MESSIER_GAPS_IN_NEXT_ACTIONS } from '@astro/domain'
 import {
   makeArchiveTarget,
   makeTargetHolds,
@@ -38,8 +39,10 @@ import {
   makeSaveMosaicPlan,
   makePlanComet,
   makeSetCometOrbit,
+  makeMessierMosaic,
   type Gallery,
-  type JobScheduler
+  type JobScheduler,
+  type MessierMosaicService
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
 import { SqliteDismissalStore } from './adapters/sqlite-dismissal-store'
@@ -68,6 +71,8 @@ import { AstapPlateSolver, SirilPlateSolver } from './adapters/node-plate-solver
 import { NodeImagePixels } from './adapters/node-image-pixels'
 import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
 import { SqliteCometStore } from './adapters/sqlite-comet-store'
+import { SqliteMessierCatalogue } from './adapters/sqlite-messier'
+import { NodeTilePictures, type NativeThumbnailer } from './adapters/tile-pictures'
 import { settingReader } from './adapters/shared/app-settings'
 import { AppFolders } from './adapters/app-folders'
 
@@ -139,6 +144,36 @@ export function composeGallery(db: Database.Database): Gallery {
   return gallery.gallery
 }
 
+/** How the desktop host draws JPEG and TIFF; tests leave it unset, so only PNG and FITS are drawn. */
+let nativeThumbnailer: NativeThumbnailer | null = null
+
+/** Draws JPEG and TIFF tile pictures with the host's native images from now on. The app calls this at start. */
+export function drawNativeThumbnails(thumbnailer: NativeThumbnailer): void {
+  nativeThumbnailer = thumbnailer
+}
+
+/** The Messier mosaic last composed, kept so its drawn pictures survive between requests. */
+let messier: { db: Database.Database; pixels: NodeImagePixels; native: NativeThumbnailer | null; mosaic: MessierMosaicService } | null = null
+
+/**
+ * The Messier mosaic over the catalogue, the index and the image files (spec 032). One per
+ * database handle, pixel reader and thumbnailer, so pictures drawn once are not drawn again.
+ */
+export function composeMessier(db: Database.Database): MessierMosaicService {
+  if (messier?.db !== db || messier.pixels !== imagePixels || messier.native !== nativeThumbnailer) {
+    const mosaic = makeMessierMosaic({
+      messier: new SqliteMessierCatalogue(db),
+      frames: new SqliteFrameCatalogue(db),
+      pictures: new NodeTilePictures(imagePixels, nativeThumbnailer),
+      settings: new SqlitePlanningSettings(db),
+      ephemeris: new AstronomyEngineEphemeris(),
+      clock: systemClock
+    })
+    messier = { db, pixels: imagePixels, native: nativeThumbnailer, mosaic }
+  }
+  return messier.mosaic
+}
+
 /** Frame grading over the index and the FITS files (spec 019). */
 export function composeGrading(db: Database.Database) {
   return makeFrameGrading({ store: new SqliteFrameGradeStore(db), measurer: frameMeasurer, limits: new SqliteGradeLimits(db), clock: systemClock })
@@ -187,7 +222,9 @@ export function composeCore(db: Database.Database) {
       listStackingSuggestions,
       planForward,
       listMosaicGaps: makeListMosaicGaps(sky),
-      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error)
+      listMessierGaps: () => composeMessier(db).gapsTonight(MESSIER_GAPS_IN_NEXT_ACTIONS),
+      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error),
+      onMessierError: error => console.error('Messier gaps failed; leaving them out of Next actions', error)
     }),
     dismissSuggestion: makeDismissSuggestion({ frames, dismissals, clock: systemClock }),
     discoverTargets: makeDiscoverTargets({ frames }),
