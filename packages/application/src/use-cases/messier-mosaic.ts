@@ -110,8 +110,8 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
   const drawn = new Map<string, TilePicture>()
   /** Night skies by site and night: the ephemeris gives the same answer each time. */
   const nightSkies = new Map<string, Promise<NightSky | null>>()
-  /** The last outlooks worked out, by site, night, filter and reach; positions do not move. */
-  let outlooks: { key: string; byNumber: Map<number, { outlook: MessierOutlook | null; months: MessierMonth[] }> } | null = null
+  /** The last outlooks worked out, by site, night, filter and reach, then by object and its position. */
+  let outlooks: { key: string; byObject: Map<string, { outlook: MessierOutlook | null; months: MessierMonth[] }> } | null = null
   let queue: Promise<unknown> = Promise.resolve()
   /** Draws one picture at a time, however many tiles ask together (MES-012). */
   const oneAtATime = <T>(task: () => Promise<T>): Promise<T> => {
@@ -127,13 +127,15 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
     if (!site) return { night: null, siteSet: false, rows: objects.map(object => ({ object, frames: framesOf.get(object.targetId), outlook: null, months: [] })) }
     const sky = await skies(site, full)
     const key = `${sky.siteKey}|${sky.night}|${full}|${sky.hasNarrowbandFilter}`
-    if (outlooks?.key !== key) outlooks = { key, byNumber: new Map() }
-    const byNumber = outlooks.byNumber
+    if (outlooks?.key !== key) outlooks = { key, byObject: new Map() }
+    const byObject = outlooks.byObject
     const rows = objects.map(object => {
-      let found = byNumber.get(object.number)
+      // Keyed by position too, so an object given a position (or a new one) is worked out afresh.
+      const at = `${object.number}|${object.raHours}|${object.decDeg}`
+      let found = byObject.get(at)
       if (!found) {
         found = outlookOf(object, site, sky)
-        byNumber.set(object.number, found)
+        byObject.set(at, found)
       }
       return { object, frames: framesOf.get(object.targetId), ...found }
     })

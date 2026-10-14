@@ -364,6 +364,18 @@ describe('The Messier mosaic, at its edges', () => {
     }
   })
 
+  it('[MES-005] Given an object with no position that is given one later the same night, When put together again, Then its outlook is worked out from the new position', async () => {
+    const { mosaic, messier } = setup()
+    const m45 = messierObject(45, { targetId: 'target-m-45', name: 'Pleiades', objectType: 'open_cluster', raHours: null, decDeg: null })
+    messier.add(m45)
+    expect((await mosaic.mosaic()).tiles.find(t => t.number === 45)!.outlook).toBeNull()
+    m45.raHours = 3.79
+    m45.decDeg = 24.12
+    const tile = (await mosaic.mosaic()).tiles.find(t => t.number === 45)!
+    expect(tile.outlook).not.toBeNull()
+    expect(tile.months).toHaveLength(12)
+  })
+
   it('[MES-005] Given the moon lit exactly to the bright-moon limit tonight, When put together, Then a galaxy is not held back by it, and just past the limit it is', async () => {
     const at = (illumination: number) => {
       const s = setup()

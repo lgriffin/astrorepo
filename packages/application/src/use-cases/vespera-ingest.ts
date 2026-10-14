@@ -202,7 +202,6 @@ export function makePlanVesperaTransfer(deps: { disk: IngestDisk; store: Vespera
     const parent = deps.disk.join(req.destinationRoot, targetFolder)
 
     for (let duplicate = 1; ; duplicate++) {
-      // Stryker disable next-line ConditionalExpression,EqualityOperator: destinationFolderName adds a suffix only from 2, so duplicate 1 names the same folder as none
       const folder = destinationFolderName({ target: req.target, date, counts, ...(duplicate > 1 ? { duplicate } : {}) })
       const dir = deps.disk.join(parent, folder)
       if (await deps.disk.exists(dir)) {
@@ -285,8 +284,8 @@ export function makeRunVesperaTransfer(deps: { scope: VesperaScope; disk: Ingest
     if ((await deps.disk.size(local)) === item.sizeBytes) return true
     const part = `${local}${PART_SUFFIX}`
     for (let attempt = 1; attempt <= SIZE_ATTEMPTS; attempt++) {
-      // Stryker disable next-line ConditionalExpression: a failed attempt removes the .part below, so on a later attempt its size reads null and have is 0 either way
-      let have = attempt === 1 ? (await deps.disk.size(part)) ?? 0 : 0
+      // A failed attempt removes its .part below, so only the first attempt can carry on from one.
+      let have = (await deps.disk.size(part)) ?? 0
       if (have > item.sizeBytes) have = 0
       if (have < item.sizeBytes) {
         const read = await deps.scope.read(remoteOf(job, item), have)

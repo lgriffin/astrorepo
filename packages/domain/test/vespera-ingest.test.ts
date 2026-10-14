@@ -284,9 +284,9 @@ describe('Vespera counts and findings', () => {
     expect(inventorySession(stackingOnly).findings.find(f => f.code === 'JSON_MISMATCH')?.message).toBe('01-images-initial: 0 output JSON for 1 JPEGs.')
   })
 
-  it('[VIN-008] Given a stacking file that is not JSON, When inventoried, Then it is not counted as a stacking decision and raises no JSON_MISMATCH', () => {
-    const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [...imageRun([1], [1]), file('img-0001-stacking.fits'), file('img-0001.tif')] })
-    expect(codes(inventorySession(s).findings)).not.toContain('info:JSON_MISMATCH@01-images-initial')
+  it('[VIN-008] Given a stacking file that is not JSON and no stacking JSON, When inventoried, Then it is not counted as a stacking decision and the JSON_MISMATCH says so', () => {
+    const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits'), file('img-0001-output.jpg'), file('img-0001-output.json'), file('img-0001-stacking.fits'), file('img-0001.tif'), file('capture.json')] })
+    expect(inventorySession(s).findings.find(f => f.code === 'JSON_MISMATCH')?.message).toBe('01-images-initial: 0 stacking JSON for 1 JPEGs.')
   })
 
   it('[VIN-005] Given an unknown run and unknown files, When inventoried, Then they are counted and noted at info', () => {
