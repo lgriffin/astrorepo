@@ -145,7 +145,8 @@ describe('Vespera control: copying', () => {
     expect(control.start({ ...request, landingRoot: null }, [{ folder: 'Andromeda', kind: 'observation' }])).toEqual({ started: false, reason: 'Choose the folder copies land in first.' })
     expect(control.start(request, [])).toEqual({ started: false, reason: 'Pick at least one observation to copy.' })
     expect(scope.calls).toEqual([])
-    expect(control.progress().state).toBe('idle')
+    expect(control.progress()).toMatchObject({ state: 'idle', targets: [], startedAt: null, finishedAt: null })
+    expect(control.cancel()).toBe(false)
   })
 
   it('[VSP-002] Given the scope does not answer, When a copy starts, Then it fails with the reason and nothing is handed on to index', async () => {
@@ -173,5 +174,67 @@ describe('Vespera control: copying', () => {
     await control.settled()
     expect(control.progress()).toMatchObject({ state: 'done', doneFiles: 0, totalFiles: 0, skippedFiles: 1 })
     expect(copied).toEqual([])
+  })
+
+  it('[VSP-011] Given a copy still connecting, When another copy is asked for, Then it is refused', async () => {
+    const { control, request } = rig()
+    control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])
+    expect(control.progress().state).toBe('connecting')
+    expect(control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])).toEqual({ started: false, reason: 'A copy is already under way.' })
+    await control.settled()
+  })
+
+  it('[VSP-009] Given a copy cancelled before its first file, When it runs, Then nothing is downloaded and it ends cancelled with the connection closed', async () => {
+    const { control, request, scope, landing, clock } = rig()
+    control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])
+    expect(control.cancel()).toBe(true)
+    await control.settled()
+    expect(control.progress()).toMatchObject({ state: 'cancelled', doneFiles: 0, finishedAt: clock.now() })
+    expect(scope.calls.some(c => c.startsWith('download'))).toBe(false)
+    expect(scope.openConnections).toBe(0)
+    expect(landing.disk.size).toBe(0)
+  })
+
+  it('[VSP-009] Given a copy cancelled while the scope does not answer, When it ends, Then it reads as cancelled, not failed', async () => {
+    const { control, request, scope } = rig()
+    scope.unreachable = true
+    control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])
+    control.cancel()
+    await control.settled()
+    expect(control.progress()).toMatchObject({ state: 'cancelled', error: null })
+  })
+
+  it('[VSP-003] Given two picks, one of them darks, When copied, Then only the picked folders are read, each lands under its own target, and the connection is closed', async () => {
+    const { control, request, scope, landing, clock } = rig()
+    control.start(request, [
+      { folder: 'expert mode', kind: 'darks' },
+      { folder: 'Andromeda', kind: 'observation', target: 'M 31' },
+      { folder: 'Andromeda', kind: 'darks' }
+    ])
+    await control.settled()
+    expect(control.progress()).toMatchObject({ state: 'done', doneFiles: 2, targets: ['Vespera darks', 'M 31'], finishedAt: clock.now() })
+    expect(landing.listing('/nas/home/raw')).toEqual(['M 31/Andromeda/01-images-initial/img-0001.fits', 'Vespera darks/expert mode/dark-0001.fits'])
+    expect(scope.calls.filter(c => c.startsWith('list')).some(c => c.includes('M 42'))).toBe(false)
+    expect(scope.openConnections).toBe(0)
+  })
+
+  it('[VSP-010] Given too little room, When copied, Then the failure says the landing folder is short of room', async () => {
+    const { control, request, landing } = rig()
+    landing.free = 0
+    control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])
+    await control.settled()
+    expect(control.progress().error).toBe('The folder copies land in has too little room for them.')
+  })
+
+  it('[VSP-013] Given names with line breaks and files nested too deep, When surveyed, Then they are left out', async () => {
+    const landing = new InMemoryLandingArea()
+    const scope = new InMemoryScope(landing)
+      .put('/user/obs/a/b/ok.fits', 'ok')
+      .put('/user/obs/a/b/c/too-deep.fits', 'deep')
+      .put('/user/obs/bad\r\nDELE x.fits', 'bad')
+    const control = makeVesperaControl({ scope, landing, clock: new FixedClock() })
+    const survey = await control.survey({ host: '10.0.0.1', port: 21, landingRoot: '/l', formats: ['fits'] })
+    expect(survey.observations.map(o => [o.folder, o.files])).toEqual([['obs', 1]])
+    expect(scope.calls.some(c => c.includes('/a/b/c'))).toBe(false)
   })
 })
