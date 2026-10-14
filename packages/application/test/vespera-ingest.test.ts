@@ -5,8 +5,11 @@ import {
   makePlanVesperaTransfer,
   makeRunVesperaTransfer,
   makeScanVespera,
+  makeVesperaCopyQueue,
   ScopeLayoutError,
-  type PlanRequest
+  type PlanRequest,
+  type PlanResult,
+  type RunOptions
 } from '../src'
 import { FakeVesperaMetadata, FakeVesperaScope, FixedClock, InMemoryIngestDisk, InMemoryVesperaTransferStore, LEIGH_USER_LISTING, seedVesperaSession, vesperaImageRun } from '@astro/testkit'
 
@@ -30,7 +33,7 @@ const target: IngestTarget = { name: 'NGC 3372', catalogue: 'NGC', confidence: '
 async function planned(w: ReturnType<typeof world>, extra: Partial<PlanRequest> = {}): Promise<TransferJob> {
   const { userFolder, sessions } = await w.scan()
   const s = sessions.find(x => x.session.id === ID)!
-  const r = await w.plan({ session: s.session, userFolder, target, findings: s.inventory.findings, destinationRoot: '/repo', ...extra })
+  const r = await w.plan({ session: s.session, userFolder, target, findings: s.inventory.findings, destinationRoot: '/repo', include: ['fits'], ...extra })
   if (r.status !== 'planned') throw new Error(r.status)
   return r.job
 }
@@ -136,15 +139,16 @@ describe('Identifying a target', () => {
 })
 
 describe('Planning a transfer', () => {
-  it('[VIN-016] Given a session, When Transfer is pressed, Then the folder is named from target, date and FITS count and the job is recorded before any byte', async () => {
+  it('[VIN-016] Given a session, When Transfer is pressed, Then it goes in its target\'s folder, named from target, date and counts, and the job is recorded before any byte', async () => {
     const w = world()
     const job = await planned(w)
     expect(job.destinationFolder).toBe('NGC3372_2024-06-15_FIT=3')
-    expect(job.id).toBe('/repo/NGC3372_2024-06-15_FIT=3')
-    expect(job).toMatchObject({ state: 'planned', include: ['fits'], committed: [], copiedBytes: 0, totalBytes: 30, sessionPath: `user/${ID}`, startedAt: '2024-06-15T21:00:54', reason: null })
+    expect(job.targetFolder).toBe('NGC3372')
+    expect(job.id).toBe('/repo/NGC3372/NGC3372_2024-06-15_FIT=3')
+    expect(job).toMatchObject({ state: 'planned', destinationRoot: '/repo', include: ['fits'], committed: [], copiedBytes: 0, totalBytes: 30, sessionPath: `user/${ID}`, startedAt: '2024-06-15T21:00:54', reason: null })
     expect(await w.store.get(job.id)).toEqual(job)
-    expect(JSON.parse((await w.disk.readText(`/repo/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`))!)).toEqual(job)
-    expect(w.disk.writes).toEqual([`/repo/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`])
+    expect(JSON.parse((await w.disk.readText(`/repo/NGC3372/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`))!)).toEqual(job)
+    expect(w.disk.writes).toEqual([`/repo/NGC3372/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`])
     expect(w.scope.commands.some(c => c.startsWith('RETR'))).toBe(false)
   })
 
@@ -158,7 +162,7 @@ describe('Planning a transfer', () => {
     const w = world()
     const { sessions } = await w.scan()
     const s = sessions[0]
-    const base = { session: s.session, userFolder: 'user', target, findings: [], destinationRoot: '/repo' }
+    const base = { session: s.session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits' as const] }
     expect(await w.plan({ ...base, findings: [{ level: 'error', code: 'FITS_LT_JPEG', message: '' }] })).toEqual({ status: 'blocked', reason: 'The session has an error finding; look at it first.' })
     expect(await w.plan({ ...base, target: { ...target, confidence: 'unknown' } })).toEqual({ status: 'blocked', reason: 'Name the target first.' })
     expect(await w.plan({ ...base, include: [] })).toEqual({ status: 'blocked', reason: 'Choose at least one kind of file to copy.' })
@@ -170,39 +174,39 @@ describe('Planning a transfer', () => {
     const w = world()
     const first = await planned(w)
     const { sessions } = await w.scan()
-    const again = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo' })
+    const again = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits' as const] })
     expect(again).toEqual({ status: 'resume', job: first })
     w.store.jobs.clear()
-    const fromFolder = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo' })
+    const fromFolder = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits' as const] })
     expect(fromFolder).toEqual({ status: 'resume', job: first })
   })
 
   it('[VIN-018] Given the folder holds another session or something else, When planned, Then it is refused with DEST_EXISTS, or the next suffix is taken when asked', async () => {
     const w = world()
-    await w.disk.writeText(`/repo/NGC3372_2024-06-15_FIT=3/${MANIFEST_FILE}`, JSON.stringify({ sessionId: 'another' }))
-    await w.disk.writeText('/repo/NGC3372_2024-06-15_FIT=3_2/notes.txt', 'mine')
+    await w.disk.writeText(`/repo/NGC3372/NGC3372_2024-06-15_FIT=3/${MANIFEST_FILE}`, JSON.stringify({ sessionId: 'another' }))
+    await w.disk.writeText('/repo/NGC3372/NGC3372_2024-06-15_FIT=3_2/notes.txt', 'mine')
     const { sessions } = await w.scan()
-    const req = { session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo' }
+    const req = { session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits' as const] }
     const refused = await w.plan(req)
     expect(refused).toMatchObject({ status: 'refused', folder: 'NGC3372_2024-06-15_FIT=3', finding: { level: 'error', code: 'DEST_EXISTS' } })
-    expect(refused.status === 'refused' && refused.finding.message).toBe('NGC3372_2024-06-15_FIT=3 already exists in /repo and holds another session (another). Nothing was copied into it.')
+    expect(refused.status === 'refused' && refused.finding.message).toBe('NGC3372_2024-06-15_FIT=3 already exists in /repo/NGC3372 and holds another session (another). Nothing was copied into it.')
     const dup = await w.plan({ ...req, allowDuplicate: true })
     expect(dup.status === 'planned' && dup.job.destinationFolder).toBe('NGC3372_2024-06-15_FIT=3_3')
   })
 
   it('[VIN-018] Given a folder astrorepo did not make, When planned, Then it is refused, saying so', async () => {
     const w = world()
-    await w.disk.writeText('/repo/NGC3372_2024-06-15_FIT=3/x.fits', 'x')
+    await w.disk.writeText('/repo/NGC3372/NGC3372_2024-06-15_FIT=3/x.fits', 'x')
     const { sessions } = await w.scan()
-    const r = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo' })
+    const r = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits' as const] })
     expect(r.status === 'refused' && r.finding.message).toContain('holds something astrorepo did not copy')
   })
 
   it('[VIN-018] Given this session\'s folder with an unreadable record, When planned, Then it is refused rather than guessed', async () => {
     const w = world()
-    await w.disk.writeText(`/repo/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`, JSON.stringify({ sessionId: ID }))
+    await w.disk.writeText(`/repo/NGC3372/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`, JSON.stringify({ sessionId: ID }))
     const { sessions } = await w.scan()
-    const r = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo' })
+    const r = await w.plan({ session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits' as const] })
     expect(r.status === 'refused' && r.finding.message).toContain('holds an unreadable copy of this session')
   })
 })
@@ -219,7 +223,7 @@ describe('Running a transfer', () => {
     expect(seen).toEqual(['02-images-initial/img-0001.fits', '02-images-initial/img-0002.fits', '02-images-initial/img-0003.fits', '02-images-initial/img-0003.tif'])
     expect(done.committed).toEqual(seen)
     expect(done.copiedBytes).toBe(78)
-    expect(bytesOf(w, '/repo/NGC3372_2024-06-15_FIT=3_TIF=1/02-images-initial/img-0001.fits')).toBe(10)
+    expect(bytesOf(w, '/repo/NGC3372/NGC3372_2024-06-15_FIT=3_TIF=1/02-images-initial/img-0001.fits')).toBe(10)
     expect([...w.disk.files.keys()].some(k => k.endsWith('.part'))).toBe(false)
     expect(w.disk.writes.filter(p => p.endsWith('.part'))).toHaveLength(4)
     const manifest = JSON.parse((await w.disk.readText(`${job.id}/${MANIFEST_FILE}`))!) as TransferManifest
@@ -395,5 +399,177 @@ describe('Running a transfer', () => {
     const job = await planned(w)
     w.disk.append = async () => { throw 'disk gone' }
     expect(await w.run(job)).toMatchObject({ state: 'failed', reason: 'disk gone' })
+  })
+})
+
+describe('Room where copies land', () => {
+  it('[VIN-027] Given too little free space, When a job is run, Then it is paused with SPACE_SHORT and nothing is fetched', async () => {
+    const w = world()
+    const job = await planned(w, { include: ['fits', 'tiff'] })
+    w.disk.free = 78
+    const paused = await w.run(job)
+    expect(paused.state).toBe('paused')
+    expect(paused.reason).toBe('Nothing more was copied: the folder copies land in needs 1 B more room.')
+    expect(paused.findings.filter(f => f.code === 'SPACE_SHORT')).toEqual([{ level: 'error', code: 'SPACE_SHORT', message: paused.reason }])
+    expect(w.scope.commands.some(c => c.startsWith('RETR'))).toBe(false)
+    expect(await w.run(paused)).toMatchObject({ state: 'paused' })
+    expect((await w.store.get(job.id))!.findings.filter(f => f.code === 'SPACE_SHORT')).toHaveLength(1)
+
+    w.disk.free = 79
+    const done = await w.run(paused)
+    expect(done.state).toBe('done')
+    expect(done.findings.some(f => f.code === 'SPACE_SHORT')).toBe(false)
+  })
+
+  it('[VIN-027] Given part of a job already copied, When room is checked, Then only the bytes still to copy count', async () => {
+    const w = world()
+    const job = await planned(w, { include: ['fits', 'tiff'] })
+    const first = await w.run(job, { shouldPause: (() => { let n = 0; return () => n++ > 0 })() })
+    expect(first.committed).toHaveLength(1)
+    w.disk.free = Math.ceil((78 - 10) * 1.01)
+    expect((await w.run(first)).state).toBe('done')
+  })
+
+  it('[VIN-016] Given a session with none of the kinds chosen, When planned, Then it is refused with nothing written', async () => {
+    const w = world()
+    const { userFolder, sessions } = await w.scan()
+    const s = sessions.find(x => x.session.id === ID)!
+    expect(await w.plan({ session: s.session, userFolder, target, findings: [], destinationRoot: '/repo', include: ['json'] })).toEqual({ status: 'planned', job: expect.anything() })
+    const bare = { ...s.session, runs: s.session.runs.map(r => ({ ...r, files: r.files.filter(f => f.kind !== 'tiff') })) }
+    expect(await w.plan({ session: bare, userFolder, target, findings: [], destinationRoot: '/repo', include: ['tiff'] })).toEqual({ status: 'blocked', reason: 'The session holds no files of the kinds chosen to copy.' })
+  })
+})
+
+describe('Copying several sessions', () => {
+  const at = (id: string, patch: Partial<TransferJob> = {}): TransferJob => ({
+    id: `/repo/M31/${id}`,
+    sessionId: id,
+    sessionPath: `user/${id}`,
+    target,
+    destinationRoot: '/repo',
+    targetFolder: 'M31',
+    destinationFolder: `${id}_FIT=1`,
+    include: ['fits'],
+    items: [{ path: 'r/img-0001.fits', kind: 'fits', sizeBytes: 100, frameNo: 1, runOrder: 1 }],
+    state: 'planned',
+    committed: [],
+    copiedBytes: 0,
+    totalBytes: 100,
+    findings: [],
+    reason: null,
+    startedAt: null,
+    listedAt: '2026-10-14T19:00:00.000Z',
+    createdAt: '2026-10-14T19:00:00.000Z',
+    updatedAt: '2026-10-14T19:00:00.000Z',
+    ...patch
+  })
+  const planOf = (r: PlanResult) => async () => r
+  const item = (id: string, r: PlanResult = { status: 'planned', job: at(id) }) => ({ sessionId: id, plan: planOf(r) })
+
+  function queue(ends: Record<string, TransferJob['state']> = {}) {
+    const ran: string[] = []
+    const finished: number[] = []
+    const q = makeVesperaCopyQueue({
+      clock,
+      run: async (job: TransferJob, _options?: RunOptions) => {
+        ran.push(job.sessionId)
+        const state = ends[job.sessionId] ?? 'done'
+        if (state === 'failed') throw new Error('disk on fire')
+        return { ...job, state, committed: state === 'done' ? job.items.map(i => i.path) : [], copiedBytes: state === 'done' ? job.totalBytes : 0, reason: state === 'paused' ? 'The link dropped.' : null }
+      },
+      onFinished: n => void finished.push(n)
+    })
+    return { q, ran, finished }
+  }
+
+  it('[VIN-031] Given three ticked sessions, When copied, Then they run one after another and each says what it copied', async () => {
+    const { q, ran, finished } = queue()
+    expect(q.state()).toBeNull()
+    expect(q.start([item('a'), item('b'), item('c')])).toEqual({ started: true })
+    expect(q.busy()).toBe(true)
+    await q.idle()
+    expect(ran).toEqual(['a', 'b', 'c'])
+    expect(q.busy()).toBe(false)
+    const state = q.state()!
+    expect(state).toMatchObject({ busy: false, job: null, current: null, pace: null, position: 3, total: 3 })
+    expect(state.outcomes.map(o => o.message)).toEqual(['a', 'b', 'c'].map(id => `Copied 1 file (100 B) into M31/${id}_FIT=1.`))
+    expect(state.outcomes.every(o => o.level === 'info' && !o.refused && o.job?.state === 'done')).toBe(true)
+    expect(finished).toEqual([3])
+  })
+
+  it('[VIN-031] Given a session whose folder is taken and one that is refused, When copied, Then each is reported and skipped and the rest still copy', async () => {
+    const { q, ran } = queue()
+    const refused: PlanResult = { status: 'refused', folder: 'x', finding: { level: 'error', code: 'DEST_EXISTS', message: 'x already exists' } }
+    q.start([item('a', refused), item('b', { status: 'blocked', reason: 'Name the target first.' }), { sessionId: 'c', plan: async () => { throw new Error('gone') } }, item('d', { status: 'resume', job: at('d') })])
+    await q.idle()
+    expect(ran).toEqual(['d'])
+    expect(q.state()!.outcomes.map(o => [o.sessionId, o.level, o.refused, o.message])).toEqual([
+      ['a', 'warn', true, 'x already exists'],
+      ['b', 'warn', false, 'Name the target first.'],
+      ['c', 'error', false, 'gone'],
+      ['d', 'info', false, 'Copied 1 file (100 B) into M31/d_FIT=1.']
+    ])
+  })
+
+  it('[VIN-031] Given a session that pauses or fails, When copied, Then the queue stops before the next session', async () => {
+    const paused = queue({ b: 'paused' })
+    paused.q.start([item('a'), item('b'), item('c')])
+    await paused.q.idle()
+    expect(paused.ran).toEqual(['a', 'b'])
+    expect(paused.q.state()!.outcomes.map(o => o.message)).toEqual(['Copied 1 file (100 B) into M31/a_FIT=1.', 'b_FIT=1 is paused after 0 of 1 files: The link dropped. Resume carries on from there.'])
+    expect(paused.finished).toEqual([1])
+
+    const failed = queue({ a: 'failed' })
+    failed.q.start([item('a'), item('b')])
+    await failed.q.idle()
+    expect(failed.ran).toEqual(['a'])
+    expect(failed.q.state()!.outcomes).toMatchObject([{ level: 'error', message: 'a_FIT=1 failed: disk on fire' }])
+    expect(failed.finished).toEqual([])
+  })
+
+  it('[VIN-028] Given a queue that copied nothing, When it ends, Then nothing is indexed', async () => {
+    const { q, finished } = queue({ a: 'paused' })
+    q.start([item('a')])
+    await q.idle()
+    expect(finished).toEqual([])
+    expect(q.state()!.outcomes[0]).toMatchObject({ level: 'warn' })
+  })
+
+  it('[VIN-029] Given a copy under way, When another is started, Then it is refused, and the state shows the session, the file and the pace', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>(r => (release = r))
+    const states: ReturnType<typeof q.state>[] = []
+    const q = makeVesperaCopyQueue({
+      clock,
+      run: async (job, options) => {
+        options?.onProgress?.({ job: { ...job, copiedBytes: 40 }, current: 'r/img-0001.fits' })
+        expect(options?.shouldPause?.()).toBe(false)
+        states.push(q.state())
+        expect(q.pause()).toBe(true)
+        expect(options?.shouldPause?.()).toBe(true)
+        await gate
+        return { ...job, state: 'paused', reason: 'Paused.' }
+      }
+    })
+    expect(q.start([])).toEqual({ started: false, reason: 'Choose at least one session to copy.' })
+    expect(q.pause()).toBe(false)
+    q.start([item('a'), item('b')])
+    await new Promise(r => setTimeout(r, 0))
+    expect(q.start([item('c')])).toEqual({ started: false, reason: 'A copy is already under way; wait for it or pause it.' })
+    expect(states[0]).toMatchObject({ busy: true, current: 'r/img-0001.fits', position: 1, total: 2, outcomes: [] })
+    expect(states[0]!.job!.copiedBytes).toBe(40)
+    expect(states[0]!.pace).toEqual({ fraction: 0.4, bytesPerSecond: null, remainingSeconds: null })
+    release()
+    await q.idle()
+    expect(q.state()).toMatchObject({ busy: false, position: 1, total: 2 })
+    expect(q.pause()).toBe(false)
+  })
+
+  it('[VIN-023] Given a paused job to resume, When started with no other sessions, Then it alone runs', async () => {
+    const { q, ran } = queue()
+    expect(q.start([], at('z', { state: 'paused' }))).toEqual({ started: true })
+    await q.idle()
+    expect(ran).toEqual(['z'])
+    expect(q.state()).toMatchObject({ total: 1, position: 1 })
   })
 })

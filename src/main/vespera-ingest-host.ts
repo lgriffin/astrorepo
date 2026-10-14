@@ -1,20 +1,28 @@
 import path from 'path'
-import { overrideTarget, resolveTarget, type Finding, type IncludedKind, type IngestTarget, type TransferJob } from '@astro/domain'
+import { folderTarget, overrideTarget, resolveTarget, type Finding, type IncludedKind, type IngestTarget, type TransferJob, type VesperaSettings } from '@astro/domain'
 import type { VesperaScan } from '@astro/application'
-import type { VesperaSettings } from '@astro/domain'
-import type { IngestJobView, IngestPlanView, IngestScanView, IngestSessionView } from '@shared/types'
-import { composeVesperaIngest, type VesperaIngest } from './composition'
-import { folderPreview, scanSummary, toIngestJobView, toIngestSessionView } from './adapters/vespera-ingest-presenter'
+import type { IngestPlanView, IngestProgressView, IngestScanView, IngestSessionView } from '@shared/types'
+import { composeVesperaCopyQueue, composeVesperaIngest, type VesperaIngest } from './composition'
+import { folderPreview, scanSummary, toIngestJobView, toIngestProgressView, toIngestSessionView } from './adapters/vespera-ingest-presenter'
+import { indexingText } from './adapters/vespera-presenter'
+import { indexCopies, resetIndexing, vesperaIndexing } from './vespera-host'
 
 /**
- * The Vespera ingest in the running app (spec 034): the last scan, the targets named since, and the
- * one transfer that may be running. The scope's address and where copies land come from Settings
- * (spec 033), never from the page.
+ * The Vespera page's one copy flow (spec 034, on spec 033's connection): the last scan, the targets
+ * named since, and the queue of sessions being copied one after another. The scope's address, where
+ * copies land and the kinds of file to copy come from Settings, never from the page.
  */
 let ingest: { key: string; parts: VesperaIngest } | null = null
 let lastScan: VesperaScan | null = null
 const named = new Map<string, { target: IngestTarget; findings: Finding[] }>()
-let running: { job: TransferJob; current: string | null; pause: boolean; done: Promise<void> } | null = null
+
+/** The one copy queue: it outlives a change of settings, since it holds the copy under way. */
+let indexFor: { landingRoot: string; homeFolder: string | null } | null = null
+let runner: VesperaIngest['run'] = async job => job
+const copies = composeVesperaCopyQueue(
+  () => runner,
+  () => (indexFor ? indexCopies(indexFor.landingRoot, indexFor.homeFolder) : undefined)
+)
 
 function parts(settings: VesperaSettings): VesperaIngest {
   const key = `${settings.host}:${settings.port}:${settings.landingRoot ?? ''}`
@@ -22,12 +30,14 @@ function parts(settings: VesperaSettings): VesperaIngest {
   return ingest.parts
 }
 
-const jobView = (job: TransferJob, current: string | null = null) => toIngestJobView(job, current, (a, b) => path.join(a, b))
+const join = (a: string, b: string) => path.join(a, b)
+const jobView = (job: TransferJob, current: string | null = null) => toIngestJobView(job, current, join)
 
 async function latestJobs(p: VesperaIngest): Promise<Map<string, TransferJob>> {
   const out = new Map<string, TransferJob>()
   for (const job of await p.store.list()) if (!out.has(job.sessionId)) out.set(job.sessionId, job)
-  if (running) out.set(running.job.sessionId, running.job)
+  const running = copies.state()?.job
+  if (running) out.set(running.sessionId, running)
   return out
 }
 
@@ -39,23 +49,26 @@ function scanned(id: string) {
 
 const targetOf = (id: string) => named.get(id) ?? { target: resolveTarget([{ source: 'folder', raw: scanned(id).session.rawLabel }]).target, findings: [] }
 
-async function sessionView(p: VesperaIngest, id: string): Promise<IngestSessionView> {
-  const jobs = await latestJobs(p)
-  const job = jobs.get(id)
+async function sessionView(p: VesperaIngest, id: string, include: IncludedKind[]): Promise<IngestSessionView> {
+  const job = (await latestJobs(p)).get(id)
   const t = targetOf(id)
-  return toIngestSessionView(scanned(id), t.target, t.findings, job ? jobView(job, running?.job.id === job.id ? running.current : null) : null)
+  const state = copies.state()
+  const current = state?.job && state.job.id === job?.id ? state.current : null
+  return toIngestSessionView(scanned(id), t.target, t.findings, job ? jobView(job, current) : null, include)
 }
 
 /** Lists every session on the scope; reads nothing but listings. */
 export async function ingestScan(settings: VesperaSettings): Promise<IngestScanView> {
+  if (copies.busy()) return { ok: false, error: 'A copy is under way; pause it or let it finish before scanning again.' }
   try {
     const p = parts(settings)
     lastScan = await p.scan()
     for (const id of [...named.keys()]) if (!lastScan.sessions.some(s => s.session.id === id)) named.delete(id)
-    const sessions = await Promise.all(lastScan.sessions.map(s => sessionView(p, s.session.id)))
-    return { ok: true, address: settings.host, destinationRoot: settings.landingRoot, expertMode: lastScan.expertMode, sessions, summary: scanSummary(sessions) }
+    const sessions = await Promise.all(lastScan.sessions.map(s => sessionView(p, s.session.id, settings.formats)))
+    const freeBytes = settings.landingRoot ? await p.disk.freeBytes(settings.landingRoot) : null
+    return { ok: true, address: settings.host, destinationRoot: settings.landingRoot, freeBytes, expertMode: lastScan.expertMode, sessions, summary: scanSummary(sessions) }
   } catch (error) {
-    return { ok: false, error: `The scope could not be scanned: ${error instanceof Error ? error.message : String(error)} Is the PC on the Vespera's Wi-Fi?` }
+    return { ok: false, error: `The scope could not be scanned at ${settings.host}: ${error instanceof Error ? error.message : String(error)} Is the PC on the Vespera's Wi-Fi?` }
   }
 }
 
@@ -64,7 +77,7 @@ export async function ingestIdentify(settings: VesperaSettings, id: string): Pro
   const p = parts(settings)
   const s = scanned(id)
   named.set(id, await p.identify(s.session, lastScan!.userFolder, { crossCheck: true }))
-  return sessionView(p, id)
+  return sessionView(p, id, settings.formats)
 }
 
 /** The user's own name for a session's target. */
@@ -73,71 +86,66 @@ export async function ingestName(settings: VesperaSettings, id: string, name: st
   const t = targetOf(id)
   const target = overrideTarget(t.target, name)
   if (target) named.set(id, { target, findings: t.findings.filter(f => f.code !== 'TARGET_MISMATCH') })
-  return sessionView(p, id)
+  return sessionView(p, id, settings.formats)
 }
 
-/** The folder a transfer of these kinds would make. */
-export function ingestPreview(id: string, include: IncludedKind[]): { folder: string | null } {
-  return { folder: folderPreview(scanned(id).session, targetOf(id).target, include) }
+/** The target folder and session folder a transfer of the kinds in Settings would make. */
+export function ingestPreview(settings: VesperaSettings, id: string): { targetFolder: string; folder: string | null } {
+  const target = targetOf(id).target
+  return { targetFolder: folderTarget(target), folder: folderPreview(scanned(id).session, target, settings.formats) }
 }
 
-function start(p: VesperaIngest, job: TransferJob): void {
-  const state: { job: TransferJob; current: string | null; pause: boolean; done: Promise<void> } = { job, current: null, pause: false, done: Promise.resolve() }
-  running = state
-  state.done = p
-    .run(job, {
-      onProgress: pr => {
-        state.job = pr.job
-        state.current = pr.current
-      },
-      shouldPause: () => state.pause
-    })
-    .then(
-      final => {
-        state.job = final
-      },
-      error => {
-        state.job = { ...state.job, state: 'failed', reason: error instanceof Error ? error.message : String(error) }
-      }
-    )
-    .finally(() => {
-      state.current = null
-      if (running === state) running = null
-    })
+function startQueue(settings: VesperaSettings, homeFolder: string | null, ids: string[], allowDuplicate: boolean, first?: TransferJob): IngestPlanView {
+  if (copies.busy()) return { status: 'blocked', reason: 'A copy is already under way; wait for it or pause it.' }
+  const landingRoot = first?.destinationRoot ?? settings.landingRoot
+  if (!landingRoot) return { status: 'blocked', reason: 'Choose where copies land first.' }
+  const p = parts({ ...settings, landingRoot })
+  const userFolder = lastScan?.userFolder ?? 'user'
+  const items = ids.map(id => ({
+    sessionId: id,
+    plan: () => {
+      const s = scanned(id)
+      const t = targetOf(id)
+      return p.plan({ session: s.session, userFolder, target: t.target, findings: [...s.inventory.findings, ...t.findings], include: settings.formats, destinationRoot: landingRoot, allowDuplicate })
+    }
+  }))
+  runner = p.run
+  indexFor = { landingRoot, homeFolder }
+  resetIndexing()
+  const r = copies.start(items, first)
+  return r.started ? { status: 'started' } : { status: 'blocked', reason: r.reason }
 }
 
-/** Plans one press of Transfer and starts the copy; one transfer runs at a time. */
-export async function ingestTransfer(settings: VesperaSettings, id: string, include: IncludedKind[], allowDuplicate: boolean): Promise<IngestPlanView> {
-  if (running) return { status: 'blocked', reason: 'A transfer is already running; wait for it or pause it.' }
-  if (!settings.landingRoot) return { status: 'blocked', reason: 'Choose where copies land in Settings first.' }
-  const p = parts(settings)
-  const s = scanned(id)
-  const t = targetOf(id)
-  const r = await p.plan({ session: s.session, userFolder: lastScan!.userFolder, target: t.target, findings: [...s.inventory.findings, ...t.findings], include, destinationRoot: settings.landingRoot, allowDuplicate })
-  if (r.status === 'refused') return { status: 'refused', folder: r.folder, message: r.finding.message }
-  if (r.status === 'blocked') return r
-  start(p, r.job)
-  return { status: r.status === 'planned' ? 'started' : 'resumed', job: jobView(r.job) }
+/** Copies the chosen sessions one after another, each into its own folder. */
+export function ingestTransfer(settings: VesperaSettings, homeFolder: string | null, ids: string[], allowDuplicate: boolean): IngestPlanView {
+  for (const id of ids) scanned(id)
+  return startQueue(settings, homeFolder, ids, allowDuplicate)
 }
 
-/** Carries on a paused or failed transfer from the first file not yet copied. */
-export async function ingestResume(settings: VesperaSettings, jobId: string): Promise<IngestPlanView> {
-  if (running) return { status: 'blocked', reason: 'A transfer is already running; wait for it or pause it.' }
-  const p = parts(settings)
-  const job = await p.store.get(jobId)
-  if (!job) return { status: 'blocked', reason: 'That transfer is not known any more.' }
-  start(p, job)
-  return { status: 'resumed', job: jobView(job) }
+/** Carries on a paused or failed copy from the first file not yet copied. */
+export async function ingestResume(settings: VesperaSettings, homeFolder: string | null, jobId: string): Promise<IngestPlanView> {
+  if (copies.busy()) return { status: 'blocked', reason: 'A copy is already under way; wait for it or pause it.' }
+  const job = await parts(settings).store.get(jobId)
+  if (!job) return { status: 'blocked', reason: 'That copy is not known any more.' }
+  return startQueue(settings, homeFolder, [], false, job)
 }
 
-/** Pauses the running transfer once the file being copied is in. */
+/** Pauses the copy under way once the file being copied is in; the rest of the queue is not started. */
 export function ingestPause(): { pausing: boolean } {
-  if (!running) return { pausing: false }
-  running.pause = true
-  return { pausing: true }
+  return { pausing: copies.pause() }
 }
 
-/** The running transfer, or null. */
-export function ingestProgress(): IngestJobView | null {
-  return running ? jobView(running.job, running.current) : null
+/** The queue under way or last run, or null when nothing has been copied since the app started. */
+export function ingestProgress(): IngestProgressView | null {
+  const q = copies.state()
+  if (!q) return null
+  return toIngestProgressView({
+    running: q.busy,
+    job: q.job ? jobView(q.job, q.current) : null,
+    pace: q.pace,
+    position: q.position,
+    total: q.total,
+    outcomes: q.outcomes.map(o => ({ sessionId: o.sessionId, level: o.level, refused: o.refused, message: o.message })),
+    indexing: indexingText(vesperaIndexing())
+  })
 }

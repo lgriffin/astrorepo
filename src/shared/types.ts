@@ -1560,55 +1560,6 @@ export interface VesperaSettingsView {
   notes: string[]
 }
 
-/** One observation on the scope. */
-export interface VesperaObservationView {
-  kind: 'observation' | 'darks'
-  folder: string
-  /** "M 42", or the folder's name when it names no target. */
-  title: string
-  /** "10 Mar 2024, 21:33", or null when the name has no date. */
-  takenAt: string | null
-  /** The target folder it lands in unless the user names another. */
-  suggestedTarget: string
-  /** "212 FITS, 1 TIFF, 1 JPEG". */
-  contents: string
-  state: 'new' | 'partly' | 'copied' | 'empty'
-  /** "212 files to copy, 890.0 MB", "All 212 files are on the PC". */
-  stateLine: string
-  /** Set when files on the PC have the same name but another size. */
-  warning: string | null
-}
-
-export type VesperaSurveyView =
-  | {
-      ok: true
-      address: string
-      landingRoot: string | null
-      observations: VesperaObservationView[]
-      /** "3 observations, 412 new files (1.6 GB) to copy." */
-      summary: string
-      /** "4.2 TB free where copies land", or what is short. */
-      spaceLine: string | null
-      spaceShort: boolean
-    }
-  | { ok: false; error: string }
-
-/** The copy under way or last run. */
-export interface VesperaProgressView {
-  state: 'idle' | 'connecting' | 'copying' | 'done' | 'failed' | 'cancelled'
-  running: boolean
-  /** "Copying 120 of 412 files", "Copied 412 files to …". */
-  headline: string
-  /** "300.0 MB of 1.6 GB, 4.1 MB/s, about 5 min left". */
-  detail: string | null
-  /** 0 to 1. */
-  fraction: number
-  current: string | null
-  error: string | null
-  /** What indexing the copies is doing, once a copy brought files in. */
-  indexing: string | null
-}
-
 // ── Vespera ingest (spec 034) ──────────────────────────────────────────
 
 export type IngestKindView = 'fits' | 'tiff' | 'jpeg' | 'json'
@@ -1631,6 +1582,9 @@ export interface IngestSessionView {
   counts: { fits: number; tiff: number; jpeg: number; json: number; other: number }
   runs: { folder: string; fits: number; tiff: number; jpeg: number; json: number; other: number }[]
   size: string
+  /** The bytes a transfer copies, of the kinds chosen in Settings. */
+  transferBytes: number
+  transferSize: string
   worst: 'info' | 'warn' | 'error' | null
   findings: IngestFindingView[]
   /** Transfer is on: no error finding and a named target. */
@@ -1642,7 +1596,7 @@ export interface IngestSessionView {
 }
 
 export type IngestScanView =
-  | { ok: true; address: string; destinationRoot: string | null; expertMode: boolean; sessions: IngestSessionView[]; summary: string }
+  | { ok: true; address: string; destinationRoot: string | null; freeBytes: number | null; expertMode: boolean; sessions: IngestSessionView[]; summary: string }
   | { ok: false; error: string }
 
 export interface IngestJobView {
@@ -1659,7 +1613,26 @@ export interface IngestJobView {
   manifestPath: string | null
 }
 
-export type IngestPlanView =
-  | { status: 'started' | 'resumed'; job: IngestJobView }
-  | { status: 'refused'; folder: string; message: string }
-  | { status: 'blocked'; reason: string }
+export type IngestPlanView = { status: 'started' } | { status: 'blocked'; reason: string }
+
+/** What became of one session of a copy. `refused`: its folder name is taken by another session. */
+export interface IngestOutcomeView {
+  sessionId: string
+  level: 'info' | 'warn' | 'error'
+  refused: boolean
+  message: string
+}
+
+/** The copy under way or last run: one session after another. */
+export interface IngestProgressView {
+  running: boolean
+  /** "Copying session 2 of 3: M31_2026-10-14_FIT=400_TIF=1". */
+  headline: string
+  /** "12 of 400 files, 50.4 MB of 1.7 GB, 3.1 MB/s, about 9 min left". */
+  detail: string | null
+  fraction: number
+  current: string | null
+  outcomes: IngestOutcomeView[]
+  /** How indexing the copies is going, once the queue ends. */
+  indexing: string | null
+}

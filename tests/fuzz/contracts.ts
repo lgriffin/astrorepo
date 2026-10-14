@@ -15,7 +15,6 @@ import {
   isSafeRemoteName,
   parseExtendedPassive,
   parseListing,
-  parseObservationName,
   parsePassive,
   readFtpReplies,
   parseClock,
@@ -184,11 +183,6 @@ export const TEXT_CONTRACTS: Record<string, (input: string) => void> = {
     ensure(out === null || (/^\d{1,3}(\.\d{1,3}){3}$/.test(out.host) && Number.isInteger(out.port) && out.port >= 1 && out.port <= 65535), `an address and port: ${show(out)}`)
     const ext = withinBudget('parseExtendedPassive', () => parseExtendedPassive(input))
     ensure(ext === null || (Number.isInteger(ext) && ext >= 1 && ext <= 65535), `a port: ${String(ext)}`)
-  },
-  parseObservationName: input => {
-    const out = withinBudget('parseObservationName', () => parseObservationName(input))
-    ensure(out.takenAt === null || /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(out.takenAt), `a date and time or none: ${show(out)}`)
-    ensure(out.target === null || (out.target.length > 0 && out.target === out.target.trim()), `a trimmed target or none: ${show(out)}`)
   }
 }
 

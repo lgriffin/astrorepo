@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSession,
+  bytesText,
   canTransfer,
+  DEFAULT_INCLUDE,
   classifyFile,
   destinationFolderName,
   findUserFolder,
   folderTarget,
   frameGaps,
   inventorySession,
+  isLocalName,
   MAX_FOLDER_NAME,
   nameCountFinding,
   normaliseTargetName,
@@ -25,6 +28,8 @@ import {
   sortSessions,
   targetFromObservationJson,
   targetInText,
+  transferRoom,
+  unsafeRunFinding,
   worstLevel,
   type Finding,
   type IngestTarget,
@@ -430,7 +435,8 @@ describe('Vespera transfer plans', () => {
       'observation.json', '02-images-initial/img-0001-output.json', '02-images-initial/capture.json'
     ])
     expect(planCounts(planTransfer(s, ['fits', 'json']), ['fits', 'json'])).toEqual({ fits: 3, json: 3 })
-    expect(planCounts([], ['tiff'])).toEqual({ tiff: 0 })
+    expect(planCounts([], ['tiff'])).toEqual({})
+    expect(planCounts([], ['fits', 'tiff'])).toEqual({ fits: 0 })
   })
 
   it('[VIN-023] Given a folder name and what the session holds now, When compared, Then NAME_COUNT_STALE says what moved; agreement is null', () => {
@@ -443,5 +449,54 @@ describe('Vespera transfer plans', () => {
   it('[VIN-018] Given a record\'s text, When its session is read, Then the id comes back, or null for anything else', () => {
     expect(recordSessionId('{"sessionId":"2024-06-05_22-00-00_observation_M16"}')).toBe('2024-06-05_22-00-00_observation_M16')
     for (const t of ['', 'nope', '{"sessionId":3}', 'null', '[]']) expect(recordSessionId(t), t).toBeNull()
+  })
+})
+
+describe('Vespera copies on the PC', () => {
+  it('[VIN-016] Given no kinds chosen in Settings, When a copy is planned, Then FITS and TIFF are copied and a kind with no files is left out of the name', () => {
+    expect(DEFAULT_INCLUDE).toEqual(['fits', 'tiff'])
+    const s = session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': imageRun([1, 2]) })
+    expect(planCounts(planTransfer(s, [...DEFAULT_INCLUDE]), [...DEFAULT_INCLUDE])).toEqual({ fits: 2 })
+    const withTiff = session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': [...imageRun([1, 2]), file('img-0002.tif')] })
+    expect(planCounts(planTransfer(withTiff, [...DEFAULT_INCLUDE]), [...DEFAULT_INCLUDE])).toEqual({ fits: 2, tiff: 1 })
+  })
+
+  it('[VIN-030] Given names Windows would not keep, When checked, Then they are refused and names the scope writes are kept', () => {
+    for (const ok of ['01-images-initial', '02-images-adjust-framing', 'img-0001.fits', 'a b', 'M31_x=1']) expect(isLocalName(ok)).toBe(true)
+    for (const bad of ['', '.', '..', 'a:b', 'a/b', 'a\\b', 'a?', 'a*', 'a"b', 'a<b', 'a>b', 'a|b', 'trail.', 'trail ', 'CON', 'nul.txt', 'com1', 'LPT9', 'tab\there', 'x'.repeat(256)]) {
+      expect(isLocalName(bad), bad).toBe(false)
+    }
+    expect(isLocalName('x'.repeat(255))).toBe(true)
+    expect(isLocalName('console')).toBe(true)
+  })
+
+  it('[VIN-030] Given a run whose folder name Windows would not keep, When planned, Then its files are not copied and UNSAFE_NAME warns', () => {
+    const s = session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': imageRun([1]), '02-images-adjust:framing': imageRun([1]) })
+    expect(planTransfer(s, ['fits']).map(i => i.path)).toEqual(['01-images-initial/img-0001.fits'])
+    expect(unsafeRunFinding(s)).toEqual({ level: 'warn', code: 'UNSAFE_NAME', message: '02-images-adjust:framing has a name Windows would not keep, so it is not copied.' })
+    expect(inventorySession(s).findings.map(f => f.code)).toContain('UNSAFE_NAME')
+    const two = session('2024-06-15_21-00-54_observation_NGC3372', { 'a?': imageRun([1]), 'b.': imageRun([1]) })
+    expect(unsafeRunFinding(two)?.message).toBe('a?, b. have names Windows would not keep, so they are not copied.')
+    expect(unsafeRunFinding(session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': imageRun([1]) }))).toBeNull()
+  })
+
+  it('[VIN-027] Given the bytes to copy and the free space, When room is checked, Then 1% more is needed and a shortfall is the bytes missing', () => {
+    expect(transferRoom(1000, 1010)).toEqual({ neededBytes: 1010, shortBytes: null })
+    expect(transferRoom(1000, 1009)).toEqual({ neededBytes: 1010, shortBytes: 1 })
+    expect(transferRoom(999, 1009)).toEqual({ neededBytes: 1009, shortBytes: null })
+    expect(transferRoom(1000, null)).toEqual({ neededBytes: 1010, shortBytes: null })
+    expect(transferRoom(0, 0)).toEqual({ neededBytes: 0, shortBytes: null })
+    expect(transferRoom(-5, 0)).toEqual({ neededBytes: 0, shortBytes: null })
+  })
+
+  it('[VIN-027] Given byte counts, When written for a person, Then each unit is 1024 of the last with one decimal', () => {
+    expect(bytesText(0)).toBe('0 B')
+    expect(bytesText(1023)).toBe('1023 B')
+    expect(bytesText(1024)).toBe('1.0 KB')
+    expect(bytesText(1536)).toBe('1.5 KB')
+    expect(bytesText(1024 * 1024)).toBe('1.0 MB')
+    expect(bytesText(1024 ** 3 * 2.25)).toBe('2.3 GB')
+    expect(bytesText(1024 ** 4)).toBe('1.0 TB')
+    expect(bytesText(1024 ** 5)).toBe('1024.0 TB')
   })
 })

@@ -4,6 +4,7 @@ import {
   makePlanVesperaTransfer,
   makeRunVesperaTransfer,
   makeScanVespera,
+  makeVesperaCopyQueue,
   type PlanResult,
   type ScannedSession,
   type VesperaScan
@@ -22,6 +23,8 @@ class Night {
   readonly identify = makeIdentifyTarget({ scope: this.scope, metadata: new FakeVesperaMetadata() })
   readonly plan = makePlanVesperaTransfer({ disk: this.disk, store: this.store, clock: this.clock })
   readonly run = makeRunVesperaTransfer({ scope: this.scope, disk: this.disk, hasher: this.disk, store: this.store, clock: this.clock })
+  indexed: number[] = []
+  readonly queue = makeVesperaCopyQueue({ run: (job, options) => this.run(job, options), clock: this.clock, onFinished: n => void this.indexed.push(n) })
   result: VesperaScan | null = null
   target: IngestTarget | null = null
   findings: Finding[] = []
@@ -196,5 +199,43 @@ export const vesperaSteps = defineSteps(() => new Night(), ({ Given, When, Then 
 
   Then('the interrupted file was resumed from byte {int}, not fetched again', (w, from: number) => {
     expect(w.scope.commands.filter(c => c.startsWith('REST'))).toEqual([`REST ${from}`])
+  })
+
+  Given('the disk where copies land has {int} bytes free', (w, bytes: number) => {
+    w.disk.free = bytes
+  })
+
+  When('I scan the scope and copy every observation to {string}', async (w, root: string) => {
+    w.result = await w.scan()
+    const userFolder = w.result.userFolder
+    const items = w.result.sessions
+      .filter(s => s.session.kind === 'observation')
+      .map(s => ({
+        sessionId: s.session.id,
+        plan: async () => {
+          const { target, findings } = await w.identify(s.session, userFolder)
+          return w.plan({ session: s.session, userFolder, target, findings: [...s.inventory.findings, ...findings], include: ['fits', 'tiff'], destinationRoot: root })
+        }
+      }))
+    w.queue.start(items)
+    await w.queue.idle()
+  })
+
+  Then('the copy reports:', (w, table: DataTable) => {
+    const outcomes = w.queue.state()!.outcomes
+    expect(outcomes.map(o => o.sessionId)).toEqual(table.raw().map(r => r[0]))
+    table.raw().forEach(([, words], i) => expect(outcomes[i].message).toContain(words))
+  })
+
+  Then('the copies were indexed once', w => {
+    expect(w.indexed).toHaveLength(1)
+  })
+
+  Then('nothing was indexed', w => {
+    expect(w.indexed).toEqual([])
+  })
+
+  Then('no file was fetched from the scope', w => {
+    expect(w.scope.commands.filter(c => c.startsWith('RETR'))).toEqual([])
   })
 })

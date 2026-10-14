@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSession, inventorySession, type IngestTarget, type ScopeEntry, type TransferJob } from '@astro/domain'
-import { bytesText, folderPreview, orderedFindings, scanSummary, sessionWhen, toIngestJobView, toIngestSessionView } from '../../src/main/adapters/vespera-ingest-presenter'
+import { bytesText, folderPreview, orderedFindings, scanSummary, sessionWhen, toIngestJobView, toIngestProgressView, toIngestSessionView } from '../../src/main/adapters/vespera-ingest-presenter'
 
 const file = (name: string, sizeBytes = 1024): ScopeEntry => ({ name, type: 'file', sizeBytes, modifiedAt: null })
 const session = buildSession(
@@ -12,7 +12,8 @@ const session = buildSession(
 const target: IngestTarget = { name: 'NGC 3372', catalogue: 'NGC', confidence: 'folder', evidence: ['folder: NGC3372'], review: false }
 
 const job = (patch: Partial<TransferJob> = {}): TransferJob => ({
-  id: '/repo/NGC3372_2024-06-15_FIT=2',
+  id: '/repo/NGC3372/NGC3372_2024-06-15_FIT=2',
+  targetFolder: 'NGC3372',
   sessionId: session.id,
   sessionPath: `user/${session.id}`,
   target,
@@ -58,7 +59,7 @@ describe('Vespera ingest presenter', () => {
 
   it('[VIN-019] Given a running and a finished job, When shown, Then progress and the manifest path read right', () => {
     expect(toIngestJobView(job(), '01-images-initial/img-0002.fits')).toMatchObject({ headline: '1 of 2 files, 1.0 KB of 2.0 KB', fraction: 0.5, current: '01-images-initial/img-0002.fits', manifestPath: null })
-    expect(toIngestJobView(job({ state: 'done', committed: [], copiedBytes: 2048 }))).toMatchObject({ headline: 'Copied 2 files (2.0 KB) to NGC3372_2024-06-15_FIT=2', fraction: 1, manifestPath: '/repo/NGC3372_2024-06-15_FIT=2/astrorepo.manifest.json' })
+    expect(toIngestJobView(job({ state: 'done', committed: [], copiedBytes: 2048 }))).toMatchObject({ headline: 'Copied 2 files (2.0 KB) to NGC3372_2024-06-15_FIT=2', fraction: 1, manifestPath: '/repo/NGC3372/NGC3372_2024-06-15_FIT=2/astrorepo.manifest.json' })
     expect(toIngestJobView(job({ totalBytes: 0, items: [] })).fraction).toBe(0)
   })
 
@@ -70,5 +71,39 @@ describe('Vespera ingest presenter', () => {
     expect(unknown).toMatchObject({ transferable: false, worst: 'error' })
     expect(scanSummary([view])).toBe('1 session on the scope, 1 observation.')
     expect(scanSummary([view, { ...view, deepSky: false, job: toIngestJobView(job({ state: 'done' })) }])).toBe('2 sessions on the scope, 1 observation; 1 already in the repository.')
+  })
+
+  it('[VIN-016] Given the kinds chosen, When a session is shown, Then it says how much a copy of those kinds takes', () => {
+    const view = toIngestSessionView({ session, inventory: inventorySession(session) }, target, [], null)
+    expect(view).toMatchObject({ transferBytes: 2048, transferSize: '2.0 KB' })
+    const all = toIngestSessionView({ session, inventory: inventorySession(session) }, target, [], null, ['fits', 'jpeg', 'json'])
+    expect(all).toMatchObject({ transferBytes: 6144, transferSize: '6.0 KB' })
+  })
+
+  it('[VIN-029] Given a copy under way, When shown, Then the session of how many, the bytes, the speed and the time left are said', () => {
+    const running = toIngestJobView(job({ copiedBytes: 1024 }), 'r/img-0002.fits')
+    const view = toIngestProgressView({ running: true, job: running, pace: { fraction: 0.5, bytesPerSecond: 512, remainingSeconds: 2 }, position: 2, total: 3, outcomes: [], indexing: null })
+    expect(view).toEqual({
+      running: true,
+      headline: 'Copying session 2 of 3: NGC3372_2024-06-15_FIT=2',
+      detail: `${running.headline}, 512 B/s, about ${view.detail!.split('about ')[1]}`,
+      fraction: 0.5,
+      current: 'r/img-0002.fits',
+      outcomes: [],
+      indexing: null
+    })
+    expect(view.detail).toMatch(/^1 of 2 files, 1\.0 KB of 2\.0 KB, 512 B\/s, about .+ left$/)
+    const slow = toIngestProgressView({ running: true, job: running, pace: { fraction: 0.5, bytesPerSecond: null, remainingSeconds: null }, position: 1, total: 1, outcomes: [], indexing: null })
+    expect(slow.detail).toBe(running.headline)
+  })
+
+  it('[VIN-031] Given a queue between sessions or ended, When shown, Then it says which is next or how many were copied, and keeps each outcome', () => {
+    const outcome = { sessionId: 'a', level: 'info' as const, refused: false, message: 'Copied.' }
+    const refused = { sessionId: 'b', level: 'warn' as const, refused: true, message: 'Taken.' }
+    expect(toIngestProgressView({ running: true, job: null, pace: null, position: 1, total: 3, outcomes: [outcome], indexing: null })).toMatchObject({ headline: 'Getting session 2 of 3 ready…', detail: null, fraction: 0, current: null })
+    expect(toIngestProgressView({ running: false, job: null, pace: null, position: 2, total: 2, outcomes: [outcome, refused], indexing: 'Scanning…' })).toEqual({
+      running: false, headline: '1 of 2 sessions copied.', detail: null, fraction: 1, current: null, outcomes: [outcome, refused], indexing: 'Scanning…'
+    })
+    expect(toIngestProgressView({ running: false, job: null, pace: null, position: 1, total: 1, outcomes: [outcome], indexing: null }).headline).toBe('1 of 1 session copied.')
   })
 })

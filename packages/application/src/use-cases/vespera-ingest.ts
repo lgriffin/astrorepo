@@ -1,8 +1,12 @@
 import {
   buildSession,
+  bytesText,
   canTransfer,
+  copyPace,
+  DEFAULT_INCLUDE,
   destinationFolderName,
   findUserFolder,
+  folderTarget,
   INCLUDED_KINDS,
   inventorySession,
   MANIFEST_FILE,
@@ -17,6 +21,8 @@ import {
   sessionFolders,
   sortSessions,
   TRANSFER_FILE,
+  transferRoom,
+  type CopyPace,
   type Finding,
   type IncludedKind,
   type IngestTarget,
@@ -146,8 +152,9 @@ export interface PlanRequest {
   target: IngestTarget
   /** Findings live when Transfer was pressed. */
   findings: Finding[]
-  /** FITS alone when not given. */
+  /** FITS and TIFF when not given (DEFAULT_INCLUDE). */
   include?: IncludedKind[]
+  /** Where copies land; the session's folder goes in its target's folder there. */
   destinationRoot: string
   /** Take the next free _2, _3 … when the name is used by a different session. */
   allowDuplicate?: boolean
@@ -182,16 +189,19 @@ export function makePlanVesperaTransfer(deps: { disk: IngestDisk; store: Vespera
     if (!canTransfer(req.findings, req.target)) {
       return { status: 'blocked', reason: req.target.confidence === 'unknown' ? 'Name the target first.' : 'The session has an error finding; look at it first.' }
     }
-    const include = INCLUDED_KINDS.filter(k => (req.include ?? ['fits']).includes(k))
+    const include = INCLUDED_KINDS.filter(k => (req.include ?? DEFAULT_INCLUDE).includes(k))
     if (include.length === 0) return { status: 'blocked', reason: 'Choose at least one kind of file to copy.' }
     if (!req.session.startedAt) return { status: 'blocked', reason: 'The session has no date to name its folder by.' }
     const items = planTransfer(req.session, include)
+    if (items.length === 0) return { status: 'blocked', reason: 'The session holds no files of the kinds chosen to copy.' }
     const counts = planCounts(items, include)
     const date = req.session.startedAt.slice(0, 10)
+    const targetFolder = folderTarget(req.target)
+    const parent = deps.disk.join(req.destinationRoot, targetFolder)
 
     for (let duplicate = 1; ; duplicate++) {
       const folder = destinationFolderName({ target: req.target, date, counts, ...(duplicate > 1 ? { duplicate } : {}) })
-      const dir = deps.disk.join(req.destinationRoot, folder)
+      const dir = deps.disk.join(parent, folder)
       if (await deps.disk.exists(dir)) {
         const transfer = await deps.disk.readText(deps.disk.join(dir, TRANSFER_FILE))
         const manifest = await deps.disk.readText(deps.disk.join(dir, MANIFEST_FILE))
@@ -204,7 +214,7 @@ export function makePlanVesperaTransfer(deps: { disk: IngestDisk; store: Vespera
         return {
           status: 'refused',
           folder,
-          finding: { level: 'error', code: 'DEST_EXISTS', message: `${folder} already exists in ${req.destinationRoot} and holds ${owner === null ? 'something astrorepo did not copy' : owner === req.session.id ? 'an unreadable copy of this session' : `another session (${owner})`}. Nothing was copied into it.` }
+          finding: { level: 'error', code: 'DEST_EXISTS', message: `${folder} already exists in ${parent} and holds ${owner === null ? 'something astrorepo did not copy' : owner === req.session.id ? 'an unreadable copy of this session' : `another session (${owner})`}. Nothing was copied into it.` }
         }
       }
       const now = deps.clock.now().toISOString()
@@ -214,6 +224,7 @@ export function makePlanVesperaTransfer(deps: { disk: IngestDisk; store: Vespera
         sessionPath: `${req.userFolder}/${req.session.id}`,
         target: req.target,
         destinationRoot: req.destinationRoot,
+        targetFolder,
         destinationFolder: folder,
         include,
         items,
@@ -309,7 +320,13 @@ export function makeRunVesperaTransfer(deps: { scope: VesperaScope; disk: Ingest
           job = await save(job, { findings: [...job.findings, grew, ...(stale ? [stale] : [])] })
         }
       }
-      job = await save(job, { state: 'running', reason: null })
+      const toCopy = job.items.filter(i => !job.committed.includes(i.path)).reduce((n, i) => n + i.sizeBytes, 0)
+      const room = transferRoom(toCopy, await deps.disk.freeBytes(job.id))
+      if (room.shortBytes !== null) {
+        const short: Finding = { level: 'error', code: 'SPACE_SHORT', message: `Nothing more was copied: the folder copies land in needs ${bytesText(room.shortBytes)} more room.` }
+        return await save(job, { state: 'paused', reason: short.message, findings: [...job.findings.filter(f => f.code !== 'SPACE_SHORT'), short] })
+      }
+      job = await save(job, { state: 'running', reason: null, findings: job.findings.filter(f => f.code !== 'SPACE_SHORT') })
       report(null)
       for (const item of job.items) {
         if (job.committed.includes(item.path)) continue
@@ -357,3 +374,135 @@ export function makeRunVesperaTransfer(deps: { scope: VesperaScope; disk: Ingest
     }
   }
 }
+
+// ── Copy queue ──────────────────────────────────────────────────────────
+
+/** What became of one session of a queue. `refused`: its folder name is another session's. */
+export interface QueueOutcome {
+  sessionId: string
+  level: 'info' | 'warn' | 'error'
+  refused: boolean
+  message: string
+  job: TransferJob | null
+}
+
+/** One session to copy: how to plan it, when its turn comes. */
+export interface QueueItem {
+  sessionId: string
+  plan: () => Promise<PlanResult>
+}
+
+export interface QueueState {
+  /** Copying, or planning the next session: the scope's one connection is in use. */
+  busy: boolean
+  job: TransferJob | null
+  current: string | null
+  pace: CopyPace | null
+  /** Which session is under way (1-based) of how many. */
+  position: number
+  total: number
+  outcomes: QueueOutcome[]
+}
+
+export type QueueStart = { started: true } | { started: false; reason: string }
+
+function outcomeOf(job: TransferJob): QueueOutcome {
+  const files = job.items.length
+  if (job.state === 'done') {
+    return { sessionId: job.sessionId, level: 'info', refused: false, job, message: `Copied ${files} ${files === 1 ? 'file' : 'files'} (${bytesText(job.totalBytes)}) into ${job.targetFolder}/${job.destinationFolder}.` }
+  }
+  if (job.state === 'paused') {
+    return { sessionId: job.sessionId, level: 'warn', refused: false, job, message: `${job.destinationFolder} is paused after ${job.committed.length} of ${files} files: ${job.reason ?? 'Paused.'} Resume carries on from there.` }
+  }
+  return { sessionId: job.sessionId, level: 'error', refused: false, job, message: `${job.destinationFolder} failed: ${job.reason ?? 'no reason given'}` }
+}
+
+/**
+ * Copies the chosen sessions one after another (VIN-031), one copy at a time: each is planned when
+ * its turn comes, a refused or blocked one is reported and skipped, and a pause, a dropped link or a
+ * full disk stops the queue so the sessions after it are not started. When the queue ends having
+ * copied anything, `onFinished` indexes the copies (VIN-028).
+ */
+export function makeVesperaCopyQueue(deps: {
+  run: (job: TransferJob, options?: RunOptions) => Promise<TransferJob>
+  clock: Clock
+  onFinished?: (copied: number) => Promise<void> | void
+}) {
+  type Running = { job: TransferJob; current: string | null; pause: boolean; startedMs: number; startBytes: number }
+  type Queue = { waiting: QueueItem[]; total: number; outcomes: QueueOutcome[]; copied: number; busy: boolean; running: Running | null; idle: Promise<void> }
+  let queue: Queue | null = null
+
+  const runOne = async (q: Queue, job: TransferJob): Promise<void> => {
+    const r: Running = { job, current: null, pause: false, startedMs: deps.clock.now().getTime(), startBytes: job.copiedBytes }
+    q.running = r
+    let final: TransferJob
+    try {
+      final = await deps.run(job, {
+        onProgress: p => {
+          r.job = p.job
+          r.current = p.current
+        },
+        shouldPause: () => r.pause
+      })
+    } catch (e) {
+      final = { ...r.job, state: 'failed', reason: e instanceof Error ? e.message : String(e) }
+    }
+    q.running = null
+    q.outcomes.push(outcomeOf(final))
+    if (final.state === 'done') q.copied++
+    else q.waiting = []
+  }
+
+  const drain = async (q: Queue, first?: TransferJob): Promise<void> => {
+    if (first) await runOne(q, first)
+    while (q.waiting.length > 0) {
+      const item = q.waiting.shift()!
+      try {
+        const r = await item.plan()
+        if (r.status === 'planned' || r.status === 'resume') await runOne(q, r.job)
+        else q.outcomes.push({ sessionId: item.sessionId, level: 'warn', refused: r.status === 'refused', job: null, message: r.status === 'refused' ? r.finding.message : r.reason })
+      } catch (e) {
+        q.outcomes.push({ sessionId: item.sessionId, level: 'error', refused: false, job: null, message: e instanceof Error ? e.message : String(e) })
+      }
+    }
+    if (q.copied > 0) await deps.onFinished?.(q.copied)
+    q.busy = false
+  }
+
+  return {
+    /** Starts copying `items` in order (after `first`, a job to resume); refused while a copy runs. */
+    start(items: QueueItem[], first?: TransferJob): QueueStart {
+      if (queue?.busy) return { started: false, reason: 'A copy is already under way; wait for it or pause it.' }
+      if (items.length === 0 && !first) return { started: false, reason: 'Choose at least one session to copy.' }
+      const q: Queue = { waiting: [...items], total: items.length + (first ? 1 : 0), outcomes: [], copied: 0, busy: true, running: null, idle: Promise.resolve() }
+      queue = q
+      q.idle = drain(q, first)
+      return { started: true }
+    },
+    /** Pauses the copy under way once the file being copied is in. */
+    pause(): boolean {
+      if (!queue?.running) return false
+      queue.running.pause = true
+      return true
+    },
+    busy: (): boolean => queue?.busy === true,
+    /** The queue under way or last run; null before the first. */
+    state(): QueueState | null {
+      if (!queue) return null
+      const r = queue.running
+      return {
+        busy: queue.busy,
+        job: r?.job ?? null,
+        current: r?.current ?? null,
+        pace: r ? copyPace(r.job.copiedBytes - r.startBytes, r.job.totalBytes - r.startBytes, deps.clock.now().getTime() - r.startedMs) : null,
+        position: Math.min(queue.total, queue.outcomes.length + (queue.busy ? 1 : 0)),
+        total: queue.total,
+        outcomes: queue.outcomes
+      }
+    },
+    /** Settles when the queue under way has ended. */
+    idle: (): Promise<void> => queue?.idle ?? Promise.resolve()
+  }
+}
+
+export type VesperaCopyQueue = ReturnType<typeof makeVesperaCopyQueue>

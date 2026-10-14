@@ -48,11 +48,11 @@ Feature: Bringing a night in from the Vespera Pro
     And Transfer is on for it
 
   @VIN-016 @VIN-019 @VIN-020 @VIN-025 @VIN-026
-  Scenario: One press copies the FITS into a folder named for what it holds
+  Scenario: One press copies the FITS into the target's folder, in a folder named for what it holds
     Given my scope holds "2024-06-15_21-00-54_observation_NGC3372" with FITS frames 1, 2 and 3, frames 1 and 3 stacked
     When I scan the scope and transfer "2024-06-15_21-00-54_observation_NGC3372" to "/repo"
     Then the transfer is done
-    And "/repo/NGC3372_2024-06-15_FIT=3" holds:
+    And "/repo/NGC3372/NGC3372_2024-06-15_FIT=3" holds:
       | 01-images-initial/img-0001.fits |
       | 01-images-initial/img-0002.fits |
       | 01-images-initial/img-0003.fits |
@@ -74,9 +74,31 @@ Feature: Bringing a night in from the Vespera Pro
   @VIN-018
   Scenario: A folder of the same name from another session is never copied into
     Given my scope holds "2024-06-15_21-00-54_observation_NGC3372" with FITS frames 1, 2 and 3, frames 1 and 3 stacked
-    And "/repo/NGC3372_2024-06-15_FIT=3" already holds another session's copy
+    And "/repo/NGC3372/NGC3372_2024-06-15_FIT=3" already holds another session's copy
     When I scan the scope and transfer "2024-06-15_21-00-54_observation_NGC3372" to "/repo"
     Then the transfer is refused with "DEST_EXISTS"
     When I transfer it again, taking the next free name
     Then the transfer is done
-    And "/repo/NGC3372_2024-06-15_FIT=3_2" holds the manifest
+    And "/repo/NGC3372/NGC3372_2024-06-15_FIT=3_2" holds the manifest
+
+  @VIN-031 @VIN-028 @VIN-016
+  Scenario: The ticked observations copy one after another, each into its target's folder
+    Given my scope holds "2024-06-15_21-00-54_observation_NGC3372" with FITS frames 1, 2 and 3, frames 1 and 3 stacked
+    And my scope holds "2024-06-16_22-10-00_observation_M42" with 2 FITS frames, both stacked
+    When I scan the scope and copy every observation to "/repo"
+    Then the copy reports:
+      | 2024-06-16_22-10-00_observation_M42     | into M42/M42_2024-06-16_FIT=2.         |
+      | 2024-06-15_21-00-54_observation_NGC3372 | into NGC3372/NGC3372_2024-06-15_FIT=3. |
+    And "/repo/M42/M42_2024-06-16_FIT=2" holds the manifest
+    And the copies were indexed once
+
+  @VIN-027 @VIN-031
+  Scenario: Too little room where copies land stops the copy before a byte is fetched
+    Given my scope holds "2024-06-15_21-00-54_observation_NGC3372" with FITS frames 1, 2 and 3, frames 1 and 3 stacked
+    And my scope holds "2024-06-16_22-10-00_observation_M42" with 2 FITS frames, both stacked
+    And the disk where copies land has 10 bytes free
+    When I scan the scope and copy every observation to "/repo"
+    Then the copy reports:
+      | 2024-06-16_22-10-00_observation_M42 | needs 31 B more room |
+    And no file was fetched from the scope
+    And nothing was indexed

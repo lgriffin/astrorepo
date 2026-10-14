@@ -177,6 +177,8 @@ export class InMemoryIngestDisk implements IngestDisk, ContentHasher {
   readonly writes: string[] = []
   /** A path whose writes fail, as a full or read-only disk would. */
   failWrites: string | null = null
+  /** What freeBytes says; null is a disk that will not say. */
+  free: number | null = null
 
   join(dir: string, ...parts: string[]): string {
     return [dir.replace(/\/+$/, ''), ...parts.map(p => p.replace(/^\/+|\/+$/g, ''))].filter(p => p !== '').join('/')
@@ -228,6 +230,10 @@ export class InMemoryIngestDisk implements IngestDisk, ContentHasher {
     if (this.failWrites !== null && path.startsWith(this.failWrites)) throw new Error(`EACCES: ${path}`)
     this.writes.push(path)
     this.files.set(path, new TextEncoder().encode(text))
+  }
+
+  async freeBytes(): Promise<number | null> {
+    return this.free
   }
 
   async quickKey(file: FileStamp): Promise<string> {

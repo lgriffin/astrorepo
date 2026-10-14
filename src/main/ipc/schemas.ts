@@ -372,24 +372,13 @@ export const schemas = {
   'mosaic:export': mosaicRequest,
 
   'vespera:settings': z.object({}).optional(),
-  'vespera:survey': z.object({}).optional(),
-  'vespera:start': z.object({
-    choices: z.array(z.object({
-      folder: z.string().min(1).max(255),
-      kind: z.enum(['observation', 'darks']),
-      target: z.string().max(120).nullable().optional()
-    })).min(1).max(1000)
-  }),
-  'vespera:progress': z.object({}).optional(),
-  'vespera:cancel': z.object({}).optional(),
 
   'vespera-ingest:scan': z.object({}).optional(),
   'vespera-ingest:identify': z.object({ session_id: z.string().min(1).max(255) }),
   'vespera-ingest:name': z.object({ session_id: z.string().min(1).max(255), name: z.string().min(1).max(120) }),
-  'vespera-ingest:preview': z.object({ session_id: z.string().min(1).max(255), include: z.array(z.enum(['fits', 'tiff', 'jpeg', 'json'])).max(4) }),
+  'vespera-ingest:preview': z.object({ session_id: z.string().min(1).max(255) }),
   'vespera-ingest:transfer': z.object({
-    session_id: z.string().min(1).max(255),
-    include: z.array(z.enum(['fits', 'tiff', 'jpeg', 'json'])).min(1).max(4),
+    session_ids: z.array(z.string().min(1).max(255)).min(1).max(500),
     allow_duplicate: z.boolean().optional()
   }),
   'vespera-ingest:resume': z.object({ job_id: z.string().min(1).max(4096) }),

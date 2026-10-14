@@ -1,7 +1,4 @@
 import path from 'path'
-import type { CopyChoice, VesperaSettings } from '@astro/domain'
-import type { StartResult, VesperaControl } from '@astro/application'
-import { composeVespera } from './composition'
 import { getHomeScanProgress, startHomeScan } from './services/home-scanner'
 import { startFolderScan } from './services/fits-analyzer'
 
@@ -11,9 +8,6 @@ export type IndexingState =
   | { kind: 'home-scan'; status: string; error: string | null }
   | { kind: 'folder-scan'; folder: string; done: boolean; error: string | null }
 
-let control: VesperaControl | null = null
-/** The home folder when the copy under way started, so its copies are indexed the way the library is. */
-let homeAtStart: string | null = null
 let indexing: IndexingState | { kind: 'home-scan' } = { kind: 'none' }
 
 const inside = (dir: string, root: string) => {
@@ -22,16 +16,16 @@ const inside = (dir: string, root: string) => {
 }
 
 /**
- * Indexes copies once they have landed (VSP-008): a landing folder inside the home folder is
+ * Indexes copies once they have landed (VIN-028): a landing folder inside the home folder is
  * picked up by a home scan, which finds the new target folders and indexes their FITS files;
  * anywhere else, the landing folder is scanned as a FITS folder of its own.
  */
-async function indexCopies(landingRoot: string): Promise<void> {
-  if (homeAtStart && inside(landingRoot, homeAtStart)) {
+export async function indexCopies(landingRoot: string, homeFolder: string | null): Promise<void> {
+  if (homeFolder && inside(landingRoot, homeFolder)) {
     indexing = { kind: 'home-scan' }
     // A home scan already under way picks up the new folders only if it has not passed them, so
     // the page says so and the user can scan again from Library.
-    const started = startHomeScan(homeAtStart)
+    const started = startHomeScan(homeFolder)
     if (!started.started) indexing = { kind: 'folder-scan', folder: landingRoot, done: true, error: started.reason ?? 'A scan was already running.' }
     return
   }
@@ -44,20 +38,9 @@ async function indexCopies(landingRoot: string): Promise<void> {
   }
 }
 
-/** The app's one Vespera control; it lives as long as the app, since it holds the copy under way. */
-export function vespera(): VesperaControl {
-  control ??= composeVespera(root => indexCopies(root))
-  return control
-}
-
-/** Starts a copy with the settings as they are now, remembering the home folder for indexing. */
-export function startVesperaCopy(settings: VesperaSettings, homeFolder: string | null, choices: CopyChoice[]): StartResult {
-  const result = vespera().start(settings, choices)
-  if (result.started) {
-    homeAtStart = homeFolder
-    indexing = { kind: 'none' }
-  }
-  return result
+/** Forgets the last copy's indexing, as a new copy starts. */
+export function resetIndexing(): void {
+  indexing = { kind: 'none' }
 }
 
 /** What indexing the last copy is doing; a home scan's state is read live. */

@@ -213,7 +213,7 @@ export type FindingLevel = 'info' | 'warn' | 'error'
 export type FindingCode =
   | 'NO_IMAGES_RUN' | 'EMPTY_RUN' | 'NO_TIFF' | 'MANY_TIFF' | 'NO_FITS' | 'FITS_LT_JPEG' | 'FITS_GT_JPEG'
   | 'GAP_IN_FRAMES' | 'JSON_MISMATCH' | 'UNKNOWN_FILES' | 'UNKNOWN_RUN' | 'NO_TIMESTAMP' | 'SESSION_GREW'
-  | 'TARGET_MISMATCH' | 'NAME_COUNT_STALE' | 'SIZE_MISMATCH' | 'DEST_EXISTS' | 'DISCONNECTED'
+  | 'TARGET_MISMATCH' | 'NAME_COUNT_STALE' | 'SIZE_MISMATCH' | 'DEST_EXISTS' | 'DISCONNECTED' | 'SPACE_SHORT' | 'UNSAFE_NAME'
 
 export interface Finding {
   level: FindingLevel
@@ -323,6 +323,8 @@ export function inventorySession(session: VesperaSession): VesperaInventory {
   if (count(session.rootFiles).other > 0) {
     findings.push({ level: 'info', code: 'UNKNOWN_FILES', message: `The session's top folder holds ${plural(count(session.rootFiles).other, 'file')} of a kind astrorepo does not know.` })
   }
+  const unsafe = unsafeRunFinding(session)
+  if (unsafe) findings.push(unsafe)
   return { sessionId: session.id, perRun, totals, bytes, findings }
 }
 
@@ -606,10 +608,47 @@ export interface TransferItem {
 
 const KIND_ORDER: Record<IncludedKind, number> = { fits: 0, jpeg: 1, tiff: 2, json: 3 }
 
+/** The kinds a transfer copies unless Settings says otherwise: the raw frames and the scope's TIFF stack. */
+export const DEFAULT_INCLUDE: readonly IncludedKind[] = ['fits', 'tiff']
+
+// eslint-disable-next-line no-control-regex
+const WINDOWS_UNSAFE = /[<>:"/\\|?*\u0000-\u001f\u007f]|[. ]$|^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i
+
+/** Whether a folder or file name from the scope can be kept as it is on a Windows disk. */
+export function isLocalName(name: string): boolean {
+  return name.length > 0 && name.length <= 255 && name !== '.' && name !== '..' && !WINDOWS_UNSAFE.test(name)
+}
+
+/** Runs whose folder name cannot be kept on the PC, which a transfer leaves on the scope. */
+export function unsafeRunFinding(session: VesperaSession): Finding | null {
+  const runs = session.runs.filter(r => !isLocalName(r.folder)).map(r => r.folder)
+  if (runs.length === 0) return null
+  return { level: 'warn', code: 'UNSAFE_NAME', message: `${runs.join(', ')} ${runs.length === 1 ? 'has a name' : 'have names'} Windows would not keep, so ${runs.length === 1 ? 'it is' : 'they are'} not copied.` }
+}
+
+/** The room a transfer needs where copies land: the bytes still to copy and 1%, so the disk is never filled to the last byte. */
+export function transferRoom(bytesToCopy: number, freeBytes: number | null): { neededBytes: number; shortBytes: number | null } {
+  const neededBytes = Math.ceil(Math.max(0, bytesToCopy) * 1.01)
+  return { neededBytes, shortBytes: freeBytes === null || neededBytes <= freeBytes ? null : neededBytes - freeBytes }
+}
+
+/** Bytes as a person reads them: 512 B, 1.5 KB, 20.0 MB. */
+export function bytesText(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let n = bytes / 1024
+  let u = 0
+  while (n >= 1024 && u < units.length - 1) {
+    n /= 1024
+    u++
+  }
+  return `${n.toFixed(1)} ${units[u]}`
+}
+
 /**
  * The files a transfer copies, in copy order: FITS by frame number, then JPEG, then TIFF, then
  * JSON, so the big few TIFFs come last and a link that drops late loses the least work. Within a
- * kind, top-level files come first, then each run in its order, by frame number. Only the kinds asked for, and never a file of a kind astrorepo does not know.
+ * kind, top-level files come first, then each run in its order, by frame number. Only the kinds asked for, never a file of a kind astrorepo does not know, and never a run whose folder name Windows would not keep as it is.
  */
 export function planTransfer(session: VesperaSession, include: IncludedKind[]): TransferItem[] {
   const wanted = new Set(include)
@@ -617,7 +656,7 @@ export function planTransfer(session: VesperaSession, include: IncludedKind[]): 
     ...session.rootFiles.map(f => ({ f, run: null as VesperaRun | null })),
     ...session.runs.flatMap(r => r.files.map(f => ({ f, run: r })))
   ].flatMap(({ f, run }) =>
-    f.kind !== 'other' && wanted.has(f.kind)
+    f.kind !== 'other' && wanted.has(f.kind) && (run === null || isLocalName(run.folder))
       ? [{ path: run ? `${run.folder}/${f.name}` : f.name, kind: f.kind, sizeBytes: f.sizeBytes, frameNo: f.frameNo ?? null, runOrder: run ? run.order ?? Number.MAX_SAFE_INTEGER : -1 }]
       : []
   )
@@ -630,10 +669,17 @@ export function planTransfer(session: VesperaSession, include: IncludedKind[]): 
   )
 }
 
-/** Files of each included kind in a plan, as the folder name carries them. */
+/**
+ * Files of each included kind in a plan, as the folder name carries them. FITS is always named, as
+ * the raw frames are what a folder is for; another kind is named only when the session has some, so
+ * a night with no TIFF is M31_2026-10-14_FIT=400 rather than ..._TIF=0.
+ */
 export function planCounts(items: TransferItem[], include: IncludedKind[]): Partial<Record<IncludedKind, number>> {
   const counts: Partial<Record<IncludedKind, number>> = {}
-  for (const k of INCLUDED_KINDS) if (include.includes(k)) counts[k] = items.filter(i => i.kind === k).length
+  for (const k of INCLUDED_KINDS) {
+    const n = items.filter(i => i.kind === k).length
+    if (include.includes(k) && (k === 'fits' || n > 0)) counts[k] = n
+  }
   return counts
 }
 
@@ -655,7 +701,11 @@ export interface TransferJob {
   /** The session folder's path on the scope. */
   sessionPath: string
   target: IngestTarget
+  /** Where copies land (Settings). */
   destinationRoot: string
+  /** The target's folder under it, which the home scan matches to the target. */
+  targetFolder: string
+  /** This session's folder under the target's, named by the destination grammar. */
   destinationFolder: string
   include: IncludedKind[]
   items: TransferItem[]

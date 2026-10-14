@@ -50,6 +50,8 @@ export interface IngestDisk {
   readText(path: string): Promise<string | null>
   /** Writes a text file whole, making its folders: a reader never sees half of it. */
   writeText(path: string, text: string): Promise<void>
+  /** Free bytes on the disk where `path` is or would be; null when the system will not say. */
+  freeBytes(path: string): Promise<number | null>
 }
 
 /** Driven port: reads a target's name from a file's metadata. Pure; never throws on bad bytes. */

@@ -117,6 +117,12 @@ export function ingestDiskContract(adapterName: string, make: () => Promise<{ di
       await disk.remove(p)
       expect(await disk.exists(p)).toBe(false)
     })
+
+    it('[VIN-027] Given a folder not made yet, When its free space is asked, Then it is a count of bytes or null, never an error', async () => {
+      const { disk, root } = await make()
+      const free = await disk.freeBytes(disk.join(root, 'M31', 'not-yet', 'deeper'))
+      expect(free === null || (Number.isSafeInteger(free) && free >= 0)).toBe(true)
+    })
   })
 }
 
@@ -159,6 +165,7 @@ const job = (id: string, createdAt: string, state: TransferJob['state'] = 'plann
   sessionPath: 'user/2024-06-15_21-00-54_observation_NGC3372',
   target: { name: 'NGC 3372', catalogue: 'NGC', confidence: 'folder', evidence: ['folder: NGC3372'], review: false },
   destinationRoot: '/repo',
+  targetFolder: 'NGC3372',
   destinationFolder: id.split('/').pop()!,
   include: ['fits'],
   items: [{ path: '01-images-initial/img-0001.fits', kind: 'fits', sizeBytes: 4, frameNo: 1, runOrder: 1 }],

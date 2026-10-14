@@ -1,7 +1,5 @@
-import fs from 'fs'
 import net from 'net'
-import path from 'path'
-import { CopyCancelledError, ScopeUnreachableError, type ScopeConnection, type ScopeFiles } from '@astro/application'
+import { ScopeUnreachableError, type ScopeConnection, type ScopeFiles } from '@astro/application'
 import {
   parseExtendedPassive,
   parseListing,
@@ -210,41 +208,6 @@ class NodeScopeConnection implements ScopeConnection {
     return parseListing(out.text, 'list')
   }
 
-  async download(remote: string, local: string, expectedBytes: number | null, onBytes: (received: number) => void, cancelled: () => boolean): Promise<number> {
-    this.usable()
-    if (fs.existsSync(local)) throw new Error(`${local} already exists, so it was left as it is.`)
-    await fs.promises.mkdir(path.dirname(local), { recursive: true })
-    const partial = `${local}.part`
-    await fs.promises.rm(partial, { force: true })
-    const fd = fs.openSync(partial, 'wx')
-    let received = 0
-    let open = true
-    const closeFd = () => {
-      if (open) fs.closeSync(fd)
-      open = false
-    }
-    try {
-      if (cancelled()) throw new CopyCancelledError()
-      const refused = await this.transfer(`RETR ${remote}`, chunk => {
-        if (cancelled()) throw new CopyCancelledError()
-        fs.writeSync(fd, chunk)
-        received += chunk.length
-        onBytes(received)
-      })
-      if (refused) throw new Error(`The scope would not send ${remote}: ${describe(refused)}`)
-      closeFd()
-      if (expectedBytes !== null && received !== expectedBytes) {
-        throw new Error(`${remote} arrived with ${received} bytes, not the ${expectedBytes} the scope listed.`)
-      }
-      publish(partial, local)
-      return received
-    } catch (error) {
-      closeFd()
-      await fs.promises.rm(partial, { force: true })
-      throw error
-    }
-  }
-
   /**
    * Streams a file from `offset` to `onChunk`, asking the scope to start there with REST; when it
    * will not, the bytes start at 0. `onStart` hears where they start before the first byte comes.
@@ -272,23 +235,6 @@ class NodeScopeConnection implements ScopeConnection {
     } finally {
       this.control.destroy()
     }
-  }
-}
-
-/**
- * Moves a finished partial file to its name without ever replacing a file there: a hard link
- * fails when the name is taken. Disks without hard links (some network shares) fall back to a
- * rename after a check.
- */
-function publish(partial: string, local: string) {
-  try {
-    fs.linkSync(partial, local)
-    fs.unlinkSync(partial)
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code
-    if (code === 'EEXIST') throw new Error(`${local} appeared while copying, so it was left as it is.`, { cause: error })
-    if (fs.existsSync(local)) throw new Error(`${local} already exists, so it was left as it is.`, { cause: error })
-    fs.renameSync(partial, local)
   }
 }
 

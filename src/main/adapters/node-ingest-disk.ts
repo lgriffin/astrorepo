@@ -69,4 +69,16 @@ export class NodeIngestDisk implements IngestDisk {
     await fs.promises.writeFile(tmp, text, 'utf8')
     await fs.promises.rename(tmp, p)
   }
+
+  async freeBytes(p: string): Promise<number | null> {
+    let at = path.resolve(p)
+    // The folder a copy goes into is made as it starts, so ask about the nearest folder there is.
+    for (;;) {
+      const stats = await fs.promises.statfs(at).catch(() => null)
+      if (stats) return Number(stats.bavail) * Number(stats.bsize)
+      const up = path.dirname(at)
+      if (up === at) return null
+      at = up
+    }
+  }
 }

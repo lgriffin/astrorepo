@@ -35,9 +35,8 @@ import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../ad
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
-import { startVesperaCopy, vespera, vesperaIndexing } from '../vespera-host'
 import { ingestIdentify, ingestName, ingestPause, ingestPreview, ingestProgress, ingestResume, ingestScan, ingestTransfer } from '../vespera-ingest-host'
-import { indexingText, toVesperaProgressView, toVesperaSettingsView, toVesperaSurveyView } from '../adapters/vespera-presenter'
+import { toVesperaSettingsView } from '../adapters/vespera-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -626,35 +625,24 @@ export function registerIpcHandlers(): void {
     }
   }))
 
-  // The Vespera control (spec 033): where the scope is and where copies land come from Settings,
-  // never from the page, so a copy only ever writes inside the landing folder.
+  // The Vespera page (specs 033 and 034): where the scope is, where copies land and the kinds to
+  // copy come from Settings, never from the page, so a copy only ever writes inside the landing folder.
   handle('vespera:settings', validated('vespera:settings', () => toVesperaSettingsView(folders().vesperaSettings())))
 
-  handle('vespera:survey', validated('vespera:survey', async () => {
-    try {
-      return toVesperaSurveyView(await vespera().survey(folders().vesperaSettings()))
-    } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : String(error) }
-    }
-  }))
-
-  handle('vespera:start', validated('vespera:start', args => {
-    const f = folders()
-    return startVesperaCopy(f.vesperaSettings(), f.homeFolder(), args.choices)
-  }))
-
-  handle('vespera:progress', validated('vespera:progress', () => toVesperaProgressView(vespera().progress(), indexingText(vesperaIndexing()))))
-
-  handle('vespera:cancel', validated('vespera:cancel', () => ({ cancelled: vespera().cancel() })))
-
-  // The Vespera ingest (spec 034): review each session's counts and findings, then one transfer
-  // into a folder named for what it holds. The scope is only read; copies land where Settings says.
+  // Review each session's counts and findings, then copy the chosen ones, each into a folder named
+  // for what it holds. The scope is only read.
   handle('vespera-ingest:scan', validated('vespera-ingest:scan', () => ingestScan(folders().vesperaSettings())))
   handle('vespera-ingest:identify', validated('vespera-ingest:identify', args => ingestIdentify(folders().vesperaSettings(), args.session_id)))
   handle('vespera-ingest:name', validated('vespera-ingest:name', args => ingestName(folders().vesperaSettings(), args.session_id, args.name)))
-  handle('vespera-ingest:preview', validated('vespera-ingest:preview', args => ingestPreview(args.session_id, args.include)))
-  handle('vespera-ingest:transfer', validated('vespera-ingest:transfer', args => ingestTransfer(folders().vesperaSettings(), args.session_id, args.include, args.allow_duplicate ?? false)))
-  handle('vespera-ingest:resume', validated('vespera-ingest:resume', args => ingestResume(folders().vesperaSettings(), args.job_id)))
+  handle('vespera-ingest:preview', validated('vespera-ingest:preview', args => ingestPreview(folders().vesperaSettings(), args.session_id)))
+  handle('vespera-ingest:transfer', validated('vespera-ingest:transfer', args => {
+    const f = folders()
+    return ingestTransfer(f.vesperaSettings(), f.homeFolder(), args.session_ids, args.allow_duplicate ?? false)
+  }))
+  handle('vespera-ingest:resume', validated('vespera-ingest:resume', args => {
+    const f = folders()
+    return ingestResume(f.vesperaSettings(), f.homeFolder(), args.job_id)
+  }))
   handle('vespera-ingest:pause', validated('vespera-ingest:pause', () => ingestPause()))
   handle('vespera-ingest:progress', validated('vespera-ingest:progress', () => ingestProgress()))
 
