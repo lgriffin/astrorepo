@@ -36,3 +36,5 @@ export type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore, WcsHead
 export * from './use-cases/gallery'
 export type { CometStore } from './ports/comet-store'
 export * from './use-cases/plan-comet'
+export type { MessierCatalogue, MessierObject, TilePicture, TilePictures } from './ports/messier'
+export * from './use-cases/messier-mosaic'

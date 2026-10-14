@@ -49,6 +49,10 @@ flowchart LR
   UC -->|GalleryCatalogue, PaletteStore| A19[SqliteGalleryCatalogue, SqlitePaletteStore]
   A18 -->|worker thread| FS
   A19 --> DB
+  UC -->|MessierCatalogue| A22[SqliteMessierCatalogue]
+  UC -->|TilePictures| A23[NodeTilePictures]
+  A22 --> DB
+  A23 -->|ImagePixels| A18
   UC -->|CometStore| A20[SqliteCometStore]
   UC -->|Ephemeris| A21[AstronomyEngineEphemeris]
   A20 --> DB
@@ -87,7 +91,8 @@ flowchart LR
 | `makeFrameGrading` (`measureBatch`, `grade`, `setOverride`, `setNightLeftOut`, `exportCsv`, `rejected`, `reportFor`) | `measureFrame`, `binBayer`, `gradeFrames`, `rejectedPaths`, `gradesCsv` | FrameGradeStore, FrameMeasurer, GradeLimitsSource, Clock | `grades:target`, `grades:measure`, `grades:override`, `grades:leave-out-night`, `grades:export`, `grades:limits` | 019, 020 |
 | `makeArchiveTarget` (`preview`, `archive`) | `summariseWorkFolder`, `freedBytes`, `parseStackManifest`, `namedFrames`, `planArchive`, `removalChoice`, `archiveFolderName`, `archiveSpace` | ArchiveArea, ArchiveStore, FrameCatalogue, StackCatalogue (`describeTarget`), JobStore (`list`), SirilWorkspace (`contains`), Clock | `archive:preview`, `archive:run` | 022 |
 | `makeGallery` (`openFile`, `images`, `previewImage`, `palettes`, `palettePreview`, `choosePalette`) | `inspectImage`, `previewImage`, `autoStretch`, `channelSources`, `possiblePalettes`, `fieldFromWcs`, `skyOverlay` | ImagePixels, GalleryCatalogue, PaletteStore, Clock | `inspect:file`, `gallery:images`, `gallery:preview`, `gallery:palettes`, `gallery:palette-preview`, `gallery:choose-palette` | 025 |
-| `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions` and `planForward`) | `recommendations:list` | 013 |
+| `listNextActions` | `rankNextActions` | (composes `listStackingSuggestions`, `planForward`, `listMosaicGaps` and the Messier mosaic's `gapsTonight`) | `recommendations:list` | 013, 024, 032 |
+| `makeMessierMosaic` (`mosaic`, `picture`, `gapsTonight`) | `messierNumber`, `messierState`, `orderPictures`, `pictureFormat`, `messierOutlook`, `compareOutlooks`, `messierSummary`, `showsUnder`, `messierGapsTonight`, `usableHours`, `closestMoonDeg`, `moonRulesOut`, `seasonClosing`, `monthlySeason`, `previewImage` (linear) | MessierCatalogue, FrameCatalogue, TilePictures, PlanningSettings, Ephemeris, Clock | `messier:mosaic`, `messier:picture`, `recommendations:list` | 032 |
 | `planForward` | `planTonight`, `seasonClosing`, `monthlySeason`, `newMoonWindows`, `usableHours`, `channelGap`, `filterTotals`, `suggestFilter` | FrameCatalogue, TargetPositions, PlanningSettings, Ephemeris, Clock | `planning:forward` | 012, 020, 026 |
 | `makePreferredSolver`, `queueSolves`, `runSolveJob` (inside the job runner) | `chooseSolver`, `planSolves`, `fieldFromWcs`, `astapCommand`, `parseAstapResult`, `sirilSolveScript`, `parseSirilSolve`, `solveJobCommand` | PlateSolver, SolveStore, MosaicStore, ToolHub, JobStore, Clock | `sky:solve-target` | 024 |
 | `describeTargetGeometry` | `misfiledCheck`, `rotationByNight`, `groupPanels`, `overlapsAny` | SolveStore, MosaicStore (`linkPanels`) | `sky:target-geometry` | 024 |

@@ -97,6 +97,16 @@ export const DEFAULT_HORIZON: PlanningHorizon = { seasonWeeks: 52, closingDays: 
 const DAY_MS = 24 * 3600 * 1000
 
 /**
+ * The night to plan at a moment: the site's current night, or the coming one once tonight's
+ * darkness has ended. Before noon the site is still in last night.
+ */
+export async function tonightAt(now: Date, site: Site, skyOn: (night: string) => Promise<NightSky | null>): Promise<string> {
+  const night = siteNightOf(now, site.longitudeDeg)
+  const current = await skyOn(night)
+  return current && now.getTime() >= current.darkEnd.getTime() ? nightsFrom(night, 2, 1)[1] : night
+}
+
+/**
  * Forward planning from the user's site: tonight's choices, targets whose season is closing, the
  * next new-moon windows with what to shoot in them, and each target's 12-month season. Every night
  * is computed once and shared by all targets, so the cost grows with nights, not targets.
@@ -122,10 +132,7 @@ export function makePlanForward(
       return sky
     }
 
-    // Before noon the site is still in last night; once its darkness has ended, plan the coming one.
-    let tonightDate = siteNightOf(now, site.longitudeDeg)
-    const current = await skyOn(tonightDate)
-    if (current && now.getTime() >= current.darkEnd.getTime()) tonightDate = nightsFrom(tonightDate, 2, 1)[1]
+    const tonightDate = await tonightAt(now, site, skyOn)
 
     // From the start of tonight's month, so the season table marks a new moon earlier this month.
     const monthStart = new Date(`${tonightDate.slice(0, 7)}-01T00:00:00Z`)

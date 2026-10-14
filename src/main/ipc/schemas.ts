@@ -268,6 +268,7 @@ export const schemas = {
   'gallery:images': z.object({ target_id: id }),
   'gallery:preview': z.object({ target_id: id, path: z.string().min(1).max(4096) }),
   'gallery:palettes': z.object({ target_id: id }),
+  'messier:picture': z.object({ number: z.number().int().min(1).max(110), max_width: z.number().int().min(32).max(512).optional() }),
   'gallery:palette-preview': z.object({ target_id: id, palette: z.enum(PALETTE_IDS) }),
   'gallery:choose-palette': z.object({ target_id: id, palette: z.enum(PALETTE_IDS).nullable() }),
   'recipe:post-process': z.object({
