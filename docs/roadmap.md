@@ -33,7 +33,9 @@ when the code says otherwise, and the reasons are recorded here.
 | S · A stable base | The hexagon checked across every layer with a ratchet on legacy code; rules out of presenters and IPC; a contract suite on both sides of every port; EARS citations only in test titles, with 63 Gherkin scenarios; property, fuzz and mutation testing of the core. See [docs/testing](testing/) | [027](../specs/027-hexagon-hardening/requirements.md), [028](../specs/028-ears-bdd/requirements.md), [029](../specs/029-property-fuzz/requirements.md), [030](../specs/030-mutation-testing/requirements.md) | Done (PRs #52 to #57) |
 | F1 · Vespera control | A Vespera page under Files: the scope's observations over its Wi-Fi (FTP at 10.0.0.1), what is new against the PC, and a copy into each target's raw folder that never touches the scope or overwrites a file, carries on after a Wi-Fi drop, and ends in a home scan | [033](../specs/033-vespera-ftp/requirements.md) | Done |
 | F2 · Vespera ingest | Leigh's Vespera Pro FTP ingest design: every session on the scope parsed from listings alone (sessions by time and kind, runs by suffix), counted by kind with findings (missing frames, partial listings, no TIFF), its target named from the folder, observation.json, the stack's EXIF or a FITS header, and the ticked sessions copied one after another into their targets' folders, each in a folder named for what it holds (`M31/M31_2026-10-14_FIT=400_TIF=1`), resuming after a Wi-Fi drop and ending in a SHA-256 manifest. Replaces F1's list and copy: one flow on the Vespera page | [034](../specs/034-vespera-ingest/requirements.md) | In review |
-| E, F, H2, I, J, K, M | Seestar and Vespera adapters, the rest of the gallery, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: H2, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
+| H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
+| J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
+| E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
 
@@ -123,8 +125,12 @@ app has run on real data on the Windows PC and the licence is settled.
   never are. Comets are placed by a two-body orbit from the MPC's line, within an arc minute of a
   published ephemeris; the app writes the positions file and Siril does the comet registration.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
-  index and plate solves; browsing finished images across the NAS (H2) waits for where files live
-  ([#38](https://github.com/lgriffin/astrorepo/issues/38)).
+  index and plate solves. The gallery itself (H2, spec 031) reads the images folder of the home
+  folder, where the home scan already looks for finished pictures, and names each picture's object
+  from its file or folder name rather than its pixels; browsing finished images elsewhere on the
+  NAS still waits for where files live ([#38](https://github.com/lgriffin/astrorepo/issues/38)).
+  Its name matching (`readImageName` and the `ObjectCatalogue` port) is the lookup the poster (J)
+  should use for a picture's object.
 - **The inspector reads the header's solution, then the stored plate solve** (specs 025, 024).
   The overlay needs a solved field: H1 draws the grid from a FITS header's own WCS, and for a
   file without one from the solve slice D stored for its path, which has the same field shape and
@@ -172,3 +178,10 @@ with what is needed and the default used until it is answered.
 - ([#36](https://github.com/lgriffin/astrorepo/issues/36)) Whether to protect `main` with required checks.
 - ([#37](https://github.com/lgriffin/astrorepo/issues/37)) The DGX Spark's Ollama address and preferred model, for slice M.
 - ([#38](https://github.com/lgriffin/astrorepo/issues/38)) Where the raw, stacked, TIFF and finished files live today, for the import and gallery slices.
+- **The Messier poster becomes a live mosaic** (spec 032). Leigh asked for a mosaic of the Messier
+  objects with his own image files embedded, opened with a button and tied into planning so the
+  gaps show with when they can be shot. Slice J is that page first and a PNG second; Posters keeps
+  printing other collections. Tiles are found from the seeded catalogue and pictured from each
+  target's finished images, then its masters; JPEG and TIFF are drawn by the desktop host's native
+  images because the app has no decoder for them. The outlook reuses the forward plan's sky and
+  rules, and the three best gaps for tonight join Next actions.

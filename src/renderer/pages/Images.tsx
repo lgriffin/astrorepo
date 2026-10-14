@@ -1,259 +1,149 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
+import { PictureTile } from '../components/gallery/PictureTile'
+import { PictureViewer } from '../components/gallery/PictureViewer'
 import { invoke } from '../hooks/useIPC'
-import type { ImageScanResult, ImageTargetGroup, ImageFileInfo } from '@shared/types'
+import { settingsLink } from '@shared/navigation'
+import type { GalleryPictureView, GalleryView } from '@shared/types'
 
+type Sort = 'newest' | 'name' | 'object'
+
+const SORTS: { id: Sort; label: string }[] = [
+  { id: 'newest', label: 'Newest first' },
+  { id: 'name', label: 'By file name' },
+  { id: 'object', label: 'By object' }
+]
+
+const byName = (a: GalleryPictureView, b: GalleryPictureView) => a.name.localeCompare(b.name, undefined, { numeric: true })
+
+/** Pictures in the order picked; the gallery sends them newest first. */
+export function sortPictures(pictures: GalleryPictureView[], sort: Sort): GalleryPictureView[] {
+  if (sort === 'newest') return pictures
+  if (sort === 'name') return [...pictures].sort(byName)
+  // By object: named pictures by their first object, the rest after them by file name.
+  return [...pictures].sort((a, b) => {
+    const x = a.objects[0]?.label
+    const y = b.objects[0]?.label
+    if (x && y) return x.localeCompare(y, undefined, { numeric: true }) || byName(a, b)
+    if (x || y) return x ? -1 : 1
+    return byName(a, b)
+  })
+}
+
+/** Pictures whose name, folder or objects hold every word searched for. */
+export function searchPictures(pictures: GalleryPictureView[], query: string): GalleryPictureView[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return pictures
+  return pictures.filter(p => {
+    const text = [p.name, p.folder, ...p.objects.map(o => o.label)].join(' ').toLowerCase()
+    return words.every(w => text.includes(w))
+  })
+}
+
+/**
+ * The gallery (specs/031-gallery): every finished picture in the images folder as a grid, and a
+ * viewer with a side panel on what each one shows.
+ */
 export function Images(): React.ReactElement {
-  const [loading, setLoading] = useState(true)
-  const [result, setResult] = useState<ImageScanResult | null>(null)
-  const [lightbox, setLightbox] = useState<{ path: string; filename: string } | null>(null)
+  const [view, setView] = useState<GalleryView | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<Sort>('newest')
+  const [open, setOpen] = useState<string | null>(null)
 
   useEffect(() => {
-    invoke<ImageScanResult>('images:scan')
-      .then(setResult)
-      .finally(() => setLoading(false))
+    invoke<GalleryView>('gallery:browse')
+      .then(setView)
+      .catch(e => setError(e instanceof Error ? e.message : String(e)))
   }, [])
 
-  if (loading) {
+  const shown = useMemo(() => sortPictures(searchPictures(view?.pictures ?? [], query), sort), [view, query, sort])
+  const openIndex = open === null ? -1 : shown.findIndex(p => p.path === open)
+  const move = useCallback((i: number) => setOpen(shown[i]?.path ?? null), [shown])
+  const close = useCallback(() => setOpen(null), [])
+
+  if (error) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading images...</div>
+        <Card title="Gallery" className="max-w-lg">
+          <EmptyState>The gallery could not be read: {error}</EmptyState>
+        </Card>
       </PageContainer>
     )
   }
 
-  if (!result || (result.targets.length === 0 && result.unmatched.length === 0)) {
+  if (!view) {
     return (
       <PageContainer>
-        <Card title="Images" className="max-w-lg">
-          <EmptyState action={<a href="#/library" className="text-xs text-astro-accent hover:underline">Open Library</a>}>
-            No images found yet. Scan your library to find your stacked and finished images.
+        <div className="text-astro-muted">Loading pictures…</div>
+      </PageContainer>
+    )
+  }
+
+  if (!view.root) {
+    return (
+      <PageContainer>
+        <Card title="Gallery" className="max-w-lg">
+          <EmptyState action={<Link to={settingsLink('folders')} className="text-xs text-astro-accent hover:underline">Set your home folder</Link>}>
+            The gallery shows the PNG and JPEG pictures in the images folder of your home folder. No home folder is set yet, or it has no images
+            folder.
           </EmptyState>
         </Card>
       </PageContainer>
     )
   }
 
+  const named = view.pictures.filter(p => p.objects.length > 0).length
+
   return (
-    <PageContainer>
-      <div className="space-y-6">
-        <div className="text-sm text-astro-muted">
-          {result.totalImages} images across {result.targets.length} targets
-          {result.unmatched.length > 0 && ` + ${result.unmatched.length} unmatched`}
-        </div>
+    <PageContainer subtitle={`${view.pictures.length} pictures in ${view.root}, ${named} named for a catalogue object`}>
+      {view.pictures.length === 0 ? (
+        <Card title="Gallery" className="max-w-lg">
+          <EmptyState action={<button onClick={() => invoke('home:open-folder', { folder_path: view.root })} className="text-xs text-astro-accent hover:underline">Open the images folder</button>}>
+            No PNG or JPEG pictures are in the images folder yet. Save your finished pictures there, named after their object (M31.png), and they will
+            appear here.
+          </EmptyState>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="search"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by file or object, such as M31 or Orion"
+              className="flex-1 min-w-[16rem] bg-astro-surface border border-astro-border rounded px-3 py-1.5 text-sm text-astro-text placeholder:text-astro-muted focus:outline-none focus:border-astro-accent"
+            />
+            <select
+              value={sort}
+              onChange={e => setSort(e.target.value as Sort)}
+              aria-label="Sort pictures"
+              className="bg-astro-surface border border-astro-border rounded px-2 py-1.5 text-sm text-astro-text"
+            >
+              {SORTS.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            {query && <span className="text-xs text-astro-muted">{shown.length} shown</span>}
+          </div>
 
-        {result.targets.map(group => (
-          <TargetImageGroup
-            key={group.normalizedName}
-            group={group}
-            onImageClick={(img) => setLightbox(img)}
-          />
-        ))}
-
-        {result.unmatched.length > 0 && (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">
-                Unmatched Images ({result.unmatched.length})
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {result.unmatched.map((img, i) => (
-                <ImageThumbnail
-                  key={i}
-                  image={img}
-                  onClick={() => setLightbox(img)}
-                />
+          {shown.length === 0 ? (
+            <EmptyState>No picture matches “{query}”.</EmptyState>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+              {shown.map(p => (
+                <PictureTile key={p.path} picture={p} onOpen={() => setOpen(p.path)} />
               ))}
             </div>
-          </div>
-        )}
-
-        {lightbox && (
-          <ImageLightbox
-            image={lightbox}
-            onClose={() => setLightbox(null)}
-          />
-        )}
-      </div>
-    </PageContainer>
-  )
-}
-
-function TargetImageGroup({ group, onImageClick }: {
-  group: ImageTargetGroup
-  onImageClick: (img: { path: string; filename: string }) => void
-}): React.ReactElement {
-  return (
-    <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-astro-text">{group.name}</h3>
-          <span className="text-xs text-astro-muted">{group.images.length} images</span>
-        </div>
-        <button
-          onClick={() => invoke('home:open-folder', { folder_path: group.folderPath })}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-astro-muted hover:text-astro-accent border border-astro-border rounded transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
-          Open folder
-        </button>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {group.images.map((img, i) => (
-          <ImageThumbnail
-            key={i}
-            image={img}
-            onClick={() => onImageClick(img)}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ImageThumbnail({ image, onClick }: {
-  image: ImageFileInfo
-  onClick: () => void
-}): React.ReactElement {
-  const [loaded, setLoaded] = useState<{ data: string; mime: string } | null>(null)
-  const [unsupported, setUnsupported] = useState(false)
-  const [error, setError] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const loadedRef = useRef(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !loadedRef.current) {
-        loadedRef.current = true
-        invoke<{ data: string; mime: string } | { unsupported: true; filename: string } | null>('images:read', { file_path: image.path })
-          .then(result => {
-            if (!result) {
-              setError(true)
-            } else if ('unsupported' in result) {
-              setUnsupported(true)
-            } else {
-              setLoaded(result)
-            }
-          })
-          .catch(() => setError(true))
-        observer.disconnect()
-      }
-    }, { threshold: 0.1 })
-
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [image.path])
-
-  const isTiff = image.filename.toLowerCase().endsWith('.tif') || image.filename.toLowerCase().endsWith('.tiff')
-
-  return (
-    <div
-      ref={ref}
-      onClick={!unsupported && !error ? onClick : undefined}
-      className={`relative aspect-square bg-astro-bg border border-astro-border rounded overflow-hidden group ${!unsupported && !error ? 'cursor-pointer' : ''}`}
-    >
-      {loaded ? (
-        <img
-          src={`data:${loaded.mime};base64,${loaded.data}`}
-          alt={image.filename}
-          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-          onError={() => { setLoaded(null); setError(true) }}
-        />
-      ) : unsupported || isTiff ? (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2">
-          <span className="text-xs font-mono px-2 py-0.5 bg-astro-border/50 rounded text-astro-muted">TIFF</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              const dir = image.path.replace(/[\\/][^\\/]+$/, '')
-              invoke('home:open-folder', { folder_path: dir })
-            }}
-            className="text-[10px] text-astro-accent hover:underline"
-          >
-            Open folder
-          </button>
-        </div>
-      ) : error ? (
-        <div className="w-full h-full flex items-center justify-center">
-          <span className="text-xs text-astro-muted">Failed to load</span>
-        </div>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-astro-border border-t-astro-accent rounded-full animate-spin" />
+          )}
         </div>
       )}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <p className="text-[10px] text-white truncate">{image.filename}</p>
-      </div>
-    </div>
-  )
-}
 
-function ImageLightbox({ image, onClose }: {
-  image: { path: string; filename: string }
-  onClose: () => void
-}): React.ReactElement {
-  const [loaded, setLoaded] = useState<{ data: string; mime: string } | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    invoke<{ data: string; mime: string } | { unsupported: true } | null>('images:read', { file_path: image.path })
-      .then(result => {
-        if (result && 'data' in result) setLoaded(result)
-        else setError(true)
-      })
-      .catch(() => setError(true))
-  }, [image.path])
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent): void {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8"
-      onClick={onClose}
-    >
-      <div
-        className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center"
-        onClick={e => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute -top-3 -right-3 w-8 h-8 bg-astro-surface border border-astro-border rounded-full flex items-center justify-center text-astro-muted hover:text-white transition-colors z-10"
-        >
-          &times;
-        </button>
-
-        {loaded ? (
-          <img
-            src={`data:${loaded.mime};base64,${loaded.data}`}
-            alt={image.filename}
-            className="max-w-full max-h-[85vh] object-contain rounded"
-          />
-        ) : error ? (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-8">
-            <p className="text-sm text-astro-muted">Could not load image</p>
-          </div>
-        ) : (
-          <div className="bg-astro-surface border border-astro-border rounded-lg p-8">
-            <div className="w-6 h-6 border-2 border-astro-accent border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
-        <p className="mt-3 text-sm text-white/70">{image.filename}</p>
-      </div>
-    </div>
+      {openIndex >= 0 && <PictureViewer pictures={shown} index={openIndex} onMove={move} onClose={close} />}
+    </PageContainer>
   )
 }

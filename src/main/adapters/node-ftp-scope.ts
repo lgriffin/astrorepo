@@ -32,7 +32,7 @@ class Control {
   private readonly waiting: { resolve: (r: FtpReply) => void; reject: (e: Error) => void }[] = []
   private failure: Error | null = null
 
-  constructor(private readonly socket: net.Socket) {
+  constructor(private readonly socket: net.Socket, private readonly timeoutMs: number) {
     socket.setEncoding('utf8')
     socket.on('data', (text: string) => {
       try {
@@ -80,6 +80,14 @@ class Control {
     if (this.failure) return Promise.reject(this.failure)
     this.socket.write(`${line}\r\n`)
     return this.next()
+  }
+
+  /**
+   * Stops or restarts the silence timer: the control channel is quiet while a file arrives on
+   * the data connection, which has its own timer, so a long transfer must not count as silence.
+   */
+  quietWhileTransferring(quiet: boolean) {
+    this.socket.setTimeout(quiet ? 0 : this.timeoutMs)
   }
 
   destroy() {
@@ -141,26 +149,32 @@ class NodeScopeConnection implements ScopeConnection {
   }
 
   /**
-   * Runs one transfer command over a fresh data connection, handing each chunk to `sink`. Resolves
-   * with the command's first reply when the scope refused it (nothing was sent), else once the data
-   * has ended and the scope has said the transfer is complete.
+   * Runs one transfer command over a fresh data connection, handing each chunk to `sink` in order;
+   * the data connection waits while a chunk is being written. Resolves with the command's first
+   * reply when the scope refused it (nothing was sent), else once the data has ended, every chunk
+   * is written and the scope has said the transfer is complete.
    */
-  private async transfer(line: string, sink: (chunk: Buffer) => void): Promise<FtpReply | null> {
+  private async transfer(line: string, sink: (chunk: Buffer) => void | Promise<void>): Promise<FtpReply | null> {
     const data = await this.openData()
     let sinkError: unknown = null
+    let written: Promise<void> = Promise.resolve()
     const finished = new Promise<void>((resolve, reject) => {
       data.on('data', (chunk: Buffer) => {
         if (sinkError) return
-        try {
-          sink(chunk)
-        } catch (error) {
-          sinkError = error
-          data.destroy()
-        }
+        data.pause()
+        written = written
+          .then(() => (sinkError ? undefined : sink(chunk)))
+          .then(
+            () => void data.resume(),
+            error => {
+              sinkError ??= error
+              data.destroy()
+            }
+          )
       })
       data.on('timeout', () => data.destroy(new Error('The scope stopped sending.')))
       data.on('error', reject)
-      data.on('close', () => (sinkError ? reject(sinkError) : resolve()))
+      data.on('close', () => void written.then(() => (sinkError ? reject(sinkError) : resolve())))
     })
     finished.catch(() => undefined)
     let first: FtpReply
@@ -174,11 +188,14 @@ class NodeScopeConnection implements ScopeConnection {
       data.destroy()
       return first
     }
+    this.control.quietWhileTransferring(true)
     try {
       await finished
     } catch (error) {
       this.broken = true
       throw error
+    } finally {
+      this.control.quietWhileTransferring(false)
     }
     const last = replyClass(first.code) === 1 ? await this.control.next() : first
     if (replyClass(last.code) !== 2) {
@@ -256,7 +273,7 @@ export class NodeScopeFiles implements ScopeFiles {
       const why = (error as NodeJS.ErrnoException).code ?? (error as Error).message
       throw new ScopeUnreachableError(`Nothing answered at ${host}:${port} (${why}). Check the PC is on the Vespera's Wi-Fi and the scope is on.`, { cause: error })
     }
-    const control = new Control(socket)
+    const control = new Control(socket, timeoutMs)
     try {
       let greeting = await control.next()
       while (replyClass(greeting.code) === 1) greeting = await control.next()

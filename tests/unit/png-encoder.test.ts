@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { encodeGreyscalePng } from '../../src/main/fits/png-encoder'
+import { encodeGreyscalePng, encodeRgbPng } from '../../src/main/fits/png-encoder'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { readPngImage } from '../../src/main/fits/png-reader'
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -101,5 +105,25 @@ describe('PNG Encoder', () => {
     const result = encodeGreyscalePng(3, 3, pixels)
     expect(result.subarray(0, 8)).toEqual(PNG_MAGIC)
     expect(result.length).toBeGreaterThan(0)
+  })
+})
+
+describe('RGB PNG encoder', () => {
+  it('[MES-003] Given colour pixels, When encoded and read back, Then the size and every channel survive', async () => {
+    const pixels = Uint8Array.from([255, 0, 0, 0, 255, 0, 0, 0, 255, 10, 20, 30, 40, 50, 60, 70, 80, 90])
+    const encoded = encodeRgbPng(3, 2, pixels)
+    expect(encoded.subarray(0, 8)).toEqual(PNG_MAGIC)
+    expect(encoded[8 + 8 + 9]).toBe(2)
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-png-'))
+    try {
+      fs.writeFileSync(path.join(dir, 'rgb.png'), encoded)
+      const image = await readPngImage(path.join(dir, 'rgb.png'))
+      expect([image.width, image.height, image.planes.length]).toEqual([3, 2, 3])
+      expect([...image.planes[0]]).toEqual([255, 0, 0, 10, 40, 70])
+      expect([...image.planes[1]]).toEqual([0, 255, 0, 20, 50, 80])
+      expect([...image.planes[2]]).toEqual([0, 0, 255, 30, 60, 90])
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

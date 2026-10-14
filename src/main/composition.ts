@@ -2,6 +2,7 @@ import os from 'os'
 import path from 'path'
 import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
+import { MESSIER_GAPS_IN_NEXT_ACTIONS } from '@astro/domain'
 import {
   makeArchiveTarget,
   makeTargetHolds,
@@ -43,7 +44,11 @@ import {
   makeRunVesperaTransfer,
   makeScanVespera,
   makeVesperaCopyQueue,
+  makeMessierMosaic,
+  makePictureGallery,
   type Gallery,
+  type MessierMosaicService,
+  type PictureGallery,
   type JobScheduler
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
@@ -77,9 +82,13 @@ import { AstapPlateSolver, SirilPlateSolver } from './adapters/node-plate-solver
 import { NodeImagePixels } from './adapters/node-image-pixels'
 import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
 import { SqliteCometStore } from './adapters/sqlite-comet-store'
+import { SqliteMessierCatalogue } from './adapters/sqlite-messier'
+import { NodeTilePictures, type NativeThumbnailer } from './adapters/tile-pictures'
 import { settingReader } from './adapters/shared/app-settings'
 import { AppFolders } from './adapters/app-folders'
 import { NodeScopeFiles } from './adapters/node-ftp-scope'
+import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture-folder'
+import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
 
 /** The app's clock, for hosts that stamp what they show (the IPC handlers). */
 export const clock = systemClock
@@ -149,6 +158,36 @@ export function composeGallery(db: Database.Database): Gallery {
   return gallery.gallery
 }
 
+/** How the desktop host draws JPEG and TIFF; tests leave it unset, so only PNG and FITS are drawn. */
+let nativeThumbnailer: NativeThumbnailer | null = null
+
+/** Draws JPEG and TIFF tile pictures with the host's native images from now on. The app calls this at start. */
+export function drawNativeThumbnails(thumbnailer: NativeThumbnailer): void {
+  nativeThumbnailer = thumbnailer
+}
+
+/** The Messier mosaic last composed, kept so its drawn pictures survive between requests. */
+let messier: { db: Database.Database; pixels: NodeImagePixels; native: NativeThumbnailer | null; mosaic: MessierMosaicService } | null = null
+
+/**
+ * The Messier mosaic over the catalogue, the index and the image files (spec 032). One per
+ * database handle, pixel reader and thumbnailer, so pictures drawn once are not drawn again.
+ */
+export function composeMessier(db: Database.Database): MessierMosaicService {
+  if (messier?.db !== db || messier.pixels !== imagePixels || messier.native !== nativeThumbnailer) {
+    const mosaic = makeMessierMosaic({
+      messier: new SqliteMessierCatalogue(db),
+      frames: new SqliteFrameCatalogue(db),
+      pictures: new NodeTilePictures(imagePixels, nativeThumbnailer),
+      settings: new SqlitePlanningSettings(db),
+      ephemeris: new AstronomyEngineEphemeris(),
+      clock: systemClock
+    })
+    messier = { db, pixels: imagePixels, native: nativeThumbnailer, mosaic }
+  }
+  return messier.mosaic
+}
+
 /** Frame grading over the index and the FITS files (spec 019). */
 export function composeGrading(db: Database.Database) {
   return makeFrameGrading({ store: new SqliteFrameGradeStore(db), measurer: frameMeasurer, limits: new SqliteGradeLimits(db), clock: systemClock })
@@ -197,7 +236,9 @@ export function composeCore(db: Database.Database) {
       listStackingSuggestions,
       planForward,
       listMosaicGaps: makeListMosaicGaps(sky),
-      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error)
+      listMessierGaps: () => composeMessier(db).gapsTonight(MESSIER_GAPS_IN_NEXT_ACTIONS),
+      onPlanError: error => console.error('Forward planning failed; showing stacking suggestions only', error),
+      onMessierError: error => console.error('Messier gaps failed; leaving them out of Next actions', error)
     }),
     dismissSuggestion: makeDismissSuggestion({ frames, dismissals, clock: systemClock }),
     discoverTargets: makeDiscoverTargets({ frames }),
@@ -305,3 +346,27 @@ export function composeVesperaCopyQueue(run: () => VesperaIngest['run'], onFinis
 }
 
 export type Core = ReturnType<typeof composeCore>
+
+/** Shrinks gallery pictures before they go to the window (NFR-021); the app sets Electron's decoder at start. */
+let pictureShrinker: PictureShrinker | null = null
+
+/** The gallery last composed, kept so a thumbnail is checked against the last listing without walking the folder again. */
+let pictureGallery: { db: Database.Database; shrinker: PictureShrinker | null; gallery: PictureGallery } | null = null
+
+/** Shrinks gallery pictures with this from now on. The app calls this at start; tests send pictures whole. */
+export function shrinkPicturesWith(shrink: PictureShrinker): void {
+  pictureShrinker = shrink
+}
+
+/** The gallery of finished pictures (spec 031), one per database handle and shrinker. */
+export function composePictureGallery(db: Database.Database): PictureGallery {
+  if (pictureGallery?.db !== db || pictureGallery.shrinker !== pictureShrinker) {
+    const made = makePictureGallery({
+      folder: new NodePictureFolder(settingReader(db), pictureShrinker),
+      catalogue: new SqliteObjectCatalogue(db),
+      planning: new SqlitePlanningSettings(db)
+    })
+    pictureGallery = { db, shrinker: pictureShrinker, gallery: made }
+  }
+  return pictureGallery.gallery
+}

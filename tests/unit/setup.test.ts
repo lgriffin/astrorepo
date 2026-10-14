@@ -58,13 +58,15 @@ describe('Setting up', () => {
     expect(setupSteps({ ...ready, latitude: 'north' }).find(s => s.id === 'site')?.done).toBe(false)
   })
 
-  it('[UX-015] Given an empty Library, FITS files or Images page, When it is drawn, Then it says what would be there and links to the step that fills it', () => {
+  it('[UX-015] [GAL-012] Given an empty Library, FITS files or Gallery page, When it is drawn, Then it says what would be there and links to the step that fills it', () => {
     expect(read('pages/Library.tsx')).toContain("settingsLink('folders')")
-    for (const page of ['pages/FitsAnalyzer.tsx', 'pages/Images.tsx']) {
-      const source = read(page)
-      expect(source, page).toContain('<EmptyState')
-      expect(source, page).toContain('href="#/library"')
-    }
+    const fits = read('pages/FitsAnalyzer.tsx')
+    expect(fits).toContain('<EmptyState')
+    expect(fits).toContain('href="#/library"')
+    // The gallery reads the home folder's images folder, so an empty one links to where that is set.
+    const gallery = read('pages/Images.tsx')
+    expect(gallery).toContain('<EmptyState')
+    expect(gallery).toContain("settingsLink('folders')")
   })
 
   it('[UX-014] Given a setting that cannot be read, When Home is drawn, Then the checklist stays away rather than list the step as left', () => {

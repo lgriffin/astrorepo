@@ -23,6 +23,8 @@ export class TestFtpServer {
   rest = true
   /** Bytes written per chunk of a RETR. */
   chunkBytes = 64 * 1024
+  /** A pause after each chunk of a RETR, for a transfer slower than the client's silence timer. */
+  chunkDelayMs = 0
   private server: net.Server | null = null
   private readonly sockets = new Set<net.Socket>()
   port = 0
@@ -166,7 +168,10 @@ export class TestFtpServer {
             })
             continue
           }
-          for (let at = 0; at < file.length; at += this.chunkBytes) socket.write(file.subarray(at, at + this.chunkBytes))
+          for (let at = 0; at < file.length; at += this.chunkBytes) {
+            socket.write(file.subarray(at, at + this.chunkBytes))
+            if (this.chunkDelayMs > 0) await new Promise(resolve => setTimeout(resolve, this.chunkDelayMs))
+          }
           socket.end(() => reply('226 Done'))
         } else if (verb === 'QUIT') {
           reply('221 Bye')

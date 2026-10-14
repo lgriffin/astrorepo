@@ -2,6 +2,7 @@ import { unprocessedSec, type StackingSuggestion } from './stacking-readiness'
 import type { TonightPlan } from './sky'
 import type { ChannelGap } from './stacking-advice'
 import type { FilterSuggestion } from './mono-filters'
+import type { MessierGap } from './messier'
 
 /** Something worth doing next: capture a target tonight, or stack data already captured. */
 export type NextAction =
@@ -35,6 +36,7 @@ export type NextAction =
       lookedAt: number
       goalSec: number | null
     }
+  | ({ kind: 'messier-gap'; id: string } & MessierGap)
 
 /** A planned mosaic tile with no lights yet (specs/024-sky-geometry). */
 export interface MosaicTileGap {
@@ -54,15 +56,17 @@ export function captureActionId(targetId: string, night: string): string {
 /**
  * The cockpit's order of work. Captures come before stacking because a night passes and stacking
  * can happen any day: first targets whose season is closing (soonest first), then tonight's other
- * targets (most usable hours first), then planned mosaic tiles with no lights yet, then stacking
- * suggestions (most unprocessed integration first). With no usable night, only stacking remains, so a bright or cloudy-season night still
+ * targets (most usable hours first), then planned mosaic tiles with no lights yet, then Messier
+ * objects with nothing captured that are up tonight (MES-008), then stacking suggestions (most
+ * unprocessed integration first). With no usable night, only stacking remains, so a bright or cloudy-season night still
  * leads with something to do.
  */
 export function rankNextActions(
   stacking: StackingSuggestion[],
   tonight: TonightPlan | null,
   closing: { targetId: string; daysLeft: number }[],
-  tiles: MosaicTileGap[] = []
+  tiles: MosaicTileGap[] = [],
+  messier: MessierGap[] = []
 ): NextAction[] {
   const daysLeft = new Map(closing.map(c => [c.targetId, c.daysLeft]))
   const night = tonight?.night ?? ''
@@ -91,5 +95,9 @@ export function rankNextActions(
   const gaps = [...tiles]
     .sort((a, b) => (a.nights[0] ?? '9999').localeCompare(b.nights[0] ?? '9999') || a.targetName.localeCompare(b.targetName) || a.tile - b.tile)
     .map(t => ({ kind: 'mosaic-tile' as const, id: `mosaic-tile:${t.targetId}:${t.tile}`, ...t }))
-  return [...captures, ...gaps, ...stacks.map(suggestion => ({ kind: 'stack' as const, suggestion }))]
+  // A Messier gap is a capture too, but only one not already planned for tonight; the caller
+  // ranks and limits them (messierGapsTonight).
+  const capturing = new Set(captures.map(c => c.targetId))
+  const missing = messier.filter(g => !capturing.has(g.targetId)).map(g => ({ kind: 'messier-gap' as const, id: `messier-gap:${g.targetId}:${night}`, ...g }))
+  return [...captures, ...gaps, ...missing, ...stacks.map(suggestion => ({ kind: 'stack' as const, suggestion }))]
 }

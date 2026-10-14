@@ -107,6 +107,17 @@ describe('NodeScopeFiles', () => {
     await conn.close()
   })
 
+  it('[VIN-022] Given a file that takes longer to arrive than the silence timer, When it is streamed while data keeps coming, Then it is not taken as a drop and arrives whole', async () => {
+    const { server, fixture } = await ftpFixture(s => ((s.chunkBytes = 1000), (s.chunkDelayMs = 60)))
+    server.put('/user/obs/img-0001.fits', 'y'.repeat(8000))
+    const conn = await new NodeScopeFiles({ timeoutMs: 250 }).open(fixture.host, fixture.port)
+    const chunks: Uint8Array[] = []
+    await conn.retrieve('/user/obs/img-0001.fits', 0, () => undefined, c => void chunks.push(c))
+    expect(Buffer.concat(chunks).toString()).toBe('y'.repeat(8000))
+    expect((await conn.list('/user/obs')).map(e => e.name)).toEqual(['img-0001.fits'])
+    await conn.close()
+  })
+
   it('[VSP-002] Given a scope that refuses the sign-in, When it is opened, Then it fails with a reason naming the refusal', async () => {
     const { fixture } = await ftpFixture(s => void (s.refuseLogin = true))
     await expect(fixture.scope.open(fixture.host, fixture.port)).rejects.toThrow(/refused the sign-in: 530/)
