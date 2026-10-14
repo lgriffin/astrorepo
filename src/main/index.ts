@@ -3,8 +3,9 @@ import path from 'path'
 import { initDatabase } from './db/connection'
 import { registerIpcHandlers } from './ipc/handlers'
 import { startJobs } from './jobs-host'
-import { drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, useAppData } from './composition'
+import { drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData } from './composition'
 import { nativeThumbnail } from './native-thumbnails'
+import { shrinkPicture } from './picture-shrinker'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
 import createInspectWorker from './workers/inspect-worker?nodeWorker'
 import { loadCatalogueSeedData } from './services/catalogue'
@@ -42,6 +43,7 @@ app.whenReady().then(() => {
   useAppData(app.getPath('userData'))
   const measurer = measureOnWorkers(() => createMeasureWorker({}))
   const pixels = inspectOnWorkers(() => createInspectWorker({}))
+  shrinkPicturesWith(shrinkPicture)
   drawNativeThumbnails(nativeThumbnail)
   app.on('will-quit', () => {
     void measurer.dispose()

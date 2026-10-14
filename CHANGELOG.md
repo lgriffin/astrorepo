@@ -67,6 +67,14 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   whether the image is mirrored; the slider shows each image's own grid; a file is read once for
   its figures and preview, one at a time on the worker; PNGs are size-checked from the header and
   inflated no further than their stated size; a broadband LP filter gives red, green and blue, while a Seestar's LP filter stays dual-band.
+- **Gallery** (spec 031): Files → Gallery (the old Images page) shows every PNG and JPEG in the
+  images folder of the home folder, newest first, with search and sorting. Each picture's object
+  is read from its name (M31.png, m_031, Messier 31, NGC7000_HOO, Sh2-155, Andromeda Galaxy.jpg),
+  else from the folder it is in, and picking a picture opens it large beside a side panel: what
+  the object is, when it is highest at midnight and how high it climbs from your site, the frames,
+  nights and masters you have of it, and links to its target page, mosaic plan, collections and
+  its SIMBAD and Wikipedia pages. Thumbnails and the large view are shrunk in the main process
+  rather than sent whole, and the window can only ask for pictures the gallery listed.
 - **Other rigs** (spec 026): DSLR and mirrorless camera RAW (CR2, NEF, ARW, DNG and other
   TIFF-based RAW) indexed from its tags, with ISO as gain, and stacked with Siril's colour script;
   CR3 and RAF listed as found but not read. Mono lights with several filters stacked one filter at

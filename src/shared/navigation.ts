@@ -37,7 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'library', to: '/library', label: 'Library', icon: '⊟', hint: 'The folders that hold your captures, and their last scan' },
       { id: 'fits', to: '/fits-analyzer', label: 'FITS files', icon: '◈', hint: 'What the headers say, file by file' },
-      { id: 'images', to: '/images', label: 'Images', icon: '▢', hint: 'Your stacked and finished images' },
+      { id: 'images', to: '/images', label: 'Gallery', icon: '▢', hint: 'Your finished pictures, and what each one shows' },
       { id: 'calibration', to: '/calibration', label: 'Calibration', icon: '◇', hint: 'Darks, flats and biases, and which lights they cover' }
     ]
   },

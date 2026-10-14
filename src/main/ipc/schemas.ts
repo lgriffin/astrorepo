@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { PALETTE_IDS } from '@astro/domain'
+import { PALETTE_IDS, REFERENCE_SITES } from '@astro/domain'
+import { GALLERY_VIEW_WIDTH } from '@shared/gallery'
 
 const objectTypes = [
   'galaxy', 'emission_nebula', 'reflection_nebula', 'planetary_nebula', 'dark_nebula',
@@ -155,8 +156,9 @@ export const schemas = {
     structure: z.record(z.unknown())
   }),
 
-  'images:scan': z.object({}).optional(),
-  'images:read': z.object({ file_path: z.string().min(1) }),
+  'gallery:details': z.object({ path: z.string().min(1).max(4096) }),
+  'gallery:picture': z.object({ path: z.string().min(1).max(4096), max_width: z.number().int().min(64).max(GALLERY_VIEW_WIDTH) }),
+  'gallery:open-reference': z.object({ object_id: id, site: z.enum(REFERENCE_SITES) }),
 
   'relationships:create': z.object({
     source_target_id: id,
