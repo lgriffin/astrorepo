@@ -23,7 +23,7 @@ const DEFAULT_TIMEOUT_MS = 10_000
  * Commands this adapter may send, and nothing else: none of them can remove, rename or write a
  * file on the scope (VSP-005). `send` refuses anything not on the list.
  */
-export const READ_ONLY_COMMANDS: ReadonlySet<string> = new Set(['USER', 'PASS', 'TYPE', 'EPSV', 'PASV', 'CWD', 'MLSD', 'LIST', 'RETR', 'QUIT'])
+export const READ_ONLY_COMMANDS: ReadonlySet<string> = new Set(['USER', 'PASS', 'TYPE', 'EPSV', 'PASV', 'CWD', 'MLSD', 'LIST', 'REST', 'RETR', 'QUIT'])
 
 const describe = (reply: FtpReply) => `${reply.code} ${reply.text}`.trim()
 
@@ -108,7 +108,7 @@ function connect(host: string, port: number, timeoutMs: number): Promise<net.Soc
   })
 }
 
-class NodeScopeConnection implements ScopeConnection {
+export class NodeScopeConnection implements ScopeConnection {
   private extendedPassive = true
   private mlsd = true
   /** Set once a transfer was cut short; the control channel may then be out of step, so it is not used again. */
@@ -243,6 +243,23 @@ class NodeScopeConnection implements ScopeConnection {
       await fs.promises.rm(partial, { force: true })
       throw error
     }
+  }
+
+  /**
+   * Streams a file from `offset` to `onChunk`, asking the scope to start there with REST; when it
+   * will not, the bytes start at 0. `onStart` hears where they start before the first byte comes.
+   * Resolves once the scope says the transfer is complete (spec 034, VIN-024). Writes nothing on the PC.
+   */
+  async retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Buffer) => void): Promise<void> {
+    this.usable()
+    let from = 0
+    if (offset > 0) {
+      const rest = await this.control.command(`REST ${Math.trunc(offset)}`)
+      if (rest.code === 350) from = Math.trunc(offset)
+    }
+    onStart(from)
+    const refused = await this.transfer(`RETR ${remote}`, onChunk)
+    if (refused) throw new Error(`The scope would not send ${remote}: ${describe(refused)}`)
   }
 
   async close(): Promise<void> {

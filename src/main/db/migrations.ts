@@ -557,18 +557,6 @@ export function runMigrations(sqlite: Database.Database): void {
       updated_at TEXT NOT NULL
     );
   `)
-
-  // Migration: copies planned from a Vespera Pro, one row per destination folder (VIN-016)
-  sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS vespera_transfers (
-      id TEXT PRIMARY KEY,
-      session_id TEXT NOT NULL,
-      state TEXT NOT NULL,
-      job TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

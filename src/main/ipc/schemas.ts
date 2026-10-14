@@ -383,6 +383,19 @@ export const schemas = {
   'vespera:progress': z.object({}).optional(),
   'vespera:cancel': z.object({}).optional(),
 
+  'vespera-ingest:scan': z.object({}).optional(),
+  'vespera-ingest:identify': z.object({ session_id: z.string().min(1).max(255) }),
+  'vespera-ingest:name': z.object({ session_id: z.string().min(1).max(255), name: z.string().min(1).max(120) }),
+  'vespera-ingest:preview': z.object({ session_id: z.string().min(1).max(255), include: z.array(z.enum(['fits', 'tiff', 'jpeg', 'json'])).max(4) }),
+  'vespera-ingest:transfer': z.object({
+    session_id: z.string().min(1).max(255),
+    include: z.array(z.enum(['fits', 'tiff', 'jpeg', 'json'])).min(1).max(4),
+    allow_duplicate: z.boolean().optional()
+  }),
+  'vespera-ingest:resume': z.object({ job_id: z.string().min(1).max(4096) }),
+  'vespera-ingest:pause': z.object({}).optional(),
+  'vespera-ingest:progress': z.object({}).optional(),
+
   'db:reset': z.object({}).optional(),
 
   'insights:summary': z.object({}).optional(),

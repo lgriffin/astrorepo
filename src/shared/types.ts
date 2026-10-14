@@ -1608,3 +1608,58 @@ export interface VesperaProgressView {
   /** What indexing the copies is doing, once a copy brought files in. */
   indexing: string | null
 }
+
+// ── Vespera ingest (spec 034) ──────────────────────────────────────────
+
+export type IngestKindView = 'fits' | 'tiff' | 'jpeg' | 'json'
+
+export interface IngestFindingView {
+  level: 'info' | 'warn' | 'error'
+  code: string
+  message: string
+}
+
+/** One session on the scope, as the review table shows it. */
+export interface IngestSessionView {
+  id: string
+  kind: string
+  /** "15 Jun 2024, 21:00", or null when the folder has no date. */
+  when: string | null
+  date: string | null
+  label: string | null
+  target: { name: string; confidence: string; review: boolean; evidence: string[] }
+  counts: { fits: number; tiff: number; jpeg: number; json: number; other: number }
+  runs: { folder: string; fits: number; tiff: number; jpeg: number; json: number; other: number }[]
+  size: string
+  worst: 'info' | 'warn' | 'error' | null
+  findings: IngestFindingView[]
+  /** Transfer is on: no error finding and a named target. */
+  transferable: boolean
+  /** Only observations are offered for transfer by default; the rest are shown folded. */
+  deepSky: boolean
+  /** The latest transfer of this session, when there is one. */
+  job: IngestJobView | null
+}
+
+export type IngestScanView =
+  | { ok: true; address: string; destinationRoot: string | null; expertMode: boolean; sessions: IngestSessionView[]; summary: string }
+  | { ok: false; error: string }
+
+export interface IngestJobView {
+  id: string
+  sessionId: string
+  folder: string
+  state: 'planned' | 'running' | 'paused' | 'verifying' | 'done' | 'failed'
+  /** "12 of 400 files, 50.4 MB of 1.7 GB". */
+  headline: string
+  fraction: number
+  current: string | null
+  reason: string | null
+  findings: IngestFindingView[]
+  manifestPath: string | null
+}
+
+export type IngestPlanView =
+  | { status: 'started' | 'resumed'; job: IngestJobView }
+  | { status: 'refused'; folder: string; message: string }
+  | { status: 'blocked'; reason: string }

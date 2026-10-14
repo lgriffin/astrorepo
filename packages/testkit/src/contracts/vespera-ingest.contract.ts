@@ -15,8 +15,8 @@ export interface ScopeFixture {
   scope: VesperaScope
   /** Every command the adapter sent, verb first ("LIST user", "RETR …", "REST 4"). */
   commands: () => string[]
-  /** Drops the link before the next command. */
-  drop: () => void
+  /** Takes the scope off the network: the next command finds nothing there. */
+  drop: () => Promise<void> | void
 }
 
 /**
@@ -56,7 +56,7 @@ export function vesperaScopeContract(adapterName: string, make: (files: Record<s
 
     it('[VIN-022] Given the link drops, When the scope is listed, Then the adapter fails with ScopeDisconnectedError', async () => {
       const { scope, drop } = await make(files)
-      drop()
+      await drop()
       await expect(scope.list('user')).rejects.toBeInstanceOf(ScopeDisconnectedError)
     })
 

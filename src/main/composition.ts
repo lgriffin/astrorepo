@@ -39,6 +39,10 @@ import {
   makePlanComet,
   makeSetCometOrbit,
   makeVesperaControl,
+  makeIdentifyTarget,
+  makePlanVesperaTransfer,
+  makeRunVesperaTransfer,
+  makeScanVespera,
   type Gallery,
   type VesperaControl,
   type JobScheduler
@@ -47,6 +51,10 @@ import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
 import { SqliteDismissalStore } from './adapters/sqlite-dismissal-store'
 import { SqliteFileHashStore, SqliteFileIndex } from './adapters/sqlite-file-hashing'
 import { NodeContentHasher } from './adapters/node-content-hasher'
+import { FtpVesperaScope } from './adapters/ftp-vespera-scope'
+import { NodeIngestDisk } from './adapters/node-ingest-disk'
+import { NodeVesperaMetadata } from './adapters/vespera-metadata'
+import { FileVesperaTransferStore, TRANSFER_INDEX_FILE } from './adapters/file-vespera-transfers'
 import { NodeSirilWorkspace } from './adapters/node-siril-workspace'
 import { systemClock } from './adapters/system-clock'
 import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
@@ -277,5 +285,25 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
 export function composeVespera(onCopied: (landingRoot: string, targets: string[]) => Promise<void> | void): VesperaControl {
   return makeVesperaControl({ scope: new NodeScopeFiles(), landing: new NodeLandingArea(), clock: systemClock, onCopied })
 }
+
+/**
+ * The Vespera ingest (spec 034) on the scope at `host`: scan, name, plan and copy, over the FTP
+ * connection of spec 033. Transfers are indexed at the top of the folder copies land in.
+ */
+export function composeVesperaIngest(host: string, port: number, landingRoot: string | null) {
+  const scope = new FtpVesperaScope(new NodeScopeFiles(), host, port)
+  const disk = new NodeIngestDisk()
+  const store = new FileVesperaTransferStore(landingRoot === null ? null : path.join(landingRoot, TRANSFER_INDEX_FILE))
+  return {
+    store,
+    disk,
+    scan: makeScanVespera({ scope, clock: systemClock }),
+    identify: makeIdentifyTarget({ scope, metadata: new NodeVesperaMetadata() }),
+    plan: makePlanVesperaTransfer({ disk, store, clock: systemClock }),
+    run: makeRunVesperaTransfer({ scope, disk, hasher: new NodeContentHasher(), store, clock: systemClock })
+  }
+}
+
+export type VesperaIngest = ReturnType<typeof composeVesperaIngest>
 
 export type Core = ReturnType<typeof composeCore>

@@ -36,6 +36,7 @@ import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView
 import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { startVesperaCopy, vespera, vesperaIndexing } from '../vespera-host'
+import { ingestIdentify, ingestName, ingestPause, ingestPreview, ingestProgress, ingestResume, ingestScan, ingestTransfer } from '../vespera-ingest-host'
 import { indexingText, toVesperaProgressView, toVesperaSettingsView, toVesperaSurveyView } from '../adapters/vespera-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
@@ -645,6 +646,17 @@ export function registerIpcHandlers(): void {
   handle('vespera:progress', validated('vespera:progress', () => toVesperaProgressView(vespera().progress(), indexingText(vesperaIndexing()))))
 
   handle('vespera:cancel', validated('vespera:cancel', () => ({ cancelled: vespera().cancel() })))
+
+  // The Vespera ingest (spec 034): review each session's counts and findings, then one transfer
+  // into a folder named for what it holds. The scope is only read; copies land where Settings says.
+  handle('vespera-ingest:scan', validated('vespera-ingest:scan', () => ingestScan(folders().vesperaSettings())))
+  handle('vespera-ingest:identify', validated('vespera-ingest:identify', args => ingestIdentify(folders().vesperaSettings(), args.session_id)))
+  handle('vespera-ingest:name', validated('vespera-ingest:name', args => ingestName(folders().vesperaSettings(), args.session_id, args.name)))
+  handle('vespera-ingest:preview', validated('vespera-ingest:preview', args => ingestPreview(args.session_id, args.include)))
+  handle('vespera-ingest:transfer', validated('vespera-ingest:transfer', args => ingestTransfer(folders().vesperaSettings(), args.session_id, args.include, args.allow_duplicate ?? false)))
+  handle('vespera-ingest:resume', validated('vespera-ingest:resume', args => ingestResume(folders().vesperaSettings(), args.job_id)))
+  handle('vespera-ingest:pause', validated('vespera-ingest:pause', () => ingestPause()))
+  handle('vespera-ingest:progress', validated('vespera-ingest:progress', () => ingestProgress()))
 
   handle('jobs:queue-syqon', validated('jobs:queue-syqon', args => {
     const rawPath = targetRawPath(args.target_id)

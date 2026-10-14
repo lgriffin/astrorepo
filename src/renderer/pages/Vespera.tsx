@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState, LinkButton } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
+import { IngestPanel } from '../components/vespera/IngestPanel'
 import type { VesperaObservationView, VesperaProgressView, VesperaSettingsView, VesperaSurveyView } from '@shared/types'
 import { settingsLink } from '@shared/navigation'
 
@@ -241,6 +242,8 @@ export function Vespera(): React.ReactElement {
           )}
           {message && <p className="text-xs text-red-400 mt-2">{message}</p>}
         </Card>
+
+        <IngestPanel />
 
         {progress && progress.state !== 'idle' && (
           <Card

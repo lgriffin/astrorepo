@@ -19,6 +19,8 @@ export class TestFtpServer {
   refuseLogin = false
   /** A file whose transfer is cut off after its first chunk. */
   dropAt: string | null = null
+  /** Off: REST is unknown, so a client must fetch a file again from its start. */
+  rest = true
   /** Bytes written per chunk of a RETR. */
   chunkBytes = 64 * 1024
   private server: net.Server | null = null
@@ -41,6 +43,11 @@ export class TestFtpServer {
     await new Promise<void>(resolve => this.server!.listen(0, '127.0.0.1', resolve))
     this.port = (this.server.address() as net.AddressInfo).port
     return this.port
+  }
+
+  /** Cuts every connection, as a scope whose Wi-Fi went away does; the server keeps listening. */
+  hangUp(): void {
+    for (const s of this.sockets) s.destroy()
   }
 
   async stop(): Promise<void> {
@@ -75,6 +82,7 @@ export class TestFtpServer {
   private session(control: net.Socket) {
     this.track(control)
     let cwd = '/'
+    let restAt = 0
     let data: Promise<net.Socket> | null = null
     const reply = (text: string) => control.write(`${text}\r\n`)
     const resolve = (p: string) => {
@@ -135,8 +143,16 @@ export class TestFtpServer {
           const socket = await data!
           reply('150 Here it comes')
           socket.end(this.listing(dir, verb), () => reply('226 Done'))
+        } else if (verb === 'REST') {
+          if (!this.rest || !/^\d+$/.test(arg)) reply('502 REST not implemented')
+          else {
+            restAt = Number(arg)
+            reply(`350 Restarting at ${restAt}`)
+          }
         } else if (verb === 'RETR') {
-          const file = this.files.get(resolve(arg))
+          const whole = this.files.get(resolve(arg))
+          const file = whole?.subarray(Math.min(restAt, whole.length))
+          restAt = 0
           if (!file) {
             reply('550 No such file')
             continue
