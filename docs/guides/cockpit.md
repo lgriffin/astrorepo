@@ -538,38 +538,9 @@ a target or trying out a plan links nothing.
 
 ## The gallery
 
-**Files → Gallery** shows every PNG and JPEG in the `images` folder of your home folder, and in
-the folders inside it, as a grid of thumbnails, newest first. Search by file or object name, or
-sort by file name or by object. Hidden folders and links are left out (an `images` folder that is
-itself a link is not shown), and nothing in the folder is ever moved or renamed.
-
-Each picture is captioned with the object it shows, read from its name:
-
-- Catalogue designations in any form: `M31.png`, `m_031.png`, `Messier 31.jpg`, `NGC7000_HOO.png`,
-  `IC 434.png`, `Sh2-155.png`, `C14.png` (Caldwell). Dates, exposures and gains such as
-  `20241001` or `10.0s` are never read as objects, nor is a number past a catalogue's end.
-- Common names and aliases from the catalogue, as whole words: `Andromeda Galaxy.png`,
-  `AndromedaGalaxy.png`, `Bodes Galaxy.png`.
-- When the file's name names nothing (`final.png`), the folder it is in: `M42/final.png`.
-
-Pick a picture to see it large, with the arrow keys moving through the grid. The side panel says,
-for each object the name names:
-
-- **What it is**: a sentence such as "A galaxy in Andromeda, magnitude 3.4, 3°, about 6 full moons
-  across.", then its type, constellation, magnitude, size, position and other names.
-- **When to image it**: the month it is highest at midnight, how high it climbs from your site
-  (or that it never rises there; without a site, a link to set one), and whether a dual-band or
-  narrowband filter suits it.
-- **Your data**: light frames, integration, nights and the last of them, masters and its stage.
-- **Explore**: its page (Overview, Files with compare, Stack and process, Notes and nights), its
-  mosaic plan in the Sky planner, the collections it is in, its folder, and its pages on
-  Wikipedia and SIMBAD, opened in your browser.
-
-A picture named for an object the app's catalogues do not hold says so; add it as a target and the
-gallery picks it up next time. Thumbnails are made 400 pixels wide and the large view 2048, by the
-system's own thumbnailer on Windows, so a folder of large exports stays quick. A picture saved
-after the gallery was opened shows once you open the gallery again. The gallery only shows; the
-counts and cover pictures on each target come from **Rescan** on the Library page.
+**Files → Gallery** shows the finished pictures in the `images` folder of your home folder, each
+captioned with the object its name names, with a side panel on that object. It has its own guide:
+[The gallery](gallery.md).
 
 ## Inspecting an image
 
@@ -714,65 +685,6 @@ usually a few arc seconds. For a comet seen months from that date, paste the lat
 
 ## Copying from the Vespera
 
-The Vespera keeps its observations on its own storage and serves them over its Wi-Fi. **Files →
-Vespera** looks at what each session holds before anything is copied, then copies the ones you
-tick without an FTP client (specs 033 and 034, after Leigh's ingest design).
-
-1. Join the PC to the Vespera's Wi-Fi.
-2. Check the **Connection** card: the scope's address (10.0.0.1 unless you changed it), where
-   copies land, and the kinds of file to copy. FITS frames and the TIFF stack are copied by
-   default; tick JPEG for the scope's previews and JSON for its metadata.
-3. Press **Scan the scope** on the **On the Vespera** card. Every session under `user` is listed
-   newest first with its FITS, TIFF and JPEG counts and how much a copy of the chosen kinds
-   takes. Only listings are read, nothing is downloaded. Auto-init and sun sessions are folded
-   away; tick **Show auto-init, sun and other sessions** to see them.
-4. Open a session. Its runs (`01-images-initial`, `04-images-adjust-framing` …) show their own
-   counts, and its findings say what looks wrong:
-   - **Error**: no image run at all, or more JPEGs than FITS (the listing was partial or files
-     are missing). The session cannot be ticked.
-   - **Check**: an image run with no images, no TIFF (TIFF export was off), FITS frames missing
-     from the sequence, or a run whose folder name Windows would not keep (it stays on the scope).
-   - **Note**: frames left out of the stack, no FITS (raw saving was off), sidecar JSON that does
-     not match the JPEGs, files or runs astrorepo does not know.
-5. Check the target. It comes from the folder's name (`…_observation_NGC3372` is NGC 3372); a
-   name that is not a catalogue designation, such as `moon`, is marked `?`. **Check the scope's
-   metadata** reads observation.json, then the last stack's EXIF, then a FITS header, and says if
-   they disagree. Type a name (`M 31`, `Jellyfish Nebula`) and **Use this name** to set your own.
-   The open session shows where its copy goes: `<where copies land>/M31/M31_2026-10-14_FIT=400_TIF=1`,
-   the target's folder and then a folder named for the target, the date and the counts of each
-   kind copied (a kind with no files, such as TIFF on a night without one, is left out).
-6. Observations that can be copied and are not on the PC yet are ticked. The line under the
-   table says how much the ticked sessions take and how much room is free where copies land.
-   Press **Copy selected**. Sessions copy one after another; files come one at a time, FITS
-   first, each into a `.part` file that takes its name only when it is as long as the scope
-   listed. The progress shows the session of how many, the file, the bytes done, the speed and
-   the time left. **Pause** stops after the current file, and the sessions after it wait.
-
-Copies land in **Settings → Folders → Vespera copies**, or in the home folder's `raw` folder
-when that is not set. When a copy ends, the app runs the home scan, so the frames show on their
-target, in Next actions and in the stacking plan (after any home scan already running); a
-landing folder anywhere else is scanned on its own and shows under FITS files.
-
-If the Wi-Fi drops, the copy pauses and keeps its `.part` file; open the session and press
-**Resume**. It lists the session again, carries on from the first file not yet copied, and starts
-the partial file from where it stopped when the scope allows it. A session that grew while
-paused (it was still running) is noted; the folder keeps its name and the copy keeps to what was
-planned. If the landing disk is short of room, the copy pauses before fetching anything and says
-how much more is needed.
-
-When every file of a session is in, astrorepo hashes each copy with SHA-256 and writes
-`astrorepo.manifest.json` in its folder: the session, the target and why, the kinds and counts,
-each file's path, size and hash, and the findings. The row then says **In the repository**.
-Every copy is also listed in `astrorepo.transfers.json` at the top of the landing folder.
-
-What the copy never does:
-
-- change anything on the scope. It only lists and reads; the scope's own app, Singularity, is
-  where observations are deleted.
-- copy into a folder that holds another session. That session is skipped and the progress says
-  why; **Use the next free name** copies it into `…_2`.
-- leave half a file under its own name.
-
-The Vespera's FTP layout was read from Leigh's scope's `user` listing; the keys inside
-observation.json and the TIFF file name with TIFF export on have not yet been seen on a real
-scope ([#23](https://github.com/lgriffin/astrorepo/issues/23)).
+**Files → Vespera** reviews what each session on the Vespera holds and copies the ones you tick
+over its Wi-Fi, never changing anything on the scope. It has its own guide:
+[Copying from the Vespera](vespera.md).
