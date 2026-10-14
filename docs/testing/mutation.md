@@ -43,6 +43,11 @@ sharper tests then brought every one of those files to between 84% and 100% on i
 whole-core re-run that followed killed 5,598 of 6,276 valid mutants: **89.2%** (domain 88.3%,
 application 92.7%), with no file under 80%.
 
+The October features (specs 031 to 034) were re-run on 2026-10-14: 87.5% over their 13 files,
+with the Messier mosaic's use case at 72%, under the floor, because Stryker's break looked only at
+a run's overall score. Sharper tests took each new file to between 95% and 100%, and the gate now
+holds every file to the floor on its own.
+
 `DEFAULT_BREAK` is **80**, Leigh's minimum, for the whole core and for each changed-files run. A
 pull request that touches a core file must keep that file's tests sharp enough to stay above it.
 The floor is a ratchet: raise it as survivors are killed, and never lower it to get a pull request
