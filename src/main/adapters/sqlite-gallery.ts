@@ -1,9 +1,9 @@
 import fs from 'fs'
-import path from 'path'
 import type Database from 'better-sqlite3'
 import type { GalleryCatalogue, GalleryImage, PaletteStore } from '@astro/application'
 import { PALETTE_IDS, type CatalogueObject, type FilterIntegration, type PaletteId } from '@astro/domain'
 import { IS_INTEGRATED_LIGHT, IS_LIGHT, parseUtc } from './shared/sql'
+import { imagesFolderOf, listFolderImages } from './shared/images-folder'
 
 /** Finished images the inspector can read: FITS, and PNG as Siril_Scripts and most editors export. */
 const FINISHED = /\.(png|fits?|fts)$/i
@@ -53,33 +53,9 @@ export class SqliteGalleryCatalogue implements GalleryCatalogue {
 
   /** PNG and FITS files in the target's images folder and the folders directly inside it. */
   private finished(targetId: string): GalleryImage[] {
-    const row = this.db.prepare('SELECT images_path FROM target_home_data WHERE target_id = ?').get(targetId) as { images_path: string | null } | undefined
-    const dir = row?.images_path
+    const dir = imagesFolderOf(this.db, targetId)
     if (!dir) return []
-    const out: GalleryImage[] = []
-    const list = (folder: string, depth: number) => {
-      let entries: fs.Dirent[]
-      try {
-        entries = fs.readdirSync(folder, { withFileTypes: true })
-      } catch {
-        return
-      }
-      for (const e of entries) {
-        const full = path.join(folder, e.name)
-        if (e.isDirectory() && depth === 0) list(full, 1)
-        else if (e.isFile() && FINISHED.test(e.name)) {
-          let modifiedAt: Date
-          try {
-            modifiedAt = fs.statSync(full).mtime
-          } catch {
-            continue
-          }
-          out.push({ path: full, name: e.name, kind: 'finished', filter: null, colour: null, modifiedAt })
-        }
-      }
-    }
-    list(dir, 0)
-    return out
+    return listFolderImages(dir, FINISHED).map(f => ({ path: f.path, name: f.name, kind: 'finished', filter: null, colour: null, modifiedAt: f.modifiedAt }))
   }
 
   async filterIntegration(targetId: string): Promise<FilterIntegration[]> {

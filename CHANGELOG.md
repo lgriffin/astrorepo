@@ -12,6 +12,11 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Messier mosaic** (spec 032): all 110 Messier objects under Collections, opened from Home and
+  Posters too, each tile showing your own newest finished image (or a stretched master), how far
+  the object has come, and when a gap is up from your site: tonight with the moon and a closing
+  season, held back by a bright moon, a later month, or never. The three best gaps for tonight
+  join Next actions, and **Save as image** saves the mosaic as one PNG.
 - **Frame grading** (spec 019): every light measured for FWHM, eccentricity, stars, background,
   noise and SNR, graded against limits in Settings and its own night, kept or rejected by hand,
   exported as CSV; only kept lights go to Siril.

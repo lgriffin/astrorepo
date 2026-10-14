@@ -41,7 +41,7 @@ const tonight = (...choices: [string, number][]): TonightPlan => ({
 })
 
 const labels = (actions: ReturnType<typeof rankNextActions>) =>
-  actions.map(a => (a.kind === 'capture' ? `shoot ${a.targetName}` : a.kind === 'stack' ? `stack ${a.suggestion.targetName}` : `tile ${a.tile}`))
+  actions.map(a => (a.kind === 'capture' ? `shoot ${a.targetName}` : a.kind === 'stack' ? `stack ${a.suggestion.targetName}` : a.kind === 'mosaic-tile' ? `tile ${a.tile}` : `messier ${a.number}`))
 
 describe('rankNextActions', () => {
   it('[DSC-007] Given captures and stacks, When ranked, Then closing seasons lead, then other captures by hours, then stacks by waiting integration', () => {
@@ -114,5 +114,18 @@ describe('rankNextActions', () => {
     const [m31] = rankNextActions([], { ...plan, choices: plan.choices.map(c => ({ ...c, filter })) }, [])
     expect(m31.kind === 'capture' && m31.filter).toEqual(filter)
     expect(m31.kind === 'capture' && m31.closesInDays).toBeNull()
+  })
+
+  it('[MES-008] Given Messier gaps up tonight, When ranked, Then they come after captures and mosaic tiles and before stacking, in the order given, and one already a capture is left out', () => {
+    const messier = (n: number, targetName: string, hours: number) => ({ number: n, designation: `M${n}`, targetId: `target-${targetName}`, targetName, usableHours: hours, moonSeparationDeg: null, closesInDays: null })
+    const tile = { targetId: 'id-M 31', targetName: 'M 31', tile: 2, of: 4, nights: ['2026-10-10'], lookedAt: 30, goalSec: null }
+    const ranked = rankNextActions([ready('M42', 3)], tonight(['M13', 2]), [], [tile], [messier(51, 'M51', 6), messier(13, 'M13', 5), messier(101, 'M101', 4)])
+    expect(ranked.map(a => (a.kind === 'messier-gap' ? `gap ${a.targetName}` : a.kind))).toEqual(['capture', 'mosaic-tile', 'gap M51', 'gap M101', 'stack'])
+    expect(ranked[2]).toEqual({ kind: 'messier-gap', id: 'messier-gap:target-M51:2026-09-29', number: 51, designation: 'M51', targetId: 'target-M51', targetName: 'M51', usableHours: 6, moonSeparationDeg: null, closesInDays: null })
+  })
+
+  it('[MES-008] Given Messier gaps and no plan for tonight, When ranked, Then they still lead stacking', () => {
+    const ranked = rankNextActions([ready('M42', 3)], null, [], [], [{ number: 51, designation: 'M51', targetId: 't51', targetName: 'M51', usableHours: 6, moonSeparationDeg: 20, closesInDays: 3 }])
+    expect(ranked.map(a => a.kind)).toEqual(['messier-gap', 'stack'])
   })
 })

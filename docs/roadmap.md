@@ -32,7 +32,8 @@ when the code says otherwise, and the reasons are recorded here.
 | O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels stacked per filter, with the filter to shoot tonight; comets placed in every light and stacked on their motion. Each part shows only when such frames or settings exist | [026](../specs/026-other-rigs/requirements.md) | Done |
 | S · A stable base | The hexagon checked across every layer with a ratchet on legacy code; rules out of presenters and IPC; a contract suite on both sides of every port; EARS citations only in test titles, with 63 Gherkin scenarios; property, fuzz and mutation testing of the core. See [docs/testing](testing/) | [027](../specs/027-hexagon-hardening/requirements.md), [028](../specs/028-ears-bdd/requirements.md), [029](../specs/029-property-fuzz/requirements.md), [030](../specs/030-mutation-testing/requirements.md) | Done (PRs #52 to #57) |
 | H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
-| E, F, I, J, K, M | Seestar and Vespera adapters, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
+| J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
+| E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
 
@@ -160,3 +161,10 @@ with what is needed and the default used until it is answered.
 - ([#36](https://github.com/lgriffin/astrorepo/issues/36)) Whether to protect `main` with required checks.
 - ([#37](https://github.com/lgriffin/astrorepo/issues/37)) The DGX Spark's Ollama address and preferred model, for slice M.
 - ([#38](https://github.com/lgriffin/astrorepo/issues/38)) Where the raw, stacked, TIFF and finished files live today, for the import and gallery slices.
+- **The Messier poster becomes a live mosaic** (spec 032). Leigh asked for a mosaic of the Messier
+  objects with his own image files embedded, opened with a button and tied into planning so the
+  gaps show with when they can be shot. Slice J is that page first and a PNG second; Posters keeps
+  printing other collections. Tiles are found from the seeded catalogue and pictured from each
+  target's finished images, then its masters; JPEG and TIFF are drawn by the desktop host's native
+  images because the app has no decoder for them. The outlook reuses the forward plan's sky and
+  rules, and the three best gaps for tonight join Next actions.

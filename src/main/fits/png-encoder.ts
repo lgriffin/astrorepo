@@ -69,3 +69,19 @@ export function encodeGreyscalePng(width: number, height: number, pixels: Uint8A
 
   return Buffer.concat([PNG_MAGIC, ihdrChunk, idatChunk, iendChunk])
 }
+
+/** An 8-bit RGB PNG from pixels interleaved red, green, blue, row by row from the top. */
+export function encodeRgbPng(width: number, height: number, pixels: Uint8Array): Buffer {
+  const ihdrData = Buffer.alloc(13)
+  ihdrData.writeUInt32BE(width, 0)
+  ihdrData.writeUInt32BE(height, 4)
+  ihdrData[8] = 8 // bit depth
+  ihdrData[9] = 2 // color type: truecolour
+  const stride = width * 3
+  const raw = Buffer.alloc(height * (1 + stride))
+  for (let y = 0; y < height; y++) {
+    // Filter byte 0 (None), then the row as it is.
+    raw.set(pixels.subarray(y * stride, (y + 1) * stride), y * (1 + stride) + 1)
+  }
+  return Buffer.concat([PNG_MAGIC, makeChunk('IHDR', ihdrData), makeChunk('IDAT', zlib.deflateSync(raw)), makeChunk('IEND', Buffer.alloc(0))])
+}

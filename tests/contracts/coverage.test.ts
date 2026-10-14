@@ -29,7 +29,9 @@ const NOT_PORTS: Record<string, string> = {
   ProbeResult: 'what ToolProbe.run returns',
   PictureFile: 'what PictureFolder lists',
   Picture: 'what PictureFolder.read returns',
-  ObjectFacts: 'what ObjectCatalogue.objectFacts returns'
+  ObjectFacts: 'what ObjectCatalogue.objectFacts returns',
+  MessierObject: 'what MessierCatalogue lists',
+  TilePicture: 'what TilePictures.draw returns'
 }
 
 const read = (dir: string, suffix: string) =>

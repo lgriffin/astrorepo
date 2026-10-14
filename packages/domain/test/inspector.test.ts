@@ -226,6 +226,41 @@ describe('Previews', () => {
   })
 })
 
+describe('a preview with the image’s own tones', () => {
+  it('[MES-003] Given a finished colour image, When previewed linearly, Then each value maps from black to the ceiling alike in every channel, and the colour stays', () => {
+    const r = new Float32Array([0, 255, 128, 64])
+    const g = new Float32Array([0, 0, 128, 64])
+    const b = new Float32Array([255, 0, 128, 300])
+    const p = previewImage({ width: 2, height: 2, planes: [r, g, b], bayer: null, saturation: 255, black: 0, bottomUp: false }, { stretch: 'linear' })
+    expect(p).toMatchObject({ width: 2, height: 2, channels: 3, scale: 1, sourceWidth: 2, sourceHeight: 2 })
+    expect([...p.data]).toEqual([0, 0, 255, 255, 0, 0, 128, 128, 128, 64, 64, 255])
+  })
+
+  it('[MES-003] Given a grey image with no stated ceiling, black above zero and a bottom-up layout, When previewed linearly, Then its brightest value is white, its black is black, and the top row comes first', () => {
+    const p = previewImage({ width: 2, height: 2, planes: [new Float32Array([100, 150, 200, 300])], bayer: null, saturation: null, black: 100, bottomUp: true }, { stretch: 'linear' })
+    expect(p.channels).toBe(1)
+    expect([...p.data]).toEqual([128, 255, 0, 64])
+  })
+
+  it('[MES-003] Given an image whose values are all black, When previewed linearly, Then it stays black rather than dividing by nothing', () => {
+    const p = previewImage({ width: 2, height: 1, planes: [new Float32Array([5, 5])], bayer: null, saturation: null, black: 5, bottomUp: false }, { stretch: 'linear' })
+    expect([...p.data]).toEqual([0, 0])
+  })
+
+  it('[MES-003] Given 0 to 1 data, When previewed linearly, Then 1 is white whatever the brightest value', () => {
+    const p = previewImage({ width: 2, height: 1, planes: [new Float32Array([0.5, 0.25])], bayer: null, saturation: null, black: 0, bottomUp: false }, { stretch: 'linear', maxWidth: 2 })
+    expect([...p.data]).toEqual([128, 64])
+  })
+
+  it('[MES-003] Given a wide image, When previewed linearly, Then it is shrunk as an auto-stretched preview is', () => {
+    const wide = { width: 8, height: 2, planes: [new Float32Array(16).fill(1)], bayer: null, saturation: 1, black: 0, bottomUp: false }
+    const linear = previewImage(wide, { maxWidth: 4, stretch: 'linear' })
+    const auto = previewImage(wide, { maxWidth: 4 })
+    expect([linear.width, linear.height, linear.scale]).toEqual([auto.width, auto.height, auto.scale])
+    expect([...linear.data]).toEqual([255, 255, 255, 255])
+  })
+})
+
 describe('clipping worth a warning', () => {
   it('[INS-001] [HEX-013] Given channels clipped above, at and below a tenth of a percent, When judged, Then only the share above it is clipping worth a warning', () => {
     expect(clipping({ saturatedShare: 0.002, blackShare: 0.0005 })).toEqual({ saturated: true, black: false })

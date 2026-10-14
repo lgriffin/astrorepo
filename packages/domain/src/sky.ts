@@ -212,6 +212,23 @@ export function moonPhase(night: NightSky): number {
   return phase
 }
 
+/** Whether a bright moon rules a target out: only emission targets behind a narrowband or dual-band filter stay. */
+export function moonRulesOut(brightMoon: boolean, objectType: string, options: { hasNarrowbandFilter: boolean }): boolean {
+  return brightMoon && !(options.hasNarrowbandFilter && suitsNarrowband(objectType))
+}
+
+/** Closest the moon comes to a target while the target is above the altitude limit, in whole degrees; null when the moon is down then. */
+export function closestMoonDeg(night: NightSky, site: Site, target: Pick<SkyTarget, 'raHours' | 'decDeg'>, policy = DEFAULT_PLANNING_POLICY): number | null {
+  let closest: number | null = null
+  for (const s of night.samples) {
+    if (s.moonAltitudeDeg <= 0) continue
+    if (altitudeDeg(site.latitudeDeg, s.lstHours, target.raHours, target.decDeg) < policy.minAltitudeDeg) continue
+    const sep = separationDeg(target.raHours, target.decDeg, s.moonRaHours, s.moonDecDeg)
+    closest = closest === null ? sep : Math.min(closest, sep)
+  }
+  return closest === null ? null : Math.round(closest)
+}
+
 export interface TonightChoice {
   targetId: string
   targetName: string
@@ -257,21 +274,14 @@ export function planTonight(
   const choices: TonightChoice[] = []
   for (const t of targets) {
     if (!hasWorkLeft(t)) continue
-    if (brightMoon && !(options.hasNarrowbandFilter && suitsNarrowband(t.objectType))) continue
+    if (moonRulesOut(brightMoon, t.objectType, options)) continue
     const hours = usableHours(night, site, t, policy)
     if (hours < policy.minUsableHours) continue
-    let closest: number | null = null
-    for (const s of night.samples) {
-      if (s.moonAltitudeDeg <= 0) continue
-      if (altitudeDeg(site.latitudeDeg, s.lstHours, t.raHours, t.decDeg) < policy.minAltitudeDeg) continue
-      const sep = separationDeg(t.raHours, t.decDeg, s.moonRaHours, s.moonDecDeg)
-      closest = closest === null ? sep : Math.min(closest, sep)
-    }
     choices.push({
       targetId: t.targetId,
       targetName: t.targetName,
       usableHours: hours,
-      moonSeparationDeg: closest === null ? null : Math.round(closest),
+      moonSeparationDeg: closestMoonDeg(night, site, t, policy),
       shortOfGoalSec: t.shortOfGoalSec,
       channel: t.channel ?? null,
       filter: t.filters ? suggestFilter(t.filters, brightMoon) : null
