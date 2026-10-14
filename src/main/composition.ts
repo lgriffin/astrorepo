@@ -38,7 +38,9 @@ import {
   makeSaveMosaicPlan,
   makePlanComet,
   makeSetCometOrbit,
+  makePictureGallery,
   type Gallery,
+  type PictureGallery,
   type JobScheduler
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
@@ -70,6 +72,8 @@ import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-ga
 import { SqliteCometStore } from './adapters/sqlite-comet-store'
 import { settingReader } from './adapters/shared/app-settings'
 import { AppFolders } from './adapters/app-folders'
+import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture-folder'
+import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
 
 /** The app's clock, for hosts that stamp what they show (the IPC handlers). */
 export const clock = systemClock
@@ -267,3 +271,27 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
 }
 
 export type Core = ReturnType<typeof composeCore>
+
+/** Shrinks gallery pictures before they go to the window (NFR-021); the app sets Electron's decoder at start. */
+let pictureShrinker: PictureShrinker | null = null
+
+/** The gallery last composed, kept so a thumbnail is checked against the last listing without walking the folder again. */
+let pictureGallery: { db: Database.Database; shrinker: PictureShrinker | null; gallery: PictureGallery } | null = null
+
+/** Shrinks gallery pictures with this from now on. The app calls this at start; tests send pictures whole. */
+export function shrinkPicturesWith(shrink: PictureShrinker): void {
+  pictureShrinker = shrink
+}
+
+/** The gallery of finished pictures (spec 031), one per database handle and shrinker. */
+export function composePictureGallery(db: Database.Database): PictureGallery {
+  if (pictureGallery?.db !== db || pictureGallery.shrinker !== pictureShrinker) {
+    const made = makePictureGallery({
+      folder: new NodePictureFolder(settingReader(db), pictureShrinker),
+      catalogue: new SqliteObjectCatalogue(db),
+      planning: new SqlitePlanningSettings(db)
+    })
+    pictureGallery = { db, shrinker: pictureShrinker, gallery: made }
+  }
+  return pictureGallery.gallery
+}

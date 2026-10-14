@@ -36,3 +36,5 @@ export type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore, WcsHead
 export * from './use-cases/gallery'
 export type { CometStore } from './ports/comet-store'
 export * from './use-cases/plan-comet'
+export type { ObjectCatalogue, ObjectFacts, Picture, PictureFile, PictureFolder } from './ports/picture-gallery'
+export * from './use-cases/picture-gallery'

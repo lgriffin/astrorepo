@@ -26,7 +26,10 @@ const NOT_PORTS: Record<string, string> = {
   SavedMosaic: 'what MosaicStore saves',
   TargetPosition: 'what TargetPositions lists',
   StackFile: 'what StackCatalogue lists',
-  ProbeResult: 'what ToolProbe.run returns'
+  ProbeResult: 'what ToolProbe.run returns',
+  PictureFile: 'what PictureFolder lists',
+  Picture: 'what PictureFolder.read returns',
+  ObjectFacts: 'what ObjectCatalogue.objectFacts returns'
 }
 
 const read = (dir: string, suffix: string) =>
