@@ -430,6 +430,17 @@ describe('Room where copies land', () => {
     expect((await w.run(first)).state).toBe('done')
   })
 
+  it('[VIN-027] Given a .part already on the disk, When room is checked, Then only the bytes it still lacks count', async () => {
+    const w = world()
+    const job = await planned(w, { include: ['fits', 'tiff'] })
+    const first = job.items[0]
+    await w.disk.writeText(`${job.id}/${first.path}.part`, 'abc')
+    w.disk.free = Math.ceil((78 - 3) * 1.01) - 1
+    expect((await w.run(job)).state).toBe('paused')
+    w.disk.free += 1
+    expect((await w.run(job)).state).toBe('done')
+  })
+
   it('[VIN-016] Given a session with none of the kinds chosen, When planned, Then it is refused with nothing written', async () => {
     const w = world()
     const { userFolder, sessions } = await w.scan()
@@ -525,6 +536,21 @@ describe('Copying several sessions', () => {
     expect(failed.ran).toEqual(['a'])
     expect(failed.q.state()!.outcomes).toMatchObject([{ level: 'error', message: 'a_FIT=1 failed: disk on fire' }])
     expect(failed.finished).toEqual([])
+  })
+
+  it('[VIN-028] Given indexing that fails, When the queue ends, Then the error does not leave the queue busy', async () => {
+    const q = makeVesperaCopyQueue({
+      clock,
+      run: async job => ({ ...job, state: 'done', committed: job.items.map(i => i.path), copiedBytes: job.totalBytes }),
+      onFinished: async () => {
+        throw new Error('index gone')
+      }
+    })
+    q.start([item('a')])
+    await q.idle()
+    expect(q.busy()).toBe(false)
+    expect(q.start([item('b')])).toEqual({ started: true })
+    await q.idle()
   })
 
   it('[VIN-028] Given a queue that copied nothing, When it ends, Then nothing is indexed', async () => {

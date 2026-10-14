@@ -24,11 +24,22 @@ const copies = composeVesperaCopyQueue(
   () => (indexFor ? indexCopies(indexFor.landingRoot, indexFor.homeFolder) : undefined)
 )
 
+/** The scope the last scan read; names found or given for its sessions do not carry to another scope. */
+let scopeKey: string | null = null
+
 function parts(settings: VesperaSettings): VesperaIngest {
-  const key = `${settings.host}:${settings.port}:${settings.landingRoot ?? ''}`
+  const scope = `${settings.host}:${settings.port}`
+  if (scopeKey !== null && scopeKey !== scope) {
+    named.clear()
+    lastScan = null
+  }
+  scopeKey = scope
+  const key = `${scope}:${settings.landingRoot ?? ''}`
   if (!ingest || ingest.key !== key) ingest = { key, parts: composeVesperaIngest(settings.host, settings.port, settings.landingRoot) }
   return ingest.parts
 }
+
+const BUSY = 'A copy is under way; pause it or let it finish first.'
 
 const join = (a: string, b: string) => path.join(a, b)
 const jobView = (job: TransferJob, current: string | null = null) => toIngestJobView(job, current, join)
@@ -59,7 +70,7 @@ async function sessionView(p: VesperaIngest, id: string, include: IncludedKind[]
 
 /** Lists every session on the scope; reads nothing but listings. */
 export async function ingestScan(settings: VesperaSettings): Promise<IngestScanView> {
-  if (copies.busy()) return { ok: false, error: 'A copy is under way; pause it or let it finish before scanning again.' }
+  if (copies.busy()) return { ok: false, error: BUSY }
   try {
     const p = parts(settings)
     lastScan = await p.scan()
@@ -74,6 +85,8 @@ export async function ingestScan(settings: VesperaSettings): Promise<IngestScanV
 
 /** Reads further clues for a session's target (observation.json, EXIF, FITS), cheapest first. */
 export async function ingestIdentify(settings: VesperaSettings, id: string): Promise<IngestSessionView> {
+  // The scope's one connection is the copy's while it runs.
+  if (copies.busy()) throw new Error(BUSY)
   const p = parts(settings)
   const s = scanned(id)
   named.set(id, await p.identify(s.session, lastScan!.userFolder, { crossCheck: true }))
@@ -82,6 +95,8 @@ export async function ingestIdentify(settings: VesperaSettings, id: string): Pro
 
 /** The user's own name for a session's target. */
 export async function ingestName(settings: VesperaSettings, id: string, name: string): Promise<IngestSessionView> {
+  // A session being copied keeps the name its folder was made with.
+  if (copies.busy()) throw new Error(BUSY)
   const p = parts(settings)
   const t = targetOf(id)
   const target = overrideTarget(t.target, name)
@@ -125,7 +140,9 @@ export function ingestTransfer(settings: VesperaSettings, homeFolder: string | n
 /** Carries on a paused or failed copy from the first file not yet copied. */
 export async function ingestResume(settings: VesperaSettings, homeFolder: string | null, jobId: string): Promise<IngestPlanView> {
   if (copies.busy()) return { status: 'blocked', reason: 'A copy is already under way; wait for it or pause it.' }
-  const job = await parts(settings).store.get(jobId)
+  // The job is listed where it was copied to, which may not be where copies land now.
+  const recordedAt = path.dirname(path.dirname(jobId))
+  const job = (await parts(settings).store.get(jobId)) ?? (await parts({ ...settings, landingRoot: recordedAt }).store.get(jobId))
   if (!job) return { status: 'blocked', reason: 'That copy is not known any more.' }
   return startQueue(settings, homeFolder, [], false, job)
 }

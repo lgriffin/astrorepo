@@ -50,13 +50,24 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
   const sessions = scan?.ok ? scan.sessions : []
   const replace = (view: IngestSessionView) => setScan(s => (s?.ok ? { ...s, sessions: s.sessions.map(x => (x.id === view.id ? view : x)) } : s))
 
+  /** Runs a call to the main process; anything it throws is said on the card, not lost. */
+  async function attempt(call: () => Promise<void>): Promise<void> {
+    try {
+      await call()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   async function rescan(): Promise<void> {
     setBusy(true)
     setMessage(null)
     try {
-      const s = await invoke<IngestScanView>('vespera-ingest:scan')
-      setScan(s)
-      if (s.ok) setPicked(new Set(s.sessions.filter(tickedByDefault).map(x => x.id)))
+      await attempt(async () => {
+        const s = await invoke<IngestScanView>('vespera-ingest:scan')
+        setScan(s)
+        if (s.ok) setPicked(new Set(s.sessions.filter(tickedByDefault).map(x => x.id)))
+      })
     } finally {
       setBusy(false)
     }
@@ -99,31 +110,30 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
       .catch(() => setPreview(null))
   }, [currentId, currentTarget, kindsKey])
 
-  async function identify(id: string): Promise<void> {
-    replace(await invoke<IngestSessionView>('vespera-ingest:identify', { session_id: id }))
-  }
+  const identify = (id: string) =>
+    attempt(async () => {
+      replace(await invoke<IngestSessionView>('vespera-ingest:identify', { session_id: id }))
+    })
 
-  async function rename(id: string): Promise<void> {
-    if (typed.trim() === '') return
-    const view = await invoke<IngestSessionView>('vespera-ingest:name', { session_id: id, name: typed.trim() })
-    replace(view)
-    if (view.transferable) setPicked(prev => new Set(prev).add(id))
-    setTyped('')
-  }
+  const rename = (id: string) =>
+    attempt(async () => {
+      if (typed.trim() === '') return
+      const view = await invoke<IngestSessionView>('vespera-ingest:name', { session_id: id, name: typed.trim() })
+      replace(view)
+      if (view.transferable) setPicked(prev => new Set(prev).add(id))
+      setTyped('')
+    })
 
-  async function transfer(ids: string[], allowDuplicate = false): Promise<void> {
-    const r = await invoke<IngestPlanView>('vespera-ingest:transfer', { session_ids: ids, allow_duplicate: allowDuplicate })
+  const started = (r: IngestPlanView) => {
     setMessage(r.status === 'blocked' ? r.reason : null)
     wasRunning.current = r.status === 'started'
     loadProgress()
   }
 
-  async function resume(jobId: string): Promise<void> {
-    const r = await invoke<IngestPlanView>('vespera-ingest:resume', { job_id: jobId })
-    setMessage(r.status === 'blocked' ? r.reason : null)
-    wasRunning.current = r.status === 'started'
-    loadProgress()
-  }
+  const transfer = (ids: string[], allowDuplicate = false) =>
+    attempt(async () => started(await invoke<IngestPlanView>('vespera-ingest:transfer', { session_ids: ids, allow_duplicate: allowDuplicate })))
+
+  const resume = (jobId: string) => attempt(async () => started(await invoke<IngestPlanView>('vespera-ingest:resume', { job_id: jobId })))
 
   const toggle = (id: string) =>
     setPicked(prev => {
@@ -176,7 +186,11 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
             <tbody>
               {shown.map(s => (
                 <React.Fragment key={s.id}>
-                  <tr className="border-t border-astro-border cursor-pointer hover:bg-astro-bg" onClick={() => setOpen(open === s.id ? null : s.id)}>
+                  <tr className="border-t border-astro-border cursor-pointer hover:bg-astro-bg" onClick={() => {
+                      // A name typed for one session is not carried to the next one opened.
+                      setTyped('')
+                      setOpen(open === s.id ? null : s.id)
+                    }}>
                     <td onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={picked.has(s.id)} disabled={!s.transferable || running} onChange={() => toggle(s.id)} />
                     </td>
@@ -216,10 +230,10 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
                               placeholder="Name the target, e.g. M 31 or Jellyfish Nebula"
                               className="flex-1 px-2 py-1 bg-astro-surface border border-astro-border rounded text-xs text-astro-text focus:outline-none focus:border-astro-accent"
                             />
-                            <button onClick={() => void rename(s.id)} className="px-2 py-1 border border-astro-border rounded text-astro-text hover:border-astro-accent">
+                            <button onClick={() => void rename(s.id)} disabled={running} className="px-2 py-1 border border-astro-border rounded text-astro-text hover:border-astro-accent disabled:opacity-50">
                               Use this name
                             </button>
-                            <button onClick={() => void identify(s.id)} className="px-2 py-1 border border-astro-border rounded text-astro-text hover:border-astro-accent" title="Reads observation.json, then the stack's EXIF, then a FITS header">
+                            <button onClick={() => void identify(s.id)} disabled={running} className="px-2 py-1 border border-astro-border rounded text-astro-text hover:border-astro-accent disabled:opacity-50" title="Reads observation.json, then the stack's EXIF, then a FITS header">
                               Check the scope's metadata
                             </button>
                           </div>

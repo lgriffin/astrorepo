@@ -518,9 +518,9 @@ export function overrideTarget(previous: IngestTarget, typed: string): IngestTar
   }
 }
 
-/** Whether the Transfer button is on: no error findings, and a target astrorepo or the user named. */
+/** Whether the Transfer button is on: no error findings, and a target astrorepo named with confidence or the user named. */
 export function canTransfer(findings: Finding[], target: IngestTarget): boolean {
-  return target.confidence !== 'unknown' && !findings.some(f => f.level === 'error')
+  return target.confidence !== 'unknown' && !target.review && !findings.some(f => f.level === 'error')
 }
 
 // ── Destination folder names ───────────────────────────────────────────
@@ -619,9 +619,12 @@ export function isLocalName(name: string): boolean {
   return name.length > 0 && name.length <= 255 && name !== '.' && name !== '..' && !WINDOWS_UNSAFE.test(name)
 }
 
-/** Runs whose folder name cannot be kept on the PC, which a transfer leaves on the scope. */
+/** Runs and files whose names cannot be kept on the PC, which a transfer leaves on the scope. */
 export function unsafeRunFinding(session: VesperaSession): Finding | null {
-  const runs = session.runs.filter(r => !isLocalName(r.folder)).map(r => r.folder)
+  const runs = [
+    ...session.rootFiles.filter(f => !isLocalName(f.name)).map(f => f.name),
+    ...session.runs.flatMap(r => (isLocalName(r.folder) ? r.files.filter(f => !isLocalName(f.name)).map(f => `${r.folder}/${f.name}`) : [r.folder]))
+  ]
   if (runs.length === 0) return null
   return { level: 'warn', code: 'UNSAFE_NAME', message: `${runs.join(', ')} ${runs.length === 1 ? 'has a name' : 'have names'} Windows would not keep, so ${runs.length === 1 ? 'it is' : 'they are'} not copied.` }
 }
@@ -648,7 +651,7 @@ export function bytesText(bytes: number): string {
 /**
  * The files a transfer copies, in copy order: FITS by frame number, then JPEG, then TIFF, then
  * JSON, so the big few TIFFs come last and a link that drops late loses the least work. Within a
- * kind, top-level files come first, then each run in its order, by frame number. Only the kinds asked for, never a file of a kind astrorepo does not know, and never a run whose folder name Windows would not keep as it is.
+ * kind, top-level files come first, then each run in its order, by frame number. Only the kinds asked for, never a file of a kind astrorepo does not know, and never a run or file whose name Windows would not keep as it is.
  */
 export function planTransfer(session: VesperaSession, include: IncludedKind[]): TransferItem[] {
   const wanted = new Set(include)
@@ -656,7 +659,7 @@ export function planTransfer(session: VesperaSession, include: IncludedKind[]): 
     ...session.rootFiles.map(f => ({ f, run: null as VesperaRun | null })),
     ...session.runs.flatMap(r => r.files.map(f => ({ f, run: r })))
   ].flatMap(({ f, run }) =>
-    f.kind !== 'other' && wanted.has(f.kind) && (run === null || isLocalName(run.folder))
+    f.kind !== 'other' && wanted.has(f.kind) && isLocalName(f.name) && (run === null || isLocalName(run.folder))
       ? [{ path: run ? `${run.folder}/${f.name}` : f.name, kind: f.kind, sizeBytes: f.sizeBytes, frameNo: f.frameNo ?? null, runOrder: run ? run.order ?? Number.MAX_SAFE_INTEGER : -1 }]
       : []
   )

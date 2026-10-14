@@ -187,7 +187,7 @@ const parseJob = (text: string | null): TransferJob | null => {
 export function makePlanVesperaTransfer(deps: { disk: IngestDisk; store: VesperaTransferStore; clock: Clock }) {
   return async (req: PlanRequest): Promise<PlanResult> => {
     if (!canTransfer(req.findings, req.target)) {
-      return { status: 'blocked', reason: req.target.confidence === 'unknown' ? 'Name the target first.' : 'The session has an error finding; look at it first.' }
+      return { status: 'blocked', reason: req.target.confidence === 'unknown' || req.target.review ? 'Name the target first.' : 'The session has an error finding; look at it first.' }
     }
     const include = INCLUDED_KINDS.filter(k => (req.include ?? DEFAULT_INCLUDE).includes(k))
     if (include.length === 0) return { status: 'blocked', reason: 'Choose at least one kind of file to copy.' }
@@ -320,7 +320,14 @@ export function makeRunVesperaTransfer(deps: { scope: VesperaScope; disk: Ingest
           job = await save(job, { findings: [...job.findings, grew, ...(stale ? [stale] : [])] })
         }
       }
-      const toCopy = job.items.filter(i => !job.committed.includes(i.path)).reduce((n, i) => n + i.sizeBytes, 0)
+      // A .part already on the disk counts towards its file, as the copy carries on from it.
+      let toCopy = 0
+      for (const item of job.items) {
+        if (job.committed.includes(item.path)) continue
+        const local = deps.disk.join(job.id, ...item.path.split('/'))
+        if ((await deps.disk.size(local)) === item.sizeBytes) continue
+        toCopy += item.sizeBytes - Math.min(item.sizeBytes, (await deps.disk.size(`${local}${PART_SUFFIX}`)) ?? 0)
+      }
       const room = transferRoom(toCopy, await deps.disk.freeBytes(job.id))
       if (room.shortBytes !== null) {
         const short: Finding = { level: 'error', code: 'SPACE_SHORT', message: `Nothing more was copied: the folder copies land in needs ${bytesText(room.shortBytes)} more room.` }
@@ -465,8 +472,13 @@ export function makeVesperaCopyQueue(deps: {
         q.outcomes.push({ sessionId: item.sessionId, level: 'error', refused: false, job: null, message: e instanceof Error ? e.message : String(e) })
       }
     }
-    if (q.copied > 0) await deps.onFinished?.(q.copied)
-    q.busy = false
+    try {
+      if (q.copied > 0) await deps.onFinished?.(q.copied)
+    } catch {
+      // Indexing reports its own failures; a copy that is in stays in, and the next can start.
+    } finally {
+      q.busy = false
+    }
   }
 
   return {

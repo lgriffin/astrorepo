@@ -154,7 +154,7 @@ class NodeScopeConnection implements ScopeConnection {
    * reply when the scope refused it (nothing was sent), else once the data has ended, every chunk
    * is written and the scope has said the transfer is complete.
    */
-  private async transfer(line: string, sink: (chunk: Buffer) => void | Promise<void>): Promise<FtpReply | null> {
+  private async transfer(line: string, sink: (chunk: Buffer) => void | Promise<void>, prepare?: () => Promise<void>): Promise<FtpReply | null> {
     const data = await this.openData()
     let sinkError: unknown = null
     let written: Promise<void> = Promise.resolve()
@@ -179,6 +179,8 @@ class NodeScopeConnection implements ScopeConnection {
     finished.catch(() => undefined)
     let first: FtpReply
     try {
+      // RFC 959 has REST directly before the command it restarts, so it goes after PASV or EPSV.
+      await prepare?.()
       first = await this.control.command(line)
     } catch (error) {
       data.destroy()
@@ -232,13 +234,14 @@ class NodeScopeConnection implements ScopeConnection {
    */
   async retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Uint8Array) => void | Promise<void>): Promise<void> {
     this.usable()
-    let from = 0
-    if (offset > 0) {
-      const rest = await this.control.command(`REST ${Math.trunc(offset)}`)
-      if (rest.code === 350) from = Math.trunc(offset)
-    }
-    onStart(from)
-    const refused = await this.transfer(`RETR ${remote}`, onChunk)
+    const refused = await this.transfer(`RETR ${remote}`, onChunk, async () => {
+      let from = 0
+      if (offset > 0) {
+        const rest = await this.control.command(`REST ${Math.trunc(offset)}`)
+        if (rest.code === 350) from = Math.trunc(offset)
+      }
+      onStart(from)
+    })
     if (refused) throw new Error(`The scope would not send ${remote}: ${describe(refused)}`)
   }
 

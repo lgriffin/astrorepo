@@ -100,7 +100,7 @@ copy. The CLI the design mentions waits for the app's CLI.
 | VIN-012 | Ubiquitous | The system shall write a catalogue designation as its prefix, one space and its number (ic443, IC-443 and IC 443 all become IC 443), take a leading designation from a label with words after it, map known common names to their designation, and mark any other name for review. |
 | VIN-013 | Unwanted | If two clues name different targets, then the system shall keep the cheaper clue's target and raise TARGET_MISMATCH at warn. |
 | VIN-014 | Event | When the user names a session's target, the system shall use that name with confidence manual and keep what it found before in the evidence. |
-| VIN-015 | Unwanted | If a session has an error finding or an unknown target, then the system shall refuse to plan its transfer. |
+| VIN-015 | Unwanted | If a session has an error finding, an unknown target or a target marked for review, then the system shall refuse to plan its transfer until the user names the target. |
 
 ## Transfer
 

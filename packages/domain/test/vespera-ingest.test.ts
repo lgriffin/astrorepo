@@ -354,12 +354,14 @@ describe('Vespera targets', () => {
     expect(overrideTarget(before, '  ')).toBeNull()
   })
 
-  it('[VIN-015] Given findings and a target, When Transfer is checked, Then an error or an unknown target turns it off; a warning does not', () => {
+  it('[VIN-015] Given findings and a target, When Transfer is checked, Then an error, an unknown target or one marked for review turns it off; a warning does not', () => {
     const t: IngestTarget = { name: 'M 31', confidence: 'folder', evidence: [], review: false }
     const f = (level: Finding['level']): Finding => ({ level, code: 'NO_TIFF', message: '' })
     expect(canTransfer([f('warn'), f('info')], t)).toBe(true)
     expect(canTransfer([f('error')], t)).toBe(false)
     expect(canTransfer([], { ...t, confidence: 'unknown' })).toBe(false)
+    expect(canTransfer([], { ...t, name: 'moon', review: true })).toBe(false)
+    expect(canTransfer([], overrideTarget({ ...t, name: 'moon', review: true }, 'M 42')!)).toBe(true)
   })
 })
 
@@ -478,6 +480,12 @@ describe('Vespera copies on the PC', () => {
     const two = session('2024-06-15_21-00-54_observation_NGC3372', { 'a?': imageRun([1]), 'b.': imageRun([1]) })
     expect(unsafeRunFinding(two)?.message).toBe('a?, b. have names Windows would not keep, so they are not copied.')
     expect(unsafeRunFinding(session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': imageRun([1]) }))).toBeNull()
+  })
+
+  it('[VIN-030] Given a file whose name Windows would not keep in a safe run, When planned, Then that file is not copied and UNSAFE_NAME names it', () => {
+    const s = session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': [...imageRun([1]), file('a|b.fits', 4)] }, [file('notes?.txt')])
+    expect(planTransfer(s, ['fits']).map(i => i.path)).toEqual(['01-images-initial/img-0001.fits'])
+    expect(unsafeRunFinding(s)?.message).toBe('notes?.txt, 01-images-initial/a|b.fits have names Windows would not keep, so they are not copied.')
   })
 
   it('[VIN-027] Given the bytes to copy and the free space, When room is checked, Then 1% more is needed and a shortfall is the bytes missing', () => {

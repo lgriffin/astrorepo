@@ -30,8 +30,20 @@ export class FtpVesperaScope implements VesperaScope {
     return this.connection
   }
 
-  /** Runs one call on the connection; a dropped link drops the connection too, and says so as ScopeDisconnectedError. */
-  private async use<T>(call: (c: ScopeConnection) => Promise<T>): Promise<T> {
+  /** The call holding the connection; the next waits for it, as one FTP connection runs one command at a time. */
+  private turn: Promise<unknown> = Promise.resolve()
+
+  /**
+   * Runs one call on the connection once the calls before it are done; a dropped link drops the
+   * connection too, and says so as ScopeDisconnectedError.
+   */
+  private use<T>(call: (c: ScopeConnection) => Promise<T>): Promise<T> {
+    const mine = this.turn.then(() => this.useNow(call))
+    this.turn = mine.catch(() => undefined)
+    return mine
+  }
+
+  private async useNow<T>(call: (c: ScopeConnection) => Promise<T>): Promise<T> {
     let conn: ScopeConnection
     try {
       conn = await this.connect()
@@ -65,14 +77,15 @@ export class FtpVesperaScope implements VesperaScope {
     let wake: (() => void) | null = null
     let finished = false
     let failure: unknown = null
-    // Set when the copy stops reading early; the rest of the file is then let through unread.
+    // Set when the reader stops early: the next chunk stops the transfer, so the rest of the file
+    // does not cross the Wi-Fi, and the connection is opened again for the next call.
     let abandoned = false
     const waiting: { drained: (() => void) | null } = { drained: null }
     let startFrom: (from: number) => void = () => undefined
     const started = new Promise<number>(resolve => (startFrom = resolve))
     const done = this.use(c =>
       c.retrieve(`/${path.replace(/^\/+/, '')}`, offset, startFrom, chunk => {
-        if (abandoned) return
+        if (abandoned) throw new Error('The read was stopped before the end of the file.')
         queue.push(chunk)
         wake?.()
         // A reader that falls behind holds the data connection back instead of letting chunks pile up.
@@ -119,14 +132,19 @@ export class FtpVesperaScope implements VesperaScope {
     return { from, chunks: chunks() }
   }
 
+  /**
+   * The first `maxBytes` of a file. Once they are in, the read stops, which cuts the transfer short
+   * rather than letting the rest of a large frame cross the Wi-Fi; the next call connects again.
+   */
   async head(path: string, maxBytes: number): Promise<Uint8Array> {
     const read = await this.read(path, 0)
     const out = new Uint8Array(maxBytes)
     let have = 0
     for await (const chunk of read.chunks) {
-      if (have < maxBytes) out.set(chunk.subarray(0, maxBytes - have), have)
-      have += chunk.length
+      out.set(chunk.subarray(0, maxBytes - have), have)
+      have = Math.min(maxBytes, have + chunk.length)
+      if (have >= maxBytes) break
     }
-    return out.slice(0, Math.min(have, maxBytes))
+    return out.slice(0, have)
   }
 }

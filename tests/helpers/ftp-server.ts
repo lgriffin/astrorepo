@@ -125,9 +125,12 @@ export class TestFtpServer {
         else if (verb === 'PASS') reply(this.refuseLogin ? '530 Not today' : '230 Signed in')
         else if (verb === 'TYPE') reply('200 Type set')
         else if (verb === 'EPSV') {
+          // As some servers do, a passive command forgets a REST sent before it.
+          restAt = 0
           if (!this.epsv) reply('500 Unknown command')
           else reply(`229 Entering Extended Passive Mode (|||${await passive()}|)`)
         } else if (verb === 'PASV') {
+          restAt = 0
           const port = await passive()
           reply(`227 Entering Passive Mode (${this.pasvAddress},${Math.floor(port / 256)},${port % 256})`)
         } else if (verb === 'CWD') {

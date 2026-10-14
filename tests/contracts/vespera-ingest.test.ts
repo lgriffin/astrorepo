@@ -75,20 +75,33 @@ describe('FtpVesperaScope', () => {
   /** A scope whose file is 100 one-byte chunks, each sent only once the last was taken. */
   function pacedScope() {
     const sent = { count: 0, done: false }
+    const opened = { count: 0 }
+    const log: string[] = []
     const conn: ScopeConnection = {
-      list: async () => [],
+      list: async () => {
+        log.push('list start')
+        await new Promise(resolve => setTimeout(resolve, 5))
+        log.push('list end')
+        return []
+      },
       retrieve: async (_remote, _offset, onStart, onChunk) => {
-        onStart(0)
-        for (let i = 0; i < 100; i++) {
-          sent.count++
-          await onChunk(new Uint8Array([i]))
+        log.push('retrieve start')
+        try {
+          sent.count = 0
+          onStart(0)
+          for (let i = 0; i < 100; i++) {
+            sent.count++
+            await onChunk(new Uint8Array([i]))
+          }
+          sent.done = true
+        } finally {
+          log.push('retrieve end')
         }
-        sent.done = true
       },
       close: async () => undefined
     }
-    const files: ScopeFiles = { open: async () => conn }
-    return { sent, scope: new FtpVesperaScope(files, 'scope', 21) }
+    const files: ScopeFiles = { open: async () => (opened.count++, conn) }
+    return { sent, opened, log, scope: new FtpVesperaScope(files, 'scope', 21) }
   }
 
   it('[VIN-019] Given a copy that reads slower than the scope sends, When read, Then the scope is held back after a few chunks and every byte still arrives in order', async () => {
@@ -105,12 +118,30 @@ describe('FtpVesperaScope', () => {
     expect(sent.done).toBe(true)
   })
 
-  it('[VIN-019] Given a copy that stops reading part way, When it leaves, Then the scope is not left waiting on it', async () => {
-    const { sent, scope } = pacedScope()
+  it('[VIN-010] Given a read that stops part way, When it leaves, Then the transfer is stopped rather than sent to the end, and the next call connects again', async () => {
+    const { sent, scope, opened } = pacedScope()
     const r = await scope.read(file, 0)
     for await (const c of r.chunks) if (c[0] === 2) break
     await new Promise(resolve => setTimeout(resolve, 20))
-    expect(sent.done).toBe(true)
+    expect(sent.done).toBe(false)
+    expect(sent.count).toBeLessThan(MAX_QUEUED_CHUNKS + 2)
+    expect(await scope.head(file, 4)).toEqual(new Uint8Array([0, 1, 2, 3]))
+    expect(opened.count).toBe(2)
+  })
+
+  it('[VIN-010] Given a large file, When only its head is wanted, Then the transfer stops soon after it', async () => {
+    const { sent, scope } = pacedScope()
+    expect(await scope.head(file, 3)).toEqual(new Uint8Array([0, 1, 2]))
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(sent.count).toBeLessThan(MAX_QUEUED_CHUNKS + 2)
+  })
+
+  it('[VIN-006] Given two calls at once, When run, Then the second waits for the first, as one connection runs one command at a time', async () => {
+    const { scope, log } = pacedScope()
+    const [listed, head] = await Promise.all([scope.list('user'), scope.head(file, 2), scope.list('user')]).then(r => [r[0], r[1]] as const)
+    expect(listed).toEqual([])
+    expect(head).toEqual(new Uint8Array([0, 1]))
+    expect(log).toEqual(['list start', 'list end', 'retrieve start', 'retrieve end', 'list start', 'list end'])
   })
 
   it('[VIN-001] Given a folder the scope will not list, When listed, Then the refusal comes through and is not counted as a dropped link', async () => {
