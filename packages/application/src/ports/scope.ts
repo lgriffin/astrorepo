@@ -19,9 +19,10 @@ export interface ScopeConnection {
   /**
    * Streams one file to `onChunk` from byte `offset`, asking the scope to start there (REST); when
    * it will not, the bytes start at 0. `onStart` hears where they start before the first byte.
-   * Writes nothing on the PC (spec 034, VIN-024).
+   * When `onChunk` returns a promise, no more bytes are taken until it settles, so a slow reader
+   * holds the scope back rather than piling bytes up in memory. Writes nothing on the PC (spec 034, VIN-024).
    */
-  retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Uint8Array) => void): Promise<void>
+  retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Uint8Array) => void | Promise<void>): Promise<void>
   /** Signs out and closes; never throws. */
   close(): Promise<void>
 }

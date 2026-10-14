@@ -2,10 +2,10 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { ScopeDisconnectedError } from '@astro/application'
+import { ScopeDisconnectedError, type ScopeConnection, type ScopeFiles } from '@astro/application'
 import { FakeVesperaMetadata, FakeVesperaScope, InMemoryIngestDisk, InMemoryVesperaTransferStore } from '@astro/testkit'
 import { ingestDiskContract, vesperaMetadataContract, vesperaScopeContract, vesperaTransferStoreContract } from '@astro/testkit/contracts/vespera-ingest.contract'
-import { FtpVesperaScope } from '../../src/main/adapters/ftp-vespera-scope'
+import { FtpVesperaScope, MAX_QUEUED_CHUNKS } from '../../src/main/adapters/ftp-vespera-scope'
 import { NodeScopeFiles } from '../../src/main/adapters/node-ftp-scope'
 import { NodeIngestDisk } from '../../src/main/adapters/node-ingest-disk'
 import { NodeVesperaMetadata } from '../../src/main/adapters/vespera-metadata'
@@ -70,6 +70,47 @@ describe('FtpVesperaScope', () => {
     server.dropAt = null
     expect((await read(scope, 0)).text).toHaveLength(100)
     expect(server.commands.filter(c => c.startsWith('USER'))).toHaveLength(2)
+  })
+
+  /** A scope whose file is 100 one-byte chunks, each sent only once the last was taken. */
+  function pacedScope() {
+    const sent = { count: 0, done: false }
+    const conn: ScopeConnection = {
+      list: async () => [],
+      retrieve: async (_remote, _offset, onStart, onChunk) => {
+        onStart(0)
+        for (let i = 0; i < 100; i++) {
+          sent.count++
+          await onChunk(new Uint8Array([i]))
+        }
+        sent.done = true
+      },
+      close: async () => undefined
+    }
+    const files: ScopeFiles = { open: async () => conn }
+    return { sent, scope: new FtpVesperaScope(files, 'scope', 21) }
+  }
+
+  it('[VIN-019] Given a copy that reads slower than the scope sends, When read, Then the scope is held back after a few chunks and every byte still arrives in order', async () => {
+    const { sent, scope } = pacedScope()
+    const r = await scope.read(file, 0)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(sent.count).toBe(MAX_QUEUED_CHUNKS)
+    const got: number[] = []
+    for await (const c of r.chunks) {
+      got.push(...c)
+      expect(sent.count - got.length).toBeLessThanOrEqual(MAX_QUEUED_CHUNKS)
+    }
+    expect(got).toEqual(Array.from({ length: 100 }, (_, i) => i))
+    expect(sent.done).toBe(true)
+  })
+
+  it('[VIN-019] Given a copy that stops reading part way, When it leaves, Then the scope is not left waiting on it', async () => {
+    const { sent, scope } = pacedScope()
+    const r = await scope.read(file, 0)
+    for await (const c of r.chunks) if (c[0] === 2) break
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(sent.done).toBe(true)
   })
 
   it('[VIN-001] Given a folder the scope will not list, When listed, Then the refusal comes through and is not counted as a dropped link', async () => {

@@ -69,7 +69,7 @@ export class InMemoryScope implements ScopeFiles {
         const from = Math.max(0, Math.min(Math.trunc(offset), bytes.length))
         scope.calls.push(`retrieve ${r} from ${from}`)
         onStart(from)
-        if (bytes.length > from) onChunk(bytes.slice(from))
+        if (bytes.length > from) await onChunk(bytes.slice(from))
       },
       async close() {
         if (!closed) scope.openConnections--

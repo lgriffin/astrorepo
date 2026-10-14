@@ -1,6 +1,9 @@
 import { ScopeDisconnectedError, type ScopeConnection, type ScopeFiles, type ScopeRead, type VesperaScope } from '@astro/application'
 import type { ScopeEntry } from '@astro/domain'
 
+/** Chunks read from the scope but not yet taken by the copy; past this the data connection waits. */
+export const MAX_QUEUED_CHUNKS = 16
+
 /** Errors that say the scope answered and refused, not that the link went away. */
 const REFUSAL = /^The scope (refused|would not)/
 
@@ -62,12 +65,18 @@ export class FtpVesperaScope implements VesperaScope {
     let wake: (() => void) | null = null
     let finished = false
     let failure: unknown = null
+    // Set when the copy stops reading early; the rest of the file is then let through unread.
+    let abandoned = false
+    const waiting: { drained: (() => void) | null } = { drained: null }
     let startFrom: (from: number) => void = () => undefined
     const started = new Promise<number>(resolve => (startFrom = resolve))
     const done = this.use(c =>
       c.retrieve(`/${path.replace(/^\/+/, '')}`, offset, startFrom, chunk => {
+        if (abandoned) return
         queue.push(chunk)
         wake?.()
+        // A reader that falls behind holds the data connection back instead of letting chunks pile up.
+        if (queue.length >= MAX_QUEUED_CHUNKS) return new Promise<void>(resolve => (waiting.drained = resolve))
       })
     ).then(
       () => undefined,
@@ -80,18 +89,31 @@ export class FtpVesperaScope implements VesperaScope {
     })
     const from = await Promise.race([started, done.then(() => null)])
     if (from === null) throw failure
+    const release = () => {
+      const resume = waiting.drained
+      waiting.drained = null
+      resume?.()
+    }
     async function* chunks(): AsyncIterable<Uint8Array> {
-      for (;;) {
-        if (queue.length > 0) {
-          yield new Uint8Array(queue.shift()!)
-          continue
+      try {
+        for (;;) {
+          if (queue.length > 0) {
+            const chunk = queue.shift()!
+            if (queue.length < MAX_QUEUED_CHUNKS) release()
+            yield new Uint8Array(chunk)
+            continue
+          }
+          if (finished) {
+            if (failure) throw failure
+            return
+          }
+          await new Promise<void>(resolve => (wake = resolve))
+          wake = null
         }
-        if (finished) {
-          if (failure) throw failure
-          return
-        }
-        await new Promise<void>(resolve => (wake = resolve))
-        wake = null
+      } finally {
+        abandoned = true
+        queue.length = 0
+        release()
       }
     }
     return { from, chunks: chunks() }
