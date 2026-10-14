@@ -36,3 +36,5 @@ export type { GalleryCatalogue, GalleryImage, ImagePixels, PaletteStore, WcsHead
 export * from './use-cases/gallery'
 export type { CometStore } from './ports/comet-store'
 export * from './use-cases/plan-comet'
+export { ScopeDisconnectedError, type IngestDisk, type IngestWriter, type ScopeRead, type VesperaMetadata, type VesperaScope, type VesperaTransferStore } from './ports/vespera-ingest'
+export * from './use-cases/vespera-ingest'
