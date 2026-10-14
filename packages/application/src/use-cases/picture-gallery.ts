@@ -111,12 +111,8 @@ export function makePictureGallery(deps: PictureGalleryDeps) {
     async browse(): Promise<GalleryListing> {
       // Each visit reads the catalogue afresh, so a target added since is matched.
       index = null
-      const root = await deps.folder.root()
-      if (!root) {
-        listed = new Map()
-        return { root: null, pictures: [] }
-      }
-      const [files, idx] = await Promise.all([list(), names()])
+      // Without a root the folder lists nothing, so a path listed before is refused from now on.
+      const [root, files, idx] = await Promise.all([deps.folder.root(), list(), names()])
       return { root, pictures: files.map(f => entry(idx, f)).sort(byNewest) }
     },
 
@@ -135,7 +131,7 @@ export function makePictureGallery(deps: PictureGalleryDeps) {
           summary: describeObject(facts),
           bestMonth: facts.raHours === null ? null : midnightMonth(facts.raHours),
           highestAltitudeDeg: site && facts.decDeg !== null ? highestAltitudeDeg(site.latitudeDeg, facts.decDeg) : null,
-          narrowband: suitsNarrowband(facts.objectType ?? '')
+          narrowband: facts.objectType !== null && suitsNarrowband(facts.objectType)
         })
       }
       return { picture: entry(idx, file), readFrom: reading.from, objects, unknown: reading.unknown, hasSite: site !== null }
@@ -155,9 +151,8 @@ export function makePictureGallery(deps: PictureGalleryDeps) {
     async reference(objectId: string, site: ReferenceSite): Promise<string | null> {
       const facts = await deps.catalogue.objectFacts(objectId)
       if (!facts) return null
-      const designation = facts.designations[0] ?? facts.name
-      const common = facts.name !== designation ? facts.name : null
-      return referenceUrl(site, designation, common)
+      // A name that is itself a designation ("NGC 9") is no common name; referenceUrl skips it.
+      return referenceUrl(site, facts.designations[0] ?? facts.name, facts.name)
     }
   }
 }

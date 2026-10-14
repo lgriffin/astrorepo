@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   apparentSize,
+  asDesignation,
   CATALOGUE_SIZE,
   describeObject,
   designationsIn,
@@ -14,7 +15,8 @@ import {
   readImageName,
   readObjectName,
   referenceUrl,
-  type NamedObject
+  type NamedObject,
+  type ObjectNameIndex
 } from '@astro/domain'
 
 const OBJECTS: NamedObject[] = [
@@ -29,7 +31,10 @@ const OBJECTS: NamedObject[] = [
   { id: 'm82', designations: ['M82'], names: ['Cigar Galaxy', 'Ufo'] },
   { id: 'trap', designations: [], names: ['Orion'] }
 ]
-const index = objectNameIndex(OBJECTS)
+let index: ObjectNameIndex
+beforeEach(() => {
+  index = objectNameIndex(OBJECTS)
+})
 const designations = (text: string) => designationsIn(text).map(d => d.designation)
 const objectsIn = (text: string) => readObjectName(text, index).matches.map(m => m.objectId)
 
@@ -103,6 +108,25 @@ describe('designations in a name', () => {
   })
 })
 
+describe('a name that is only a designation', () => {
+  it('[GAL-003] Given names that are a designation in any spelling, When read, Then the designation comes back as the catalogue writes it', () => {
+    expect(asDesignation('NGC 224')).toBe('NGC 224')
+    expect(asDesignation(' M 31 ')).toBe('M31')
+    expect(asDesignation('Caldwell 23')).toBe('C23')
+    expect(asDesignation('sh2-155')).toBe('Sh2-155')
+  })
+
+  it('[GAL-004] Given common names, names with more than a designation, and numbers past a catalogue, When read, Then none is counted as a designation', () => {
+    expect(asDesignation('Andromeda Galaxy')).toBeNull()
+    expect(asDesignation('NGC 7000 HOO')).toBeNull()
+    expect(asDesignation('NGC7000HOO')).toBeNull()
+    expect(asDesignation('The M31')).toBeNull()
+    expect(asDesignation('M31 M32')).toBeNull()
+    expect(asDesignation('M111')).toBeNull()
+    expect(asDesignation('')).toBeNull()
+  })
+})
+
 describe('names compared as words', () => {
   it('[GAL-003] Given camel case, apostrophes and separators, When compared, Then they read as plain lower-case words', () => {
     expect(nameWords('AndromedaGalaxy_final')).toBe('andromeda galaxy final')
@@ -140,6 +164,7 @@ describe('the name index', () => {
 
   it('[GAL-004] Given a name shorter than four letters, When indexed, Then it is not counted', () => {
     expect(index.names.some(n => n.words === 'ufo')).toBe(false)
+    expect(objectNameIndex([{ id: 'x', designations: [], names: ['Ab C', 'Ab Cd'] }]).names).toEqual([{ words: 'ab cd', objectId: 'x' }])
     expect(objectNameIndex([{ id: 'x', designations: [], names: ['Abcd'] }]).names).toEqual([{ words: 'abcd', objectId: 'x' }])
   })
 })
@@ -159,6 +184,9 @@ describe('reading a name', () => {
 
   it('[GAL-003] Given a longer name that holds a shorter one, When read, Then only the longer counts', () => {
     expect(objectsIn('Orion Nebula HOO')).toEqual(['m42'])
+    expect(objectsIn('My best ever image of the Orion Nebula')).toEqual(['m42'])
+    expect(objectsIn('Orion Nebula and the Pleiades')).toEqual(['m42', 'm45'])
+    expect(objectsIn('Pleiades then Orion Nebula then Cigar Galaxy')).toEqual(['m42', 'm82', 'm45'])
     expect(objectsIn('Orion widefield')).toEqual(['trap'])
   })
 
@@ -194,6 +222,7 @@ describe('reading an image’s name', () => {
   it('[GAL-010] Given a file naming only an unknown designation in a folder naming a known one, When read, Then the folder’s object is named and the file’s designation reported unknown once', () => {
     expect(readImageName('NGC 891.png', ['M42 NGC 891'], index)).toEqual({ matches: [{ objectId: 'm42', text: 'M42', by: 'designation' }], unknown: ['NGC 891'], from: 'folder' })
     expect(readImageName('NGC 891.png', [], index)).toEqual({ matches: [], unknown: ['NGC 891'], from: null })
+    expect(readImageName('NGC 891.png', ['M42 NGC 2'], index)).toMatchObject({ unknown: ['NGC 891', 'NGC 2'], from: 'folder' })
   })
 
   it('[GAL-003] Given the file name of a picture with its extension, When read, Then the extension is not read as a name', () => {
@@ -238,7 +267,8 @@ describe('when an object is best placed', () => {
     [12.0, 'March'],
     [18.0, 'June'],
     [20.98, 'August'], // NGC 7000
-    [3.7833, 'November'] // M45
+    [3.7833, 'November'], // M45
+    [8.892, 'February'] // due south at midnight on the first of February itself
   ])('[GAL-007] Given right ascension %f h, When placed, Then it is highest at midnight in %s', (ra, month) => {
     expect(MONTH_NAMES[midnightMonth(ra)]).toBe(month)
   })
@@ -270,5 +300,7 @@ describe('where to read more', () => {
     expect(referenceUrl('wikipedia', 'NGC 7000', 'North America Nebula')).toBe('https://en.wikipedia.org/wiki/Special:Search?search=North%20America%20Nebula')
     expect(referenceUrl('wikipedia', 'NGC 9', null)).toBe('https://en.wikipedia.org/wiki/Special:Search?search=NGC%209')
     expect(referenceUrl('wikipedia', 'NGC 9', 'NGC 9')).toBe('https://en.wikipedia.org/wiki/Special:Search?search=NGC%209')
+    expect(referenceUrl('wikipedia', 'SM31', null)).toBe('https://en.wikipedia.org/wiki/Special:Search?search=SM31')
+    expect(referenceUrl('wikipedia', 'M31A', null)).toBe('https://en.wikipedia.org/wiki/Special:Search?search=M31A')
   })
 })

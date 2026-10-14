@@ -1,17 +1,11 @@
 import type Database from 'better-sqlite3'
 import type { ObjectCatalogue, ObjectFacts } from '@astro/application'
-import { designationsIn, type NamedObject } from '@astro/domain'
+import { asDesignation, type NamedObject } from '@astro/domain'
 import { IS_INTEGRATED_LIGHT, IS_LIGHT } from './shared/sql'
 
 /** Catalogues in the order their designations are shown: the best-known first. */
 const CATALOGUE_RANK = "CASE c.abbreviation WHEN 'M' THEN 0 WHEN 'NGC' THEN 1 WHEN 'IC' THEN 2 WHEN 'C' THEN 3 WHEN 'Sh2' THEN 4 ELSE 5 END"
 
-/** A name that is only a designation, written as the catalogues write it ("NGC 224", "M 31"); null for a common name. */
-function asDesignation(text: string): string | null {
-  const found = designationsIn(text)
-  const squash = (s: string) => s.replace(/[\s_-]/g, '').toUpperCase()
-  return found.length === 1 && squash(text) === squash(found[0].designation) ? found[0].designation : null
-}
 
 /** The night a frame belongs to, noon to noon UTC, from DATE-OBS. */
 const NIGHT = "date(datetime(f.date_obs, '-12 hours'))"

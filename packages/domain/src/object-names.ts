@@ -50,6 +50,17 @@ export function designationsIn(text: string): Designation[] {
 }
 
 /**
+ * The designation a name is, when it is nothing but one in any spelling ("NGC 224", "M 31",
+ * "Caldwell 23"), as the catalogue writes it; null for a common name or a name with more in it.
+ */
+export function asDesignation(text: string): string | null {
+  const t = text.trim()
+  const all = [...t.matchAll(DESIGNATION)]
+  if (all.length !== 1 || all[0][0].length !== t.length) return null
+  return designationsIn(t)[0]?.designation ?? null
+}
+
+/**
  * Words as a name is compared: camel case split ("AndromedaGalaxy"), apostrophes dropped ("Bode's"),
  * everything else that is not a letter or digit a space, lower case.
  */

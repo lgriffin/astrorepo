@@ -31,7 +31,8 @@ when the code says otherwise, and the reasons are recorded here.
 | H1 · Gallery inspector | Histogram, noise, clipping and the brightest star per file; palette suggestions with a preview, the choice shown beside post-processing; compare two images side by side or with a slider; a coordinate grid and catalogue labels on images whose header is solved or that were plate solved | [025](../specs/025-gallery-inspector/requirements.md) | Done |
 | O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels stacked per filter, with the filter to shoot tonight; comets placed in every light and stacked on their motion. Each part shows only when such frames or settings exist | [026](../specs/026-other-rigs/requirements.md) | Done |
 | S · A stable base | The hexagon checked across every layer with a ratchet on legacy code; rules out of presenters and IPC; a contract suite on both sides of every port; EARS citations only in test titles, with 63 Gherkin scenarios; property, fuzz and mutation testing of the core. See [docs/testing](testing/) | [027](../specs/027-hexagon-hardening/requirements.md), [028](../specs/028-ears-bdd/requirements.md), [029](../specs/029-property-fuzz/requirements.md), [030](../specs/030-mutation-testing/requirements.md) | Done (PRs #52 to #57) |
-| E, F, H2, I, J, K, M | Seestar and Vespera adapters, the rest of the gallery, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: H2, I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
+| H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
+| E, F, I, J, K, M | Seestar and Vespera adapters, store parity, poster, NAS deploy, describe-a-capture. Order after the slices above: I, J, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
 
@@ -121,8 +122,12 @@ app has run on real data on the Windows PC and the licence is settled.
   never are. Comets are placed by a two-body orbit from the MPC's line, within an arc minute of a
   published ephemeris; the app writes the positions file and Siril does the comet registration.
 - **The gallery splits in two.** The inspector, palettes, compare and overlays (H1) need only the
-  index and plate solves; browsing finished images across the NAS (H2) waits for where files live
-  ([#38](https://github.com/lgriffin/astrorepo/issues/38)).
+  index and plate solves. The gallery itself (H2, spec 031) reads the images folder of the home
+  folder, where the home scan already looks for finished pictures, and names each picture's object
+  from its file or folder name rather than its pixels; browsing finished images elsewhere on the
+  NAS still waits for where files live ([#38](https://github.com/lgriffin/astrorepo/issues/38)).
+  Its name matching (`readImageName` and the `ObjectCatalogue` port) is the lookup the poster (J)
+  should use for a picture's object.
 - **The inspector reads the header's solution, then the stored plate solve** (specs 025, 024).
   The overlay needs a solved field: H1 draws the grid from a FITS header's own WCS, and for a
   file without one from the solve slice D stored for its path, which has the same field shape and

@@ -19,7 +19,7 @@ sits on a smaller line below that.
 
 | Group | Places | Go there to |
 |---|---|---|
-| Files | Library, FITS files, Images, Calibration | Scan your folders, read what the FITS headers say, browse finished images, and check darks, flats and biases |
+| Files | Library, FITS files, Gallery, Calibration | Scan your folders, read what the FITS headers say, browse your finished pictures and what each shows, and check darks, flats and biases |
 | Review | Nights, Stacks, Insights, Storage | Look back: every night you imaged, integration against goals, seeing and filter trends, and disk use |
 | Collections | Collections, Posters | Work through a catalogue such as Messier, and print it as a poster |
 | Setup | Equipment, Settings | Record your scopes and cameras, and set your site, folders, tools and run window |
