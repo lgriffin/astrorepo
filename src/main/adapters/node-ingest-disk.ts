@@ -26,9 +26,18 @@ export class NodeIngestDisk implements IngestDisk {
 
   async append(p: string, from: number): Promise<IngestWriter> {
     await fs.promises.mkdir(path.dirname(p), { recursive: true })
-    const handle = await fs.promises.open(p, 'a+')
+    // Not opened for appending: Windows refuses to truncate a file opened that way. Each write goes
+    // at its own position instead.
+    let handle: fs.promises.FileHandle
     try {
-      await handle.truncate(Math.max(0, from))
+      handle = await fs.promises.open(p, 'r+')
+    } catch (e) {
+      if (!missing(e)) throw e
+      handle = await fs.promises.open(p, 'w+')
+    }
+    let position = Math.max(0, from)
+    try {
+      await handle.truncate(position)
     } catch (e) {
       await handle.close()
       throw e
@@ -36,7 +45,12 @@ export class NodeIngestDisk implements IngestDisk {
     let closed = false
     return {
       write: async chunk => {
-        await handle.appendFile(chunk)
+        let done = 0
+        while (done < chunk.length) {
+          const { bytesWritten } = await handle.write(chunk, done, chunk.length - done, position)
+          done += bytesWritten
+          position += bytesWritten
+        }
       },
       close: async () => {
         if (closed) return
