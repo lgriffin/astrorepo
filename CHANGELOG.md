@@ -142,6 +142,12 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   core files they change and fail below the 80% floor, and the whole core runs nightly. The first
   full run scored 76.8%; about 250 sharper tests then brought every core file to at least 80% and
   the whole core to 89.2%.
+- **Every core file held to the mutation floor** (spec 030, MUT-010): Stryker's break looked only
+  at a run's overall score, so the Messier mosaic's use case had merged at 72% beside stronger
+  files. The gate now fails any single file under 80% and lists it in the job summary. About 50
+  sharper tests took the October code to 95% or more per file: the Messier mosaic and Vespera
+  ingest use cases from 72% and 81% to 100%, the Vespera rules from 88% to 95%, FTP parsing from
+  86% to 96%, and the Vespera settings from 88% to 100%.
 - **Docs for the October capabilities**: a guide to how the Vespera copy, the gallery and the
   Messier mosaic fit together ([From the scope to the mosaic](docs/guides/scope-to-mosaic.md)),
   the gallery and the Vespera in guides of their own with how each works inside, a "How it works"

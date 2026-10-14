@@ -26,7 +26,12 @@ later run re-tests only mutants whose code or covering tests changed. Add `--for
 everything. CI keeps the file in the Actions cache, not in git.
 
 The run fails when the score is below the break threshold (`DEFAULT_BREAK` in
-`scripts/mutation/scope.mjs`, overridable with `MUTATION_BREAK=<0-100>`). Only the core's unit
+`scripts/mutation/scope.mjs`, overridable with `MUTATION_BREAK=<0-100>`), and also when any one
+file is below it, whatever the run's overall score (MUT-010): Stryker's own break looks only at
+the overall score, so `scripts/mutation/floor.mjs` checks each file of the report afterwards. The
+changed-files mode runs that check itself; after a whole-core run, `npm run test:mutation:floor`
+does it, and the nightly workflow runs it as its own step. The job summary lists any file under
+the floor. Only the core's unit
 tests (`packages/*/test`, see `vitest.mutation.config.ts`) run against mutants. The TypeScript
 checker drops mutants that would not compile before any test runs.
 
@@ -37,6 +42,11 @@ The first full run (2026-10-11) tested 6,272 valid mutants and killed 4,819: a s
 sharper tests then brought every one of those files to between 84% and 100% on its own run. The
 whole-core re-run that followed killed 5,598 of 6,276 valid mutants: **89.2%** (domain 88.3%,
 application 92.7%), with no file under 80%.
+
+The October features (specs 031 to 034) were re-run on 2026-10-14: 87.5% over their 13 files,
+with the Messier mosaic's use case at 72%, under the floor, because Stryker's break looked only at
+a run's overall score. Sharper tests took each new file to between 95% and 100%, and the gate now
+holds every file to the floor on its own.
 
 `DEFAULT_BREAK` is **80**, Leigh's minimum, for the whole core and for each changed-files run. A
 pull request that touches a core file must keep that file's tests sharp enough to stay above it.

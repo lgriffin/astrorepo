@@ -241,4 +241,52 @@ describe('PlanForward', () => {
     await big.plan()
     expect(big.ephemeris.nightsRequested.length).toBe(requested.length)
   })
+
+  it('[FWD-004] Given a target exactly an hour up on a new-moon night and one never up, When the plan is made, Then the window names the first and not the second, even with room for more', async () => {
+    const frames = new InMemoryFrameCatalogue()
+      .add(target('Edge', { subs: subs(4, 300, '2026-09-20T21:00:00Z') }))
+      .add(target('Never', { subs: subs(4, 300, '2026-09-20T21:00:00Z') }))
+    const positions = new InMemoryTargetPositions()
+      .add({ targetId: 'target-edge', raHours: 6.5, decDeg: 0, objectType: 'galaxy' })
+      .add({ targetId: 'target-never', raHours: 13.62, decDeg: -29.87, objectType: 'galaxy' })
+    const plan = makePlanForward({ frames, positions, settings: new InMemoryPlanningSettings(london, true), ephemeris: new FakeEphemeris().setNewMoons(NEW_MOONS), clock: new FixedClock(new Date('2026-09-29T15:00:00Z')) })
+    const p = await okPlan(plan)
+    expect(p.windows.find(w => w.newMoon === '2026-10-10')!.bestTargets).toEqual([{ targetId: 'target-edge', targetName: 'Edge', usableHours: 1 }])
+  })
+
+  it('[FWD-002] [FWD-004] Given targets closing on different days and twins at one position, When the plan is made, Then the soonest closing come first, twins by name, and a window names twins by name', async () => {
+    const { frames, positions, plan } = setup()
+    for (const [name, ra] of [['Z late', 16.9], ['B twin', 16.69], ['A twin', 16.69]] as const) {
+      frames.add(target(name, { subs: subs(4, 300, '2026-08-20T21:00:00Z') }))
+      positions.add({ targetId: `target-${name.toLowerCase().replace(/ /g, '-')}`, raHours: ra, decDeg: 36.46, objectType: 'globular_cluster' })
+    }
+    const p = await okPlan(plan)
+    const days = p.closing.map(c => c.daysLeft)
+    expect(days).toEqual([...days].sort((a, b) => a - b))
+    const names = p.closing.map(c => c.targetName)
+    expect(names.indexOf('A twin')).toBe(names.indexOf('B twin') - 1)
+    expect(p.closing.find(c => c.targetName === 'A twin')!.daysLeft).toBeLessThan(p.closing.find(c => c.targetName === 'Z late')!.daysLeft)
+    for (const w of p.windows) {
+      const hours = w.bestTargets.map(t => t.usableHours)
+      expect(hours).toEqual([...hours].sort((a, b) => b - a))
+    }
+  })
+
+  it('[RIG-010] Given a filter-wheel target with little luminance and balanced colour on a dark night, When tonight is planned, Then luminance is the filter suggested', async () => {
+    const frames = new InMemoryFrameCatalogue().add(
+      target('NGC 891', {
+        subs: [
+          ...subs(2, 300, '2026-09-20T21:00:00Z', { filter: 'L' }),
+          ...subs(10, 300, '2026-09-20T22:00:00Z', { filter: 'R' }),
+          ...subs(10, 300, '2026-09-21T21:00:00Z', { filter: 'G' }),
+          ...subs(10, 300, '2026-09-22T21:00:00Z', { filter: 'B' })
+        ]
+      })
+    )
+    const positions = new InMemoryTargetPositions().add({ targetId: 'target-ngc-891', raHours: 2.38, decDeg: 42.35, objectType: 'galaxy' })
+    const plan = makePlanForward({ frames, positions, settings: new InMemoryPlanningSettings(london, true), ephemeris: new FakeEphemeris().setNewMoons(NEW_MOONS), clock: new FixedClock(new Date('2026-09-29T15:00:00Z')) })
+    const p = await okPlan(plan)
+    expect(p.tonight?.choices.find(t => t.targetName === 'NGC 891')?.filter).toMatchObject({ filter: 'L', family: 'broadband' })
+  })
 })
+

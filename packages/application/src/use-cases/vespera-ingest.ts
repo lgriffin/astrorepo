@@ -118,6 +118,7 @@ export interface IdentifyOptions {
  * the scope's Wi-Fi, so nothing is read that is not needed.
  */
 export function makeIdentifyTarget(deps: { scope: VesperaScope; metadata: VesperaMetadata }) {
+  // Stryker disable next-line ObjectLiteral: TextDecoder's fatal option defaults to false, so {} decodes the same
   const text = (bytes: Uint8Array) => new TextDecoder('utf-8', { fatal: false }).decode(bytes)
   return async (session: VesperaSession, userFolder: string, options: IdentifyOptions = {}): Promise<{ target: IngestTarget; findings: Finding[] }> => {
     const base = `${userFolder}/${session.id}`
@@ -173,6 +174,7 @@ const parseJob = (text: string | null): TransferJob | null => {
   if (text === null) return null
   try {
     const job = JSON.parse(text) as TransferJob
+    // Stryker disable next-line OptionalChaining: a record of null makes job.id throw a TypeError, which the catch below turns into null too
     return typeof job?.id === 'string' && Array.isArray(job.items) && Array.isArray(job.committed) ? job : null
   } catch {
     return null
@@ -282,7 +284,8 @@ export function makeRunVesperaTransfer(deps: { scope: VesperaScope; disk: Ingest
     if ((await deps.disk.size(local)) === item.sizeBytes) return true
     const part = `${local}${PART_SUFFIX}`
     for (let attempt = 1; attempt <= SIZE_ATTEMPTS; attempt++) {
-      let have = attempt === 1 ? (await deps.disk.size(part)) ?? 0 : 0
+      // A failed attempt removes its .part below, so only the first attempt can carry on from one.
+      let have = (await deps.disk.size(part)) ?? 0
       if (have > item.sizeBytes) have = 0
       if (have < item.sizeBytes) {
         const read = await deps.scope.read(remoteOf(job, item), have)
@@ -356,6 +359,7 @@ export function makeRunVesperaTransfer(deps: { scope: VesperaScope; disk: Ingest
           const done = job.committed.filter(p => p !== item.path)
           return await save(job, { state: 'paused', committed: done, copiedBytes: done.reduce((s, p) => s + (job.items.find(i => i.path === p)?.sizeBytes ?? 0), 0), reason: `${item.path} is missing or the wrong size on the destination.` })
         }
+        // Stryker disable next-line Regex: a digest is hex, so 'sha256:' can only ever occur as its prefix and the anchor changes nothing
         files.push({ remote: remoteOf(job, item), local: item.path, sizeBytes: size, sha256: (await deps.hasher.fullHash(local)).replace(/^sha256:/, '') })
       }
       const counts = planCounts(job.items, job.include)

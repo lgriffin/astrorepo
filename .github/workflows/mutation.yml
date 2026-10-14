@@ -55,6 +55,11 @@ jobs:
       - name: Mutate the whole core
         if: github.event_name != 'pull_request'
         run: npm run test:mutation -- --concurrency 4
+      # Stryker breaks on the overall score; every file must also clear the floor (MUT-010).
+      # The changed-files mode checks this itself.
+      - name: Hold every core file to the floor
+        if: github.event_name != 'pull_request'
+        run: npm run test:mutation:floor
       - name: Write the score to the job summary
         if: always()
         run: node scripts/mutation/summary.mjs reports/mutation/mutation.json >> "$GITHUB_STEP_SUMMARY"

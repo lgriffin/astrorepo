@@ -8,6 +8,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { checkFloor } from './floor.mjs'
 import { SKIPPED_NOTE, changedTargets } from './scope.mjs'
 
 const args = process.argv.slice(2)
@@ -46,4 +47,9 @@ console.log(`Mutating ${targets.length} file(s) changed since ${base}:\n  ${targ
 // The package's exports hide its bin, so run it by path (npx needs a shell on Windows).
 const stryker = path.join('node_modules', '@stryker-mutator', 'core', 'bin', 'stryker.js')
 const run = spawnSync(process.execPath, [stryker, 'run', '--mutate', targets.join(','), ...passthrough], { stdio: 'inherit' })
-process.exit(run.status ?? 1)
+if (run.status !== 0) process.exit(run.status ?? 1)
+
+// Stryker breaks on the run's overall score; each changed file must also clear the floor (MUT-010).
+const floor = checkFloor(path.join('reports', 'mutation', 'mutation.json'))
+for (const line of floor.lines) (floor.ok ? console.log : console.error)(line)
+process.exit(floor.ok ? 0 : 1)

@@ -26,6 +26,10 @@ edits the tests catch is the mutation score.
 - **The incremental file is cached, not committed.** CI restores `reports/stryker-incremental.json`
   with `actions/cache`, so unchanged mutants are not re-run and the repository holds no
   machine-generated state.
+- **Every file clears the floor, not only the run** (MUT-010, added 2026-10-14). Stryker's
+  `break` looks at the run's overall score, so a pull request touching one strong and one weak
+  file could pass with the weak one under 80%: the Messier mosaic's use case merged at 72% that
+  way. `scripts/mutation/floor.mjs` checks each file of the report after the run.
 - **Equivalent mutants are disabled in place**, with a reason, never by lowering the threshold
   (see docs/testing/mutation.md).
 
@@ -42,3 +46,4 @@ edits the tests catch is the mutation score.
 | MUT-007 | Event | When only the gate's own set-up (its Stryker, vitest and tsconfig files, its scripts, its workflow or the npm manifests) differs from the base ref, the changed-files mode shall mutate one small smoke file so the gate runs end to end. |
 | MUT-008 | Unwanted | If the changed-files mode is given --base without a ref, then it shall print its usage and exit with status 2 rather than call git. |
 | MUT-009 | Unwanted | If the changed-files mode skipped the run, then the job summary shall say the run was skipped rather than that it failed before testing mutants. |
+| MUT-010 | Unwanted | If any mutated file's mutation score falls below the break threshold, then the mutation gate shall fail the run and name each such file with its score, whatever the run's overall score. |

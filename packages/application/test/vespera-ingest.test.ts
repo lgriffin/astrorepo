@@ -599,3 +599,332 @@ describe('Copying several sessions', () => {
     expect(q.state()).toMatchObject({ total: 1, position: 1 })
   })
 })
+
+/** A scope whose FTP server lists a folder in reverse name order: a listing's order is not promised. */
+class ReverseListingScope extends FakeVesperaScope {
+  override async list(path: string) {
+    return (await super.list(path)).reverse()
+  }
+}
+
+describe('Scanning a Vespera: edges', () => {
+  it('[VIN-001] Given a scope with no user folder, When scanned, Then the scan fails saying the scope does not look like a Vespera', async () => {
+    const err: unknown = await makeScanVespera({ scope: new FakeVesperaScope().dir('system'), clock })().catch((e: unknown) => e)
+    expect(err).toMatchObject({ name: 'ScopeLayoutError', message: 'The scope has no user folder, so it does not look like a Vespera. Is the computer on the scope\'s Wi-Fi?' })
+  })
+
+  it('[VIN-001] Given a file (not a folder) called expert-mode in user, When scanned, Then expert mode is not reported', async () => {
+    const scope = new FakeVesperaScope()
+    seedVesperaSession(scope, ID, {})
+    scope.file('user/expert-mode', 4)
+    const scan = await makeScanVespera({ scope, clock })()
+    expect(scan.expertMode).toBe(false)
+    expect(scan.sessions.map(s => s.session.id)).toEqual([ID])
+  })
+})
+
+describe('Identifying a target: which file is read', () => {
+  const sessionOf = async (scope: FakeVesperaScope, id: string) => (await makeScanVespera({ scope, clock })()).sessions.find(s => s.session.id === id)!.session
+
+  it('[VIN-010] Given an observation.json with a byte that is not UTF-8, When identified, Then its target is still read, not refused', async () => {
+    const scope = new FakeVesperaScope()
+    const id = '2024-06-15_21-52-17_auto-init'
+    seedVesperaSession(scope, id, { '01-images-initial': vesperaImageRun(1, [1]) })
+    const enc = new TextEncoder()
+    scope.file(`user/${id}/observation.json`, new Uint8Array([...enc.encode('{"target":"M 31","note":"'), 0xff, ...enc.encode('"}')]))
+    const r = await makeIdentifyTarget({ scope, metadata: new FakeVesperaMetadata() })(await sessionOf(scope, id), 'user')
+    expect(r.target).toMatchObject({ name: 'M 31', confidence: 'observation-json' })
+  })
+
+  it('[VIN-010] Given later runs without a stacked JPEG and a scope that lists out of order, When identified, Then the highest-numbered stacked JPEG of the last image run that has one is read', async () => {
+    const scope = new ReverseListingScope()
+    const id = '01-observation-eagle'
+    seedVesperaSession(scope, id, {
+      '02-images-initial': {
+        'img-0001.fits': 'OBJECT:M 8',
+        'img-0001-output.jpg': 'EXIF:M 18',
+        'img-0002-output.jpg': 'EXIF:M 17',
+        'img-0004-output.jpg': 'EXIF:M 16',
+        'img-0005.fits': 'OBJECT:M 8',
+        'img-0005.jpg': 'EXIF:M 20',
+        'img-0005-output.json': '{}'
+      },
+      '03-pointing-adjust-framing': { 'img-0001-output.jpg': 'EXIF:M 21' },
+      '04-images-adjust-framing': { 'img-0001.fits': 'OBJECT:M 8', 'img-0001-output.json': '{}', 'img-0003.jpg': 'EXIF:M 22' }
+    })
+    const s = await sessionOf(scope, id)
+    scope.commands.length = 0
+    const r = await makeIdentifyTarget({ scope, metadata: new FakeVesperaMetadata() })(s, 'user')
+    expect(r.target).toMatchObject({ name: 'M 16', confidence: 'exif' })
+    expect(scope.commands).toEqual([`RETR user/${id}/02-images-initial/img-0004-output.jpg (first 131072 bytes)`])
+  })
+
+  it('[VIN-011] Given a run with capture.json beside its frames and a scope that lists out of order, When identified by FITS, Then the lowest-numbered frame is read', async () => {
+    const scope = new ReverseListingScope()
+    const id = '01-observation-x'
+    seedVesperaSession(scope, id, {
+      '01-pointing-initial': { 'p.jpg': 'EXIF:' },
+      '02-images-initial': { 'capture.json': '{}', 'img-0001.fits': 'OBJECT:IC443', 'img-0002.fits': 'OBJECT:NGC 9', 'img-0003.fits': 'OBJECT:M 1' }
+    })
+    const s = await sessionOf(scope, id)
+    scope.commands.length = 0
+    const r = await makeIdentifyTarget({ scope, metadata: new FakeVesperaMetadata() })(s, 'user')
+    expect(r.target).toMatchObject({ name: 'IC 443', confidence: 'fits-header' })
+    expect(scope.commands).toEqual([`RETR user/${id}/02-images-initial/img-0001.fits (first 28800 bytes)`])
+  })
+})
+
+describe('Planning a transfer: folders already there', () => {
+  const request = async (w: ReturnType<typeof world>, extra: Partial<PlanRequest> = {}): Promise<PlanRequest> => {
+    const { sessions } = await w.scan()
+    return { session: sessions[0].session, userFolder: 'user', target, findings: [], destinationRoot: '/repo', include: ['fits'], ...extra }
+  }
+  const transferPath = `/repo/NGC3372/NGC3372_2024-06-15_FIT=3/${TRANSFER_FILE}`
+
+  it('[VIN-018] Given this session\'s folder with a record missing its id, items or committed list, When planned, Then resume is refused as an unreadable copy', async () => {
+    const w = world()
+    const job = await planned(w)
+    const { id, items, committed } = job
+    for (const record of [{ sessionId: ID, items, committed }, { sessionId: ID, id, committed }, { sessionId: ID, id, items }]) {
+      w.store.jobs.clear()
+      await w.disk.writeText(transferPath, JSON.stringify(record))
+      const r = await w.plan(await request(w))
+      expect(r.status === 'refused' && r.finding.message).toBe('NGC3372_2024-06-15_FIT=3 already exists in /repo/NGC3372 and holds an unreadable copy of this session. Nothing was copied into it.')
+    }
+  })
+
+  it('[VIN-018] Given the folder holds another session\'s full job record, When planned, Then it is refused, not resumed', async () => {
+    const w = world()
+    const job = await planned(w)
+    w.store.jobs.clear()
+    await w.disk.writeText(transferPath, JSON.stringify({ ...job, sessionId: 'another' }))
+    const r = await w.plan(await request(w))
+    expect(r).toMatchObject({ status: 'refused', finding: { code: 'DEST_EXISTS', message: 'NGC3372_2024-06-15_FIT=3 already exists in /repo/NGC3372 and holds another session (another). Nothing was copied into it.' } })
+  })
+
+  it('[VIN-018] Given this session\'s folder with an unreadable record and a duplicate allowed, When planned, Then it is refused rather than given a second folder', async () => {
+    const w = world()
+    await w.disk.writeText(transferPath, JSON.stringify({ sessionId: ID }))
+    const r = await w.plan(await request(w, { allowDuplicate: true }))
+    expect(r).toMatchObject({ status: 'refused', folder: 'NGC3372_2024-06-15_FIT=3' })
+    expect(w.disk.writes).toEqual([transferPath])
+  })
+})
+
+describe('Running a transfer: edges', () => {
+  it('[VIN-020] Given a .part longer than the file and two short reads, When run, Then the over-long .part costs no attempt and the third read lands it', async () => {
+    const w = world()
+    const job = await planned(w)
+    w.disk.files.set(`${job.id}/02-images-initial/img-0001.fits.part`, new Uint8Array(50))
+    w.scope.shortReads = 2
+    const r = await w.run(job)
+    expect(r.state).toBe('done')
+    expect(r.findings.some(f => f.code === 'SIZE_MISMATCH')).toBe(false)
+  })
+
+  it('[VIN-020, VIN-024] Given a .part already the file\'s full size, When run, Then it is renamed into place and not fetched again', async () => {
+    const w = world()
+    const job = await planned(w)
+    w.disk.files.set(`${job.id}/02-images-initial/img-0001.fits.part`, new Uint8Array(10))
+    w.scope.commands.length = 0
+    const r = await w.run(job)
+    expect(r.state).toBe('done')
+    expect(w.scope.commands.filter(c => /^(RETR|REST) /.test(c))).toEqual([`RETR user/${ID}/02-images-initial/img-0002.fits`, `RETR user/${ID}/02-images-initial/img-0003.fits`])
+  })
+
+  it('[VIN-024] Given a scope that will not resume, When a .part is resumed, Then the file is fetched again from the start once, not appended to the .part', async () => {
+    const w = world({ fitsBytes: 100 })
+    w.scope.chunkBytes = 30
+    w.scope.dropAfterBytes = 140
+    const paused = await w.run(await planned(w))
+    w.scope.resumes = false
+    w.scope.commands.length = 0
+    await w.run(paused)
+    expect(w.scope.commands.filter(c => c.startsWith('RETR'))).toEqual([`RETR user/${ID}/02-images-initial/img-0002.fits`, `RETR user/${ID}/02-images-initial/img-0003.fits`])
+  })
+
+  it('[VIN-022] Given the link drops part way through a file, When run, Then every .part opened is closed again, not left open', async () => {
+    const w = world({ fitsBytes: 100 })
+    w.scope.chunkBytes = 30
+    w.scope.dropAfterBytes = 140
+    let open = 0
+    const append = w.disk.append.bind(w.disk)
+    w.disk.append = async (path, from) => {
+      const writer = await append(path, from)
+      open++
+      return { write: writer.write, close: async () => { open--; await writer.close() } }
+    }
+    const paused = await w.run(await planned(w))
+    expect(paused.state).toBe('paused')
+    expect(open).toBe(0)
+  })
+
+  it('[VIN-023] Given a job that has not started, When run, Then the session is not listed again', async () => {
+    const w = world()
+    const job = await planned(w)
+    w.scope.commands.length = 0
+    await w.run(job)
+    expect(w.scope.commands.filter(c => c.startsWith('LIST'))).toEqual([])
+  })
+
+  const grow = (w: ReturnType<typeof world>) => w.scope.file(`user/${ID}/02-images-initial/img-0004.fits`, 10)
+  const grewOf = (job: TransferJob) => job.findings.find(f => f.code === 'SESSION_GREW')?.message
+
+  it('[VIN-023, VIN-027] Given a job paused for room before any file was copied, When resumed after the session grew, Then SESSION_GREW is raised', async () => {
+    const w = world()
+    w.disk.free = 1
+    const paused = await w.run(await planned(w))
+    expect(paused).toMatchObject({ state: 'paused', committed: [] })
+    grow(w)
+    w.disk.free = null
+    expect(grewOf(await w.run(paused))).toBe('The session changed since it was listed: 1 new and 0 changed file. This copy keeps to what was planned; plan another for the rest.')
+  })
+
+  it('[VIN-023] Given a job that failed before any file was copied, When resumed after the session grew, Then SESSION_GREW is raised', async () => {
+    const w = world()
+    const job = await planned(w)
+    w.disk.failWrites = `${job.id}/02-images-initial`
+    const failed = await w.run(job)
+    expect(failed).toMatchObject({ state: 'failed', committed: [] })
+    grow(w)
+    w.disk.failWrites = null
+    expect(grewOf(await w.run(failed))).toContain('1 new and 0 changed file.')
+  })
+
+  it('[VIN-023] Given a job left running with files committed (the app quit mid-copy), When run again after the session grew, Then SESSION_GREW is raised', async () => {
+    const w = world()
+    let n = 0
+    const paused = await w.run(await planned(w), { shouldPause: () => ++n > 1 })
+    expect(paused.committed).toHaveLength(1)
+    grow(w)
+    expect(grewOf(await w.run({ ...paused, state: 'running' }))).toContain('1 new and 0 changed file.')
+  })
+
+  it('[VIN-021, VIN-023] Given a job paused with SIZE_MISMATCH, When resumed after two files were added, Then SESSION_GREW is still raised and counts them as files', async () => {
+    const w = world()
+    w.scope.shortReads = 3
+    const paused = await w.run(await planned(w))
+    expect(paused.findings.map(f => f.code)).toEqual(['SIZE_MISMATCH'])
+    grow(w)
+    w.scope.file(`user/${ID}/02-images-initial/img-0005.fits`, 10)
+    const r = await w.run(paused)
+    expect(grewOf(r)).toBe('The session changed since it was listed: 2 new and 0 changed files. This copy keeps to what was planned; plan another for the rest.')
+  })
+
+  it('[VIN-026, VIN-027] Given a committed file gone from the disk, When resumed, Then room is checked only for the files not yet committed and verifying, not SPACE_SHORT, stops it', async () => {
+    const w = world()
+    let n = 0
+    const paused = await w.run(await planned(w), { shouldPause: () => ++n > 1 })
+    w.disk.files.delete(`${paused.id}/02-images-initial/img-0001.fits`)
+    w.disk.free = Math.ceil(20 * 1.01)
+    const r = await w.run(paused)
+    expect(r).toMatchObject({ state: 'paused', reason: '02-images-initial/img-0001.fits is missing or the wrong size on the destination.' })
+  })
+
+  it('[VIN-027] Given a file already whole on the disk but not committed, When room is checked, Then its bytes do not count and the copy is not refused', async () => {
+    const w = world()
+    const job = await planned(w)
+    w.disk.files.set(`${job.id}/02-images-initial/img-0001.fits`, new Uint8Array(10))
+    w.disk.free = Math.ceil(20 * 1.01)
+    expect((await w.run(job)).state).toBe('done')
+  })
+
+  it('[VIN-027] Given a job with a warning, When it is paused with SPACE_SHORT, Then the warning is kept beside SPACE_SHORT', async () => {
+    const w = world()
+    const gap = { level: 'warn' as const, code: 'GAP_IN_FRAMES' as const, message: 'Frames 4 to 5 are missing.' }
+    const job = await planned(w, { findings: [gap] })
+    w.disk.free = 1
+    const paused = await w.run(job)
+    expect(paused.findings.map(f => f.code)).toEqual(['GAP_IN_FRAMES', 'SPACE_SHORT'])
+  })
+
+  it('[VIN-026] Given every file committed, When the copies are hashed, Then the job is recorded as verifying meanwhile', async () => {
+    const w = world()
+    const job = await planned(w)
+    const seen: string[] = []
+    const hasher = {
+      quickKey: w.disk.quickKey.bind(w.disk),
+      fullHash: async (path: string) => {
+        seen.push((await w.store.get(job.id))!.state)
+        return w.disk.fullHash(path)
+      }
+    }
+    const run = makeRunVesperaTransfer({ scope: w.scope, disk: w.disk, hasher, store: w.store, clock })
+    expect((await run(job)).state).toBe('done')
+    expect(seen).toEqual(['verifying', 'verifying', 'verifying'])
+  })
+
+  it('[VIN-026] Given files of different sizes and one committed file gone before verifying, When run, Then the bytes still copied are those of the files kept', async () => {
+    const w = world()
+    const job = await planned(w, { include: ['fits', 'tiff'] })
+    const origRename = w.disk.rename.bind(w.disk)
+    w.disk.rename = async (from, to) => {
+      await origRename(from, to)
+      if (to.endsWith('img-0003.tif')) w.disk.files.delete(`${job.id}/02-images-initial/img-0001.fits`)
+    }
+    const r = await w.run(job)
+    expect(r.committed).toEqual(['02-images-initial/img-0002.fits', '02-images-initial/img-0003.fits', '02-images-initial/img-0003.tif'])
+    expect(r.copiedBytes).toBe(68)
+  })
+})
+
+describe('Copying several sessions: what each says', () => {
+  const at = (id: string, patch: Partial<TransferJob> = {}): TransferJob => ({
+    id: `/repo/M31/${id}`,
+    sessionId: id,
+    sessionPath: `user/${id}`,
+    target,
+    destinationRoot: '/repo',
+    targetFolder: 'M31',
+    destinationFolder: `${id}_FIT=2`,
+    include: ['fits'],
+    items: [
+      { path: 'r/img-0001.fits', kind: 'fits', sizeBytes: 100, frameNo: 1, runOrder: 1 },
+      { path: 'r/img-0002.fits', kind: 'fits', sizeBytes: 100, frameNo: 2, runOrder: 1 }
+    ],
+    state: 'planned',
+    committed: [],
+    copiedBytes: 0,
+    totalBytes: 200,
+    findings: [],
+    reason: null,
+    startedAt: null,
+    listedAt: '2026-10-14T19:00:00.000Z',
+    createdAt: '2026-10-14T19:00:00.000Z',
+    updatedAt: '2026-10-14T19:00:00.000Z',
+    ...patch
+  })
+  const outcomeFor = async (ends: Partial<TransferJob>) => {
+    const q = makeVesperaCopyQueue({ clock, run: async job => ({ ...job, ...ends }) })
+    q.start([{ sessionId: 'a', plan: async () => ({ status: 'planned', job: at('a') }) }])
+    await q.idle()
+    return q.state()!.outcomes[0]
+  }
+
+  it('[VIN-031] Given a session of two files that copies, When it ends, Then it says how many files', async () => {
+    expect(await outcomeFor({ state: 'done' })).toMatchObject({ level: 'info', refused: false, message: 'Copied 2 files (200 B) into M31/a_FIT=2.' })
+  })
+
+  it('[VIN-031] Given a session that pauses with no reason, When it ends, Then it says Paused, and is not marked refused', async () => {
+    expect(await outcomeFor({ state: 'paused', reason: null })).toMatchObject({ level: 'warn', refused: false, message: 'a_FIT=2 is paused after 0 of 2 files: Paused. Resume carries on from there.' })
+  })
+
+  it('[VIN-031] Given a session that fails with no reason, When it ends, Then it says no reason was given, and is not marked refused', async () => {
+    expect(await outcomeFor({ state: 'failed', reason: null })).toMatchObject({ level: 'error', refused: false, message: 'a_FIT=2 failed: no reason given' })
+  })
+
+  it('[VIN-029] Given a resumed job half copied, When the copy runs, Then the share done counts only this run\'s bytes against what was left', async () => {
+    const states: ReturnType<typeof q.state>[] = []
+    const q = makeVesperaCopyQueue({
+      clock,
+      run: async (job, options) => {
+        options?.onProgress?.({ job: { ...job, copiedBytes: 150 }, current: 'r/img-0002.fits' })
+        states.push(q.state())
+        return { ...job, state: 'done', copiedBytes: 200 }
+      }
+    })
+    q.start([], at('z', { state: 'paused', committed: ['r/img-0001.fits'], copiedBytes: 100 }))
+    await q.idle()
+    expect(states[0]!.pace).toEqual({ fraction: 0.5, bytesPerSecond: null, remainingSeconds: null })
+  })
+})

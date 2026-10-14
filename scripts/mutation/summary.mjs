@@ -4,7 +4,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SKIPPED_NOTE } from './scope.mjs'
+import { SKIPPED_NOTE, breakThreshold } from './scope.mjs'
 
 const DETECTED = ['Killed', 'Timeout']
 const UNDETECTED = ['Survived', 'NoCoverage']
@@ -26,8 +26,23 @@ const pct = s => (s === null ? 'n/a' : `${s.toFixed(2)}%`)
 /** Package of a core file: domain or application. */
 const pkg = file => file.replace(/\\/g, '/').split('/')[1] ?? file
 
-/** A Markdown summary: overall score, per package, then per file with the most survivors first. */
-export function summarise(report, top = 15) {
+/**
+ * The files scoring below `threshold`, lowest first: the gate holds every file to the floor, not
+ * only the run as a whole, so one well-tested file cannot carry a weak one past it. Files with no
+ * valid mutant have no score and are never below.
+ */
+export function filesBelow(report, threshold) {
+  return Object.entries(report.files ?? {})
+    .map(([file, f]) => ({ file, score: score(f.mutants).score }))
+    .filter(f => f.score !== null && f.score < threshold)
+    .sort((a, b) => a.score - b.score || a.file.localeCompare(b.file))
+}
+
+/**
+ * A Markdown summary: overall score, per package, then per file with the most survivors first,
+ * and the files under `floor` when one is given.
+ */
+export function summarise(report, top = 15, floor = null) {
   const files = Object.entries(report.files ?? {}).map(([file, f]) => ({ file, ...score(f.mutants) }))
   const all = score(Object.values(report.files ?? {}).flatMap(f => f.mutants))
   const lines = [`## Mutation score: ${pct(all.score)}`, '',
@@ -42,6 +57,10 @@ export function summarise(report, top = 15) {
     lines.push('', '| File | Score | Survived |', '|---|---:|---:|')
     for (const f of worst) lines.push(`| ${f.file} | ${pct(f.score)} | ${f.survived} |`)
   }
+  const below = floor === null ? [] : filesBelow(report, floor)
+  if (below.length > 0) {
+    lines.push('', `**Under the ${floor}% floor:** ${below.map(f => `${f.file} (${pct(f.score)})`).join(', ')}`)
+  }
   return lines.join('\n') + '\n'
 }
 
@@ -53,6 +72,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(proces
   } else if (!fs.existsSync(file)) {
     console.log(`## Mutation score\n\nNo report at ${file}: the run did not get as far as testing mutants.\n`)
   } else {
-    console.log(summarise(JSON.parse(fs.readFileSync(file, 'utf8')), Number(process.argv[3] ?? 15)))
+    console.log(summarise(JSON.parse(fs.readFileSync(file, 'utf8')), Number(process.argv[3] ?? 15), breakThreshold()))
   }
 }
