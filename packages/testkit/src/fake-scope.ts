@@ -119,6 +119,17 @@ export class InMemoryScope implements ScopeFiles {
         scope.landing.disk.set(local, text)
         return received
       },
+      async retrieve(remote, offset, onStart, onChunk) {
+        if (closed) throw new Error('The connection is closed.')
+        const r = remotePath(remote)
+        const text = scope.files.get(r)
+        if (text === undefined) throw new Error(`550 ${r}: no such file`)
+        const bytes = new TextEncoder().encode(text)
+        const from = Math.max(0, Math.min(Math.trunc(offset), bytes.length))
+        scope.calls.push(`retrieve ${r} from ${from}`)
+        onStart(from)
+        if (bytes.length > from) onChunk(bytes.slice(from))
+      },
       async close() {
         if (!closed) scope.openConnections--
         closed = true

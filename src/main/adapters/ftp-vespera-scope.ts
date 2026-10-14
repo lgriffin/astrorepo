@@ -1,13 +1,6 @@
 import { ScopeDisconnectedError, type ScopeConnection, type ScopeFiles, type ScopeRead, type VesperaScope } from '@astro/application'
 import type { ScopeEntry } from '@astro/domain'
 
-/** A connection of spec 033's FTP adapter, which can also stream a file from an offset (REST). */
-interface NodeScopeConnection extends ScopeConnection {
-  retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Buffer) => void): Promise<void>
-}
-
-const streams = (c: ScopeConnection): c is NodeScopeConnection => typeof (c as Partial<NodeScopeConnection>).retrieve === 'function'
-
 /** Errors that say the scope answered and refused, not that the link went away. */
 const REFUSAL = /^The scope (refused|would not)/
 
@@ -18,7 +11,7 @@ const REFUSAL = /^The scope (refused|would not)/
  * command list.
  */
 export class FtpVesperaScope implements VesperaScope {
-  private connection: Promise<NodeScopeConnection> | null = null
+  private connection: Promise<ScopeConnection> | null = null
 
   constructor(
     private readonly files: ScopeFiles,
@@ -26,20 +19,17 @@ export class FtpVesperaScope implements VesperaScope {
     private readonly port: number
   ) {}
 
-  private connect(): Promise<NodeScopeConnection> {
+  private connect(): Promise<ScopeConnection> {
     if (!this.connection) {
-      this.connection = this.files.open(this.host, this.port).then(c => {
-        if (!streams(c)) throw new Error('This scope connection cannot stream a file from an offset.')
-        return c
-      })
+      this.connection = this.files.open(this.host, this.port)
       this.connection.catch(() => (this.connection = null))
     }
     return this.connection
   }
 
   /** Runs one call on the connection; a dropped link drops the connection too, and says so as ScopeDisconnectedError. */
-  private async use<T>(call: (c: NodeScopeConnection) => Promise<T>): Promise<T> {
-    let conn: NodeScopeConnection
+  private async use<T>(call: (c: ScopeConnection) => Promise<T>): Promise<T> {
+    let conn: ScopeConnection
     try {
       conn = await this.connect()
     } catch (error) {
@@ -68,7 +58,7 @@ export class FtpVesperaScope implements VesperaScope {
   }
 
   async read(path: string, offset: number): Promise<ScopeRead> {
-    const queue: Buffer[] = []
+    const queue: Uint8Array[] = []
     let wake: (() => void) | null = null
     let finished = false
     let failure: unknown = null
@@ -109,12 +99,12 @@ export class FtpVesperaScope implements VesperaScope {
 
   async head(path: string, maxBytes: number): Promise<Uint8Array> {
     const read = await this.read(path, 0)
-    const parts: Buffer[] = []
+    const out = new Uint8Array(maxBytes)
     let have = 0
     for await (const chunk of read.chunks) {
-      if (have < maxBytes) parts.push(Buffer.from(chunk.subarray(0, maxBytes - have)))
+      if (have < maxBytes) out.set(chunk.subarray(0, maxBytes - have), have)
       have += chunk.length
     }
-    return new Uint8Array(Buffer.concat(parts))
+    return out.slice(0, Math.min(have, maxBytes))
   }
 }

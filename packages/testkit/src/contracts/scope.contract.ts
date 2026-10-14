@@ -44,6 +44,24 @@ export function scopeFilesContract(adapterName: string, setup: () => Promise<Sco
       }
     })
 
+    it('[VIN-024] [NFR-006] Given a file on the scope, When it is streamed from an offset, Then the bytes from where it says it started come back and nothing is written on the PC', async () => {
+      const f = await setup()
+      f.put('/user/obs/img-0001.fits', '0123456789')
+      const conn = await f.scope.open(f.host, f.port)
+      try {
+        for (const offset of [0, 4]) {
+          let from = -1
+          const parts: number[] = []
+          await conn.retrieve('/user/obs/img-0001.fits', offset, n => (from = n), c => void parts.push(...c))
+          expect([0, offset]).toContain(from)
+          expect(new TextDecoder().decode(new Uint8Array(parts))).toBe('0123456789'.slice(from))
+        }
+        expect(await f.localFiles()).toEqual([])
+      } finally {
+        await conn.close()
+      }
+    })
+
     it('[VSP-003] [NFR-006] Given a file on the scope, When it is downloaded, Then the PC holds the same bytes under its name, the folder made, and progress reached its size', async () => {
       const f = await setup()
       const text = 'x'.repeat(300_000)

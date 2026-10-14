@@ -25,6 +25,12 @@ export interface ScopeConnection {
    * CopyCancelledError). Returns the bytes copied.
    */
   download(remote: string, local: string, expectedBytes: number | null, onBytes: (received: number) => void, cancelled: () => boolean): Promise<number>
+  /**
+   * Streams one file to `onChunk` from byte `offset`, asking the scope to start there (REST); when
+   * it will not, the bytes start at 0. `onStart` hears where they start before the first byte.
+   * Writes nothing on the PC (spec 034, VIN-024).
+   */
+  retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Uint8Array) => void): Promise<void>
   /** Signs out and closes; never throws. */
   close(): Promise<void>
 }
