@@ -1575,7 +1575,7 @@ export interface VesperaObservationView {
   state: 'new' | 'partly' | 'copied' | 'empty'
   /** "212 files to copy, 890.0 MB", "All 212 files are on the PC". */
   stateLine: string
-  /** Set when files on the PC have the same name but another size. */
+  /** Set when files would land where a different file already is, so they are left alone. */
   warning: string | null
 }
 

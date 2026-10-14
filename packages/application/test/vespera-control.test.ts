@@ -238,3 +238,51 @@ describe('Vespera control: copying', () => {
     expect(scope.calls.some(c => c.includes('/a/b/c'))).toBe(false)
   })
 })
+
+describe('Vespera control: review fixes', () => {
+  it('[VSP-004] Given M 42 copied before under a renamed target, When surveyed, Then it shows as copied in that target, not as new', async () => {
+    const { control, request, landing } = rig()
+    for (const name of ['img-0001.fits', 'img-0002.fits']) landing.put(`/nas/home/raw/Orion Nebula/2024-03-10_21-33-02_M 42/01-images-initial/${name}`, name === 'img-0001.fits' ? 'frame-one' : 'frame-two')
+    landing.put('/nas/home/raw/Orion Nebula/2024-03-10_21-33-02_M 42/observation.json', '{}')
+    const survey = await control.survey(request)
+    expect(survey.observations[0]).toMatchObject({ folder: '2024-03-10_21-33-02_M 42', landsIn: 'Orion Nebula', state: 'copied', newFiles: 0 })
+    expect(survey.newFiles).toBe(2)
+  })
+
+  it('[VSP-011] Given a survey under way, When another survey or a copy is asked for, Then each is refused until the survey ends', async () => {
+    const { control, request } = rig()
+    const first = control.survey(request)
+    await expect(control.survey(request)).rejects.toThrow('The scope is already being read.')
+    expect(control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])).toEqual({ started: false, reason: 'The scope is still being read; copy once its list is shown.' })
+    await first
+    expect(control.start(request, [{ folder: 'Andromeda', kind: 'observation' }])).toEqual({ started: true })
+    await control.settled()
+  })
+
+  it('[VSP-011] [VSP-008] Given a copy that brought files in, When it ends, Then it still reads as copying until the connection is closed and indexing has begun', async () => {
+    const landing = new InMemoryLandingArea()
+    const scope = new InMemoryScope(landing).put('/user/obs/x.fits', 'x')
+    const seen: { state: string; open: number }[] = []
+    const control = makeVesperaControl({
+      scope,
+      landing,
+      clock: new FixedClock(),
+      onCopied: () => void seen.push({ state: control.progress().state, open: scope.openConnections })
+    })
+    control.start({ host: '10.0.0.1', port: 21, landingRoot: '/l', formats: ['fits'] }, [{ folder: 'obs', kind: 'observation' }])
+    await control.settled()
+    expect(seen).toEqual([{ state: 'copying', open: 0 }])
+    expect(control.progress().state).toBe('done')
+  })
+
+  it('[VSP-008] Given indexing that throws at once or later, When a copy ends, Then the copy still reads as done', async () => {
+    for (const onCopied of [() => { throw new Error('boom') }, () => Promise.reject(new Error('later'))]) {
+      const landing = new InMemoryLandingArea()
+      const scope = new InMemoryScope(landing).put('/user/obs/x.fits', 'x')
+      const control = makeVesperaControl({ scope, landing, clock: new FixedClock(), onCopied })
+      control.start({ host: '10.0.0.1', port: 21, landingRoot: '/l', formats: ['fits'] }, [{ folder: 'obs', kind: 'observation' }])
+      await control.settled()
+      expect(control.progress()).toMatchObject({ state: 'done', doneFiles: 1 })
+    }
+  })
+})

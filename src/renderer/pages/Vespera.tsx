@@ -71,8 +71,13 @@ export function Vespera(): React.ReactElement {
     return () => clearInterval(timer)
   }, [following])
 
+  // A list read under other settings (another scope, landing folder or kinds) no longer holds, so
+  // it goes with its picks and the copy waits for the scope to be looked at again.
   async function save(key: string, value: string): Promise<void> {
     await invoke('settings:set', { key, value })
+    setSurvey(null)
+    setPicked(new Set())
+    setTargets({})
     await loadSettings()
   }
 
@@ -113,6 +118,8 @@ export function Vespera(): React.ReactElement {
       .map(o => ({ folder: o.folder, kind: o.kind, target: targets[keyOf(o)] ?? null }))
     const r = await invoke<{ started: boolean; reason?: string }>('vespera:start', { choices })
     setMessage(r.started ? null : r.reason ?? 'The copy did not start.')
+    // Set here, not only from polling, so a copy over before the first poll still refreshes the list.
+    if (r.started) wasRunning.current = true
     loadProgress()
   }
 

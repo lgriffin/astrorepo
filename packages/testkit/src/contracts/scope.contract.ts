@@ -126,6 +126,8 @@ export interface LandingAreaFixture {
   root: string
   /** Writes a file under the root, by its parts. */
   write: (parts: string[], text: string) => Promise<void>
+  /** Makes a folder under the root, by its parts, a link to a folder outside the root. */
+  link: (parts: string[]) => Promise<void>
 }
 
 /** Every LandingArea adapter must pass this suite. `setup` gives an empty landing root. */
@@ -140,6 +142,23 @@ export function landingAreaContract(adapterName: string, setup: () => Promise<La
       expect(there.startsWith(f.root)).toBe(true)
       const free = await f.area.freeBytes(f.area.join(f.root, ['not made yet']))
       expect(free === null || free > 0).toBe(true)
+    })
+
+    it('[VSP-011] Given target folders under the landing root, When its folders are asked for, Then their names come back sorted, files and missing folders giving none', async () => {
+      const f = await setup()
+      await f.write(['Orion', 'obs b', 'x.fits'], 'x')
+      await f.write(['M 42', 'obs a', 'x.fits'], 'x')
+      await f.write(['loose.fits'], 'x')
+      expect(await f.area.folders(f.root)).toEqual(['M 42', 'Orion'])
+      expect(await f.area.folders(f.area.join(f.root, ['M 42']))).toEqual(['obs a'])
+      expect(await f.area.folders(f.area.join(f.root, ['not there']))).toEqual([])
+    })
+
+    it('[VSP-006] Given a folder under the landing root that links elsewhere, When a path through it is made, Then it fails rather than send a copy outside the root', async () => {
+      const f = await setup()
+      await f.link(['M 42'])
+      expect(() => f.area.join(f.root, ['M 42', 'obs', 'x.fits'])).toThrow(/link/)
+      expect(f.area.join(f.root, ['Orion', 'obs', 'x.fits']).startsWith(f.root)).toBe(true)
     })
   })
 }

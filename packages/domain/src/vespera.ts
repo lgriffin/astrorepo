@@ -219,6 +219,7 @@ export interface CopyChoice {
 /** One file to copy. */
 export interface PlannedCopy {
   observation: string
+  kind: ObservationKind
   /** Its full path on the scope. */
   remote: string
   /** Where it lands, as parts under the landing root. */
@@ -254,7 +255,7 @@ export function plannedFiles(observations: Observation[], choices: CopyChoice[],
     const target = landingTarget(obs, choice.target)
     for (const file of obs.files) {
       if (!wanted.has(file.format)) continue
-      out.push({ observation: obs.folder, remote: remotePath(obs.remote, file.relative), parts: landingParts(obs, target, file), sizeBytes: file.sizeBytes })
+      out.push({ observation: obs.folder, kind: obs.kind, remote: remotePath(obs.remote, file.relative), parts: landingParts(obs, target, file), sizeBytes: file.sizeBytes })
     }
   }
   return out
@@ -299,7 +300,10 @@ export interface ObservationStatus {
   /** Still to copy, and their bytes. */
   newFiles: number
   newBytes: number
-  /** Files on the PC with the same name but another size, left alone. */
+  /**
+   * Files left alone because a different file is where they would land: one on the PC with
+   * another size, or an earlier file of the copy whose name is the same once made safe for Windows.
+   */
   differentFiles: number
   /** How many frames of each format it holds, wanted or not. */
   counts: Record<VesperaFormat, number>
@@ -318,29 +322,64 @@ export function copyStateOf(files: number, newFiles: number, differentFiles: num
   return newFiles === files - differentFiles ? 'new' : 'partly'
 }
 
-/** Each observation's status against what the PC holds, as if each were copied into its own target. */
-export function observationStatuses(observations: Observation[], formats: readonly VesperaFormat[], have: LandingSizes): ObservationStatus[] {
-  return observations.map(obs => {
-    const plan = planCopies(plannedFiles([obs], [{ folder: obs.folder, kind: obs.kind }], formats), have)
+/**
+ * Each observation's status against what the PC holds, from one plan of them all, so a file that
+ * would land where another observation's file lands counts the same way the copy will treat it.
+ * Each observation lands in the target its choice names (else its own); observations no choice
+ * names are left out.
+ */
+export function observationStatuses(observations: Observation[], choices: CopyChoice[], formats: readonly VesperaFormat[], have: LandingSizes): ObservationStatus[] {
+  const plan = planCopies(plannedFiles(observations, choices, formats), have)
+  const out: ObservationStatus[] = []
+  for (const choice of choices) {
+    const obs = observations.find(o => o.folder === choice.folder && o.kind === choice.kind)
+    if (!obs) continue
+    const mine = (p: PlannedCopy) => p.kind === obs.kind && p.observation === obs.folder
+    const copies = plan.copies.filter(mine)
+    const skipped = plan.skipped.filter(mine)
     const counts: Record<VesperaFormat, number> = { fits: 0, tiff: 0, jpeg: 0, json: 0 }
     for (const f of obs.files) counts[f.format]++
-    const all = plan.copies.length + plan.skipped.length
-    const differentFiles = plan.skipped.filter(s => s.reason === 'different-file').length
-    return {
+    const all = copies.length + skipped.length
+    const differentFiles = skipped.filter(s => s.reason !== 'already-copied').length
+    out.push({
       kind: obs.kind,
       folder: obs.folder,
       takenAt: obs.takenAt,
       target: obs.target,
       files: all,
-      bytes: [...plan.copies, ...plan.skipped].reduce((n, c) => n + (c.sizeBytes ?? 0), 0),
-      copiedFiles: plan.skipped.filter(s => s.reason === 'already-copied').length,
-      newFiles: plan.copies.length,
-      newBytes: plan.bytes,
+      bytes: [...copies, ...skipped].reduce((n, c) => n + (c.sizeBytes ?? 0), 0),
+      copiedFiles: skipped.length - differentFiles,
+      newFiles: copies.length,
+      newBytes: copies.reduce((n, c) => n + (c.sizeBytes ?? 0), 0),
       differentFiles,
       counts,
-      landsIn: landingTarget(obs, null),
-      state: copyStateOf(all, plan.copies.length, differentFiles)
-    }
+      landsIn: landingTarget(obs, choice.target),
+      state: copyStateOf(all, copies.length, differentFiles)
+    })
+  }
+  return out
+}
+
+/** A target folder under the landing root and the observation folders already in it. */
+export interface LandedTarget {
+  target: string
+  folders: string[]
+}
+
+/**
+ * The choice to survey each observation with: the target folder it was copied into before, when
+ * one under the landing root already holds a folder of its name (its own target first, then by
+ * name, letters compared as Windows does), else its own target. So an observation copied under a
+ * renamed target is not taken for a new one.
+ */
+export function surveyChoices(observations: Observation[], landed: LandedTarget[]): CopyChoice[] {
+  const byName = [...landed].sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0))
+  return observations.map(obs => {
+    const own = landingTarget(obs, null)
+    const name = localName(obs.folder).toLowerCase()
+    const holds = (t: LandedTarget) => t.folders.some(f => f.toLowerCase() === name)
+    const found = byName.find(t => t.target.toLowerCase() === own.toLowerCase() && holds(t)) ?? byName.find(holds)
+    return { folder: obs.folder, kind: obs.kind, target: found ? found.target : null }
   })
 }
 

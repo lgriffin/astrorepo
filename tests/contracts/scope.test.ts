@@ -2,7 +2,7 @@ import fs from 'fs'
 import net from 'net'
 import os from 'os'
 import path from 'path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { InMemoryLandingArea, InMemoryScope } from '@astro/testkit'
 import { landingAreaContract, scopeFilesContract } from '@astro/testkit/contracts/scope.contract'
 import { NodeScopeFiles, READ_ONLY_COMMANDS } from '../../src/main/adapters/node-ftp-scope'
@@ -11,6 +11,7 @@ import { TestFtpServer } from '../helpers/ftp-server'
 
 const cleanups: (() => Promise<void> | void)[] = []
 afterEach(async () => {
+  vi.restoreAllMocks()
   for (const c of cleanups.splice(0).reverse()) await c()
 })
 
@@ -81,7 +82,12 @@ scopeFilesContract('Node FTP (LIST, PASV)', async () => (await ftpFixture(s => (
 
 landingAreaContract('in-memory', async () => {
   const area = new InMemoryLandingArea()
-  return { area, root: '/landing', write: async (parts, text) => void area.put(area.join('/landing', parts), text) }
+  return {
+    area,
+    root: '/landing',
+    write: async (parts, text) => void area.put(area.join('/landing', parts), text),
+    link: async parts => void area.links.add(area.join('/landing', parts))
+  }
 })
 
 landingAreaContract('Node', async () => {
@@ -94,6 +100,12 @@ landingAreaContract('Node', async () => {
       const p = area.join(root, parts)
       fs.mkdirSync(path.dirname(p), { recursive: true })
       fs.writeFileSync(p, text)
+    },
+    link: async parts => {
+      const elsewhere = tempDir()
+      const p = path.join(root, ...parts)
+      fs.mkdirSync(path.dirname(p), { recursive: true })
+      fs.symlinkSync(elsewhere, p, 'junction')
     }
   }
 })
@@ -128,6 +140,35 @@ describe('NodeScopeFiles', () => {
     await expect(conn.download('/user/obs/img-0001.fits', fixture.local('img-0001.fits'), 200_000, () => undefined, () => false)).rejects.toThrow()
     expect(await fixture.localFiles()).toEqual([])
     await expect(conn.list('/user')).rejects.toThrow(/interrupted|connect again|failed|closed/)
+    await conn.close()
+  })
+
+  it('[VSP-007] Given a file that takes longer to arrive than the silence timer, When it is downloaded while data keeps coming, Then it arrives whole', async () => {
+    const { server, fixture } = await ftpFixture(s => ((s.chunkBytes = 1000), (s.chunkDelayMs = 60)))
+    server.put('/user/obs/img-0001.fits', 'y'.repeat(8000))
+    const conn = await new NodeScopeFiles({ timeoutMs: 250 }).open(fixture.host, fixture.port)
+    const local = fixture.local('img-0001.fits')
+    expect(await conn.download('/user/obs/img-0001.fits', local, 8000, () => undefined, () => false)).toBe(8000)
+    expect(await fixture.readLocal(local)).toBe('y'.repeat(8000))
+    expect((await conn.list('/user/obs')).map(e => e.name)).toEqual(['img-0001.fits'])
+    await conn.close()
+  })
+
+  it('[VSP-006] Given a disk without hard links, When a file is downloaded, Then it still lands, and a file that appears at its name meanwhile is left as it is', async () => {
+    const { server, fixture } = await ftpFixture()
+    server.put('/user/obs/a.fits', 'scope-a').put('/user/obs/b.fits', 'scope-b')
+    const conn = await fixture.scope.open(fixture.host, fixture.port)
+    const noLinks = Object.assign(new Error('no hard links here'), { code: 'EPERM' })
+    const link = vi.spyOn(fs.promises, 'link').mockRejectedValueOnce(noLinks)
+    expect(await conn.download('/user/obs/a.fits', fixture.local('a.fits'), 7, () => undefined, () => false)).toBe(7)
+    expect(await fixture.readLocal(fixture.local('a.fits'))).toBe('scope-a')
+    link.mockImplementationOnce(async () => {
+      fs.writeFileSync(fixture.local('b.fits'), 'someone else')
+      throw noLinks
+    })
+    await expect(conn.download('/user/obs/b.fits', fixture.local('b.fits'), 7, () => undefined, () => false)).rejects.toThrow(/appeared while copying/)
+    expect(await fixture.readLocal(fixture.local('b.fits'))).toBe('someone else')
+    expect(await fixture.localFiles()).toEqual(['a.fits', 'b.fits'])
     await conn.close()
   })
 

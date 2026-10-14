@@ -6,6 +6,8 @@ export class InMemoryLandingArea implements LandingArea {
   readonly disk = new Map<string, string>()
   /** Free bytes on the landing disk; null when it will not say. */
   free: number | null = 1024 ** 4
+  /** Folders that are links to somewhere else, by path. */
+  readonly links = new Set<string>()
 
   put(path: string, text: string): this {
     this.disk.set(path, text)
@@ -13,7 +15,16 @@ export class InMemoryLandingArea implements LandingArea {
   }
 
   join(root: string, parts: string[]): string {
-    return [root.replace(/\/+$/, ''), ...parts].join('/')
+    let at = root.replace(/\/+$/, '')
+    for (const part of parts) {
+      at = `${at}/${part}`
+      if (this.links.has(at)) throw new Error(`${at} is a link to another folder, so nothing is copied through it.`)
+    }
+    return at
+  }
+
+  async folders(dir: string): Promise<string[]> {
+    return [...new Set(this.listing(dir).filter(p => p.includes('/')).map(p => p.split('/')[0]))].sort()
   }
 
   async sizes(paths: string[]): Promise<(number | null)[]> {

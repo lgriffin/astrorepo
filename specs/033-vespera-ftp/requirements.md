@@ -83,15 +83,15 @@ FTP, which suits this slice.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | VSP-003 | Event | When the user copies the observations they picked, the system shall copy each of their files of the kinds chosen into the landing folder under a folder named after its target (the name the user confirmed, else the one in the observation's name) and then the observation's own folder, keeping the scope's folders inside it. |
-| VSP-004 | Ubiquitous | The system shall skip a file already at its landing place with the size the scope lists, so a copy that stopped part way carries on from the next file when it is run again. |
-| VSP-006 | Ubiquitous | The system shall never overwrite a file on the PC: a file already at a copy's landing place with another size, or a second file that would land in the same place, is left as it is and reported. |
+| VSP-004 | Ubiquitous | The system shall skip a file already at its landing place with the size the scope lists, so a copy that stopped part way carries on from the next file when it is run again, and shall look for an observation already copied under a target folder the user renamed, so it is not shown as new. |
+| VSP-006 | Ubiquitous | The system shall never overwrite a file on the PC: a file already at a copy's landing place with another size, or a second file that would land in the same place, is left as it is and reported, and no copy goes through a link or junction under the landing folder. |
 | VSP-007 | Unwanted | If a file's transfer fails or the bytes received differ from the size the scope listed, then the system shall leave no file or partial file at its place, keep the files already copied, stop the copy and say which file failed and why. |
 | VSP-009 | Event | When the user cancels a copy, the system shall stop at the next chunk of the file under way, remove that file's partial copy, and keep the files already copied. |
 | VSP-010 | Unwanted | If the landing folder's disk lacks room for the files to copy with a 1% margin, then the system shall copy nothing and say how much more room it needs. |
-| VSP-011 | State | While a copy is under way, the system shall show the file being copied, the files and bytes done of the total, the speed and the time left, and shall refuse to start another copy or to look for observations. |
+| VSP-011 | State | While a copy is under way, the system shall show the file being copied, the files and bytes done of the total, the speed and the time left, and shall refuse to start another copy or to look for observations; while the scope is being looked at, the system shall refuse a copy or a second look. |
 | VSP-012 | Ubiquitous | The system shall land copies in the folder set in Settings as Vespera copies, or in the home folder's raw folder when none is set, and shall refuse to copy when neither is set. |
 | VSP-013 | Ubiquitous | The system shall name every landing folder and file so Windows accepts it, and shall leave out any name from the scope that holds a slash, a line break or another control character, or is "." or "..". |
-| VSP-008 | Event | When a copy that brought files in ends, the system shall index them, with a home scan when the landing folder is inside the home folder and with a FITS scan of the landing folder otherwise, and say on the Vespera page how that went. |
+| VSP-008 | Event | When a copy that brought files in ends, the system shall index them, with a home scan when the landing folder is the home folder's raw folder (after any home scan already running) and with a FITS scan of the landing folder otherwise, and say on the Vespera page how that went. |
 
 ## Quality
 

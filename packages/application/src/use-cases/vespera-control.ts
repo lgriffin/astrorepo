@@ -12,6 +12,7 @@ import {
   plannedFiles,
   remotePath,
   sortObservations,
+  surveyChoices,
   surveyFolders,
   vesperaRoots,
   type CopyChoice,
@@ -75,7 +76,10 @@ export interface CopyProgress {
 export type StartResult = { started: true } | { started: false; reason: string }
 
 export interface VesperaControl {
-  /** Connects, lists every observation and closes. Refused while a copy runs (one connection at a time). */
+  /**
+   * Connects, lists every observation and closes. Refused while a copy or another survey runs (one
+   * connection at a time); a copy cannot start while a survey runs.
+   */
   survey(request: VesperaRequest): Promise<VesperaSurvey>
   /** Starts copying the chosen observations in the background; progress() follows it. */
   start(request: VesperaRequest, choices: CopyChoice[]): StartResult
@@ -162,6 +166,7 @@ export function makeVesperaControl(deps: VesperaControlDeps): VesperaControl {
   let state = idle()
   let running: Promise<void> | null = null
   let cancelRequested = false
+  let surveying = false
   /** Bytes of the file being copied that have arrived so far. */
   let partial = 0
 
@@ -174,6 +179,9 @@ export function makeVesperaControl(deps: VesperaControlDeps): VesperaControl {
 
   async function run(request: VesperaRequest & { landingRoot: string }, choices: CopyChoice[]): Promise<void> {
     let conn: ScopeConnection | null = null
+    // The end state is held back until the connection is closed and indexing has begun, so the
+    // page, which stops following once the copy is not running, never misses the indexing.
+    let end: Pick<CopyProgress, 'state' | 'error' | 'shortBytes'>
     try {
       conn = await deps.scope.open(request.host, request.port)
       const observations = await readObservations(conn, choices)
@@ -189,69 +197,80 @@ export function makeVesperaControl(deps: VesperaControlDeps): VesperaControl {
         totalBytes: plan.bytes
       }
       if (!space.fits) {
-        state = { ...state, state: 'failed', error: 'The folder copies land in has too little room for them.', shortBytes: space.shortBytes }
-        return
+        end = { state: 'failed', error: 'The folder copies land in has too little room for them.', shortBytes: space.shortBytes }
+      } else {
+        for (const copy of plan.copies) {
+          if (cancelRequested) throw new CopyCancelledError()
+          state = { ...state, current: partsKey(copy.parts) }
+          partial = 0
+          const got = await conn.download(
+            copy.remote,
+            deps.landing.join(request.landingRoot, copy.parts),
+            copy.sizeBytes,
+            received => void (partial = received),
+            () => cancelRequested
+          )
+          partial = 0
+          state = { ...state, doneFiles: state.doneFiles + 1, doneBytes: state.doneBytes + (copy.sizeBytes ?? got) }
+        }
+        end = { state: 'done', error: null, shortBytes: null }
       }
-      for (const copy of plan.copies) {
-        if (cancelRequested) throw new CopyCancelledError()
-        state = { ...state, current: partsKey(copy.parts) }
-        partial = 0
-        const got = await conn.download(
-          copy.remote,
-          deps.landing.join(request.landingRoot, copy.parts),
-          copy.sizeBytes,
-          received => void (partial = received),
-          () => cancelRequested
-        )
-        partial = 0
-        state = { ...state, doneFiles: state.doneFiles + 1, doneBytes: state.doneBytes + (copy.sizeBytes ?? got) }
-      }
-      state = { ...state, state: 'done', current: null }
     } catch (error) {
       partial = 0
-      state = error instanceof CopyCancelledError || cancelRequested
-        ? { ...state, state: 'cancelled', current: null }
-        : { ...state, state: 'failed', error: messageOf(error) }
-    } finally {
-      await conn?.close()
-      state = { ...state, finishedAt: deps.clock.now() }
+      end = error instanceof CopyCancelledError || cancelRequested
+        ? { state: 'cancelled', error: null, shortBytes: null }
+        : { state: 'failed', error: messageOf(error), shortBytes: null }
     }
+    await conn?.close()
+    let indexing: Promise<void> | void = undefined
     if (state.doneFiles > 0) {
       try {
-        await deps.onCopied?.(request.landingRoot, state.targets)
+        indexing = deps.onCopied?.(request.landingRoot, state.targets)
       } catch {
         // Indexing the copies is the host's to report; the copy itself is done.
       }
     }
+    state = { ...state, ...end, current: end.state === 'failed' ? state.current : null, finishedAt: deps.clock.now() }
+    await Promise.resolve(indexing).catch(() => undefined)
   }
 
   return {
     async survey(request) {
       if (busy()) throw new Error('A copy is under way; the list refreshes when it ends.')
-      const conn = await deps.scope.open(request.host, request.port)
+      if (surveying) throw new Error('The scope is already being read.')
+      surveying = true
       try {
-        const observations = await readObservations(conn)
-        const own = observations.map(o => ({ folder: o.folder, kind: o.kind }))
-        const planned = plannedFiles(observations, own, request.formats)
-        const have = request.landingRoot ? await landingSizes(request.landingRoot, planned) : new Map<string, number | null>()
-        const statuses = observationStatuses(observations, request.formats, have)
-        const plan = planCopies(planned, have)
-        return {
-          host: request.host,
-          port: request.port,
-          landingRoot: request.landingRoot,
-          observations: statuses,
-          newFiles: plan.copies.length,
-          newBytes: plan.bytes,
-          space: request.landingRoot ? copySpace(plan, await deps.landing.freeBytes(request.landingRoot)) : null
+        const conn = await deps.scope.open(request.host, request.port)
+        try {
+          const observations = await readObservations(conn)
+          const root = request.landingRoot
+          const landed = root
+            ? await Promise.all((await deps.landing.folders(root)).map(async target => ({ target, folders: await deps.landing.folders(deps.landing.join(root, [target])) })))
+            : []
+          const choices = surveyChoices(observations, landed)
+          const planned = plannedFiles(observations, choices, request.formats)
+          const have = root ? await landingSizes(root, planned) : new Map<string, number | null>()
+          const plan = planCopies(planned, have)
+          return {
+            host: request.host,
+            port: request.port,
+            landingRoot: root,
+            observations: observationStatuses(observations, choices, request.formats, have),
+            newFiles: plan.copies.length,
+            newBytes: plan.bytes,
+            space: root ? copySpace(plan, await deps.landing.freeBytes(root)) : null
+          }
+        } finally {
+          await conn.close()
         }
       } finally {
-        await conn.close()
+        surveying = false
       }
     },
 
     start(request, choices) {
       if (busy()) return { started: false, reason: 'A copy is already under way.' }
+      if (surveying) return { started: false, reason: 'The scope is still being read; copy once its list is shown.' }
       const landingRoot = request.landingRoot
       if (!landingRoot) return { started: false, reason: 'Choose the folder copies land in first.' }
       if (choices.length === 0) return { started: false, reason: 'Pick at least one observation to copy.' }

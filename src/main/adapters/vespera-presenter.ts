@@ -57,7 +57,7 @@ export function toObservationView(o: ObservationStatus): VesperaObservationView 
     stateLine,
     warning:
       o.differentFiles > 0
-        ? `${plural(o.differentFiles, 'file')} on the PC ${o.differentFiles === 1 ? 'has' : 'have'} the same name but another size, so ${o.differentFiles === 1 ? 'it is' : 'they are'} left alone.`
+        ? `${plural(o.differentFiles, 'file')} would land where a different file already is, so ${o.differentFiles === 1 ? 'it is' : 'they are'} left alone.`
         : null
   }
 }

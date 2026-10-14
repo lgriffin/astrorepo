@@ -58,9 +58,9 @@ describe('Vespera presenter', () => {
   it('[VSP-006] Given files on the PC with another size, When shown, Then the observation warns they are left alone', () => {
     expect(toObservationView(status({ state: 'copied', copiedFiles: 1, newFiles: 0, differentFiles: 1 }))).toMatchObject({
       stateLine: '1 file on the PC',
-      warning: '1 file on the PC has the same name but another size, so it is left alone.'
+      warning: '1 file would land where a different file already is, so it is left alone.'
     })
-    expect(toObservationView(status({ differentFiles: 2 })).warning).toBe('2 files on the PC have the same name but another size, so they are left alone.')
+    expect(toObservationView(status({ differentFiles: 2 })).warning).toBe('2 files would land where a different file already is, so they are left alone.')
   })
 
   it('[VSP-001] [VSP-010] Given a survey, When shown, Then it sums up what is new and says whether it fits', () => {

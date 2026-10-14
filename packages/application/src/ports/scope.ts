@@ -31,8 +31,13 @@ export interface ScopeConnection {
 
 /** Driven port: the PC folder copies land in. */
 export interface LandingArea {
-  /** A path under `root` from folder and file parts, spelled the way this disk spells paths. */
+  /**
+   * A path under `root` from folder and file parts, spelled the way this disk spells paths.
+   * Throws when a folder on the way under `root` is a link, which could send copies elsewhere.
+   */
   join(root: string, parts: string[]): string
+  /** The names of the folders directly inside `dir`, sorted; none when it is not there. */
+  folders(dir: string): Promise<string[]>
   /** Each file's size, in the order given; null when nothing is there. */
   sizes(paths: string[]): Promise<(number | null)[]>
   /** Free bytes on the disk where `dir` is or will be; null when the system will not say. */

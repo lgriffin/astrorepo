@@ -691,14 +691,17 @@ Vespera** copies them into the library without an FTP client:
    the PC. New ones are ticked.
 4. Check the **Target folder** of each ticked observation. It comes from the observation's name
    (such as `2024-03-10_21-33-02_M 42`); rename it to match the target in your library, so the
-   home scan files it under that target.
+   home scan files it under that target. An observation already copied under a target you
+   renamed is found there and shows as on the PC.
 5. Press **Copy selected**. The Copy card shows the file being copied, the bytes done, the
    speed and the time left, with **Cancel**.
 
 Copies land in **Settings → Folders → Vespera copies**, or in the home folder's `raw` folder
 when that is not set, as `<target>/<observation>/01-images-initial/…`. When a copy ends, the app
-runs the home scan, so the frames show on their target, in Next actions and in the stacking
-plan; a landing folder outside the home folder is scanned on its own and shows under FITS files.
+runs the home scan (after any home scan already running), so the frames show on their target,
+in Next actions and in the stacking plan; any other landing folder is scanned on its own and
+shows under FITS files. Changing the address, the landing folder or the kinds clears the list,
+so look for observations again before copying.
 
 What the copy never does:
 
@@ -708,6 +711,8 @@ What the copy never does:
   another size (a file you edited) is left alone and the observation says so.
 - leave half a file. Each file arrives under a temporary name and takes its own only when it is
   whole and as long as the scope listed it.
+- follow a link. A target or observation folder under the landing folder that is a link or
+  junction to somewhere else stops the copy, so nothing lands outside the folder you chose.
 
 If the Wi-Fi drops, or you cancel, the files already copied stay. Press **Copy selected** again
 and it carries on from the next file. If the landing disk is short of room, nothing is copied and

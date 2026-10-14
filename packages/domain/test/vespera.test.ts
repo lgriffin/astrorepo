@@ -11,6 +11,7 @@ import {
   localName,
   observationOf,
   observationStatuses,
+  surveyChoices,
   parseObservationName,
   parseVesperaSettings,
   planCopies,
@@ -184,11 +185,36 @@ describe('copy plans', () => {
   })
 
   it('[VSP-001] Given an observation partly on the PC, When its status is read, Then it counts what is copied, new and left alone', () => {
-    const [status] = observationStatuses([m42], ['fits', 'json'], new Map([[at('01-images-initial/img-0001.fits'), 100], [at('observation.json'), 3]]))
+    const [status] = observationStatuses([m42], [{ folder: m42.folder, kind: 'observation' }], ['fits', 'json'], new Map([[at('01-images-initial/img-0001.fits'), 100], [at('observation.json'), 3]]))
     expect(status).toMatchObject({
       files: 3, bytes: 205, copiedFiles: 1, newFiles: 1, newBytes: 100, differentFiles: 1, landsIn: 'M 42', state: 'partly',
       counts: { fits: 2, tiff: 1, jpeg: 1, json: 1 }
     })
+  })
+
+  it('[VSP-001] [VSP-006] Given two observations whose names become one on Windows, When their status is read, Then the second is left alone, as the copy would leave it, not shown as new', () => {
+    const a = observationOf('observation', '/user', 'night a?', [file('x.fits', 10)])
+    const b = observationOf('observation', '/user', 'night a_', [file('x.fits', 10)])
+    const choices = [a, b].map(o => ({ folder: o.folder, kind: o.kind, target: 'M 1' }))
+    const statuses = observationStatuses([a, b], choices, ['fits'], new Map())
+    expect(statuses.map(s => [s.folder, s.newFiles, s.differentFiles, s.state])).toEqual([
+      ['night a?', 1, 0, 'new'],
+      ['night a_', 0, 1, 'copied']
+    ])
+  })
+
+  it('[VSP-004] Given an observation named in no choice, When statuses are read, Then it is left out, and a chosen target is where it lands', () => {
+    const statuses = observationStatuses([m42], [{ folder: m42.folder, kind: 'observation', target: 'Orion' }], ['fits'], new Map())
+    expect(statuses.map(s => s.landsIn)).toEqual(['Orion'])
+    expect(observationStatuses([m42], [{ folder: m42.folder, kind: 'darks' }], ['fits'], new Map())).toEqual([])
+  })
+
+  it('[VSP-004] Given an observation copied before under a renamed target, When survey choices are made, Then it is surveyed in that target, its own target winning when both hold it', () => {
+    const folder = localName(m42.folder)
+    expect(surveyChoices([m42], [])).toEqual([{ folder: m42.folder, kind: 'observation', target: null }])
+    expect(surveyChoices([m42], [{ target: 'Orion', folders: [folder.toUpperCase()] }, { target: 'Zeta', folders: [folder] }])[0].target).toBe('Orion')
+    expect(surveyChoices([m42], [{ target: 'Zeta', folders: [folder] }, { target: 'm 42', folders: [folder] }])[0].target).toBe('m 42')
+    expect(surveyChoices([m42], [{ target: 'M 42', folders: ['other'] }, { target: 'Orion', folders: [] }])[0].target).toBeNull()
   })
 
   it('[VSP-001] Given counts, When the state is read, Then empty, copied, new and partly are told apart', () => {
