@@ -41,10 +41,12 @@ import {
   makeSetCometOrbit,
   makeMessierMosaic,
   makePictureGallery,
+  makeVesperaControl,
   type Gallery,
   type JobScheduler,
   type MessierMosaicService,
-  type PictureGallery
+  type PictureGallery,
+  type VesperaControl
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
 import { SqliteDismissalStore } from './adapters/sqlite-dismissal-store'
@@ -77,6 +79,8 @@ import { SqliteMessierCatalogue } from './adapters/sqlite-messier'
 import { NodeTilePictures, type NativeThumbnailer } from './adapters/tile-pictures'
 import { settingReader } from './adapters/shared/app-settings'
 import { AppFolders } from './adapters/app-folders'
+import { NodeScopeFiles } from './adapters/node-ftp-scope'
+import { NodeLandingArea } from './adapters/node-landing-area'
 import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture-folder'
 import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
 
@@ -305,6 +309,14 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
     onChange: options.onChange,
     holds: targetHolds
   })
+}
+
+/**
+ * The Vespera control (spec 033): one per app, since it holds the copy under way. `onCopied`
+ * hands the landing folder to the host to index once a copy brought files in.
+ */
+export function composeVespera(onCopied: (landingRoot: string, targets: string[]) => Promise<void> | void): VesperaControl {
+  return makeVesperaControl({ scope: new NodeScopeFiles(), landing: new NodeLandingArea(), clock: systemClock, onCopied })
 }
 
 export type Core = ReturnType<typeof composeCore>

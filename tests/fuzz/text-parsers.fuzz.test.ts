@@ -5,7 +5,9 @@ import {
   DEFAULT_JOB_SETTINGS,
   GRADE_LIMIT_KEYS,
   JOB_SETTING_KEYS,
+  isScopeHost,
   parseGradeLimits,
+  parseVesperaSettings,
   parseJobSettings,
   rawCaptureTime
 } from '@astro/domain'
@@ -100,6 +102,32 @@ const SEEDS: Record<keyof typeof TEXT_CONTRACTS, { seeds: string[]; pieces: stri
   filterFamily: {
     seeds: ['Ha 7nm', 'OIII (3nm)', 'L', 'L-eXtreme', 'S II', 'Lum 6.5 nm'],
     pieces: ['nm', ' ', '(', ')', '-', '_', '7', '.', 'Ha', 'O', 'III']
+  },
+  readFtpReplies: {
+    seeds: ['220-Welcome to the Vespera\r\n220-second line\r\n220 Ready\r\n331 Password please\r\n', '211-Features:\n MLSD\n EPSV\n211 End\n150 Here\r\n226 Done\r\n', '230 Signed in\r\n229 (|||50123|)\r\n'],
+    pieces: ['\r\n', '\n', '-', ' ', '220', '999', '000', '211-', '211 ']
+  },
+  parseMlsdListing: {
+    seeds: [
+      'type=cdir; .\r\ntype=pdir; ..\r\ntype=dir;modify=20240310213302; 01-images-initial\r\ntype=file;size=4194304;modify=20240310213302; img-0001.fits\r\n',
+      'Type=File;Size=12; observation.json\ntype=OS.unix=slink:/x; link\n'
+    ],
+    pieces: [';', '=', ' ', 'size=', 'type=', 'dir', 'file', '-1', '99999999999999999999', '/', '..', '\r\n']
+  },
+  parseListListing: {
+    seeds: [
+      'total 2\r\ndrwxr-xr-x    2 0        0             4096 Mar 10 21:33 expert mode\r\n-rw-r--r--    1 0        0          4194304 Mar 10  2024 img-0001.fits\r\nlrwxrwxrwx 1 0 0 4 Mar 10 21:33 l -> x\r\n',
+      '03-10-24  09:33PM       <DIR>          user\r\n03-10-2024  21:33              4194304 img-0001.fits\r\n'
+    ],
+    pieces: [' ', '  ', 'd', '-', 'l', 'rwx', '<DIR>', 'PM', ':', '99999999999999999999', '/', '\\', '..', '\r\n']
+  },
+  parsePassive: {
+    seeds: ['227 Entering Passive Mode (10,0,0,1,195,80).', '229 Entering Extended Passive Mode (|||50123|)', '(192, 168, 1, 2, 0, 21)'],
+    pieces: [',', '(', ')', '|', '!', '255', '256', '0', '999999', ' ']
+  },
+  parseObservationName: {
+    seeds: ['2024-03-10_21-33-02_M 42', 'M42 20240310 2133', 'NGC 7000 - 2023.08.14', 'Andromeda', '2024-02-29T23:59:59'],
+    pieces: ['-', '_', '.', ' ', 'T', ':', '2024', '13', '31', '24', '60', '99', 'M ']
   }
 }
 
@@ -143,6 +171,20 @@ describe('settings and EXIF text under fuzz', () => {
         ensure(l.maxBackgroundRatio >= 1 && l.maxBackgroundRatio <= 100, 'background ratio in range')
         ensure(l.maxFwhmPixels === null || (l.maxFwhmPixels >= 0.5 && l.maxFwhmPixels <= 100), 'fixed FWHM in range or none')
         if (!(GRADE_LIMIT_KEYS.maxEccentricity in saved)) ensure(l.maxEccentricity === DEFAULT_GRADE_LIMITS.maxEccentricity, 'a missing limit is its default')
+      }),
+      fuzzParams()
+    )
+  }, FUZZ_TEST_TIMEOUT_MS)
+
+  it('[FUZ-001, FUZ-004, VSP-014] Given anything saved under the Vespera keys, When parseVesperaSettings reads them, Then the address, port and kinds are usable or their defaults', () => {
+    const keys = fc.constantFrom('vespera_host', 'vespera_landing', 'vespera_formats')
+    fc.assert(
+      fc.property(fc.dictionary(keys, fc.oneof(anyText, mutatedText(['10.0.0.1', '10.0.0.1:2121', 'vespera.local', 'fits,tiff,json'], [':', '.', ',', '0', '255', '256', '65536']))), fc.option(fc.constant('/home/raw'), { nil: null }), (saved, homeRaw) => {
+        const s = withinBudget('parseVesperaSettings', () => parseVesperaSettings(saved, homeRaw))
+        ensure(isScopeHost(s.host), `a host: ${s.host}`)
+        ensure(Number.isInteger(s.port) && s.port >= 1 && s.port <= 65535, `a port: ${s.port}`)
+        ensure(s.formats.length > 0 && s.formats.some(f => f !== 'json') && new Set(s.formats).size === s.formats.length, `kinds of file: ${s.formats.join(',')}`)
+        ensure(s.landingRoot === null || s.landingRoot.length > 0, 'a landing folder or none')
       }),
       fuzzParams()
     )

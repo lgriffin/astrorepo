@@ -39,6 +39,11 @@ const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }
     description: 'Where Archive this target puts finished targets, for example a share on the NAS. When not set, archives go in the archive folder of the work area. It must be outside the folders the app only reads.'
   },
   {
+    key: 'vespera_landing',
+    label: 'Vespera copies',
+    description: "Where observations copied off the Vespera land, one folder per target. When not set, they land in the home folder's raw folder, so the home scan finds them."
+  },
+  {
     key: 'base_folder_path',
     label: 'Base Folder Path',
     description: 'Root folder for generated target directory structures (lights, darks, flats, biases).'

@@ -12,6 +12,12 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Vespera control** (spec 033): a Vespera page under Files lists the scope's observations over
+  its Wi-Fi (anonymous FTP at 10.0.0.1, configurable) with what is already on the PC, and copies
+  the ones you tick into each target's raw folder, then runs the home scan. Copies never change
+  anything on the scope, never overwrite a file, and carry on from where a Wi-Fi drop stopped
+  them. The FTP client is written on Node's sockets, with every reply and listing parsed in the
+  domain and fuzzed.
 - **Messier mosaic** (spec 032): all 110 Messier objects under Collections, opened from Home and
   Posters too, each tile showing your own newest finished image (or a stretched master), how far
   the object has come, and when a gap is up from your site: tonight with the moon and a closing

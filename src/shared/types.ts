@@ -1528,6 +1528,67 @@ export interface PalettePreviewView {
   channels: Record<string, { width: number; height: number; pixelsBase64: string }>
 }
 
+/** The Vespera's connection settings as the control page shows them (spec 033). */
+export interface VesperaSettingsView {
+  /** "10.0.0.1", with ":port" when it is not 21. */
+  address: string
+  /** Where copies land; null when neither it nor the home folder is set. */
+  landingRoot: string | null
+  /** The landing folder comes from the home folder, not a setting of its own. */
+  landingIsDefault: boolean
+  formats: Array<'fits' | 'tiff' | 'jpeg' | 'json'>
+  /** Saved settings that could not be read, and what is used instead. */
+  notes: string[]
+}
+
+/** One observation on the scope. */
+export interface VesperaObservationView {
+  kind: 'observation' | 'darks'
+  folder: string
+  /** "M 42", or the folder's name when it names no target. */
+  title: string
+  /** "10 Mar 2024, 21:33", or null when the name has no date. */
+  takenAt: string | null
+  /** The target folder it lands in unless the user names another. */
+  suggestedTarget: string
+  /** "212 FITS, 1 TIFF, 1 JPEG". */
+  contents: string
+  state: 'new' | 'partly' | 'copied' | 'empty'
+  /** "212 files to copy, 890.0 MB", "All 212 files are on the PC". */
+  stateLine: string
+  /** Set when files would land where a different file already is, so they are left alone. */
+  warning: string | null
+}
+
+export type VesperaSurveyView =
+  | {
+      ok: true
+      address: string
+      landingRoot: string | null
+      observations: VesperaObservationView[]
+      /** "3 observations, 412 new files (1.6 GB) to copy." */
+      summary: string
+      /** "4.2 TB free where copies land", or what is short. */
+      spaceLine: string | null
+      spaceShort: boolean
+    }
+  | { ok: false; error: string }
+
+/** The copy under way or last run. */
+export interface VesperaProgressView {
+  state: 'idle' | 'connecting' | 'copying' | 'done' | 'failed' | 'cancelled'
+  running: boolean
+  /** "Copying 120 of 412 files", "Copied 412 files to …". */
+  headline: string
+  /** "300.0 MB of 1.6 GB, 4.1 MB/s, about 5 min left". */
+  detail: string | null
+  /** 0 to 1. */
+  fraction: number
+  current: string | null
+  error: string | null
+  /** What indexing the copies is doing, once a copy brought files in. */
+  indexing: string | null
+}
 // ── Gallery (spec 031) ─────────────────────────────────────────────────────
 
 /** A picture in the gallery's grid. */

@@ -1,6 +1,6 @@
 import path from 'path'
 import type Database from 'better-sqlite3'
-import { solveFolderName, workFolderName } from '@astro/domain'
+import { parseVesperaSettings, solveFolderName, workFolderName, type VesperaSettings } from '@astro/domain'
 import { settingReader, type SettingReader } from './shared/app-settings'
 
 /**
@@ -39,5 +39,22 @@ export class AppFolders {
   /** Where archives go: the archive folder setting, else the work area's archive folder (ARC-012). */
   archiveRoot(): string {
     return this.setting('archive_root') || path.join(this.workArea(), 'archive')
+  }
+
+  /** The home folder, where the library lives; null when it is not set. */
+  homeFolder(): string | null {
+    return this.setting('home_folder_path') || null
+  }
+
+  /**
+   * Where the Vespera is and where its copies land (spec 033): the Vespera settings, landing in
+   * the home folder's `raw` folder when no other folder is set, so the home scan finds them.
+   */
+  vesperaSettings(): VesperaSettings {
+    const home = this.homeFolder()
+    return parseVesperaSettings(
+      { vespera_host: this.setting('vespera_host'), vespera_landing: this.setting('vespera_landing'), vespera_formats: this.setting('vespera_formats') },
+      home ? path.join(home, 'raw') : null
+    )
   }
 }

@@ -12,6 +12,12 @@ import {
   frameFileKind,
   namedFrames,
   parseAstapResult,
+  isSafeRemoteName,
+  parseExtendedPassive,
+  parseListing,
+  parseObservationName,
+  parsePassive,
+  readFtpReplies,
   parseClock,
   parseLiveProgress,
   parseMpcComet,
@@ -159,6 +165,41 @@ export const TEXT_CONTRACTS: Record<string, (input: string) => void> = {
   filterFamily: input => {
     const out = withinBudget('filterFamily', () => filterFamily(input))
     ensure(out === null || out === 'narrowband' || out === 'broadband', `a family or none: ${String(out)}`)
+  },
+  readFtpReplies: input => {
+    let out: ReturnType<typeof readFtpReplies>
+    try {
+      out = withinBudget('readFtpReplies', () => readFtpReplies(input))
+    } catch (error) {
+      ensure(error instanceof Error && /too long/.test(error.message) && input.length > 64 * 1024, `only an overlong reply is refused: ${String(error)}`)
+      return
+    }
+    ensure(out.replies.every(r => Number.isInteger(r.code) && r.code >= 100 && r.code <= 599 && typeof r.text === 'string'), `codes in range: ${show(out.replies)}`)
+    ensure(input.endsWith(out.rest), 'what is left is the end of what was read')
+  },
+  parseMlsdListing: input => checkListing(withinBudget('parseListing', () => parseListing(input, 'mlsd'))),
+  parseListListing: input => checkListing(withinBudget('parseListing', () => parseListing(input, 'list'))),
+  parsePassive: input => {
+    const out = withinBudget('parsePassive', () => parsePassive(input))
+    ensure(out === null || (/^\d{1,3}(\.\d{1,3}){3}$/.test(out.host) && Number.isInteger(out.port) && out.port >= 1 && out.port <= 65535), `an address and port: ${show(out)}`)
+    const ext = withinBudget('parseExtendedPassive', () => parseExtendedPassive(input))
+    ensure(ext === null || (Number.isInteger(ext) && ext >= 1 && ext <= 65535), `a port: ${String(ext)}`)
+  },
+  parseObservationName: input => {
+    const out = withinBudget('parseObservationName', () => parseObservationName(input))
+    ensure(out.takenAt === null || /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(out.takenAt), `a date and time or none: ${show(out)}`)
+    ensure(out.target === null || (out.target.length > 0 && out.target === out.target.trim()), `a trimmed target or none: ${show(out)}`)
+  }
+}
+
+/** A listing: safe names only, each once, sorted, with whole non-negative sizes for files and none for folders. */
+function checkListing(entries: ReturnType<typeof parseListing>): void {
+  const names = entries.map(e => e.name)
+  ensure(new Set(names).size === names.length, 'each name once')
+  ensure(names.every((n, i) => i === 0 || names[i - 1] < n), 'sorted by name')
+  for (const e of entries) {
+    ensure(isSafeRemoteName(e.name), `a safe name: ${show(e.name)}`)
+    ensure(e.kind === 'dir' ? e.sizeBytes === null : e.sizeBytes === null || (Number.isSafeInteger(e.sizeBytes) && e.sizeBytes >= 0), `a size: ${show(e)}`)
   }
 }
 

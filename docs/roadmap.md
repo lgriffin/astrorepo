@@ -31,6 +31,7 @@ when the code says otherwise, and the reasons are recorded here.
 | H1 · Gallery inspector | Histogram, noise, clipping and the brightest star per file; palette suggestions with a preview, the choice shown beside post-processing; compare two images side by side or with a slider; a coordinate grid and catalogue labels on images whose header is solved or that were plate solved | [025](../specs/025-gallery-inspector/requirements.md) | Done |
 | O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels stacked per filter, with the filter to shoot tonight; comets placed in every light and stacked on their motion. Each part shows only when such frames or settings exist | [026](../specs/026-other-rigs/requirements.md) | Done |
 | S · A stable base | The hexagon checked across every layer with a ratchet on legacy code; rules out of presenters and IPC; a contract suite on both sides of every port; EARS citations only in test titles, with 63 Gherkin scenarios; property, fuzz and mutation testing of the core. See [docs/testing](testing/) | [027](../specs/027-hexagon-hardening/requirements.md), [028](../specs/028-ears-bdd/requirements.md), [029](../specs/029-property-fuzz/requirements.md), [030](../specs/030-mutation-testing/requirements.md) | Done (PRs #52 to #57) |
+| F1 · Vespera control | A Vespera page under Files: the scope's observations over its Wi-Fi (FTP at 10.0.0.1), what is new against the PC, and a copy into each target's raw folder that never touches the scope or overwrites a file, carries on after a Wi-Fi drop, and ends in a home scan | [033](../specs/033-vespera-ftp/requirements.md) | Done |
 | H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
 | J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
 | E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
@@ -135,6 +136,11 @@ app has run on real data on the Windows PC and the licence is settled.
   records whether the image is mirrored when the solver says. Finished images are FITS and PNG for now,
   since JPEG and TIFF need a decoder, and the chosen palette is a hint beside the Siril_Scripts
   command because v2 has no palette option.
+- **Slice F splits in two** (spec 033). Leigh asked for a native FTP connection to the Vespera
+  with a control page of its own, so F1 copies observations off the scope over its Wi-Fi into the
+  home folder's raw folder, where the home scan already finds targets. Reading the scope's JSON
+  metadata and XISF wait for a sample night (#23). The FTP layout comes from Vaonis's support
+  pages and owners' write-ups, and has not yet been checked against a real Vespera.
 - **C4 diagrams** live in [architecture/c4.md](architecture/c4.md) and are updated by every slice
   that adds a port, an adapter or an external tool.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the
@@ -150,7 +156,8 @@ with what is needed and the default used until it is answered.
 - ([#32](https://github.com/lgriffin/astrorepo/issues/32)) Choose the licence. README says ISC and the blueprint picked Apache-2.0.
 - ([#33](https://github.com/lgriffin/astrorepo/issues/33)) Confirm the order of the next slices.
 - ([#23](https://github.com/lgriffin/astrorepo/issues/23)) One night from each scope (a Seestar folder and a Vespera export, with firmware versions), so
-  the scope adapters can be built from real files.
+  the scope adapters can be built from real files. For the Vespera page (spec 033): one Look for
+  observations on the scope's Wi-Fi, to confirm the folder names, MLSD or LIST, and the darks folder.
 - ([#24](https://github.com/lgriffin/astrorepo/issues/24)) The Synology model, which decides the container image targets.
 - ([#25](https://github.com/lgriffin/astrorepo/issues/25)) Whether the app should start itself for the run window (a Windows Task Scheduler entry), since
   jobs only start while it is open.
