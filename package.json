@@ -17,6 +17,7 @@
     "ears": "tsx scripts/ears/cli.ts",
     "test:mutation": "stryker run",
     "test:mutation:changed": "node scripts/mutation/changed.mjs",
+    "test:mutation:floor": "node scripts/mutation/floor.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "db:seed": "tsx src/main/db/seed/run-seed.ts",

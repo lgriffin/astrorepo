@@ -130,9 +130,11 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
     if (outlooks?.key !== key) outlooks = { key, byNumber: new Map() }
     const byNumber = outlooks.byNumber
     const rows = objects.map(object => {
-      const known = object.raHours === null || object.decDeg === null ? undefined : byNumber.get(object.number)
-      const found = known ?? outlookOf(object, site, sky)
-      if (!known && object.raHours !== null && object.decDeg !== null) byNumber.set(object.number, found)
+      let found = byNumber.get(object.number)
+      if (!found) {
+        found = outlookOf(object, site, sky)
+        byNumber.set(object.number, found)
+      }
       return { object, frames: framesOf.get(object.targetId), ...found }
     })
     return { night: sky.night, siteSet: true, rows }
@@ -157,6 +159,7 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
     const byNight = new Map<string, NightSky | null>()
     for (const n of new Set([...closingNights, ...seasonNights])) byNight.set(n, await skyOn(n))
     const tonight = byNight.get(night) ?? null
+    // Stryker disable next-line BooleanLiteral: without tonight's sky there is no tonight outlook to rule out, so brightMoon is never read
     const brightMoon = tonight ? peakMoonIllumination(tonight) > policy.brightMoonIllumination : false
     return { siteKey, night, closingNights, seasonNights, byNight, tonight, brightMoon, hasNarrowbandFilter: await deps.settings.hasNarrowbandFilter() }
   }
@@ -177,6 +180,7 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
       : null
     const closing = seasonClosing(sky.closingNights.map(n => ({ night: n, hours: hoursOn(n) })), policy)
     // 52 weekly nights touch 13 calendar months; the mosaic looks at the first 12, as the Sky planner does.
+    // Stryker disable next-line ArrayDeclaration: the tiles do not show new moons, and a month keeps only those dated in it
     const months = monthlySeason(sky.seasonNights.map(n => ({ night: n, hours: hoursOn(n) })), []).slice(0, 12)
     return { outlook: messierOutlook({ tonight, closing, months }, policy), months: months.map(m => ({ ...m, inSeason: m.hoursPerNight >= policy.minUsableHours })) }
   }
@@ -232,6 +236,7 @@ export function makeMessierMosaic(deps: MessierMosaicDeps, policy: PlanningPolic
       if (candidates.length === 0) return null
       const failures: string[] = []
       for (const c of candidates) {
+        // Stryker disable next-line StringLiteral: any fixed text for an unknown date keys the same pictures apart
         const key = `${width}|${c.modifiedAt?.getTime() ?? 'unknown'}|${c.path}`
         let picture = drawn.get(key)
         if (!picture) {

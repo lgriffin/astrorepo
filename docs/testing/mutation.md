@@ -26,7 +26,12 @@ later run re-tests only mutants whose code or covering tests changed. Add `--for
 everything. CI keeps the file in the Actions cache, not in git.
 
 The run fails when the score is below the break threshold (`DEFAULT_BREAK` in
-`scripts/mutation/scope.mjs`, overridable with `MUTATION_BREAK=<0-100>`). Only the core's unit
+`scripts/mutation/scope.mjs`, overridable with `MUTATION_BREAK=<0-100>`), and also when any one
+file is below it, whatever the run's overall score (MUT-010): Stryker's own break looks only at
+the overall score, so `scripts/mutation/floor.mjs` checks each file of the report afterwards. The
+changed-files mode runs that check itself; after a whole-core run, `npm run test:mutation:floor`
+does it, and the nightly workflow runs it as its own step. The job summary lists any file under
+the floor. Only the core's unit
 tests (`packages/*/test`, see `vitest.mutation.config.ts`) run against mutants. The TypeScript
 checker drops mutants that would not compile before any test runs.
 

@@ -8,4 +8,8 @@ export interface Score {
   score: number | null
 }
 export declare function score(mutants: MutantLike[]): Score
-export declare function summarise(report: { files?: Record<string, { mutants: MutantLike[] }> }, top?: number): string
+export interface Report {
+  files?: Record<string, { mutants: MutantLike[] }>
+}
+export declare function filesBelow(report: Report, threshold: number): { file: string; score: number }[]
+export declare function summarise(report: Report, top?: number, floor?: number | null): string

@@ -31,8 +31,8 @@ test, where it lives, and what the build refuses. The three guides beside it go 
 | Hexagon (`tests/architecture/hexagon-boundaries.test.ts`) | The domain importing anything but itself, the application anything but itself and the domain, the core reading the clock, randomness or host globals, an adapter importing legacy code, a use case built outside composition | CI |
 | Legacy ratchet (`tests/architecture/legacy-ratchet.test.ts`) | More `getSqlite()` calls, legacy services or legacy IPC calls than `legacy-ratchet.json` allows | CI |
 | Wording (`tests/unit/wording.test.ts`) | A title-case label in the renderer | CI |
-| Mutation, changed files | A pull request whose changed core files score under the floor (`DEFAULT_BREAK` in `scripts/mutation/scope.mjs`) | CI, on pull requests touching the core or the gate |
-| Mutation, whole core | The whole core scoring under the floor | Nightly and on demand |
+| Mutation, changed files | A pull request with any changed core file scoring under the floor (`DEFAULT_BREAK` in `scripts/mutation/scope.mjs`), or the run as a whole under it | CI, on pull requests touching the core or the gate |
+| Mutation, whole core | Any core file, or the whole core, scoring under the floor | Nightly and on demand |
 | Fuzz, long | Any parser failing its contract over 20,000 runs | Nightly and on demand |
 
 CI runs lint, type checks, EARS, tests with coverage and the build on both Windows and Ubuntu, so

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { MessierRefusedError, TILE_PICTURE_CACHE, makeListNextActions, makeMessierMosaic } from '@astro/application'
-import type { PictureCandidate } from '@astro/domain'
+import { MessierRefusedError, NIGHT_SKY_CACHE, TILE_PICTURE_CACHE, makeListNextActions, makeMessierMosaic } from '@astro/application'
+import type { MessierObject } from '@astro/application'
+import type { NightSky, PictureCandidate, Site } from '@astro/domain'
 import {
   FakeEphemeris,
   FakeTilePictures,
@@ -326,5 +327,94 @@ describe('Messier gaps tonight', () => {
     settings.setSite({ latitudeDeg: 40.4, longitudeDeg: -3.7, elevationM: 650 })
     await mosaic.gapsTonight(3)
     expect(ephemeris.nightsRequested.length).toBeGreaterThan(afterMosaic)
+  })
+})
+
+describe('The Messier mosaic, at its edges', () => {
+  it('[MES-001] Given a catalogue that lists its objects out of order, When put together, Then the tiles still come in Messier order', async () => {
+    const { messier, frames, pictures, settings, ephemeris, clock } = setup()
+    const reversed = { objects: async (): Promise<MessierObject[]> => (await messier.objects()).reverse(), pictures: (id: string) => messier.pictures(id) }
+    const m = await makeMessierMosaic({ messier: reversed, frames, pictures, settings, ephemeris, clock }).mosaic()
+    expect(m.tiles.map(t => t.number)).toEqual([1, 13, 31, 42, 83, 87])
+  })
+
+  it('[MES-011] Given M 110 and M 1, the ends of the catalogue, When their pictures are asked for, Then neither is refused', async () => {
+    const { mosaic, messier } = setup()
+    messier.add(messierObject(110, { targetId: 'target-m-110', raHours: 0.67, decDeg: 41.69 }))
+    await expect(mosaic.picture(110)).resolves.toBeNull()
+    await expect(mosaic.picture(1)).resolves.toBeNull()
+  })
+
+  it('[MES-012] Given more pictures than are kept, When the second oldest is asked for again, Then it is still kept and not drawn again', async () => {
+    const { mosaic, messier, pictures } = setup()
+    messier.picture('target-m-31', finished('/img/m31.png'))
+    pictures.add('/img/m31.png', { width: 4000, height: 4000 })
+    for (let w = 32; w < 32 + TILE_PICTURE_CACHE + 1; w++) await mosaic.picture(31, w)
+    await mosaic.picture(31, 33)
+    expect(pictures.asked).toHaveLength(TILE_PICTURE_CACHE + 1)
+  })
+
+  it('[MES-005] Given the same night and site, When put together twice, Then each outlook is worked out once and reused, positioned or not', async () => {
+    const { mosaic } = setup()
+    const first = await mosaic.mosaic()
+    const second = await mosaic.mosaic()
+    for (const n of [31, 42, 87]) {
+      expect(second.tiles.find(t => t.number === n)!.outlook).toBe(first.tiles.find(t => t.number === n)!.outlook)
+      expect(second.tiles.find(t => t.number === n)!.months).toBe(first.tiles.find(t => t.number === n)!.months)
+    }
+  })
+
+  it('[MES-005] Given the moon lit exactly to the bright-moon limit tonight, When put together, Then a galaxy is not held back by it, and just past the limit it is', async () => {
+    const at = (illumination: number) => {
+      const s = setup()
+      s.ephemeris.setMoon('2026-09-29', { altitudeDeg: 40, illumination, raHours: 18, decDeg: -20 })
+      return s.mosaic.mosaic()
+    }
+    expect((await at(0.6)).tiles.find(t => t.number === 31)!.outlook?.kind).toBe('tonight')
+    expect((await at(0.61)).tiles.find(t => t.number === 31)!.outlook?.kind).toBe('moon')
+  })
+
+  it('[MES-007] Given a month whose nights average exactly the usable minimum, When put together, Then that month counts as in season', async () => {
+    const { mosaic, messier } = setup()
+    messier.add(messierObject(26, { targetId: 'target-m-26', raHours: 6, decDeg: -8 }))
+    const november = (await mosaic.mosaic()).tiles.find(t => t.number === 26)!.months.find(m => m.month === '2026-11')!
+    expect(november).toMatchObject({ hoursPerNight: 1, inSeason: true })
+  })
+
+  it('[MES-008] Given a night sky that failed to be worked out, When the gaps are listed again, Then it is worked out afresh rather than failing again', async () => {
+    const { messier, frames, pictures, settings, clock } = setup()
+    let failures = 1
+    const ephemeris = new FakeEphemeris()
+    const nightSky = ephemeris.nightSky.bind(ephemeris)
+    ephemeris.nightSky = async (site: Site, night: string): Promise<NightSky | null> => {
+      if (failures > 0) {
+        failures--
+        throw new Error('ephemeris down')
+      }
+      return nightSky(site, night)
+    }
+    const mosaic = makeMessierMosaic({ messier, frames, pictures, settings, ephemeris, clock })
+    await expect(mosaic.gapsTonight(3)).rejects.toThrow('ephemeris down')
+    await expect(mosaic.gapsTonight(3)).resolves.toBeInstanceOf(Array)
+  })
+
+  it(`[MES-008] Given Home refreshed day after day, When ${NIGHT_SKY_CACHE} nights have been worked out, Then all of them are still kept`, async () => {
+    const { mosaic, clock, ephemeris } = setup()
+    const day = (n: number) => clock.set(new Date(Date.parse('2026-09-29T15:00:00Z') + n * 24 * 3600 * 1000).toISOString())
+    let d = 0
+    for (; new Set(ephemeris.nightsRequested).size < NIGHT_SKY_CACHE; d++) {
+      day(d)
+      await mosaic.gapsTonight(3)
+    }
+    expect(new Set(ephemeris.nightsRequested).size).toBe(NIGHT_SKY_CACHE)
+    const asked = ephemeris.nightsRequested.length
+    day(0)
+    await mosaic.gapsTonight(3)
+    expect(ephemeris.nightsRequested.length).toBe(asked)
+    day(d)
+    await mosaic.gapsTonight(3)
+    day(0)
+    await mosaic.gapsTonight(3)
+    expect(ephemeris.nightsRequested.slice(asked)).toContain('2026-09-29')
   })
 })

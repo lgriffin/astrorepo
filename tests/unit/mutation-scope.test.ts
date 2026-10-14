@@ -4,7 +4,8 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { pathToFileURL } from 'url'
-import { score, summarise } from '../../scripts/mutation/summary.mjs'
+import { filesBelow, score, summarise } from '../../scripts/mutation/summary.mjs'
+import { checkFloor } from '../../scripts/mutation/floor.mjs'
 import {
   DEFAULT_BREAK, SKIPPED_NOTE, SMOKE_TARGET, breakThreshold, changedTargets, isMutable, listMutable, sourcesForTest
 } from '../../scripts/mutation/scope.mjs'
@@ -153,6 +154,41 @@ describe('mutation gate scope', () => {
       const md = summary(path.join(dir, 'mutation.json'))
       expect(md).toContain('Skipped. nothing to mutate.')
       expect(md).not.toContain('did not get as far')
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('[MUT-010] Given a report whose overall score clears the floor but one file does not, When held to the floor, Then that file fails with its score and the others do not', () => {
+    const report = {
+      files: {
+        'packages/domain/src/strong.ts': { mutants: mutants(...Array(18).fill('Killed'), 'Survived') },
+        'packages/application/src/use-cases/weak.ts': { mutants: mutants('Killed', 'Killed', 'Killed', 'Survived', 'NoCoverage') },
+        'packages/domain/src/edge.ts': { mutants: mutants('Killed', 'Killed', 'Killed', 'Killed', 'Survived') },
+        'packages/domain/src/none.ts': { mutants: mutants('Ignored') }
+      }
+    }
+    expect(score(Object.values(report.files).flatMap(f => f.mutants)).score).toBeGreaterThan(80)
+    expect(filesBelow(report, 80)).toEqual([{ file: 'packages/application/src/use-cases/weak.ts', score: 60 }])
+    expect(summarise(report, 15, 80)).toContain('**Under the 80% floor:** packages/application/src/use-cases/weak.ts (60.00%)')
+    expect(summarise(report, 15, 50)).not.toContain('Under the')
+    expect(summarise(report)).not.toContain('Under the')
+  })
+
+  it('[MUT-010] Given reports on disk, When the floor is checked, Then a file below it fails the check by name, a clean report passes, a skipped run passes and a missing report fails', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mutation-floor-'))
+    try {
+      const file = path.join(dir, 'mutation.json')
+      expect(checkFloor(file, 80)).toEqual({ ok: false, lines: [`No mutation report at ${file}: nothing to check against the 80% floor.`] })
+      fs.writeFileSync(path.join(dir, SKIPPED_NOTE), 'nothing to mutate.\n')
+      expect(checkFloor(file, 80).ok).toBe(true)
+      fs.writeFileSync(file, JSON.stringify({ files: { 'packages/domain/src/a.ts': { mutants: mutants('Killed', 'Survived') }, 'packages/domain/src/b.ts': { mutants: mutants('Killed', 'Killed', 'Survived') } } }))
+      expect(checkFloor(file, 80)).toEqual({ ok: false, lines: ['2 files score below the 80% floor:', '  packages/domain/src/a.ts: 50.00%', '  packages/domain/src/b.ts: 66.67%'] })
+      expect(checkFloor(file, 60)).toEqual({ ok: false, lines: ['1 file scores below the 60% floor:', '  packages/domain/src/a.ts: 50.00%'] })
+      expect(checkFloor(file, 50)).toEqual({ ok: true, lines: ['Every mutated file scores at least 50%.'] })
+      const cli = spawnSync(process.execPath, [path.join(root, 'scripts/mutation/floor.mjs'), file], { encoding: 'utf8', env: { ...process.env, MUTATION_BREAK: '60' } })
+      expect(cli.status).toBe(1)
+      expect(cli.stderr).toContain('packages/domain/src/a.ts: 50.00%')
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
