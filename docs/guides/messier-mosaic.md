@@ -26,7 +26,8 @@ auto-stretched, as the image inspector stretches it. If a picture cannot be draw
 say), the tile tries the next one. When none draws, the tile says why in its details.
 
 Finished images are found where the image scan put them: the object's own folder under
-`<home>/images` and the folders directly inside it. Images loose in `<home>/images` itself count
+`<home>/images` and the folders directly inside it, and any other folder in `<home>/images` named
+for the object ("M31 Andromeda", "Andromeda Galaxy", or one of its aliases). Images loose in `<home>/images` itself count
 too, but only when their file name gives the object's number ("M31_final.jpg", "m 31 v2.png"),
 whether or not the object also has its own folder.
 

@@ -4,7 +4,7 @@ import type Database from 'better-sqlite3'
 import type { MessierCatalogue, MessierObject } from '@astro/application'
 import { messierNumber, type PictureCandidate } from '@astro/domain'
 import { IS_INTEGRATED_LIGHT, parseUtc } from './shared/sql'
-import { imagesFolderOf, listFolderImages } from './shared/images-folder'
+import { imagesFolderOf, listFolderImages, type FolderImage } from './shared/images-folder'
 import { settingReader } from './shared/app-settings'
 
 /** Finished images a tile could show: JPEG, PNG, TIFF and FITS. */
@@ -61,23 +61,41 @@ export class SqliteMessierCatalogue implements MessierCatalogue {
   }
 
   /**
-   * Finished images of the object: those in the target's own images folder, and loose images at the
-   * top of the library's shared images folder whose file names give its Messier number. A scan can
-   * file both under one target but records only one folder, so the shared folder is always looked
-   * at; its other images are other objects' (MES-003).
+   * Finished images of the object: those in the target's own images folder, in any other folder
+   * directly under the library's shared images folder named for it (its Messier number, name or an
+   * alias), and loose images at the top of the shared folder whose file names give its Messier
+   * number. A scan can file several of these under one target but records only one folder, so the
+   * shared folder is always looked at; its other images are other objects' (MES-003).
    */
   private finished(targetId: string): PictureCandidate[] {
     const dir = imagesFolderOf(this.db, targetId)
     const home = this.setting('home_folder_path')
     const sharedDir = home ? path.resolve(home, 'images') : null
-    const own = dir && path.resolve(dir) !== sharedDir ? listFolderImages(dir, PICTURE) : []
-    const numbers = sharedDir ? this.numbersOf(targetId) : []
-    const names = numbers.map(n => new RegExp(`(^|[^A-Za-z0-9])M[\\s_-]*0*${n}(?![0-9])`, 'i'))
-    const loose = sharedDir && names.length > 0 ? listFolderImages(sharedDir, PICTURE, { maxDepth: 0, keep: name => names.some(re => re.test(name)) }) : []
+    const folders = new Set<string>()
+    if (dir && path.resolve(dir) !== sharedDir) folders.add(path.resolve(dir))
+    let loose: FolderImage[] = []
+    if (sharedDir) {
+      const numbers = this.numbersOf(targetId).map(n => new RegExp(`(^|[^A-Za-z0-9])M[\\s_-]*0*${n}(?![0-9])`, 'i'))
+      const names = this.namesOf(targetId)
+      const namedFor = (folder: string) => {
+        const f = folder.trim().toLowerCase()
+        return numbers.some(re => re.test(folder)) || names.some(n => f === n || (f.startsWith(n) && /[\s_-]/.test(f[n.length])))
+      }
+      for (const sub of subfolders(sharedDir)) if (namedFor(sub)) folders.add(path.join(sharedDir, sub))
+      if (numbers.length > 0) loose = listFolderImages(sharedDir, PICTURE, { maxDepth: 0, keep: name => numbers.some(re => re.test(name)) })
+    }
     const seen = new Set<string>()
-    return [...own, ...loose]
+    return [...[...folders].flatMap(f => listFolderImages(f, PICTURE)), ...loose]
       .filter(f => !seen.has(path.resolve(f.path)) && seen.add(path.resolve(f.path)))
       .map(f => ({ path: f.path, kind: 'finished' as const, colour: null, modifiedAt: f.modifiedAt }))
+  }
+
+  /** The target's name and aliases, lower case, for matching folder names. */
+  private namesOf(targetId: string): string[] {
+    const rows = this.db
+      .prepare(`SELECT canonical_name AS name FROM targets WHERE id = ? UNION SELECT alias AS name FROM target_aliases WHERE target_id = ?`)
+      .all(targetId, targetId) as { name: string | null }[]
+    return rows.map(r => (r.name ?? '').trim().toLowerCase()).filter(n => n.length >= 2)
   }
 
   private numbersOf(targetId: string): number[] {
@@ -103,5 +121,14 @@ export class SqliteMessierCatalogue implements MessierCatalogue {
         colour: r.naxis3 !== null ? r.naxis3 >= 3 : r.naxis === 2 ? false : null,
         modifiedAt: parseUtc(r.file_modified_at) ?? parseUtc(r.created_at)
       }))
+  }
+}
+
+/** The names of the folders directly inside a folder; none when it cannot be read. */
+function subfolders(dir: string): string[] {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name)
+  } catch {
+    return []
   }
 }

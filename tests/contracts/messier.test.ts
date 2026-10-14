@@ -89,7 +89,7 @@ messierCatalogueContract('SQLite', async seed => {
 })
 
 describe('SqliteMessierCatalogue', () => {
-  it('[MES-003] Given images filed loose in the library’s shared images folder, When an object’s pictures are listed, Then only files whose names give its Messier number are its own', async () => {
+  it('[MES-003] Given images filed loose in the library’s shared images folder, When an object’s pictures are listed, Then only files whose names give its Messier number are its own, and a folder named for it counts', async () => {
     const db = setupTestDb()
     const home = tempRoot()
     const images = path.join(home, 'images')
@@ -102,27 +102,36 @@ describe('SqliteMessierCatalogue', () => {
     db.prepare('INSERT INTO catalogue_entries (id, catalogue_id, target_id, designation) VALUES (?, ?, ?, ?)').run('e-m31', 'cat-M', 'andromeda', 'M31')
     db.prepare('INSERT INTO target_home_data (target_id, images_path, scanned_at) VALUES (?, ?, ?)').run('andromeda', images, new Date().toISOString())
     const names = (await new SqliteMessierCatalogue(db).pictures('andromeda')).map(p => path.basename(p.path)).sort()
-    expect(names).toEqual(['M31_final.jpg', 'm 31 v2.png'])
+    expect(names).toEqual(['M31_final.jpg', 'deep.png', 'm 31 v2.png'])
   })
 
-  it('[MES-003] Given an object with its own folder and loose images in the shared folder, When listed, Then both count, once each, even before a scan records a folder', async () => {
+  it('[MES-003] Given an object with its own folder, folders under its name or alias and loose images in the shared folder, When listed, Then all count, once each, even before a scan records a folder', async () => {
     const db = setupTestDb()
     const home = tempRoot()
     const images = path.join(home, 'images')
     const own = path.join(images, 'M31 Andromeda')
     fs.mkdirSync(path.join(own, 'v1'), { recursive: true })
+    fs.mkdirSync(path.join(images, 'Andromeda Galaxy'))
+    fs.mkdirSync(path.join(images, 'Great Andromeda 2025'))
+    fs.mkdirSync(path.join(images, 'M33 Triangulum'))
+    fs.mkdirSync(path.join(images, 'Andromedary'))
     fs.writeFileSync(path.join(own, 'final.jpg'), 'x')
     fs.writeFileSync(path.join(own, 'v1', 'older.png'), 'x')
+    fs.writeFileSync(path.join(images, 'Andromeda Galaxy', 'alt.jpg'), 'x')
+    fs.writeFileSync(path.join(images, 'Great Andromeda 2025', 'alias.png'), 'x')
+    fs.writeFileSync(path.join(images, 'M33 Triangulum', 'm33.jpg'), 'x')
+    fs.writeFileSync(path.join(images, 'Andromedary', 'camel.jpg'), 'x')
     for (const name of ['M31_loose.png', 'M33.png']) fs.writeFileSync(path.join(images, name), 'x')
     db.prepare("INSERT INTO app_settings (key, value) VALUES ('home_folder_path', ?)").run(home)
     db.prepare('INSERT INTO catalogues (id, name, abbreviation, created_at) VALUES (?, ?, ?, ?)').run('cat-M', 'Messier', 'M', new Date().toISOString())
     seedTarget(db, { id: 'andromeda', canonicalName: 'Andromeda Galaxy' })
+    db.prepare('INSERT INTO target_aliases (id, target_id, alias) VALUES (?, ?, ?)').run('a1', 'andromeda', 'Great Andromeda')
     db.prepare('INSERT INTO catalogue_entries (id, catalogue_id, target_id, designation) VALUES (?, ?, ?, ?)').run('e-m31', 'cat-M', 'andromeda', 'M31')
     const catalogue = new SqliteMessierCatalogue(db)
-    expect((await catalogue.pictures('andromeda')).map(p => path.basename(p.path))).toEqual(['M31_loose.png'])
+    const all = ['M31_loose.png', 'alias.png', 'alt.jpg', 'final.jpg', 'older.png']
+    expect((await catalogue.pictures('andromeda')).map(p => path.basename(p.path)).sort()).toEqual(all)
     db.prepare('INSERT INTO target_home_data (target_id, images_path, scanned_at) VALUES (?, ?, ?)').run('andromeda', own, new Date().toISOString())
-    const names = (await catalogue.pictures('andromeda')).map(p => path.basename(p.path)).sort()
-    expect(names).toEqual(['M31_loose.png', 'final.jpg', 'older.png'])
+    expect((await catalogue.pictures('andromeda')).map(p => path.basename(p.path)).sort()).toEqual(all)
   })
 
   it('[MES-003] Given a target’s own images folder, When listed, Then files one folder deep count and deeper ones and other files do not', async () => {
