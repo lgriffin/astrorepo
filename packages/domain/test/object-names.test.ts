@@ -58,6 +58,7 @@ describe('designations in a name', () => {
     ['Sharpless2-155', ['Sh2-155']],
     ['sharpless_2-155', ['Sh2-155']],
     ['Sharpless 2 Cave', ['Sh2-2']],
+    ['Sharpless2_-6', ['Sh2-2']],
     ['C14', ['C14']],
     ['Caldwell 14', ['C14']],
     ['M81_M82', ['M81', 'M82']],

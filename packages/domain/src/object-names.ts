@@ -33,7 +33,7 @@ const WRITE: Record<CatalogueKey, (n: number) => string> = {
  * spellings come first so "Messier" is not read as "M". The number must not run on into another
  * digit, and Caldwell's bare "C" must not run on into a letter either ("C10s" is no object).
  */
-const DESIGNATION = /(?<![A-Za-z0-9])(?:(messier|m)|(ngc)|(ic)|(caldwell|c)|(sh\s*2|sharpless(?:[\s_]*2(?=[\s_]*-))?))[\s_.-]*0*([1-9]\d{0,4})(?!\d)/gi
+const DESIGNATION = /(?<![A-Za-z0-9])(?:(messier|m)|(ngc)|(ic)|(caldwell|c)|(sh\s*2|sharpless(?:[\s_]*2(?=-\d))?))[\s_.-]*0*([1-9]\d{0,4})(?!\d)/gi
 
 /** Every catalogue designation in a piece of text, in the order written, each once. */
 export function designationsIn(text: string): Designation[] {
