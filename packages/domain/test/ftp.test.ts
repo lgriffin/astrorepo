@@ -36,6 +36,11 @@ describe('FTP replies', () => {
     expect(readFtpReplies('200\n').replies).toEqual([])
   })
 
+  it('[VIN-001] Given a read that starts with a blank line, and a multi-line reply with a carriage return inside a line, When read, Then the reply after the blank line comes back and only the line-ending return is dropped', () => {
+    expect(readFtpReplies('\n200 ok\n').replies).toEqual([{ code: 200, text: 'ok' }])
+    expect(readFtpReplies('211-x\r\n a\rb\r\n211 End\r\n').replies).toEqual([{ code: 211, text: 'x\n a\rb\nEnd' }])
+  })
+
   it('[FUZ-003] Given an unfinished reply longer than any real one, When read, Then it is refused rather than kept growing', () => {
     expect(() => readFtpReplies(`220-${'x'.repeat(MAX_REPLY_CHARS)}\n`)).toThrow(/too long/)
     expect(() => readFtpReplies('x'.repeat(MAX_REPLY_CHARS + 1))).toThrow(/too long/)
@@ -54,10 +59,14 @@ describe('passive mode', () => {
     expect(parseExtendedPassive('(|||0|)')).toBeNull()
     expect(parseExtendedPassive('(|||70000|)')).toBeNull()
     expect(parseExtendedPassive('(||50123|)')).toBeNull()
+    expect(parseExtendedPassive('(|||1|)')).toBe(1)
+    expect(parseExtendedPassive('(|||65535|)')).toBe(65535)
     expect(parsePassive('Entering Passive Mode (10,0,0,1,195,80).')).toEqual({ host: '10.0.0.1', port: 195 * 256 + 80 })
     expect(parsePassive('227 (192, 168, 1, 2, 0, 21)')).toEqual({ host: '192.168.1.2', port: 21 })
     expect(parsePassive('(10,0,0,1,0,0)')).toBeNull()
     expect(parsePassive('(10,0,0,256,1,1)')).toBeNull()
+    expect(parsePassive('(192,168,100,200,4,1)')).toEqual({ host: '192.168.100.200', port: 1025 })
+    expect(parsePassive('(10,0,0,255,0,1)')).toEqual({ host: '10.0.0.255', port: 1 })
     expect(parsePassive('no address')).toBeNull()
   })
 })
@@ -73,6 +82,13 @@ describe('listings', () => {
     expect(parseMlsdLine('nospace')).toBeNull()
   })
 
+  it('[VIN-001] Given MLSD lines with an odd size, a fact with no value or a name holding ; and =, When read, Then the size is only ever whole digits and only the facts before the space count', () => {
+    expect(parseMlsdLine('type=file;size=12x; a.fits')).toEqual({ name: 'a.fits', kind: 'file', sizeBytes: null })
+    expect(parseMlsdLine('type=file;size=5;types; a.fits')).toEqual({ name: 'a.fits', kind: 'file', sizeBytes: 5 })
+    expect(parseMlsdLine('type=file;size=1; a;size=99.fits')).toEqual({ name: 'a;size=99.fits', kind: 'file', sizeBytes: 1 })
+    expect(parseMlsdLine('type=file;size=1;a.fits')).toBeNull()
+  })
+
   it('[VIN-001] Given Unix and DOS LIST lines, When read, Then files and folders come back and links and totals are left out', () => {
     expect(parseListLine('-rw-r--r--    1 0        0         4194304 Mar 10 21:33 img-0001.fits')).toEqual({ name: 'img-0001.fits', kind: 'file', sizeBytes: 4194304 })
     expect(parseListLine('drwxr-xr-x    2 root     root         4096 Jan  1  2024 expert mode')).toEqual({ name: 'expert mode', kind: 'dir', sizeBytes: null })
@@ -81,6 +97,8 @@ describe('listings', () => {
     expect(parseListLine('03-10-2024  21:33       <DIR>          user')).toEqual({ name: 'user', kind: 'dir', sizeBytes: null })
     expect(parseListLine('total 12')).toBeNull()
     expect(parseListLine('drwxr-xr-x 2 0 0 4096 Mar 10 21:33 ..')).toBeNull()
+    expect(parseListLine('03-10-24  09:33PM  <DIR>  ..')).toBeNull()
+    expect(parseListLine('03-10-24  09:33PM  12  a\\b.fits')).toBeNull()
   })
 
   it('[VSP-005] Given names with slashes or line breaks, When listed, Then they are left out', () => {
@@ -88,6 +106,9 @@ describe('listings', () => {
     expect(parseListLine('-rw-r--r-- 1 0 0 1 Mar 10 21:33 a\\b.fits')).toBeNull()
     expect(isSafeRemoteName('img\r\nDELE x')).toBe(false)
     expect(isSafeRemoteName('a'.repeat(256))).toBe(false)
+    expect(isSafeRemoteName('a'.repeat(255))).toBe(true)
+    expect(isSafeRemoteName('.')).toBe(false)
+    expect(isSafeRemoteName('..')).toBe(false)
     expect(isSafeRemoteName('')).toBe(false)
     expect(isSafeRemoteName('M 42 (Orion).fits')).toBe(true)
   })
@@ -99,6 +120,11 @@ describe('listings', () => {
       { name: 'b.fits', kind: 'file', sizeBytes: 2 }
     ])
     expect(parseListing('total 1\n-rw-r--r-- 1 0 0 3 Mar 10 21:33 z.fits\n', 'list')).toEqual([{ name: 'z.fits', kind: 'file', sizeBytes: 3 }])
+    const names = (t: string) => parseListing(t, 'mlsd').map(e => e.name)
+    expect(names('type=dir; a\ntype=dir; b\ntype=dir; c\n')).toEqual(['a', 'b', 'c'])
+    expect(names('type=dir; c\ntype=dir; b\ntype=dir; a\n')).toEqual(['a', 'b', 'c'])
+    expect(names('type=dir; b\ntype=dir; c\ntype=dir; a\n')).toEqual(['a', 'b', 'c'])
+    expect(parseListing('type=file;size=1\r; a.fits\r\n', 'mlsd')).toEqual([{ name: 'a.fits', kind: 'file', sizeBytes: null }])
   })
 
   it('[VIN-001] Given path parts, When joined, Then the path is absolute with single forward slashes', () => {

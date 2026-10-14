@@ -389,6 +389,7 @@ const DESIGNATION = /^\s*(?<prefix>m|ngc|ic|sh\s*-?\s*2)[\s_-]*(?<num>\d{1,4})(?
 const DESIGNATION_ANYWHERE = /(?:^|[^a-z0-9])(?<prefix>m|ngc|ic|sh\s*-?\s*2)[\s_-]*(?<num>\d{1,4})(?![0-9a-z])/i
 
 const prefixOf = (raw: string): Exclude<Catalogue, 'other'> => {
+  // Stryker disable next-line StringLiteral: only an Sh2 prefix can hold a space or dash, and whatever is not m, ngc or ic reads as Sh2
   const p = raw.toLowerCase().replace(/[\s-]/g, '')
   return p === 'm' ? 'M' : p === 'ngc' ? 'NGC' : p === 'ic' ? 'IC' : 'Sh2'
 }
@@ -573,6 +574,7 @@ export function destinationFolderName(input: FolderNameInput): string {
   const tail = `_${input.date}${tokens}${dup}`
   const room = Math.max(1, MAX_FOLDER_NAME - tail.length)
   let target = folderTarget(input.target).slice(0, room).replace(/-+$/, '')
+  // Stryker disable next-line MethodExpression,StringLiteral: folderTarget never starts with '-', so the slice keeps a character and this fallback is never reached
   if (target === '') target = 'target'.slice(0, room)
   return `${target}${tail}`
 }
@@ -616,6 +618,7 @@ const WINDOWS_UNSAFE = /[<>:"/\\|?*\u0000-\u001f\u007f]|[. ]$|^(con|prn|aux|nul|
 
 /** Whether a folder or file name from the scope can be kept as it is on a Windows disk. */
 export function isLocalName(name: string): boolean {
+  // Stryker disable next-line StringLiteral: '.' and '..' end in a dot, which WINDOWS_UNSAFE refuses anyway
   return name.length > 0 && name.length <= 255 && name !== '.' && name !== '..' && !WINDOWS_UNSAFE.test(name)
 }
 

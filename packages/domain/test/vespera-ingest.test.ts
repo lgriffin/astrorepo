@@ -73,11 +73,16 @@ describe('Vespera session folders', () => {
     expect(parseSessionFolder('2024-02-29_23-59-59_observation')?.startedAt).toBe('2024-02-29T23:59:59')
   })
 
+  it('[VIN-003] Given a timestamp in a year before 100, When read, Then it is not taken as a valid date', () => {
+    expect(parseSessionFolder('0099-06-15_21-00-00_observation')).toBeNull()
+  })
+
   it('[VIN-003] Given a folder with no timestamp, When built, Then it is a session of kind unknown starting at its earliest file, with NO_TIMESTAMP at info', () => {
     const early = new Date('2024-06-05T22:10:00Z')
     const s = buildSession('01-observation-eagle-15-15', [dir('01-images-initial')], [{ folder: '01-images-initial', entries: [file('img-0002.fits', 4, new Date('2024-06-05T22:20:00Z')), file('img-0001.fits', 4, early), file('x.fits', 4, new Date('invalid'))] }], listedAt)
     expect(s).toMatchObject({ id: '01-observation-eagle-15-15', kind: 'unknown', timestamped: false, startedAt: '2024-06-05T22:10:00', rawLabel: null })
     expect(codes(inventorySession(s).findings)).toContain('info:NO_TIMESTAMP')
+    expect(inventorySession(s).findings.find(f => f.code === 'NO_TIMESTAMP')?.message).toBe('"01-observation-eagle-15-15" has no date in its name, so its start is taken from its earliest file.')
     expect(buildSession('odd', [], [], listedAt).startedAt).toBeNull()
   })
 
@@ -94,6 +99,8 @@ describe('Vespera session folders', () => {
     const d = buildSession('aa', [], [], listedAt)
     expect(sortSessions([c, a, d, b]).map(s => s.id)).toEqual([b.id, a.id, 'aa', 'zz'])
     expect(sortSessions([a, c]).map(s => s.id)).toEqual([a.id, 'zz'])
+    expect(sortSessions([b, a]).map(s => s.id)).toEqual([b.id, a.id])
+    expect(sortSessions([d, c]).map(s => s.id)).toEqual(['aa', 'zz'])
   })
 })
 
@@ -104,11 +111,13 @@ describe('Vespera run folders and files', () => {
     expect(parseRunFolder('images-adjust-focus')).toEqual({ order: null, stage: 'images', step: 'adjust-focus' })
     expect(parseRunFolder('07-misc')).toEqual({ order: 7, stage: 'unknown', step: '' })
     expect(parseRunFolder('misc')).toEqual({ order: null, stage: 'unknown', step: '' })
+    expect(parseRunFolder('calibration-07-darks')).toEqual({ order: null, stage: 'unknown', step: '' })
   })
 
   it('[VIN-004] Given runs listed out of order, When a session is built, Then they are ordered by their number, then by name', () => {
     const s = session('2024-06-05_22-00-00_observation_M16', { '04-images-adjust-framing': [], '02-images-initial': [], '01-pointing-initial': [], zz: [], aa: [], '03-pointing-adjust-framing': [] })
     expect(s.runs.map(r => r.folder)).toEqual(['01-pointing-initial', '02-images-initial', '03-pointing-adjust-framing', '04-images-adjust-framing', 'aa', 'zz'])
+    expect(session('2024-06-05_22-00-00_observation_M16', { aa: [], zz: [] }).runs.map(r => r.folder)).toEqual(['aa', 'zz'])
   })
 
   it('[VIN-007] Given the files an image run holds, When classified, Then kind, role and frame come from the name, case aside', () => {
@@ -134,6 +143,8 @@ describe('Vespera run folders and files', () => {
     expect(classifyFile(file('README')).kind).toBe('other')
     expect(classifyFile(file('img-42.fits')).frameNo).toBeUndefined()
     expect(classifyFile(file('img-0001.fit')).kind).toBe('fits')
+    expect(classifyFile(file('img-0001.fits.txt')).kind).toBe('other')
+    expect(classifyFile(file('export.jpg.part')).kind).toBe('other')
   })
 
   it('[VIN-007] Given a listed file, When classified, Then its size and modified time are kept', () => {
@@ -147,6 +158,8 @@ describe('Vespera run folders and files', () => {
     expect(s.rootFiles.map(f => f.name)).toEqual(['observation.json', 'notes.md'])
     expect(s.listedAt).toBe(listedAt)
     expect(session('2024-06-15_21-00-54_observation_X', {}).observationJson).toBeNull()
+    expect(session('2024-06-15_21-00-54_observation_X', {}, [file('notes.md'), file('observation.json')]).observationJson).toBe('observation.json')
+    expect(session('2024-06-15_21-00-54_observation_X', {}, [file('notes.md')]).observationJson).toBeNull()
   })
 
   it('[VIN-006] Given folders below a run, When a session is built, Then only the run\'s files are counted', () => {
@@ -178,12 +191,36 @@ describe('Vespera counts and findings', () => {
   it('[VIN-008] Given a pointing-only session, When inventoried, Then NO_IMAGES_RUN is an error', () => {
     const s = session('2024-06-15_21-52-17_auto-init', { '01-pointing-initial': [file('a.jpg')] })
     expect(codes(inventorySession(s).findings)).toEqual(['error:NO_IMAGES_RUN'])
+    expect(inventorySession(s).findings[0].message).toBe('The session has no image run, so there is nothing to keep.')
     expect(worstLevel(inventorySession(s).findings)).toBe('error')
   })
 
   it('[VIN-008] Given an image run with nothing in it, When inventoried, Then EMPTY_RUN and NO_TIFF warn and NO_FITS is noted, with no JSON finding', () => {
     const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('capture.json')] })
     expect(codes(inventorySession(s).findings)).toEqual(['warn:EMPTY_RUN@01-images-initial', 'warn:NO_TIFF@01-images-initial', 'info:NO_FITS@01-images-initial'])
+  })
+
+  it('[VIN-008] Given an empty image run with no capture.json, When inventoried, Then EMPTY_RUN, NO_TIFF and NO_FITS say why and no JSON finding is raised', () => {
+    const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [] })
+    expect(inventorySession(s).findings.map(f => f.message)).toEqual([
+      '01-images-initial has no images: the run stopped early or every image format was off.',
+      '01-images-initial has no TIFF: the 16-bit stack is not on the scope.',
+      '01-images-initial has no FITS: raw saving was off, so it cannot be stacked again.'
+    ])
+  })
+
+  it('[VIN-008] Given an image run holding only a JPEG or only a TIFF and no capture.json, When inventoried, Then it is not empty and JSON_MISMATCH is raised', () => {
+    const jpegOnly = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001-output.jpg')] })
+    expect(codes(inventorySession(jpegOnly).findings)).toEqual(['warn:NO_TIFF@01-images-initial', 'info:NO_FITS@01-images-initial', 'info:JSON_MISMATCH@01-images-initial'])
+    expect(inventorySession(jpegOnly).findings[2].message).toBe('01-images-initial: no capture.json, 0 output JSON for 1 JPEGs, 0 stacking JSON for 1 JPEGs.')
+    const tiffOnly = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.tif')] })
+    expect(codes(inventorySession(tiffOnly).findings)).toEqual(['info:NO_FITS@01-images-initial', 'info:JSON_MISMATCH@01-images-initial'])
+    expect(inventorySession(tiffOnly).findings[1].message).toBe('01-images-initial: no capture.json.')
+  })
+
+  it('[VIN-008] Given a run with as many FITS as JPEGs but no TIFF, When inventoried, Then only NO_TIFF warns and the run is not empty', () => {
+    const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': imageRun([1], [1]) })
+    expect(codes(inventorySession(s).findings)).toEqual(['warn:NO_TIFF@01-images-initial'])
   })
 
   it('[VIN-008] Given more JPEGs than FITS, When inventoried, Then FITS_LT_JPEG is an error; with no FITS at all it is only NO_FITS', () => {
@@ -212,6 +249,11 @@ describe('Vespera counts and findings', () => {
     expect(inventorySession(five).findings.find(f => f.code === 'GAP_IN_FRAMES')?.message).toBe('01-images-initial is missing 5 FITS frames (2, 3, 4, 5, 6).')
   })
 
+  it('[VIN-008] Given a TIFF numbered past the last FITS frame, When inventoried, Then the TIFF\'s number is not a missing frame', () => {
+    const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [...imageRun([1, 2], [1, 2]), file('img-0004.tif')] })
+    expect(codes(inventorySession(s).findings)).toEqual([])
+  })
+
   it('[VIN-008] Given stacked JPEGs that skip rejected frames, When inventoried, Then that is not a gap', () => {
     const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [...imageRun([1, 2, 3, 4], [1, 4]), file('img-0004.tif')] })
     expect(codes(inventorySession(s).findings)).toEqual(['info:FITS_GT_JPEG@01-images-initial'])
@@ -238,6 +280,13 @@ describe('Vespera counts and findings', () => {
     const outOnly = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits'), file('img-0001-output.jpg'), file('img-0001-output.json'), file('img-0001.tif'), file('capture.json')] })
     expect(inventorySession(outOnly).findings.find(f => f.code === 'JSON_MISMATCH')?.message).toBe('01-images-initial: 0 stacking JSON for 1 JPEGs.')
     expect(inventorySession(outOnly).findings.find(f => f.code === 'JSON_MISMATCH')?.level).toBe('info')
+    const stackingOnly = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits'), file('img-0001-output.jpg'), file('img-0001-stacking.json'), file('img-0001.tif'), file('capture.json')] })
+    expect(inventorySession(stackingOnly).findings.find(f => f.code === 'JSON_MISMATCH')?.message).toBe('01-images-initial: 0 output JSON for 1 JPEGs.')
+  })
+
+  it('[VIN-008] Given a stacking file that is not JSON, When inventoried, Then it is not counted as a stacking decision and raises no JSON_MISMATCH', () => {
+    const s = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [...imageRun([1], [1]), file('img-0001-stacking.fits'), file('img-0001.tif')] })
+    expect(codes(inventorySession(s).findings)).not.toContain('info:JSON_MISMATCH@01-images-initial')
   })
 
   it('[VIN-005] Given an unknown run and unknown files, When inventoried, Then they are counted and noted at info', () => {
@@ -247,6 +296,7 @@ describe('Vespera counts and findings', () => {
     expect(inventorySession(s).totals.other).toBe(3)
     expect(f.find(x => x.code === 'UNKNOWN_FILES' && !x.run)?.message).toBe("The session's top folder holds 1 file of a kind astrorepo does not know.")
     expect(f.find(x => x.code === 'UNKNOWN_FILES' && x.run === '01-images-initial')?.message).toBe('01-images-initial holds 1 file of a kind astrorepo does not know.')
+    expect(f.find(x => x.code === 'UNKNOWN_RUN' && x.run === '03-calibration')?.message).toBe('03-calibration is not a run this firmware is known to write; its files are counted anyway.')
   })
 
   it('[VIN-009] Given a run whose stacked count is one short of its JPEGs, When inventoried, Then no finding compares them', () => {
@@ -269,6 +319,14 @@ describe('Vespera counts and findings', () => {
     expect(sessionGrowth(before, after)).toEqual({ level: 'warn', code: 'SESSION_GREW', message: 'The session changed since it was listed: 2 files added, 1 file changed size, 1 file gone. It may still be running.' })
     const one = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits', 4), file('img-0002.fits', 4), file('img-0003.fits', 4), file('img-0004.fits', 4)] }, [file('observation.json', 3)])
     expect(sessionGrowth(before, one)?.message).toBe('The session changed since it was listed: 1 file added. It may still be running.')
+    const replaced = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits', 4), file('img-0002.fits', 4), file('img-0009.fits', 4)] }, [file('observation.json', 3)])
+    expect(sessionGrowth(before, replaced)?.message).toBe('The session changed since it was listed: 1 file added, 1 file gone. It may still be running.')
+    const resized = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits', 4), file('img-0002.fits', 4), file('img-0003.fits', 8)] }, [file('observation.json', 3)])
+    expect(sessionGrowth(before, resized)?.message).toBe('The session changed since it was listed: 1 file changed size. It may still be running.')
+    const grewAndResized = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits', 4), file('img-0002.fits', 4), file('img-0003.fits', 8), file('img-0004.fits', 4)] }, [file('observation.json', 3)])
+    expect(sessionGrowth(before, grewAndResized)?.message).toBe('The session changed since it was listed: 1 file added, 1 file changed size. It may still be running.')
+    const shrunk = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('img-0001.fits', 4), file('img-0002.fits', 4)] }, [file('observation.json', 3)])
+    expect(sessionGrowth(before, shrunk)?.message).toBe('The session changed since it was listed: 1 file gone. It may still be running.')
     expect(sessionFilePaths(before)).toEqual(['01-images-initial/img-0001.fits', '01-images-initial/img-0002.fits', '01-images-initial/img-0003.fits', 'observation.json'])
   })
 })
@@ -287,12 +345,14 @@ describe('Vespera targets', () => {
     expect(normaliseTargetName('M16_15_18')).toEqual({ name: 'M 16', catalogue: 'M', remainder: '15_18', review: false })
     expect(normaliseTargetName('NGC5139 omega centauri')).toEqual({ name: 'NGC 5139', catalogue: 'NGC', remainder: 'omega centauri', review: false })
     expect(normaliseTargetName('M8_M20_10_18')?.name).toBe('M 8')
+    expect(normaliseTargetName('M16 - Eagle')).toEqual({ name: 'M 16', catalogue: 'M', remainder: 'Eagle', review: false })
   })
 
   it('[VIN-012] Given common names, When normalised, Then they map to their designation', () => {
     expect(normaliseTargetName('Jellyfish Nebula')).toEqual({ name: 'IC 443', catalogue: 'IC', remainder: 'Jellyfish Nebula', review: false })
     expect(normaliseTargetName('andromeda_galaxy')).toMatchObject({ name: 'M 31', catalogue: 'M' })
     expect(normaliseTargetName('omega  centauri')).toMatchObject({ name: 'NGC 5139', catalogue: 'NGC' })
+    expect(normaliseTargetName('Orion_Nebula_')).toMatchObject({ name: 'M 42', catalogue: 'M' })
   })
 
   it('[VIN-012] Given names that are not designations, When normalised, Then they are kept whole and marked for review; blank is null', () => {
@@ -311,16 +371,25 @@ describe('Vespera targets', () => {
     expect(targetInText('FORMAT 2')).toBeNull()
   })
 
+  it('[VIN-010] Given EXIF descriptions, When a target is found, Then it is written with its catalogue, needs no review, and the longer of two common names wins', () => {
+    expect(targetInText('Vespera Pro - M 42 - 120 frames')).toEqual({ name: 'M 42', catalogue: 'M', remainder: null, review: false })
+    expect(targetInText('Carina Nebula, 40 frames')).toEqual({ name: 'NGC 3372', catalogue: 'NGC', remainder: null, review: false })
+    expect(targetInText('Pleiades and the Horsehead Nebula')).toMatchObject({ name: 'IC 434', catalogue: 'IC' })
+  })
+
   it('[VIN-010] Given observation.json, When read, Then the target is found under a known key, nested one level or not', () => {
     expect(targetFromObservationJson('{"target":"M 31"}')).toBe('M 31')
     expect(targetFromObservationJson('{"objectName":" IC 443 "}')).toBe('IC 443')
     expect(targetFromObservationJson('{"target":{"name":"NGC 7000","ra":1}}')).toBe('NGC 7000')
     expect(targetFromObservationJson('{"mission":{"object":"M 8"}}')).toBe('M 8')
     expect(targetFromObservationJson('{"target":"","dso":"M 1"}')).toBe('M 1')
+    expect(targetFromObservationJson('{"target":"   ","dso":"M 1"}')).toBe('M 1')
+    expect(targetFromObservationJson('{"target":{"name":"NGC 7000"},"name":"Evening session"}')).toBe('NGC 7000')
+    expect(targetFromObservationJson('{"mission":{},"plan":{"object":"M 8"}}')).toBe('M 8')
   })
 
   it('[VIN-011] Given observation.json that is not JSON or names nothing, When read, Then it gives null and nothing is thrown', () => {
-    for (const t of ['', 'not json', '[]', '"M31"', '{"target":42}', '{"other":"M 31"}', '{"constructor":"M 31"}', 'null']) expect(targetFromObservationJson(t), t).toBeNull()
+    for (const t of ['', 'not json', '[]', '"M31"', '{"target":42}', '{"other":"M 31"}', '{"constructor":"M 31"}', 'null', '[{"target":"M 31"}]']) expect(targetFromObservationJson(t), t).toBeNull()
   })
 
   it('[VIN-010] Given clues, When resolved, Then the cheapest that names a target wins and is the confidence', () => {
@@ -380,6 +449,8 @@ describe('Vespera destination folder names', () => {
   it('[VIN-016] Given no kind or a bad date, When named, Then naming is refused', () => {
     expect(() => destinationFolderName({ target: m31, date: '2026-10-14', counts: {} })).toThrow('A copy includes at least one kind of file.')
     expect(() => destinationFolderName({ target: m31, date: '14/10/2026', counts: { fits: 1 } })).toThrow('Not a date: 14/10/2026')
+    expect(() => destinationFolderName({ target: m31, date: 'x2026-10-14', counts: { fits: 1 } })).toThrow('Not a date: x2026-10-14')
+    expect(() => destinationFolderName({ target: m31, date: '2026-10-14x', counts: { fits: 1 } })).toThrow('Not a date: 2026-10-14x')
   })
 
   it('[VIN-017] Given target names, When made a folder part, Then designations lose spaces and others are sanitised', () => {
@@ -390,6 +461,7 @@ describe('Vespera destination folder names', () => {
     expect(folderTarget({ name: '--a--b--' })).toBe('a--b')
     expect(folderTarget({ name: 'Мун' })).toBe('target')
     expect(folderTarget({ name: 'M 31 x' })).toBe('M-31-x')
+    expect(folderTarget({ name: 'Galaxy M 31' })).toBe('Galaxy-M-31')
   })
 
   it('[VIN-017] Given a long target, When named, Then only the target part is shortened to keep 80 characters', () => {
@@ -400,6 +472,9 @@ describe('Vespera destination folder names', () => {
     expect(dashed.length).toBeLessThanOrEqual(MAX_FOLDER_NAME)
     expect(dashed).toMatch(/^a+_2026/)
     expect(parseDestinationFolder(dashed)).not.toBeNull()
+    expect(destinationFolderName({ target: { name: 'Tarentule_Nebula' }, date: '2026-10-14', counts: { fits: 1 } })).toBe('Tarentule-Nebula_2026-10-14_FIT=1')
+    const cutAtDashes = destinationFolderName({ target: { name: `${'a'.repeat(61)}--${'b'.repeat(10)}` }, date: '2026-10-14', counts: { fits: 1 } })
+    expect(cutAtDashes).toBe(`${'a'.repeat(61)}_2026-10-14_FIT=1`)
   })
 
   it('[VIN-017] Given generated names, When read back, Then target, date, counts and duplicate come out', () => {
@@ -441,6 +516,15 @@ describe('Vespera transfer plans', () => {
     expect(planCounts([], ['fits', 'tiff'])).toEqual({ fits: 0 })
   })
 
+  it('[VIN-019] Given top-level files and a run numbered 01, When planned, Then top-level files come first in their kind and files with no frame number follow by name whatever the listing order', () => {
+    const top = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': [file('capture.json', 1)] }, [file('observation.json', 3)])
+    expect(planTransfer(top, ['json']).map(i => i.path)).toEqual(['observation.json', '01-images-initial/capture.json'])
+    for (const listed of [[file('notes.json'), file('capture.json')], [file('capture.json'), file('notes.json')]]) {
+      const s2 = session('2024-06-05_22-00-00_observation_M16', { '01-images-initial': listed })
+      expect(planTransfer(s2, ['json']).map(i => i.path)).toEqual(['01-images-initial/capture.json', '01-images-initial/notes.json'])
+    }
+  })
+
   it('[VIN-023] Given a folder name and what the session holds now, When compared, Then NAME_COUNT_STALE says what moved; agreement is null', () => {
     expect(nameCountFinding('M31_2026-10-14_FIT=400', { fits: 400 })).toBeNull()
     expect(nameCountFinding('M31_2026-10-14_FIT=400_TIF=1', { fits: 412, tiff: 1 })).toEqual({ level: 'info', code: 'NAME_COUNT_STALE', message: "The folder's name was set when the copy was planned (FIT=400 in the name, 412 on the scope now). The folder keeps its name; the manifest lists what was copied." })
@@ -480,6 +564,8 @@ describe('Vespera copies on the PC', () => {
     const two = session('2024-06-15_21-00-54_observation_NGC3372', { 'a?': imageRun([1]), 'b.': imageRun([1]) })
     expect(unsafeRunFinding(two)?.message).toBe('a?, b. have names Windows would not keep, so they are not copied.')
     expect(unsafeRunFinding(session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': imageRun([1]) }))).toBeNull()
+    const safeTop = session('2024-06-15_21-00-54_observation_NGC3372', { '01-images-initial': imageRun([1]), 'a?': imageRun([1]) }, [file('observation.json')])
+    expect(unsafeRunFinding(safeTop)?.message).toBe('a? has a name Windows would not keep, so it is not copied.')
   })
 
   it('[VIN-030] Given a file whose name Windows would not keep in a safe run, When planned, Then that file is not copied and UNSAFE_NAME names it', () => {
