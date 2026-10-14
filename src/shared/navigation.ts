@@ -37,7 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'library', to: '/library', label: 'Library', icon: '⊟', hint: 'The folders that hold your captures, and their last scan' },
       { id: 'fits', to: '/fits-analyzer', label: 'FITS files', icon: '◈', hint: 'What the headers say, file by file' },
-      { id: 'images', to: '/images', label: 'Images', icon: '▢', hint: 'Your stacked and finished images' },
+      { id: 'images', to: '/images', label: 'Gallery', icon: '▢', hint: 'Your finished pictures, and what each one shows' },
       { id: 'calibration', to: '/calibration', label: 'Calibration', icon: '◇', hint: 'Darks, flats and biases, and which lights they cover' },
       { id: 'vespera', to: '/vespera', label: 'Vespera', icon: '⌁', hint: 'Copy observations off your Vespera over its Wi-Fi' }
     ]
@@ -55,6 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Collections',
     items: [
       { id: 'collections', to: '/collections', label: 'Collections', icon: '▦', hint: 'Catalogues and lists of targets, and how far through each you are' },
+      { id: 'messier', to: '/messier', label: 'Messier mosaic', icon: '▩', hint: 'All 110 Messier objects with your own images, the gaps, and when each gap is up' },
       { id: 'posters', to: '/poster', label: 'Posters', icon: '▣', hint: 'A printable grid of a collection' }
     ]
   },
@@ -200,4 +201,17 @@ export function filterStackQueued(runs: Pick<TargetRuns, 'active'>, filter: stri
 export function runLine(job: JobView): string {
   if (job.state === 'running') return `Running now: ${job.title}.`
   return job.waiting && job.waiting !== 'Starting now.' ? `Queued: ${job.title}. ${job.waiting}` : `Queued: ${job.title}. Starting now.`
+}
+
+/** The Messier mosaic, opened on one object's tile when a number is given (specs/032-messier-mosaic). */
+export function messierLink(number?: number): string {
+  return number === undefined ? '/messier' : `/messier?m=${number}`
+}
+
+/** The Messier number a mosaic link opens, or null when it names none from 1 to 110. */
+export function messierNumberFrom(search: string): number | null {
+  const wanted = new URLSearchParams(search).get('m')
+  if (!wanted || !/^\d{1,3}$/.test(wanted)) return null
+  const n = Number(wanted)
+  return n >= 1 && n <= 110 ? n : null
 }

@@ -1,4 +1,4 @@
-import type { CatalogueObject, FilterIntegration, ImageInspection, ImagePreview, PaletteId, PreviewChannel } from '@astro/domain'
+import type { CatalogueObject, FilterIntegration, ImageInspection, ImagePreview, PaletteId, PreviewChannel, PreviewStretch } from '@astro/domain'
 
 /** Header cards a world coordinate system is read from (CRVAL, CRPIX, CD, CDELT, CROTA, CTYPE, NAXIS). */
 export type WcsHeader = Record<string, number | string>
@@ -11,8 +11,11 @@ export type WcsHeader = Record<string, number | string>
 export interface ImagePixels {
   /** The inspector's figures and a colour preview from one read of the file, with its header's WCS cards. */
   open(path: string, options: { maxWidth: number }): Promise<{ inspection: ImageInspection; preview: ImagePreview; header: WcsHeader }>
-  /** A small auto-stretched preview, and the WCS cards of the file's header (none for a PNG). */
-  preview(path: string, options: { maxWidth: number; channel?: PreviewChannel }): Promise<{ preview: ImagePreview; header: WcsHeader }>
+  /**
+   * A small preview, auto-stretched unless `stretch` is 'linear' (the image's own tones), and the
+   * WCS cards of the file's header (none for a PNG).
+   */
+  preview(path: string, options: { maxWidth: number; channel?: PreviewChannel; stretch?: PreviewStretch }): Promise<{ preview: ImagePreview; header: WcsHeader }>
 }
 
 /** An image of a target the gallery can show: a stacked master, or a finished image. */

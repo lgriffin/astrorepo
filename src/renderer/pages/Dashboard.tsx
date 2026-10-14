@@ -10,6 +10,7 @@ import { SetupCard } from '../components/cockpit/SetupCard'
 import { useToast } from '../contexts/ToastContext'
 import type { Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
+import { messierLink } from '@shared/navigation'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
@@ -155,7 +156,15 @@ export function Dashboard(): React.ReactElement {
         </div>
 
         {cockpit !== null && cockpit !== FAILED && (
-          <Card title="Where your targets are" action={<LinkButton onClick={() => navigate('/targets')}>Open Targets</LinkButton>}>
+          <Card
+            title="Where your targets are"
+            action={
+              <div className="flex gap-3">
+                <LinkButton onClick={() => navigate(messierLink())}>View the Messier mosaic</LinkButton>
+                <LinkButton onClick={() => navigate('/targets')}>Open Targets</LinkButton>
+              </div>
+            }
+          >
             <ProgressStrip progress={cockpit.progress} />
           </Card>
         )}

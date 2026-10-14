@@ -536,6 +536,41 @@ different target names (for example "M 31 panel 2"), the card names those target
 links them to the main one as part of its mosaic, once whichever side it is saved from. Looking at
 a target or trying out a plan links nothing.
 
+## The gallery
+
+**Files → Gallery** shows every PNG and JPEG in the `images` folder of your home folder, and in
+the folders inside it, as a grid of thumbnails, newest first. Search by file or object name, or
+sort by file name or by object. Hidden folders and links are left out (an `images` folder that is
+itself a link is not shown), and nothing in the folder is ever moved or renamed.
+
+Each picture is captioned with the object it shows, read from its name:
+
+- Catalogue designations in any form: `M31.png`, `m_031.png`, `Messier 31.jpg`, `NGC7000_HOO.png`,
+  `IC 434.png`, `Sh2-155.png`, `C14.png` (Caldwell). Dates, exposures and gains such as
+  `20241001` or `10.0s` are never read as objects, nor is a number past a catalogue's end.
+- Common names and aliases from the catalogue, as whole words: `Andromeda Galaxy.png`,
+  `AndromedaGalaxy.png`, `Bodes Galaxy.png`.
+- When the file's name names nothing (`final.png`), the folder it is in: `M42/final.png`.
+
+Pick a picture to see it large, with the arrow keys moving through the grid. The side panel says,
+for each object the name names:
+
+- **What it is**: a sentence such as "A galaxy in Andromeda, magnitude 3.4, 3°, about 6 full moons
+  across.", then its type, constellation, magnitude, size, position and other names.
+- **When to image it**: the month it is highest at midnight, how high it climbs from your site
+  (or that it never rises there; without a site, a link to set one), and whether a dual-band or
+  narrowband filter suits it.
+- **Your data**: light frames, integration, nights and the last of them, masters and its stage.
+- **Explore**: its page (Overview, Files with compare, Stack and process, Notes and nights), its
+  mosaic plan in the Sky planner, the collections it is in, its folder, and its pages on
+  Wikipedia and SIMBAD, opened in your browser.
+
+A picture named for an object the app's catalogues do not hold says so; add it as a target and the
+gallery picks it up next time. Thumbnails are made 400 pixels wide and the large view 2048, by the
+system's own thumbnailer on Windows, so a folder of large exports stays quick. A picture saved
+after the gallery was opened shows once you open the gallery again. The gallery only shows; the
+counts and cover pictures on each target come from **Rescan** on the Library page.
+
 ## Inspecting an image
 
 **On the FITS files page**, open a file and its **Inspector** reads the pixels:

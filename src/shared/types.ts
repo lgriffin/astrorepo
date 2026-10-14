@@ -598,25 +598,6 @@ export interface HomeScanProgress {
   error: string | null
 }
 
-export interface ImageFileInfo {
-  path: string
-  filename: string
-  folder: string
-}
-
-export interface ImageTargetGroup {
-  name: string
-  normalizedName: string
-  folderPath: string
-  images: ImageFileInfo[]
-}
-
-export interface ImageScanResult {
-  targets: ImageTargetGroup[]
-  unmatched: ImageFileInfo[]
-  totalImages: number
-}
-
 export interface CalibrationGroup {
   type: 'dark' | 'flat' | 'bias'
   exposureSec: number | null
@@ -1608,3 +1589,128 @@ export interface VesperaProgressView {
   /** What indexing the copies is doing, once a copy brought files in. */
   indexing: string | null
 }
+// ── Gallery (spec 031) ─────────────────────────────────────────────────────
+
+/** A picture in the gallery's grid. */
+export interface GalleryPictureView {
+  path: string
+  name: string
+  /** The folders between the images folder and the picture, joined with " / "; empty in the images folder itself. */
+  folder: string
+  /** The folder the picture is in, for Open folder. */
+  folderPath: string
+  /** "2.4 MB". */
+  size: string
+  /** ISO time it was saved; null when unknown. */
+  savedAt: string | null
+  /** "1 Oct 2026". */
+  saved: string | null
+  /** The objects its name names, as captions: "M31 · Andromeda Galaxy". */
+  objects: { id: string; label: string }[]
+}
+
+export interface GalleryView {
+  /** The images folder shown; null when no home folder is set or it has no images folder. */
+  root: string | null
+  pictures: GalleryPictureView[]
+}
+
+/** One catalogue object in a picture's side panel. */
+export interface GalleryObjectView {
+  id: string
+  name: string
+  /** "M31, NGC 224". */
+  designations: string
+  /** What in the picture's name found it. */
+  matched: string
+  /** "A galaxy in Andromeda, magnitude 3.4, 3°, about 6 full moons across." */
+  summary: string
+  description: string | null
+  facts: { label: string; value: string }[]
+  /** "Highest at midnight in late September." Null without coordinates. */
+  bestPlaced: string | null
+  /** "Climbs to 78° from your site." or "Never rises from your site."; null without a site or coordinates. */
+  fromSite: string | null
+  /** True when the user has not set a site, so the panel can link to it. */
+  needsSite: boolean
+  /** "Emission nebula: a dual-band or narrowband filter suits it." or null. */
+  filterHint: string | null
+  /** What the user has of it, as label and value rows. */
+  data: { label: string; value: string }[]
+  /** True when the user has no frames of it. */
+  noData: boolean
+  hasMosaicPlan: boolean
+  collections: { id: string; name: string }[]
+}
+
+export interface GalleryDetailsView {
+  picture: GalleryPictureView
+  /** "Read from the file name." / "Read from the folder M42." / null */
+  readFrom: string | null
+  objects: GalleryObjectView[]
+  /** Designations in the name the catalogues do not hold. */
+  unknown: string[]
+}
+
+/** A picture to draw, or why it cannot be. */
+export type GalleryPictureData = { ok: true; src: string; width: number | null; height: number | null } | { ok: false; error: string }
+
+// Messier mosaic (specs/032-messier-mosaic)
+
+export type MessierStateView = 'imaged' | 'stacked' | 'captured' | 'gap'
+
+export interface MessierOutlookView {
+  kind: 'tonight' | 'moon' | 'later' | 'never'
+  /** A few words for the tile: "Up tonight · 5 h 10 m". */
+  short: string
+  /** A sentence or two for the tile's details. */
+  long: string
+}
+
+export interface MessierMonthView {
+  /** YYYY-MM */
+  month: string
+  /** "Mar" */
+  label: string
+  hoursPerNight: number
+  inSeason: boolean
+}
+
+export interface MessierTileView {
+  number: number
+  designation: string
+  name: string | null
+  targetId: string
+  /** "Globular cluster" */
+  objectType: string
+  constellation: string | null
+  magnitude: number | null
+  state: MessierStateView
+  /** "Imaged", "Stacked, not finished", "Captured, not stacked" or "Not captured yet". */
+  stateLabel: string
+  /** Usable light integration so far, or null when there is none. */
+  integration: string | null
+  /** The image the tile shows first, by file name. */
+  picture: { name: string; kind: 'finished' | 'master' } | null
+  outlook: MessierOutlookView | null
+  months: MessierMonthView[]
+  /** The filters the tile shows under (MES-006). */
+  shows: MessierFilterView[]
+}
+
+export type MessierFilterView = 'all' | 'missing' | 'gaps' | 'tonight'
+
+export interface MessierMosaicView {
+  night: string | null
+  siteSet: boolean
+  catalogued: number
+  summary: { total: number; imaged: number; stacked: number; captured: number; gaps: number; missingUpTonight: number }
+  tiles: MessierTileView[]
+}
+
+/** A tile's picture as a data URL, why it could not be drawn, or null when the object has no image. */
+export type MessierPictureView =
+  | { ok: true; src: string; width: number; height: number; name: string; kind: 'finished' | 'master' }
+  | { ok: false; error: string }
+  | { refused: string }
+  | null

@@ -1,5 +1,5 @@
 import { activeStackJobs, type ChannelGap, type FilterSuggestion, type Job, type NextAction, type StackingSuggestion } from '@astro/domain'
-import { mosaicPlannerLink } from '@shared/navigation'
+import { messierLink, mosaicPlannerLink } from '@shared/navigation'
 import type { Recommendation } from '@shared/types'
 import { targetLink } from '@shared/navigation'
 
@@ -70,6 +70,7 @@ export function toRecommendation(s: StackingSuggestion): Recommendation {
 export function toNextActionRecommendation(a: NextAction): Recommendation {
   if (a.kind === 'stack') return toRecommendation(a.suggestion)
   if (a.kind === 'mosaic-tile') return toMosaicTileRecommendation(a)
+  if (a.kind === 'messier-gap') return toMessierGapRecommendation(a)
   const hours = formatDuration(Math.round(a.usableHours * 3600))
   const parts: string[] = []
   if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
@@ -133,6 +134,25 @@ export function toMosaicTileRecommendation(a: Extract<NextAction, { kind: 'mosai
     targetName: a.targetName,
     actionLabel: 'Open the mosaic plan',
     actionTo: mosaicPlannerLink(a.targetId),
+    dismissible: false
+  }
+}
+
+/** "M 51 Whirlpool Galaxy · a Messier gap, up 5 h 10 m above 30° tonight" (MES-008). */
+export function toMessierGapRecommendation(a: Extract<NextAction, { kind: 'messier-gap' }>): Recommendation {
+  const parts = ['Nothing captured yet for your Messier mosaic.']
+  if (a.closesInDays !== null) parts.push(`Its season closes in ${plural(a.closesInDays, 'day')}.`)
+  parts.push(a.moonSeparationDeg === null ? 'The moon is down while it is up.' : `The moon comes within ${a.moonSeparationDeg}°.`)
+  return {
+    id: a.id,
+    category: 'capture',
+    priority: a.closesInDays !== null ? 'high' : 'medium',
+    title: `${a.targetName} · a Messier gap, up ${formatDuration(Math.round(a.usableHours * 3600))} above 30° tonight`,
+    description: parts.join(' '),
+    targetId: a.targetId,
+    targetName: a.targetName,
+    actionLabel: 'Open the Messier mosaic',
+    actionTo: messierLink(a.number),
     dismissible: false
   }
 }

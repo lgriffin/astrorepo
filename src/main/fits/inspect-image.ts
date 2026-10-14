@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { inspectImage, previewImage, type ImageInspection, type ImagePreview, type PreviewChannel, type RasterImage } from '@astro/domain'
+import { inspectImage, previewImage, type ImageInspection, type ImagePreview, type PreviewChannel, type PreviewStretch, type RasterImage } from '@astro/domain'
 import type { WcsHeader } from '@astro/application'
 import { readFitsImage } from './image-reader'
 import { isPng, readPngImage } from './png-reader'
@@ -48,7 +48,7 @@ export async function openPath(path: string, options: { maxWidth: number }): Pro
   return { inspection: inspectImage(image), preview: previewImage(image, options), header }
 }
 
-export async function previewPath(path: string, options: { maxWidth: number; channel?: PreviewChannel }): Promise<{ preview: ImagePreview; header: WcsHeader }> {
+export async function previewPath(path: string, options: { maxWidth: number; channel?: PreviewChannel; stretch?: PreviewStretch }): Promise<{ preview: ImagePreview; header: WcsHeader }> {
   const { image, header } = await readRaster(path)
   return { preview: previewImage(image, options), header }
 }

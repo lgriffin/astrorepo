@@ -27,7 +27,12 @@ const NOT_PORTS: Record<string, string> = {
   TargetPosition: 'what TargetPositions lists',
   StackFile: 'what StackCatalogue lists',
   ProbeResult: 'what ToolProbe.run returns',
-  ScopeConnection: 'the handle ScopeFiles.open returns; covered by the ScopeFiles suite'
+  ScopeConnection: 'the handle ScopeFiles.open returns; covered by the ScopeFiles suite',
+  PictureFile: 'what PictureFolder lists',
+  Picture: 'what PictureFolder.read returns',
+  ObjectFacts: 'what ObjectCatalogue.objectFacts returns',
+  MessierObject: 'what MessierCatalogue lists',
+  TilePicture: 'what TilePictures.draw returns'
 }
 
 const read = (dir: string, suffix: string) =>

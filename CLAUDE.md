@@ -1,6 +1,6 @@
 ﻿# astrorepo Development Guidelines
 
-Auto-generated from all feature plans, then kept by hand. Last updated: 2026-10-12
+Auto-generated from all feature plans, then kept by hand. Last updated: 2026-10-14
 
 ## Active Technologies
 
@@ -48,6 +48,8 @@ TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 ## Recent Changes
 
 - 033-vespera-ftp: Vespera page (src/renderer/pages/Vespera.tsx) copies observations over FTP via ScopeFiles/LandingArea ports; native FTP client in src/main/adapters/node-ftp-scope.ts (READ_ONLY_COMMANDS only), FTP parsing in packages/domain/src/ftp.ts, test server in tests/helpers/ftp-server.ts; long-lived host src/main/vespera-host.ts runs the home scan after a copy
+- 031-gallery: Files → Gallery (src/renderer/pages/Images.tsx) over makePictureGallery; picture names read by readImageName/objectNameIndex (packages/domain/src/object-names.ts) against the ObjectCatalogue port, which the poster should reuse; PictureFolder reads <home>/images, shrunk by src/main/picture-shrinker.ts
+- 032-messier-mosaic: Messier mosaic (src/renderer/pages/MessierMosaic.tsx, /messier, messierLink) via MessierCatalogue/TilePictures ports and makeMessierMosaic; gap outlook reuses the forward plan's rules; top 3 gaps tonight in Next actions ('messier-gap'); previewImage stretch 'linear' for finished images; JPEG/TIFF drawn by the host (src/main/native-thumbnails.ts)
 - 017-unified-ux U5: sentence-case labels checked by tests/unit/wording.test.ts (tests/helpers/ui-text.ts walks the renderer's JSX); add real names to its PROPER list
 - 017-unified-ux U4: site only in Settings → Your site; Get set up checklist (src/shared/setup.ts, components/cockpit/SetupCard.tsx, hidden by setting setup_checklist_hidden); empty pages use EmptyState with a link
 - 017-unified-ux U3: a target's page in tabs (TARGET_TABS, targetLink(id, tab) in src/shared/navigation.ts); Stack and process in components/target/ProcessTab.tsx shows runsForTarget and hides a step's Queue button while its job is active
