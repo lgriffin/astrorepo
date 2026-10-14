@@ -47,6 +47,7 @@ TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 
 ## Recent Changes
 
+- 034-vespera-ingest: Leigh's Vespera Pro ingest design; rules in packages/domain/src/vespera-ingest.ts (SESSION/RUN/IMAGE grammar, findings, DESTINATION_FOLDER grammar, copy order), use cases in packages/application/src/use-cases/vespera-ingest.ts over VesperaScope (read-only)/IngestDisk/VesperaMetadata/VesperaTransferStore; FtpVesperaScope streams over 033's FTP connection with REST; "Review and transfer" card (components/vespera/IngestPanel.tsx) via src/main/vespera-ingest-host.ts; transfers indexed in astrorepo.transfers.json at the landing root
 - 033-vespera-ftp: Vespera page (src/renderer/pages/Vespera.tsx) copies observations over FTP via ScopeFiles/LandingArea ports; native FTP client in src/main/adapters/node-ftp-scope.ts (READ_ONLY_COMMANDS only), FTP parsing in packages/domain/src/ftp.ts, test server in tests/helpers/ftp-server.ts; long-lived host src/main/vespera-host.ts runs the home scan after a copy
 - 017-unified-ux U5: sentence-case labels checked by tests/unit/wording.test.ts (tests/helpers/ui-text.ts walks the renderer's JSX); add real names to its PROPER list
 - 017-unified-ux U4: site only in Settings → Your site; Get set up checklist (src/shared/setup.ts, components/cockpit/SetupCard.tsx, hidden by setting setup_checklist_hidden); empty pages use EmptyState with a link

@@ -7,10 +7,10 @@ confirmed, resumable, verified copy into a folder whose name astrorepo makes its
 `M31_2026-10-14_FIT=400`. The scope is only ever read: astrorepo never writes to it and never
 deletes from it, under any setting, mode or flag.
 
-The design is Leigh's "Vespera Pro FTP Ingest Design" document (2026-10-14). This slice builds its
-core: the rules, the use cases, the ports and their non-FTP adapters. The FTP connection itself and
-the Vespera page belong to spec 033 (the Vespera FTP control tab); its FTP adapter implements the
-`VesperaScope` port here.
+The design is Leigh's "Vespera Pro FTP Ingest Design" document (2026-10-14). This slice builds it
+on the FTP connection of spec 033 (the Vespera control page): the rules, the use cases, the ports
+and their adapters, and a "Review and transfer" card on the Vespera page. The CLI the design
+mentions waits for the app's CLI.
 
 ## What this slice delivers
 
@@ -20,7 +20,12 @@ the Vespera page belong to spec 033 (the Vespera FTP control tab); its FTP adapt
   transfer, run or resume it.
 - Ports in `packages/application/src/ports/vespera-ingest.ts`: `VesperaScope` (read-only),
   `IngestDisk`, `VesperaMetadata`, `VesperaTransferStore`; fakes in the testkit, contract suites,
-  and the Node, metadata and SQLite adapters.
+  and their adapters: `FtpVesperaScope` (spec 033's FTP connection, plus REST), `NodeIngestDisk`,
+  `NodeVesperaMetadata` (a JPEG EXIF reader and the scanner's FITS card parser) and
+  `FileVesperaTransferStore` (`astrorepo.transfers.json` at the top of the landing folder, as the
+  design puts the index in the repository root).
+- The "Review and transfer" card (`src/renderer/components/vespera/IngestPanel.tsx`) through
+  `vespera-ingest:*` IPC and `src/main/vespera-ingest-host.ts`.
 - Gherkin features in `features/vespera/`, seeded with the `user/` listing of Leigh's scope.
 
 ## Decisions
@@ -32,6 +37,8 @@ the Vespera page belong to spec 033 (the Vespera FTP control tab); its FTP adapt
 - **FITS_LT_JPEG needs FITS.** A run with JPEGs and no FITS had raw saving off; that is NO_FITS
   (info), not a partial listing.
 - **FITS_GT_JPEG needs JPEGs.** With JPEG output off there is nothing to compare.
+- **The destination root is the landing folder** of spec 033 (Settings → Folders), remembered as
+  the design asks, so the two copy flows land in one place.
 - **The job is recorded twice.** In the store (for the review screen's "already in the repository")
   and as `astrorepo.transfer.json` in the destination folder, which is how a folder of the same
   name is told to be this session's (resume) or another's (refuse).
@@ -63,7 +70,7 @@ the Vespera page belong to spec 033 (the Vespera FTP control tab); its FTP adapt
 | VIN-004 | Ubiquitous | The system shall classify a run folder by the suffix of its name (pointing or images, then initial, adjust-framing or adjust-focus) and shall use any numeric prefix only to order runs. |
 | VIN-005 | Unwanted | If a run folder or a file matches no known pattern, then the system shall still count it, as an unknown run or a file of kind other, and raise an info finding. |
 | VIN-006 | Ubiquitous | The system shall read no file's content during a scan, and shall list the scope's folders one at a time. |
-| VIN-007 | Ubiquitous | The system shall count each session's files by kind (FITS, TIFF, JPEG, JSON and other) per run and in total, with their total bytes, keep each file's listed size and modified time, and stamp each session with when its listing finished. |
+| VIN-007 | Ubiquitous | The system shall count each session's files by kind (FITS, TIFF, JPEG, JSON and other) per run and in total, with their total bytes, keep each file's listed size (and its modified time where the listing gives one), and stamp each session with when its listing finished. |
 | VIN-008 | Unwanted | If a session's counts look wrong, then the system shall raise findings: NO_IMAGES_RUN and FITS_LT_JPEG at error; EMPTY_RUN, NO_TIFF and GAP_IN_FRAMES at warn; MANY_TIFF, NO_FITS, FITS_GT_JPEG and JSON_MISMATCH at info. |
 | VIN-009 | Ubiquitous | The system shall never compare a file count with the stacked-frame count in a JPEG's EXIF, which this firmware writes one short. |
 

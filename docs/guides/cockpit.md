@@ -717,3 +717,44 @@ The Vespera's FTP layout comes from Vaonis's support pages and owners' write-ups
 been checked against a real scope. If **Look for observations** finds nothing on a scope that has
 observations, the scope's folder names differ from what the app expects
 ([#23](https://github.com/lgriffin/astrorepo/issues/23)).
+
+## Reviewing and transferring a Vespera session
+
+The **Review and transfer** card on the Vespera page follows Leigh's ingest design (spec 034):
+look at what each session holds before anything is copied, then copy one with a single button.
+
+1. Join the PC to the Vespera's Wi-Fi and press **Scan the scope**. Every session under `user`
+   is listed newest first with its FITS, JPEG, TIFF and JSON counts and its size. Only listings
+   are read, nothing is downloaded. Auto-init and sun sessions are folded away; tick **Show
+   auto-init, sun and other sessions** to see them.
+2. Open a session. Its runs (`01-images-initial`, `04-images-adjust-framing` …) show their own
+   counts, and its findings say what looks wrong:
+   - **Error**: no image run at all, or more JPEGs than FITS (the listing was partial or files
+     are missing). Transfer stays off.
+   - **Check**: an image run with no images, no TIFF (TIFF export was off), or FITS frames
+     missing from the sequence.
+   - **Note**: frames left out of the stack, no FITS (raw saving was off), sidecar JSON that does
+     not match the JPEGs, files or runs astrorepo does not know.
+3. Check the target. It comes from the folder's name (`…_observation_NGC3372` is NGC 3372); a
+   name that is not a catalogue designation, such as `moon`, is marked `?`. **Check the scope's
+   metadata** reads observation.json, then the last stack's EXIF, then a FITS header, and says if
+   they disagree. Type a name (`M 31`, `Jellyfish Nebula`) and **Use this name** to set your own.
+4. Tick the kinds to copy (FITS alone by default). The folder the copy makes is shown as you
+   choose: `{target}_{date}_FIT={count}`, with `_TIF=`, `_JPG=` and `_JSON=` for the other kinds,
+   such as `M31_2026-10-14_FIT=400_TIF=1`.
+5. Press **Transfer**. Files come one at a time, FITS first, each into a `.part` file that takes
+   its name only when it is as long as the scope listed. **Pause** stops after the current file.
+
+If the Wi-Fi drops, the copy pauses and keeps its `.part` file; **Resume** lists the session
+again, carries on from the first file not yet copied, and starts the partial file from where it
+stopped when the scope allows it. A session that grew while paused (it was still running) is
+noted; the folder keeps its name and the copy keeps to what was planned.
+
+When every file is in, astrorepo hashes each copy with SHA-256 and writes
+`astrorepo.manifest.json` in the folder: the session, the target and why, the kinds and counts,
+each file's path, size and hash, and the findings. The row then says **In the repository**.
+Every transfer is also listed in `astrorepo.transfers.json` at the top of the landing folder.
+
+A folder of the same name that holds another session's copy is never copied into: the transfer
+is refused, and **Use the next free name** makes `…_2`. Nothing on the scope is ever written,
+renamed or deleted.

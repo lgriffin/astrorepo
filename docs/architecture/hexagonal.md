@@ -53,6 +53,10 @@ flowchart LR
   UC -->|Ephemeris| A21[AstronomyEngineEphemeris]
   UC -->|ScopeFiles| A22[NodeScopeFiles]
   UC -->|LandingArea| A23[NodeLandingArea]
+  UC -->|VesperaScope| A24[FtpVesperaScope]
+  UC -->|IngestDisk| A25[NodeIngestDisk]
+  UC -->|VesperaMetadata| A26[NodeVesperaMetadata]
+  UC -->|VesperaTransferStore| A27[FileVesperaTransferStore]
   A22 -->|FTP, read-only| VS[(Vespera at 10.0.0.1)]
   A22 --> LA[(landing folder)]
   A23 --> LA
@@ -98,6 +102,7 @@ flowchart LR
 | `describeTargetGeometry` | `misfiledCheck`, `rotationByNight`, `groupPanels`, `overlapsAny` | SolveStore, MosaicStore (`linkPanels`) | `sky:target-geometry` | 024 |
 | `planMosaic`, `saveMosaicPlan`, `exportMosaicCsv`, `listMosaicGaps` | `planMosaic`, `offsetPosition`, `mosaicNights`, `mosaicCsv`, `groupPanels`, `rankNextActions` | MosaicStore, SolveStore, PlanningSettings, Ephemeris, Clock | `mosaic:plan`, `mosaic:save`, `mosaic:export`, `recommendations:list` | 024 |
 | `makeVesperaControl` (`survey`, `start`, `progress`, `cancel`) | `readFtpReplies`, `parsePassive`, `parseExtendedPassive`, `parseListing`, `vesperaRoots`, `observationOf`, `parseObservationName`, `plannedFiles`, `planCopies`, `observationStatuses`, `copySpace`, `copyPace`, `localName`, `parseVesperaSettings` | ScopeFiles (FTP), LandingArea, Clock | `vespera:settings`, `vespera:survey`, `vespera:start`, `vespera:progress`, `vespera:cancel` | 033 |
+| `makeScanVespera`, `makeIdentifyTarget`, `makePlanVesperaTransfer`, `makeRunVesperaTransfer` | `buildSession`, `inventorySession`, `resolveTarget`, `overrideTarget`, `normaliseTargetName`, `destinationFolderName`, `parseDestinationFolder`, `planTransfer`, `sessionGrowth`, `nameCountFinding` | VesperaScope (FTP, read-only), IngestDisk, VesperaMetadata, VesperaTransferStore, ContentHasher, Clock | `vespera-ingest:scan`, `:identify`, `:name`, `:preview`, `:transfer`, `:resume`, `:pause`, `:progress` | 034 |
 | `setCometOrbit`, `planComet` | `parseMpcComet`, `orbitPlanePosition`, `cometPosition`, `midExposure`, `cometMotion`, `cometPositionsCsv` | CometStore, SirilWorkspace (`listSourceFrames`, `frameDetails`, `writeText`, `contains`), FrameSelection (grading), Ephemeris (`observerPositions`), PlanningSettings, StackCatalogue | `comet:plan`, `comet:set-orbit`, `comet:write-positions` | 026 |
 
 The legacy FITS scan (`services/fits-analyzer.ts`) also indexes camera RAW (spec 026): the

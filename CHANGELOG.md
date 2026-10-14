@@ -12,6 +12,14 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Vespera ingest** (spec 034): a Review and transfer card on the Vespera page scans every
+  session on the scope from its listings alone, counts FITS, TIFF, JPEG and JSON per run, flags
+  what looks wrong (missing frames, more JPEGs than FITS, no TIFF, unknown files), names each
+  session's target from its folder, observation.json, the stack's EXIF or a FITS header (or your
+  own name), and copies a session with one button into a folder named for what it holds, such as
+  `M31_2026-10-14_FIT=400`. A dropped Wi-Fi link pauses the copy; resume carries on from the
+  partial file. Every copy ends in `astrorepo.manifest.json` with each file's SHA-256. The scope
+  is only ever read.
 - **Vespera control** (spec 033): a Vespera page under Files lists the scope's observations over
   its Wi-Fi (anonymous FTP at 10.0.0.1, configurable) with what is already on the PC, and copies
   the ones you tick into each target's raw folder, then runs the home scan. Copies never change
