@@ -11,8 +11,9 @@
 AstroRepo is a desktop app that sits on top of the astrophotography data you already have. It reads
 your FITS and camera RAW files where they are, shows what is hiding in them, tells you what each
 target is ready to become and what to shoot in the coming nights, and drives the tools you already
-use (Siril, Siril_Scripts, RC Astro, SyQon and ASTAP) as a small queue of jobs on your own PC. Your
-source folders are never renamed or changed.
+use (Siril, Siril_Scripts, RC Astro, SyQon and ASTAP) as a small queue of jobs on your own PC. It
+copies a Vespera's observations off the scope over its Wi-Fi, and shows your finished pictures as
+a gallery and as a Messier mosaic. Your source folders are never renamed or changed.
 
 It was built first for a Seestar S50 and Vaonis rig stacking with Siril, and it also handles DSLR
 and mirrorless RAW, mono cameras with filter wheels, and comets for anyone who shoots those.
@@ -46,6 +47,25 @@ process it, and archive it. Each step is a place in the sidebar or a step on a t
   "ready to stack" and "restack" suggestions you can dismiss.
 - **Get set up.** A checklist on Home until your site, home folder, a first scan and Siril are in
   place, plus any missing tool catalogue.
+
+### Bring in and show off your pictures
+
+How these four fit together, from a night on the scope to a tile on the mosaic, is in
+[From the scope to the mosaic](docs/guides/scope-to-mosaic.md).
+
+- **Vespera copy.** Files → Vespera scans the Vespera Pro over its Wi-Fi with a read-only FTP
+  client, lists every session with what it holds and what looks wrong (missing frames, no TIFF,
+  partial listings), names its target from the folder, the scope's metadata or your own name, and
+  copies the ones you tick (FITS and TIFF by default) into
+  `<target>/<target>_<date>_FIT=<n>_TIF=<n>`. Copies resume after a Wi-Fi drop, never leave a half
+  file, end in a SHA-256 manifest and are indexed by the home scan. The scope is only read.
+- **Gallery.** Files → Gallery shows every PNG and JPEG in your images folder, each captioned
+  with the object its name names (`M31.png`, `NGC7000_HOO.png`, `Andromeda Galaxy.jpg`, or the
+  folder it is in), with a side panel on what the object is, when it is best placed from your site,
+  what you have of it, and links to its target page, mosaic plan, SIMBAD and Wikipedia.
+- **Messier mosaic.** Collections → Messier mosaic shows all 110 Messier objects with your own
+  newest picture in each tile, how far each has come, and when each gap is up from your site. The
+  three best gaps up tonight join Next actions, and the whole mosaic saves as one PNG.
 
 ### Plan the coming nights
 
@@ -121,6 +141,7 @@ catalogues it needs are there.
 | [SyQon Studio](https://syqon.eu) CLI | Star separation, sharpening, denoise and gradient removal | Optional |
 | [ASTAP](https://www.hnsky.org/astap.htm) with a star database | Plate solving (preferred over Siril's solver) | Optional |
 | Git Bash | Running Siril_Scripts' shell scripts on Windows | With Siril_Scripts |
+| [Vaonis Vespera Pro](https://vaonis.com) | Copying observations off the scope over its Wi-Fi (anonymous FTP, read-only) | Only for the Vespera page |
 
 One exit-code contract explains how each tool's run ended. Tool output parsing (ASTAP and Siril
 solve results, SyQon flags and model names, RC Astro model file names) follows the tools'
@@ -156,6 +177,9 @@ folder, scan your library and point Settings → Tools at Siril.
 | `npm run lint` | Lint `src`, `tests`, `packages` and `scripts` |
 | `npm run typecheck` / `npm run typecheck:tests` | Type-check the app and the tests |
 | `npm run ears` | Fail when an EARS requirement has no test naming it |
+| `npm run test:fuzz` | The fuzz tests with many runs per property (`FUZZ_RUNS`, `FUZZ_SEED` to replay) |
+| `npm run test:mutation:changed` | Mutation-test the core files changed against `origin/main` (fails below 80%) |
+| `npm run test:mutation` | Mutation-test the whole core (over an hour on four cores) |
 | `npm run build` | Production build |
 | `npm run dist` | Build and package the Windows installer with Electron Forge |
 | `npm run db:seed` / `npm run db:reset` | Load or reload the catalogue seed data |
@@ -172,6 +196,15 @@ folder, scan your library and point Settings → Tools at Siril.
     grading, plate solving, the inspector and other rigs.
   - [Planning ahead](docs/guides/planning.md): seasons, closing windows, new-moon windows and
     bright-moon choices from your site.
+  - [From the scope to the mosaic](docs/guides/scope-to-mosaic.md): how the Vespera copy, the
+    gallery and the Messier mosaic fit together, where each keeps its files and what each promises.
+  - [Copying from the Vespera](docs/guides/vespera.md), [The gallery](docs/guides/gallery.md) and
+    [The Messier mosaic](docs/guides/messier-mosaic.md): each one in detail, with how it works inside.
+- Testing:
+  - [Testing and quality gates](docs/testing/README.md): every kind of test, what each gate
+    checks and the floors it holds.
+  - [BDD](docs/testing/bdd.md), [property and fuzz tests](docs/testing/property-and-fuzz.md) and
+    [mutation testing](docs/testing/mutation.md).
 - Architecture:
   - [C4 model](docs/architecture/c4.md): context, containers and components.
   - [Hexagonal core](docs/architecture/hexagonal.md): how code is laid out and how a service
@@ -200,6 +233,14 @@ folder, scan your library and point Settings → Tools at Siril.
 | [024](specs/024-sky-geometry/requirements.md) | Sky geometry |
 | [025](specs/025-gallery-inspector/requirements.md) | Gallery inspector |
 | [026](specs/026-other-rigs/requirements.md) | Other rigs |
+| [027](specs/027-hexagon-hardening/requirements.md) | Hexagon hardening |
+| [028](specs/028-ears-bdd/requirements.md) | EARS traceability and BDD |
+| [029](specs/029-property-fuzz/requirements.md) | Property and fuzz testing |
+| [030](specs/030-mutation-testing/requirements.md) | Mutation testing |
+| [031](specs/031-gallery/requirements.md) | Gallery |
+| [032](specs/032-messier-mosaic/requirements.md) | Messier mosaic |
+| [033](specs/033-vespera-ftp/requirements.md) | Vespera control |
+| [034](specs/034-vespera-ingest/requirements.md) | Vespera Pro ingest |
 
 ## Architecture
 
@@ -208,15 +249,18 @@ AstroRepo is an Electron app with a hexagonal core growing inside its main proce
 [hexagonal.md](docs/architecture/hexagonal.md) explains the rules.
 
 - **Domain** (`packages/domain`): pure rules with no I/O, such as frame grading, stacking plans,
-  sky geometry, palettes, comet orbits and camera RAW tags.
+  sky geometry, palettes, comet orbits, camera RAW tags, the Messier mosaic's outlooks, what a
+  picture's name names, and everything the Vespera sends (FTP replies, listings, session folders).
 - **Application** (`packages/application`): use cases and the ports they need, such as the frame
-  catalogue, Siril workspace, tool hub, jobs, plate solvers, gallery and archive.
-- **Adapters** (`src/main/adapters`): SQLite, file system, process and Windows implementations of
-  those ports, wired together in `src/main/composition.ts`.
+  catalogue, Siril workspace, tool hub, jobs, plate solvers, gallery, Messier catalogue, the
+  Vespera scope and ingest disk, and archive.
+- **Adapters** (`src/main/adapters`): SQLite, file system, FTP, process and Windows
+  implementations of those ports, wired together in `src/main/composition.ts`.
 - **Testkit** (`packages/testkit`): in-memory fakes and the contract suites every adapter of a
   port must pass.
-- **Main process** also hosts the job runner (`src/main/jobs-host.ts`), worker threads for
-  measuring and inspecting images, and IPC handlers that validate every input with Zod.
+- **Main process** also hosts the job runner (`src/main/jobs-host.ts`), the Vespera copy queue
+  (`src/main/vespera-ingest-host.ts`), worker threads for measuring and inspecting images, and IPC
+  handlers that validate every input with Zod.
 - **Preload** exposes a minimal `api.invoke()` bridge, and the **renderer** is a React app whose
   sidebar, page titles and back links all come from one map in `src/shared/navigation.ts`.
 
@@ -229,7 +273,7 @@ AstroRepo is an Electron app with a hexagonal core growing inside its main proce
 | Ephemeris | astronomy-engine |
 | Validation | Zod at the IPC boundary |
 | Build | electron-vite, Electron Forge |
-| Testing | Vitest with v8 coverage |
+| Testing | Vitest with v8 coverage, fast-check (property and fuzz), Stryker (mutation), an own Gherkin runner (BDD) |
 
 ## Project structure
 
@@ -237,7 +281,7 @@ AstroRepo is an Electron app with a hexagonal core growing inside its main proce
 packages/
   domain/            # Pure rules and their tests
   application/       # Ports, use cases and their tests
-  testkit/           # Fakes and port contract suites
+  testkit/           # Fakes, port contract suites and the Gherkin runner
 src/
   main/
     adapters/        # Port implementations (SQLite, Node, Windows)
@@ -249,14 +293,17 @@ src/
     ipc/             # IPC handlers with Zod schemas
     services/        # Older services, moving into the core over time
     jobs-host.ts     # The job runner
+    vespera-ingest-host.ts  # The Vespera scan and copy queue
   preload/           # The api.invoke() bridge
   renderer/          # React pages and components
   shared/            # Types and the navigation map shared by both sides
 data/catalogues/     # Messier, Caldwell, NGC, IC and Sharpless seed data
 specs/               # Feature specs with EARS requirements
-docs/                # Roadmap, guides and architecture
+features/            # Gherkin features, run by tests through the testkit's runner
+docs/                # Roadmap, guides, architecture and testing
 scripts/ears/        # The EARS traceability gate
-tests/               # Unit, integration, contract and architecture tests
+scripts/mutation/    # What the mutation gate mutates and its threshold
+tests/               # Unit, integration, contract, architecture and fuzz tests
 ```
 
 ## Engineering standards
@@ -264,18 +311,28 @@ tests/               # Unit, integration, contract and architecture tests
 - **EARS requirements.** Every behaviour is written as an EARS requirement in its spec, and every
   requirement ID is cited in a test title, as in `[RIG-019] Given ... When ... Then ...`.
   `npm run ears` fails the build when one is missing, unknown or duplicated.
+- **BDD.** User journeys are Gherkin features under `features/<area>/`, run by the testkit's own
+  runner and tagged with the requirements they cover.
 - **Contract suites.** Each port has one suite in `packages/testkit` that both the in-memory fake
-  and the real adapter must pass.
+  and the real adapter must pass; a test fails a port without a suite run on both.
+- **Property and fuzz tests.** Invariants of the core's maths and parsers are checked over
+  generated input with fast-check, and every parser of untrusted bytes (FITS, PNG, TIFF, FTP
+  replies, scope listings) is fuzzed; a nightly run goes long.
+- **Mutation testing.** Stryker changes the core's code one small piece at a time and checks a
+  test notices. A pull request touching a core file fails if that file's score drops below 80%,
+  and the whole core is re-run every night.
 - **Coverage floors.** The domain and application packages are held at 95% lines and functions
   and 90% branches, adapters at 80%, and older services at a ratchet that only goes up.
 - **Architecture tests.** `tests/architecture` checks that the domain imports only itself and the
-  application only itself and the domain, so no framework or I/O reaches the core.
+  application only itself and the domain, so no framework or I/O reaches the core, and a ratchet
+  lets legacy code only shrink.
 - **Docs in the same change.** A behaviour change updates its spec, the roadmap, the relevant
   guide, the C4 diagrams when a port, adapter or tool is added, and the changelog in the same pull
   request.
 - **Plain words.** Interface labels are in sentence case, checked by `tests/unit/wording.test.ts`.
 - **CI.** Lint, type checks, the EARS gate, tests with coverage and the build run on Windows and
-  Ubuntu for every pull request.
+  Ubuntu for every pull request, with the mutation gate on pull requests that touch the core.
+  Long fuzz and whole-core mutation runs go nightly.
 
 ## Adding catalogues
 

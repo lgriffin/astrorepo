@@ -142,6 +142,12 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   core files they change and fail below the 80% floor, and the whole core runs nightly. The first
   full run scored 76.8%; about 250 sharper tests then brought every core file to at least 80% and
   the whole core to 89.2%.
+- **Docs for the October capabilities**: a guide to how the Vespera copy, the gallery and the
+  Messier mosaic fit together ([From the scope to the mosaic](docs/guides/scope-to-mosaic.md)),
+  the gallery and the Vespera in guides of their own with how each works inside, a "How it works"
+  section on the Messier mosaic, a testing overview ([docs/testing/README.md](docs/testing/README.md)),
+  the README and C4 diagrams brought up to specs 027 to 034, and the hexagon diagram's clashing
+  node names fixed.
 
 ## [0.2.0] - 2026-09-30
 

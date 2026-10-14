@@ -59,15 +59,14 @@ flowchart LR
   A25 --> DB
   UC -->|CometStore| A20[SqliteCometStore]
   UC -->|Ephemeris| A21[AstronomyEngineEphemeris]
-  UC -->|ScopeFiles| A22[NodeScopeFiles]
-  UC -->|VesperaScope| A24[FtpVesperaScope]
-  UC -->|IngestDisk| A25[NodeIngestDisk]
-  UC -->|VesperaMetadata| A26[NodeVesperaMetadata]
-  UC -->|VesperaTransferStore| A27[FileVesperaTransferStore]
-  A22 -->|FTP, read-only| VS[(Vespera at 10.0.0.1)]
-  A24 --> A22
-  A25 --> LA[(landing folder)]
-  A27 --> LA
+  UC -->|VesperaScope| A28[FtpVesperaScope]
+  A28 -->|ScopeFiles| A29[NodeScopeFiles]
+  UC -->|IngestDisk| A30[NodeIngestDisk]
+  UC -->|VesperaMetadata| A31[NodeVesperaMetadata]
+  UC -->|VesperaTransferStore| A32[FileVesperaTransferStore]
+  A29 -->|FTP, read-only| VS[(Vespera at 10.0.0.1)]
+  A30 --> LA[(landing folder)]
+  A32 --> LA
   A20 --> DB
   A10 --> WA
   A11 --> WA
@@ -134,15 +133,23 @@ astronomy-engine adapter is the only code that knows about the sun and moon, and
 `FakeEphemeris` uses real sidereal time with a scripted sun and moon. The legacy Sky Planner
 service still answers its own channels; it moves behind the same port next.
 
-The Vespera control (spec 033) is the other long-lived use case: `src/main/vespera-host.ts`
-creates it once, since it holds the copy under way, and hands the copies to the home scan (or a
-FITS scan of the landing folder) when a copy ends. Its FTP client is written on Node's sockets in
-`node-ftp-scope.ts`; everything the scope sends (replies, passive addresses, listings, folder
-names) is read by pure domain functions in `packages/domain/src/ftp.ts` and `vespera.ts`, which
-the fuzz tests cover, and the adapter sends only the commands in `READ_ONLY_COMMANDS`. Its
-contract suite runs on the testkit's `InMemoryScope` and on the real adapter against
-`tests/helpers/ftp-server.ts`, an FTP server that answers as the Vespera is reported to (MLSD and
-EPSV, or LIST and PASV naming an address the PC cannot reach).
+The Vespera page (specs 033 and 034) has the other long-lived use case: `src/main/vespera-ingest-host.ts`
+holds the last scan, the target names set since and the one copy queue (`makeVesperaCopyQueue`),
+which outlives a change of settings since it holds the copy under way. When the queue ends,
+`src/main/vespera-host.ts` hands the copies to the home scan (or a FITS scan of the landing
+folder). Its FTP client is written on Node's sockets in `node-ftp-scope.ts`; everything the scope
+sends (replies, passive addresses, listings, folder names) is read by pure domain functions in
+`packages/domain/src/ftp.ts`, `vespera.ts` and `vespera-ingest.ts`, which the fuzz tests cover,
+and the adapter sends only the commands in `READ_ONLY_COMMANDS`. `FtpVesperaScope` runs one call
+at a time on that connection and puts REST directly before RETR, so a resumed file carries on
+from its `.part`. The scope contract suite runs on the testkit's `InMemoryScope` and on the real
+adapter against `tests/helpers/ftp-server.ts`, an FTP server that answers as the Vespera is
+reported to (MLSD and EPSV, or LIST and PASV naming an address the PC cannot reach). The
+[Vespera guide](../guides/vespera.md#how-it-works) walks through scan, name, plan and copy.
+
+The gallery and the Messier mosaic are composed once and kept (`composePictureGallery`,
+`composeMessier`), so the pictures they have drawn survive between requests; they are rebuilt only
+when the database or the image readers they were built with change. Both read the images folder and never write it.
 
 The job runner is the one use case that lives for the whole session: `src/main/jobs-host.ts`
 creates it once, checks the queue every minute and whenever a job is queued or ends, keeps the PC

@@ -70,3 +70,47 @@ its designation and name beneath, gaps as dark squares.
 - JPEG and TIFF are drawn by the desktop app (on Windows and macOS, the system's own thumbnails),
   so they show in the app but not in tests. Elsewhere TIFF is not drawn, and when there is no system
   thumbnail a JPEG over 25 MB is not decoded; the tile tries its next image and says why.
+
+## How it works
+
+The mosaic is one use case in the core, `makeMessierMosaic`
+(`packages/application/src/use-cases/messier-mosaic.ts`), with its rules in
+`packages/domain/src/messier.ts` and the planner's sky rules reused from `planning.ts`.
+
+```mermaid
+flowchart LR
+  UI[Messier mosaic page] -->|messier:mosaic, messier:picture| UC[makeMessierMosaic]
+  Home[Home: Next actions] -->|recommendations:list| NA[listNextActions] -->|gapsTonight| UC
+  UC -->|MessierCatalogue| MC[SqliteMessierCatalogue]
+  UC -->|FrameCatalogue| FC[SqliteFrameCatalogue]
+  UC -->|TilePictures| TP[NodeTilePictures]
+  UC -->|PlanningSettings, Ephemeris, Clock| SKY[site, astronomy-engine, clock]
+  TP -->|FITS and PNG| PX[NodeImagePixels, worker thread]
+  TP -->|JPEG and TIFF| NT[native-thumbnails.ts]
+  MC --> DB[(SQLite index)]
+  MC --> IMG[(home/images and target folders, read-only)]
+```
+
+- **State.** A tile is imaged when a finished image is on disk now, whatever the last scan
+  counted; otherwise `messierState` reads the target's derived progress (stacked, captured, not
+  captured).
+- **Picture.** `SqliteMessierCatalogue.pictures` gathers the candidates from the three places in
+  [What a tile shows](#what-a-tile-shows) and the target's masters; `orderPictures` puts them in
+  the order above. `picture` tries each in turn, drawing one at a time however many tiles ask at
+  once, and keeps the last 300 drawn, keyed by width, file date and path, so reopening the mosaic
+  redraws only what changed. A finished image is drawn as it is; a master is auto-stretched.
+- **Outlook.** For each object with a position, `usableHours` (an hour above 30° in the dark),
+  `closestMoonDeg` and `moonRulesOut` give tonight, `seasonClosing` the next 30 nights and
+  `monthlySeason` the next 12 months, from the same `PlanningPolicy` the Sky planner uses.
+  `messierOutlook` turns them into what the tile says. Night skies are kept (128 of them) and
+  outlooks are kept per site, night and filter, since the objects do not move.
+- **Next actions.** `gapsTonight` looks only at tonight and the closing-season nights, and
+  `messierGapsTonight` ranks the uncaptured objects up tonight: closing seasons first, then the
+  most hours. `listNextActions` adds the top three as `messier-gap` actions after tonight's
+  captures and planned mosaic tiles; if they fail, they are left out and logged, and the rest of
+  Next actions still shows.
+
+The rules are tested by example (`packages/domain/test/messier.test.ts`), by property tests
+(`packages/domain/test/properties/messier.property.test.ts`) and by mutation testing; both ports
+pass the contract suite in `packages/testkit/src/contracts/messier.contract.ts` on the testkit's
+fakes and on the real adapters.
