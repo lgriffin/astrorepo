@@ -39,19 +39,26 @@ import {
   makeSaveMosaicPlan,
   makePlanComet,
   makeSetCometOrbit,
+  makeIdentifyTarget,
+  makePlanVesperaTransfer,
+  makeRunVesperaTransfer,
+  makeScanVespera,
+  makeVesperaCopyQueue,
   makeMessierMosaic,
   makePictureGallery,
-  makeVesperaControl,
   type Gallery,
-  type JobScheduler,
   type MessierMosaicService,
   type PictureGallery,
-  type VesperaControl
+  type JobScheduler
 } from '@astro/application'
 import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
 import { SqliteDismissalStore } from './adapters/sqlite-dismissal-store'
 import { SqliteFileHashStore, SqliteFileIndex } from './adapters/sqlite-file-hashing'
 import { NodeContentHasher } from './adapters/node-content-hasher'
+import { FtpVesperaScope } from './adapters/ftp-vespera-scope'
+import { NodeIngestDisk } from './adapters/node-ingest-disk'
+import { NodeVesperaMetadata } from './adapters/vespera-metadata'
+import { FileVesperaTransferStore, TRANSFER_INDEX_FILE } from './adapters/file-vespera-transfers'
 import { NodeSirilWorkspace } from './adapters/node-siril-workspace'
 import { systemClock } from './adapters/system-clock'
 import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
@@ -80,7 +87,6 @@ import { NodeTilePictures, type NativeThumbnailer } from './adapters/tile-pictur
 import { settingReader } from './adapters/shared/app-settings'
 import { AppFolders } from './adapters/app-folders'
 import { NodeScopeFiles } from './adapters/node-ftp-scope'
-import { NodeLandingArea } from './adapters/node-landing-area'
 import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture-folder'
 import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
 
@@ -312,11 +318,31 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
 }
 
 /**
- * The Vespera control (spec 033): one per app, since it holds the copy under way. `onCopied`
- * hands the landing folder to the host to index once a copy brought files in.
+ * The Vespera ingest (spec 034) on the scope at `host`: scan, name, plan and copy, over the FTP
+ * connection of spec 033. Transfers are indexed at the top of the folder copies land in.
  */
-export function composeVespera(onCopied: (landingRoot: string, targets: string[]) => Promise<void> | void): VesperaControl {
-  return makeVesperaControl({ scope: new NodeScopeFiles(), landing: new NodeLandingArea(), clock: systemClock, onCopied })
+export function composeVesperaIngest(host: string, port: number, landingRoot: string | null) {
+  const scope = new FtpVesperaScope(new NodeScopeFiles(), host, port)
+  const disk = new NodeIngestDisk()
+  const store = new FileVesperaTransferStore(landingRoot === null ? null : path.join(landingRoot, TRANSFER_INDEX_FILE))
+  return {
+    store,
+    disk,
+    scan: makeScanVespera({ scope, clock: systemClock }),
+    identify: makeIdentifyTarget({ scope, metadata: new NodeVesperaMetadata() }),
+    plan: makePlanVesperaTransfer({ disk, store, clock: systemClock }),
+    run: makeRunVesperaTransfer({ scope, disk, hasher: new NodeContentHasher(), store, clock: systemClock })
+  }
+}
+
+export type VesperaIngest = ReturnType<typeof composeVesperaIngest>
+
+/**
+ * The Vespera page's one copy queue (spec 034, VIN-031). It outlives a change of settings, as it
+ * holds the copy under way, so `run` is asked for the transfer runner of the settings in force.
+ */
+export function composeVesperaCopyQueue(run: () => VesperaIngest['run'], onFinished: () => Promise<void> | void) {
+  return makeVesperaCopyQueue({ run: (job, options) => run()(job, options), clock: systemClock, onFinished })
 }
 
 export type Core = ReturnType<typeof composeCore>

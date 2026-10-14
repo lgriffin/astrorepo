@@ -124,10 +124,6 @@ const SEEDS: Record<keyof typeof TEXT_CONTRACTS, { seeds: string[]; pieces: stri
   parsePassive: {
     seeds: ['227 Entering Passive Mode (10,0,0,1,195,80).', '229 Entering Extended Passive Mode (|||50123|)', '(192, 168, 1, 2, 0, 21)'],
     pieces: [',', '(', ')', '|', '!', '255', '256', '0', '999999', ' ']
-  },
-  parseObservationName: {
-    seeds: ['2024-03-10_21-33-02_M 42', 'M42 20240310 2133', 'NGC 7000 - 2023.08.14', 'Andromeda', '2024-02-29T23:59:59'],
-    pieces: ['-', '_', '.', ' ', 'T', ':', '2024', '13', '31', '24', '60', '99', 'M ']
   }
 }
 

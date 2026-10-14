@@ -2,16 +2,14 @@ import fs from 'fs'
 import net from 'net'
 import os from 'os'
 import path from 'path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { InMemoryLandingArea, InMemoryScope } from '@astro/testkit'
-import { landingAreaContract, scopeFilesContract } from '@astro/testkit/contracts/scope.contract'
+import { afterEach, describe, expect, it } from 'vitest'
+import { InMemoryScope } from '@astro/testkit'
+import { scopeFilesContract } from '@astro/testkit/contracts/scope.contract'
 import { NodeScopeFiles, READ_ONLY_COMMANDS } from '../../src/main/adapters/node-ftp-scope'
-import { NodeLandingArea } from '../../src/main/adapters/node-landing-area'
 import { TestFtpServer } from '../helpers/ftp-server'
 
 const cleanups: (() => Promise<void> | void)[] = []
 afterEach(async () => {
-  vi.restoreAllMocks()
   for (const c of cleanups.splice(0).reverse()) await c()
 })
 
@@ -39,8 +37,7 @@ const filesUnder = (dir: string): string[] =>
     : []
 
 scopeFilesContract('in-memory', async () => {
-  const landing = new InMemoryLandingArea()
-  const scope = new InMemoryScope(landing)
+  const scope = new InMemoryScope()
   return {
     scope,
     host: '10.0.0.1',
@@ -48,9 +45,8 @@ scopeFilesContract('in-memory', async () => {
     nowhere: { host: '10.0.0.99', port: 21 },
     put: (remote, content) => void scope.put(remote, content),
     folder: remote => void scope.folder(remote),
-    local: name => `/landing/${name}`,
-    readLocal: async p => landing.disk.get(p) ?? null,
-    localFiles: async () => landing.listing('/landing')
+    // The pretend scope has no PC side to write to.
+    localFiles: async () => []
   }
 })
 
@@ -70,8 +66,6 @@ async function ftpFixture(configure: (server: TestFtpServer) => void = () => und
       nowhere: { host: '127.0.0.1', port: await deadPort() },
       put: (remote: string, content: string) => void server.put(remote, content),
       folder: (remote: string) => void server.folder(remote),
-      local: (name: string) => path.join(dir, ...name.split('/')),
-      readLocal: async (p: string) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null),
       localFiles: async () => filesUnder(dir)
     }
   }
@@ -80,43 +74,13 @@ async function ftpFixture(configure: (server: TestFtpServer) => void = () => und
 scopeFilesContract('Node FTP (MLSD, EPSV)', async () => (await ftpFixture()).fixture)
 scopeFilesContract('Node FTP (LIST, PASV)', async () => (await ftpFixture(s => ((s.mlsd = false), (s.epsv = false)))).fixture)
 
-landingAreaContract('in-memory', async () => {
-  const area = new InMemoryLandingArea()
-  return {
-    area,
-    root: '/landing',
-    write: async (parts, text) => void area.put(area.join('/landing', parts), text),
-    link: async parts => void area.links.add(area.join('/landing', parts))
-  }
-})
-
-landingAreaContract('Node', async () => {
-  const root = tempDir()
-  const area = new NodeLandingArea()
-  return {
-    area,
-    root,
-    write: async (parts, text) => {
-      const p = area.join(root, parts)
-      fs.mkdirSync(path.dirname(p), { recursive: true })
-      fs.writeFileSync(p, text)
-    },
-    link: async parts => {
-      const elsewhere = tempDir()
-      const p = path.join(root, ...parts)
-      fs.mkdirSync(path.dirname(p), { recursive: true })
-      fs.symlinkSync(elsewhere, p, 'junction')
-    }
-  }
-})
-
 describe('NodeScopeFiles', () => {
-  it('[VSP-005] Given a full survey and copy, When the commands the scope received are read, Then none could change a file on it', async () => {
+  it('[VSP-005] Given a listing and a resumed read, When the commands the scope received are read, Then none could change a file on it', async () => {
     const { server, fixture } = await ftpFixture()
     server.put('/user/obs/img-0001.fits', 'frame')
     const conn = await fixture.scope.open(fixture.host, fixture.port)
     await conn.list('/user/obs')
-    await conn.download('/user/obs/img-0001.fits', fixture.local('img-0001.fits'), 5, () => undefined, () => false)
+    await conn.retrieve('/user/obs/img-0001.fits', 2, () => undefined, () => undefined)
     await conn.close()
     const verbs = new Set(server.commands.map(c => c.split(' ', 1)[0].toUpperCase()))
     expect([...verbs].filter(v => !READ_ONLY_COMMANDS.has(v))).toEqual([])
@@ -132,43 +96,25 @@ describe('NodeScopeFiles', () => {
     expect(server.commands).toContain('PASV')
   })
 
-  it('[VSP-007] Given the Wi-Fi drops part way through a file, When it is downloaded, Then it fails, no partial file is left, and the connection refuses further use', async () => {
+  it('[VIN-022] Given the Wi-Fi drops part way through a file, When it is streamed, Then it fails, nothing is written on the PC, and the connection refuses further use', async () => {
     const { server, fixture } = await ftpFixture()
     server.put('/user/obs/img-0001.fits', 'z'.repeat(200_000))
     server.dropAt = '/user/obs/img-0001.fits'
     const conn = await fixture.scope.open(fixture.host, fixture.port)
-    await expect(conn.download('/user/obs/img-0001.fits', fixture.local('img-0001.fits'), 200_000, () => undefined, () => false)).rejects.toThrow()
+    await expect(conn.retrieve('/user/obs/img-0001.fits', 0, () => undefined, () => undefined)).rejects.toThrow()
     expect(await fixture.localFiles()).toEqual([])
     await expect(conn.list('/user')).rejects.toThrow(/interrupted|connect again|failed|closed/)
     await conn.close()
   })
 
-  it('[VSP-007] Given a file that takes longer to arrive than the silence timer, When it is downloaded while data keeps coming, Then it arrives whole', async () => {
+  it('[VIN-022] Given a file that takes longer to arrive than the silence timer, When it is streamed while data keeps coming, Then it is not taken as a drop and arrives whole', async () => {
     const { server, fixture } = await ftpFixture(s => ((s.chunkBytes = 1000), (s.chunkDelayMs = 60)))
     server.put('/user/obs/img-0001.fits', 'y'.repeat(8000))
     const conn = await new NodeScopeFiles({ timeoutMs: 250 }).open(fixture.host, fixture.port)
-    const local = fixture.local('img-0001.fits')
-    expect(await conn.download('/user/obs/img-0001.fits', local, 8000, () => undefined, () => false)).toBe(8000)
-    expect(await fixture.readLocal(local)).toBe('y'.repeat(8000))
+    const chunks: Uint8Array[] = []
+    await conn.retrieve('/user/obs/img-0001.fits', 0, () => undefined, c => void chunks.push(c))
+    expect(Buffer.concat(chunks).toString()).toBe('y'.repeat(8000))
     expect((await conn.list('/user/obs')).map(e => e.name)).toEqual(['img-0001.fits'])
-    await conn.close()
-  })
-
-  it('[VSP-006] Given a disk without hard links, When a file is downloaded, Then it still lands, and a file that appears at its name meanwhile is left as it is', async () => {
-    const { server, fixture } = await ftpFixture()
-    server.put('/user/obs/a.fits', 'scope-a').put('/user/obs/b.fits', 'scope-b')
-    const conn = await fixture.scope.open(fixture.host, fixture.port)
-    const noLinks = Object.assign(new Error('no hard links here'), { code: 'EPERM' })
-    const link = vi.spyOn(fs.promises, 'link').mockRejectedValueOnce(noLinks)
-    expect(await conn.download('/user/obs/a.fits', fixture.local('a.fits'), 7, () => undefined, () => false)).toBe(7)
-    expect(await fixture.readLocal(fixture.local('a.fits'))).toBe('scope-a')
-    link.mockImplementationOnce(async () => {
-      fs.writeFileSync(fixture.local('b.fits'), 'someone else')
-      throw noLinks
-    })
-    await expect(conn.download('/user/obs/b.fits', fixture.local('b.fits'), 7, () => undefined, () => false)).rejects.toThrow(/appeared while copying/)
-    expect(await fixture.readLocal(fixture.local('b.fits'))).toBe('someone else')
-    expect(await fixture.localFiles()).toEqual(['a.fits', 'b.fits'])
     await conn.close()
   })
 

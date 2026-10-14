@@ -1,7 +1,5 @@
-import fs from 'fs'
 import net from 'net'
-import path from 'path'
-import { CopyCancelledError, ScopeUnreachableError, type ScopeConnection, type ScopeFiles } from '@astro/application'
+import { ScopeUnreachableError, type ScopeConnection, type ScopeFiles } from '@astro/application'
 import {
   parseExtendedPassive,
   parseListing,
@@ -23,7 +21,7 @@ const DEFAULT_TIMEOUT_MS = 10_000
  * Commands this adapter may send, and nothing else: none of them can remove, rename or write a
  * file on the scope (VSP-005). `send` refuses anything not on the list.
  */
-export const READ_ONLY_COMMANDS: ReadonlySet<string> = new Set(['USER', 'PASS', 'TYPE', 'EPSV', 'PASV', 'CWD', 'MLSD', 'LIST', 'RETR', 'QUIT'])
+export const READ_ONLY_COMMANDS: ReadonlySet<string> = new Set(['USER', 'PASS', 'TYPE', 'EPSV', 'PASV', 'CWD', 'MLSD', 'LIST', 'REST', 'RETR', 'QUIT'])
 
 const describe = (reply: FtpReply) => `${reply.code} ${reply.text}`.trim()
 
@@ -156,7 +154,7 @@ class NodeScopeConnection implements ScopeConnection {
    * reply when the scope refused it (nothing was sent), else once the data has ended, every chunk
    * is written and the scope has said the transfer is complete.
    */
-  private async transfer(line: string, sink: (chunk: Buffer) => void | Promise<void>): Promise<FtpReply | null> {
+  private async transfer(line: string, sink: (chunk: Buffer) => void | Promise<void>, prepare?: () => Promise<void>): Promise<FtpReply | null> {
     const data = await this.openData()
     let sinkError: unknown = null
     let written: Promise<void> = Promise.resolve()
@@ -181,6 +179,8 @@ class NodeScopeConnection implements ScopeConnection {
     finished.catch(() => undefined)
     let first: FtpReply
     try {
+      // RFC 959 has REST directly before the command it restarts, so it goes after PASV or EPSV.
+      await prepare?.()
       first = await this.control.command(line)
     } catch (error) {
       data.destroy()
@@ -227,44 +227,22 @@ class NodeScopeConnection implements ScopeConnection {
     return parseListing(out.text, 'list')
   }
 
-  async download(remote: string, local: string, expectedBytes: number | null, onBytes: (received: number) => void, cancelled: () => boolean): Promise<number> {
+  /**
+   * Streams a file from `offset` to `onChunk`, asking the scope to start there with REST; when it
+   * will not, the bytes start at 0. `onStart` hears where they start before the first byte comes.
+   * Resolves once the scope says the transfer is complete (spec 034, VIN-024). Writes nothing on the PC.
+   */
+  async retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Uint8Array) => void | Promise<void>): Promise<void> {
     this.usable()
-    if (fs.existsSync(local)) throw new Error(`${local} already exists, so it was left as it is.`)
-    await fs.promises.mkdir(path.dirname(local), { recursive: true })
-    const partial = `${local}.part`
-    await fs.promises.rm(partial, { force: true })
-    const file = await fs.promises.open(partial, 'wx')
-    let received = 0
-    let open = true
-    const closeFile = async () => {
-      if (open) await file.close()
-      open = false
-    }
-    try {
-      if (cancelled()) throw new CopyCancelledError()
-      const refused = await this.transfer(`RETR ${remote}`, async chunk => {
-        if (cancelled()) throw new CopyCancelledError()
-        // A write may take only part of the chunk, so it is repeated until all of it is on disk.
-        for (let at = 0; at < chunk.length; ) {
-          const { bytesWritten } = await file.write(chunk, at, chunk.length - at)
-          if (bytesWritten <= 0) throw new Error(`The disk took none of ${remote}'s bytes.`)
-          at += bytesWritten
-          received += bytesWritten
-        }
-        onBytes(received)
-      })
-      if (refused) throw new Error(`The scope would not send ${remote}: ${describe(refused)}`)
-      await closeFile()
-      if (expectedBytes !== null && received !== expectedBytes) {
-        throw new Error(`${remote} arrived with ${received} bytes, not the ${expectedBytes} the scope listed.`)
+    const refused = await this.transfer(`RETR ${remote}`, onChunk, async () => {
+      let from = 0
+      if (offset > 0) {
+        const rest = await this.control.command(`REST ${Math.trunc(offset)}`)
+        if (rest.code === 350) from = Math.trunc(offset)
       }
-      await publish(partial, local)
-      return received
-    } catch (error) {
-      await closeFile().catch(() => undefined)
-      await fs.promises.rm(partial, { force: true })
-      throw error
-    }
+      onStart(from)
+    })
+    if (refused) throw new Error(`The scope would not send ${remote}: ${describe(refused)}`)
   }
 
   async close(): Promise<void> {
@@ -278,28 +256,6 @@ class NodeScopeConnection implements ScopeConnection {
       this.control.destroy()
     }
   }
-}
-
-/**
- * Moves a finished partial file to its name without ever replacing a file there: a hard link
- * fails when the name is taken. Disks without hard links (some network shares) get a copy that
- * likewise fails when the name is taken, and a copy cut short is removed.
- */
-async function publish(partial: string, local: string): Promise<void> {
-  try {
-    await fs.promises.link(partial, local)
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code
-    if (code === 'EEXIST') throw new Error(`${local} appeared while copying, so it was left as it is.`, { cause: error })
-    try {
-      await fs.promises.copyFile(partial, local, fs.constants.COPYFILE_EXCL)
-    } catch (copyError) {
-      if ((copyError as NodeJS.ErrnoException).code === 'EEXIST') throw new Error(`${local} appeared while copying, so it was left as it is.`, { cause: copyError })
-      await fs.promises.rm(local, { force: true })
-      throw copyError
-    }
-  }
-  await fs.promises.unlink(partial)
 }
 
 /**

@@ -32,6 +32,7 @@ when the code says otherwise, and the reasons are recorded here.
 | O · Other rigs | DSLR camera RAW indexed from its metadata; mono cameras with filter wheels stacked per filter, with the filter to shoot tonight; comets placed in every light and stacked on their motion. Each part shows only when such frames or settings exist | [026](../specs/026-other-rigs/requirements.md) | Done |
 | S · A stable base | The hexagon checked across every layer with a ratchet on legacy code; rules out of presenters and IPC; a contract suite on both sides of every port; EARS citations only in test titles, with 63 Gherkin scenarios; property, fuzz and mutation testing of the core. See [docs/testing](testing/) | [027](../specs/027-hexagon-hardening/requirements.md), [028](../specs/028-ears-bdd/requirements.md), [029](../specs/029-property-fuzz/requirements.md), [030](../specs/030-mutation-testing/requirements.md) | Done (PRs #52 to #57) |
 | F1 · Vespera control | A Vespera page under Files: the scope's observations over its Wi-Fi (FTP at 10.0.0.1), what is new against the PC, and a copy into each target's raw folder that never touches the scope or overwrites a file, carries on after a Wi-Fi drop, and ends in a home scan | [033](../specs/033-vespera-ftp/requirements.md) | Done |
+| F2 · Vespera ingest | Leigh's Vespera Pro FTP ingest design: every session on the scope parsed from listings alone (sessions by time and kind, runs by suffix), counted by kind with findings (missing frames, partial listings, no TIFF), its target named from the folder, observation.json, the stack's EXIF or a FITS header, and the ticked sessions copied one after another into their targets' folders, each in a folder named for what it holds (`M31/M31_2026-10-14_FIT=400_TIF=1`), resuming after a Wi-Fi drop and ending in a SHA-256 manifest. Replaces F1's list and copy: one flow on the Vespera page | [034](../specs/034-vespera-ingest/requirements.md) | In review |
 | H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
 | J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
 | E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
@@ -141,6 +142,15 @@ app has run on real data on the Windows PC and the licence is settled.
   home folder's raw folder, where the home scan already finds targets. Reading the scope's JSON
   metadata and XISF wait for a sample night (#23). The FTP layout comes from Vaonis's support
   pages and owners' write-ups, and has not yet been checked against a real Vespera.
+- **One Vespera copy flow** (spec 034). Leigh's ingest design adds what F1 did not: a review of
+  each session's counts and findings before anything is copied, a target astrorepo names (with
+  why) and the user can override, folder names that carry the counts, resume from a `.part` with
+  REST, and a manifest with each file's SHA-256. Leigh then asked for one flow, so F2 replaced
+  F1's list, copy and progress; F1 keeps the FTP connection and the Connection card. What F1 did
+  that the design did not say is kept: ticked sessions copy in one go, the disk is checked for
+  room first, copies land in the target's folder for the home scan, and the home scan runs after.
+  FITS and TIFF are copied by default, JSON only when ticked (Leigh). The keys inside
+  observation.json and the TIFF file name are not yet seen on a real scope (#23).
 - **C4 diagrams** live in [architecture/c4.md](architecture/c4.md) and are updated by every slice
   that adds a port, an adapter or an external tool.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the

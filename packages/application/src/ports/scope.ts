@@ -17,31 +17,14 @@ export interface ScopeConnection {
   /** A folder's entries, sorted by name; throws when the folder cannot be listed. */
   list(dir: string): Promise<RemoteEntry[]>
   /**
-   * Copies one file from the scope to `local` on the PC. The bytes go to a partial file beside
-   * `local`, which becomes `local` only when the whole file has arrived and, when `expectedBytes`
-   * is known, it is exactly that long; on any failure or cancel the partial file is removed and
-   * nothing is left at `local`. Refuses when `local` already exists. Calls `onBytes` with the bytes
-   * received so far, and stops at the next chunk once `cancelled()` is true (throwing
-   * CopyCancelledError). Returns the bytes copied.
+   * Streams one file to `onChunk` from byte `offset`, asking the scope to start there (REST); when
+   * it will not, the bytes start at 0. `onStart` hears where they start before the first byte.
+   * When `onChunk` returns a promise, no more bytes are taken until it settles, so a slow reader
+   * holds the scope back rather than piling bytes up in memory. Writes nothing on the PC (spec 034, VIN-024).
    */
-  download(remote: string, local: string, expectedBytes: number | null, onBytes: (received: number) => void, cancelled: () => boolean): Promise<number>
+  retrieve(remote: string, offset: number, onStart: (from: number) => void, onChunk: (chunk: Uint8Array) => void | Promise<void>): Promise<void>
   /** Signs out and closes; never throws. */
   close(): Promise<void>
-}
-
-/** Driven port: the PC folder copies land in. */
-export interface LandingArea {
-  /**
-   * A path under `root` from folder and file parts, spelled the way this disk spells paths.
-   * Throws when a folder on the way under `root` is a link, which could send copies elsewhere.
-   */
-  join(root: string, parts: string[]): string
-  /** The names of the folders directly inside `dir`, sorted; none when it is not there. */
-  folders(dir: string): Promise<string[]>
-  /** Each file's size, in the order given; null when nothing is there. */
-  sizes(paths: string[]): Promise<(number | null)[]>
-  /** Free bytes on the disk where `dir` is or will be; null when the system will not say. */
-  freeBytes(dir: string): Promise<number | null>
 }
 
 /** Nothing answered at the scope's address, or it refused the connection. */
@@ -49,13 +32,5 @@ export class ScopeUnreachableError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options)
     this.name = 'ScopeUnreachableError'
-  }
-}
-
-/** A copy stopped because the user cancelled it. */
-export class CopyCancelledError extends Error {
-  constructor() {
-    super('The copy was cancelled.')
-    this.name = 'CopyCancelledError'
   }
 }

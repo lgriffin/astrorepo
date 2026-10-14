@@ -1,51 +1,10 @@
-import { CopyCancelledError, ScopeUnreachableError, type LandingArea, type ScopeConnection, type ScopeFiles } from '@astro/application'
+import { ScopeUnreachableError, type ScopeConnection, type ScopeFiles } from '@astro/application'
 import { remotePath, type RemoteEntry } from '@astro/domain'
-
-/** A pretend PC folder copies land in: absolute paths with forward slashes map to file text. */
-export class InMemoryLandingArea implements LandingArea {
-  readonly disk = new Map<string, string>()
-  /** Free bytes on the landing disk; null when it will not say. */
-  free: number | null = 1024 ** 4
-  /** Folders that are links to somewhere else, by path. */
-  readonly links = new Set<string>()
-
-  put(path: string, text: string): this {
-    this.disk.set(path, text)
-    return this
-  }
-
-  join(root: string, parts: string[]): string {
-    let at = root.replace(/\/+$/, '')
-    for (const part of parts) {
-      at = `${at}/${part}`
-      if (this.links.has(at)) throw new Error(`${at} is a link to another folder, so nothing is copied through it.`)
-    }
-    return at
-  }
-
-  async folders(dir: string): Promise<string[]> {
-    return [...new Set(this.listing(dir).filter(p => p.includes('/')).map(p => p.split('/')[0]))].sort()
-  }
-
-  async sizes(paths: string[]): Promise<(number | null)[]> {
-    return paths.map(p => this.disk.get(p)?.length ?? null)
-  }
-
-  async freeBytes(): Promise<number | null> {
-    return this.free
-  }
-
-  /** Every file under a folder, relative with forward slashes, sorted. */
-  listing(dir: string): string[] {
-    const prefix = `${dir.replace(/\/+$/, '')}/`
-    return [...this.disk.keys()].filter(p => p.startsWith(prefix)).map(p => p.slice(prefix.length)).sort()
-  }
-}
 
 /**
  * A pretend Vespera: files on the scope by their absolute path, folders implied by the files
- * under them (or added empty). Downloads land in an InMemoryLandingArea. It records every call,
- * so a test can show nothing but listing and reading ever happened.
+ * under them (or added empty). It records every call, so a test can show nothing but listing
+ * and reading ever happened.
  */
 export class InMemoryScope implements ScopeFiles {
   readonly files = new Map<string, string>()
@@ -55,16 +14,10 @@ export class InMemoryScope implements ScopeFiles {
   unreachable = false
   /** The one address the pretend scope answers at. */
   answersAt = '10.0.0.1:21'
-  /** A file whose download fails part way, as a Wi-Fi drop does, after half its bytes. */
-  dropAt: string | null = null
   /** Sizes the listing reports instead of the real ones, as a server that lies would. */
   readonly listedSize = new Map<string, number | null>()
-  /** Called after each chunk of a download, so a test can cancel mid-copy. */
-  onChunk: ((remote: string, received: number) => void) | null = null
   /** How many connections are open now. */
   openConnections = 0
-
-  constructor(readonly landing: InMemoryLandingArea = new InMemoryLandingArea()) {}
 
   put(path: string, text: string): this {
     const p = remotePath(path)
@@ -107,28 +60,16 @@ export class InMemoryScope implements ScopeFiles {
         }
         return [...out.values()].sort((a, b) => (a.name < b.name ? -1 : 1))
       },
-      async download(remote, local, expectedBytes, onBytes, cancelled) {
+      async retrieve(remote, offset, onStart, onChunk) {
         if (closed) throw new Error('The connection is closed.')
         const r = remotePath(remote)
-        scope.calls.push(`download ${r}`)
         const text = scope.files.get(r)
         if (text === undefined) throw new Error(`550 ${r}: no such file`)
-        if (scope.landing.disk.has(local)) throw new Error(`${local} already exists`)
-        let received = 0
-        // Two chunks, so progress and cancelling between chunks can be seen.
-        for (const chunk of [text.slice(0, Math.ceil(text.length / 2)), text.slice(Math.ceil(text.length / 2))]) {
-          if (cancelled()) throw new CopyCancelledError()
-          if (scope.dropAt === r && received > 0) throw new Error('The connection to the scope was lost.')
-          received += chunk.length
-          onBytes(received)
-          scope.onChunk?.(r, received)
-        }
-        if (cancelled()) throw new CopyCancelledError()
-        if (expectedBytes !== null && received !== expectedBytes) {
-          throw new Error(`${r} arrived with ${received} bytes, not the ${expectedBytes} the scope listed.`)
-        }
-        scope.landing.disk.set(local, text)
-        return received
+        const bytes = new TextEncoder().encode(text)
+        const from = Math.max(0, Math.min(Math.trunc(offset), bytes.length))
+        scope.calls.push(`retrieve ${r} from ${from}`)
+        onStart(from)
+        if (bytes.length > from) await onChunk(bytes.slice(from))
       },
       async close() {
         if (!closed) scope.openConnections--

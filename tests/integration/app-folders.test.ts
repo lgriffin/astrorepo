@@ -51,7 +51,7 @@ describe('AppFolders', () => {
   it('[VSP-012] [VSP-014] Given the home folder and Vespera settings, When asked, Then copies land in the home raw folder unless a folder of their own is set, and saved values are read', () => {
     const db = setupTestDb()
     const folders = new AppFolders(db, DATA)
-    expect(folders.vesperaSettings()).toMatchObject({ host: '10.0.0.1', port: 21, landingRoot: null, formats: ['fits', 'json'] })
+    expect(folders.vesperaSettings()).toMatchObject({ host: '10.0.0.1', port: 21, landingRoot: null, formats: ['fits', 'tiff'] })
     expect(folders.homeFolder()).toBeNull()
     set(db, 'home_folder_path', '/astro/home')
     expect(folders.vesperaSettings()).toMatchObject({ landingRoot: path.join('/astro/home', 'raw'), landingIsHomeRaw: true })

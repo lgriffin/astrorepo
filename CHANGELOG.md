@@ -12,6 +12,16 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Vespera ingest** (spec 034): the Vespera page has one copy flow. **Scan the scope** lists
+  every session from its listings alone, counts FITS, TIFF, JPEG and JSON per run, flags what
+  looks wrong (missing frames, more JPEGs than FITS, no TIFF, unknown files), and names each
+  session's target from its folder, observation.json, the stack's EXIF or a FITS header (or your
+  own name). **Copy selected** copies the ticked sessions one after another, each into its
+  target's folder under a folder named for what it holds, such as
+  `M31/M31_2026-10-14_FIT=400_TIF=1`, after checking the disk has room, then runs the home scan.
+  FITS and TIFF are copied by default. A dropped Wi-Fi link pauses the copy; resume carries on
+  from the partial file. Every copy ends in `astrorepo.manifest.json` with each file's SHA-256.
+  The scope is only ever read. This replaces spec 033's list and copy.
 - **Vespera control** (spec 033): a Vespera page under Files lists the scope's observations over
   its Wi-Fi (anonymous FTP at 10.0.0.1, configurable) with what is already on the PC, and copies
   the ones you tick into each target's raw folder, then runs the home scan. Copies never change
