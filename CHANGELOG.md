@@ -12,6 +12,12 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Vespera control** (spec 033): a Vespera page under Files lists the scope's observations over
+  its Wi-Fi (anonymous FTP at 10.0.0.1, configurable) with what is already on the PC, and copies
+  the ones you tick into each target's raw folder, then runs the home scan. Copies never change
+  anything on the scope, never overwrite a file, and carry on from where a Wi-Fi drop stopped
+  them. The FTP client is written on Node's sockets, with every reply and listing parsed in the
+  domain and fuzzed.
 - **Frame grading** (spec 019): every light measured for FWHM, eccentricity, stars, background,
   noise and SNR, graded against limits in Settings and its own night, kept or rejected by hand,
   exported as CSV; only kept lights go to Siril.

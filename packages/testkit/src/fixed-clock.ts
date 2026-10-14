@@ -11,4 +11,8 @@ export class FixedClock implements Clock {
   set(iso: string): void {
     this.current = new Date(iso)
   }
+
+  advance(ms: number): void {
+    this.current = new Date(this.current.getTime() + ms)
+  }
 }

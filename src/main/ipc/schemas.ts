@@ -371,6 +371,18 @@ export const schemas = {
   'mosaic:save': mosaicRequest.extend({ field_width_deg: z.number().positive().max(60), field_height_deg: z.number().positive().max(60), rotation_deg: z.number().min(-360).max(360), overlap: z.number().min(0).max(0.5) }),
   'mosaic:export': mosaicRequest,
 
+  'vespera:settings': z.object({}).optional(),
+  'vespera:survey': z.object({}).optional(),
+  'vespera:start': z.object({
+    choices: z.array(z.object({
+      folder: z.string().min(1).max(255),
+      kind: z.enum(['observation', 'darks']),
+      target: z.string().max(120).nullable().optional()
+    })).min(1).max(1000)
+  }),
+  'vespera:progress': z.object({}).optional(),
+  'vespera:cancel': z.object({}).optional(),
+
   'db:reset': z.object({}).optional(),
 
   'insights:summary': z.object({}).optional(),

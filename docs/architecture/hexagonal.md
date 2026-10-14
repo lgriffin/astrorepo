@@ -51,6 +51,11 @@ flowchart LR
   A19 --> DB
   UC -->|CometStore| A20[SqliteCometStore]
   UC -->|Ephemeris| A21[AstronomyEngineEphemeris]
+  UC -->|ScopeFiles| A22[NodeScopeFiles]
+  UC -->|LandingArea| A23[NodeLandingArea]
+  A22 -->|FTP, read-only| VS[(Vespera at 10.0.0.1)]
+  A22 --> LA[(landing folder)]
+  A23 --> LA
   A20 --> DB
   A10 --> WA
   A11 --> WA
@@ -92,6 +97,7 @@ flowchart LR
 | `makePreferredSolver`, `queueSolves`, `runSolveJob` (inside the job runner) | `chooseSolver`, `planSolves`, `fieldFromWcs`, `astapCommand`, `parseAstapResult`, `sirilSolveScript`, `parseSirilSolve`, `solveJobCommand` | PlateSolver, SolveStore, MosaicStore, ToolHub, JobStore, Clock | `sky:solve-target` | 024 |
 | `describeTargetGeometry` | `misfiledCheck`, `rotationByNight`, `groupPanels`, `overlapsAny` | SolveStore, MosaicStore (`linkPanels`) | `sky:target-geometry` | 024 |
 | `planMosaic`, `saveMosaicPlan`, `exportMosaicCsv`, `listMosaicGaps` | `planMosaic`, `offsetPosition`, `mosaicNights`, `mosaicCsv`, `groupPanels`, `rankNextActions` | MosaicStore, SolveStore, PlanningSettings, Ephemeris, Clock | `mosaic:plan`, `mosaic:save`, `mosaic:export`, `recommendations:list` | 024 |
+| `makeVesperaControl` (`survey`, `start`, `progress`, `cancel`) | `readFtpReplies`, `parsePassive`, `parseExtendedPassive`, `parseListing`, `vesperaRoots`, `observationOf`, `parseObservationName`, `plannedFiles`, `planCopies`, `observationStatuses`, `copySpace`, `copyPace`, `localName`, `parseVesperaSettings` | ScopeFiles (FTP), LandingArea, Clock | `vespera:settings`, `vespera:survey`, `vespera:start`, `vespera:progress`, `vespera:cancel` | 033 |
 | `setCometOrbit`, `planComet` | `parseMpcComet`, `orbitPlanePosition`, `cometPosition`, `midExposure`, `cometMotion`, `cometPositionsCsv` | CometStore, SirilWorkspace (`listSourceFrames`, `frameDetails`, `writeText`, `contains`), FrameSelection (grading), Ephemeris (`observerPositions`), PlanningSettings, StackCatalogue | `comet:plan`, `comet:set-orbit`, `comet:write-positions` | 026 |
 
 The legacy FITS scan (`services/fits-analyzer.ts`) also indexes camera RAW (spec 026): the
@@ -113,6 +119,16 @@ window, so altitude, separation and every planning rule are plain trigonometry i
 astronomy-engine adapter is the only code that knows about the sun and moon, and the testkit's
 `FakeEphemeris` uses real sidereal time with a scripted sun and moon. The legacy Sky Planner
 service still answers its own channels; it moves behind the same port next.
+
+The Vespera control (spec 033) is the other long-lived use case: `src/main/vespera-host.ts`
+creates it once, since it holds the copy under way, and hands the copies to the home scan (or a
+FITS scan of the landing folder) when a copy ends. Its FTP client is written on Node's sockets in
+`node-ftp-scope.ts`; everything the scope sends (replies, passive addresses, listings, folder
+names) is read by pure domain functions in `packages/domain/src/ftp.ts` and `vespera.ts`, which
+the fuzz tests cover, and the adapter sends only the commands in `READ_ONLY_COMMANDS`. Its
+contract suite runs on the testkit's `InMemoryScope` and on the real adapter against
+`tests/helpers/ftp-server.ts`, an FTP server that answers as the Vespera is reported to (MLSD and
+EPSV, or LIST and PASV naming an address the PC cannot reach).
 
 The job runner is the one use case that lives for the whole session: `src/main/jobs-host.ts`
 creates it once, checks the queue every minute and whenever a job is queued or ends, keeps the PC

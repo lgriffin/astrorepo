@@ -35,6 +35,8 @@ import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../ad
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
+import { startVesperaCopy, vespera, vesperaIndexing } from '../vespera-host'
+import { indexingText, toVesperaProgressView, toVesperaSettingsView, toVesperaSurveyView } from '../adapters/vespera-presenter'
 import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
@@ -622,6 +624,27 @@ export function registerIpcHandlers(): void {
       kickJobs()
     }
   }))
+
+  // The Vespera control (spec 033): where the scope is and where copies land come from Settings,
+  // never from the page, so a copy only ever writes inside the landing folder.
+  handle('vespera:settings', validated('vespera:settings', () => toVesperaSettingsView(folders().vesperaSettings())))
+
+  handle('vespera:survey', validated('vespera:survey', async () => {
+    try {
+      return toVesperaSurveyView(await vespera().survey(folders().vesperaSettings()))
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  }))
+
+  handle('vespera:start', validated('vespera:start', args => {
+    const f = folders()
+    return startVesperaCopy(f.vesperaSettings(), f.homeFolder(), args.choices)
+  }))
+
+  handle('vespera:progress', validated('vespera:progress', () => toVesperaProgressView(vespera().progress(), indexingText(vesperaIndexing()))))
+
+  handle('vespera:cancel', validated('vespera:cancel', () => ({ cancelled: vespera().cancel() })))
 
   handle('jobs:queue-syqon', validated('jobs:queue-syqon', args => {
     const rawPath = targetRawPath(args.target_id)

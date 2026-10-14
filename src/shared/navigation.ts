@@ -38,7 +38,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'library', to: '/library', label: 'Library', icon: '⊟', hint: 'The folders that hold your captures, and their last scan' },
       { id: 'fits', to: '/fits-analyzer', label: 'FITS files', icon: '◈', hint: 'What the headers say, file by file' },
       { id: 'images', to: '/images', label: 'Images', icon: '▢', hint: 'Your stacked and finished images' },
-      { id: 'calibration', to: '/calibration', label: 'Calibration', icon: '◇', hint: 'Darks, flats and biases, and which lights they cover' }
+      { id: 'calibration', to: '/calibration', label: 'Calibration', icon: '◇', hint: 'Darks, flats and biases, and which lights they cover' },
+      { id: 'vespera', to: '/vespera', label: 'Vespera', icon: '⌁', hint: 'Copy observations off your Vespera over its Wi-Fi' }
     ]
   },
   {

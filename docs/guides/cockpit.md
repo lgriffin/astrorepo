@@ -676,3 +676,44 @@ you check the comet's position in the frames you pick.
 The positions come from a two-body orbit: the planets' pull and the comet's outgassing are left
 out. Near the elements' date they agree with a published ephemeris to within an arc minute, and
 usually a few arc seconds. For a comet seen months from that date, paste the latest elements.
+
+## Copying from the Vespera
+
+The Vespera keeps its observations on its own storage and serves them over its Wi-Fi. **Files →
+Vespera** copies them into the library without an FTP client:
+
+1. Join the PC to the Vespera's Wi-Fi.
+2. Check the **Connection** card: the scope's address (10.0.0.1 unless you changed it), where
+   copies land, and the kinds of file to copy. FITS frames and the JSON metadata are copied by
+   default; tick TIFF for the scope's own stack and JPEG for its previews.
+3. Press **Look for observations**. Each observation shows newest first, with its date, target,
+   how many FITS, TIFF and JPEG files it holds, and whether it is new, partly copied or all on
+   the PC. New ones are ticked.
+4. Check the **Target folder** of each ticked observation. It comes from the observation's name
+   (such as `2024-03-10_21-33-02_M 42`); rename it to match the target in your library, so the
+   home scan files it under that target.
+5. Press **Copy selected**. The Copy card shows the file being copied, the bytes done, the
+   speed and the time left, with **Cancel**.
+
+Copies land in **Settings → Folders → Vespera copies**, or in the home folder's `raw` folder
+when that is not set, as `<target>/<observation>/01-images-initial/…`. When a copy ends, the app
+runs the home scan, so the frames show on their target, in Next actions and in the stacking
+plan; a landing folder outside the home folder is scanned on its own and shows under FITS files.
+
+What the copy never does:
+
+- change anything on the scope. It only lists and reads; the scope's own app, Singularity, is
+  where observations are deleted.
+- overwrite a file. A file already on the PC with the scope's size is skipped as copied; one with
+  another size (a file you edited) is left alone and the observation says so.
+- leave half a file. Each file arrives under a temporary name and takes its own only when it is
+  whole and as long as the scope listed it.
+
+If the Wi-Fi drops, or you cancel, the files already copied stay. Press **Copy selected** again
+and it carries on from the next file. If the landing disk is short of room, nothing is copied and
+the page says how much more is needed.
+
+The Vespera's FTP layout comes from Vaonis's support pages and owners' write-ups and has not yet
+been checked against a real scope. If **Look for observations** finds nothing on a scope that has
+observations, the scope's folder names differ from what the app expects
+([#23](https://github.com/lgriffin/astrorepo/issues/23)).

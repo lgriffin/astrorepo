@@ -104,7 +104,7 @@ function factoryRule(ref: ImportRef, to: string | null, file: string): string | 
 
 function legacyRule(_ref: ImportRef, to: string | null): string | null {
   if (to === null) return null
-  return under(to, 'src/main/adapters') || under(to, 'src/main/ipc') || /^src\/main\/(composition|jobs-host)$/.test(to)
+  return under(to, 'src/main/adapters') || under(to, 'src/main/ipc') || /^src\/main\/(composition|jobs-host|vespera-host)$/.test(to)
     ? 'the new code depends on legacy, never the other way'
     : null
 }
