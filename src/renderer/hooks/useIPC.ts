@@ -5,6 +5,8 @@ declare global {
     api: {
       invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
     }
+    /** Set by installBridge: the desktop app, a browser, or a companion screen (spec 035). */
+    astrorepoMode?: 'desktop' | 'browser' | 'companion'
   }
 }
 

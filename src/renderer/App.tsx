@@ -23,11 +23,13 @@ import { Insights } from './pages/Insights'
 import { SkyPlanner } from './pages/SkyPlanner'
 import { SessionTimeline } from './pages/SessionTimeline'
 import { ToastProvider } from './contexts/ToastContext'
+import { CompanionLinks } from './components/companion/CompanionLinks'
 
 export function App(): React.ReactElement {
   return (
     <ToastProvider>
       <HashRouter>
+        <CompanionLinks />
         <Layout>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

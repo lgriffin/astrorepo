@@ -19,7 +19,7 @@ src/main/
   ipc/           driving adapter: handlers call use cases from the composition root.
   transport/     the ChannelRouter the handlers sit on and the Desktop port (pickers, saving, opening).
   electron/      the only Electron code: IPC host, Desktop over dialogs and shell, image decoders.
-  http/          the HTTP host and the Desktop port for a browser (npm run serve).
+  http/          the HTTP host, the Desktop port for a browser (npm run serve) and the desktop app's companion host.
 src/server/      the headless server's entry point and settings; no Electron (PI-005).
   services/      legacy services, shrinking as logic moves into packages/.
 ```
@@ -117,6 +117,7 @@ flowchart LR
 | `planMosaic`, `saveMosaicPlan`, `exportMosaicCsv`, `listMosaicGaps` | `planMosaic`, `offsetPosition`, `mosaicNights`, `mosaicCsv`, `groupPanels`, `rankNextActions` | MosaicStore, SolveStore, PlanningSettings, Ephemeris, Clock | `mosaic:plan`, `mosaic:save`, `mosaic:export`, `recommendations:list` | 024 |
 | `makeScanVespera`, `makeIdentifyTarget`, `makePlanVesperaTransfer`, `makeRunVesperaTransfer`, `makeVesperaCopyQueue` | `buildSession`, `inventorySession`, `resolveTarget`, `overrideTarget`, `normaliseTargetName`, `destinationFolderName`, `parseDestinationFolder`, `planTransfer`, `transferRoom`, `isLocalName`, `sessionGrowth`, `nameCountFinding`, `copyPace`, `parseVesperaSettings`, `readFtpReplies`, `parseListing` | VesperaScope (FTP over ScopeFiles, read-only), IngestDisk, VesperaMetadata, VesperaTransferStore, ContentHasher, Clock | `vespera:settings`, `vespera-ingest:scan`, `:identify`, `:name`, `:preview`, `:transfer`, `:resume`, `:pause`, `:progress` | 033, 034 |
 | `setCometOrbit`, `planComet` | `parseMpcComet`, `orbitPlanePosition`, `cometPosition`, `midExposure`, `cometMotion`, `cometPositionsCsv` | CometStore, SirilWorkspace (`listSourceFrames`, `frameDetails`, `writeText`, `contains`), FrameSelection (grading), Ephemeris (`observerPositions`), PlanningSettings, StackCatalogue | `comet:plan`, `comet:set-orbit`, `comet:write-positions` | 026 |
+| `makeCompanion` (`requestPairing`, `pairingStatus`, `approvePairing`, `authenticate`, `listCompanions`, `removeCompanion`, `setScreen`, `reportPcRoute`, `screenFor`) | `readPairingCode`, `companionNameProblem`, `pairingExpired`, `shouldMarkSeen`, `shareablePcRoute`, `companionMayCall` | CompanionDeviceStore, CompanionSecrets, Clock | `companion:*` (desktop router only) and `/api/companion/*` on the companion host | 035 |
 
 The legacy FITS scan (`services/fits-analyzer.ts`) also indexes camera RAW (spec 026): the
 domain's `frameFileKind` says which files are frames, `src/main/raw/tiff-exif.ts` reads a RAW file's

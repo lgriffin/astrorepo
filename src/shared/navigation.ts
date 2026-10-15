@@ -100,6 +100,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'run-window', label: 'Run window' },
   { id: 'grading', label: 'Frame grading' },
   { id: 'import', label: 'Import and export' },
+  { id: 'companions', label: 'Companion screens' },
   { id: 'reset', label: 'Start again' }
 ] as const
 

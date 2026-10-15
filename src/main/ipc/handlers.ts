@@ -67,7 +67,7 @@ function mosaicOptions(args: { target_id: string; field_width_deg?: number; fiel
 const CSV: FileKind[] = [{ name: 'CSV', extensions: ['csv'] }]
 
 /** A handler that checks its arguments against the channel's schema before it runs (PI-001). */
-function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): ChannelHandler {
+export function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): ChannelHandler {
   return async (rawArgs: unknown) => {
     const args = schemas[channel].parse(rawArgs) as z.infer<SchemaMap[C]>
     return handler(args)

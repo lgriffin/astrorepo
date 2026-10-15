@@ -5,6 +5,7 @@ import type { CatalogueView, ToolHealthView, ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 import { GradingSettings } from '../components/target/GradingSettings'
 import { WeatherSettings } from '../components/weather/WeatherSettings'
+import { CompanionSettings } from '../components/companion/CompanionSettings'
 import { useLocation } from 'react-router-dom'
 import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
@@ -284,6 +285,10 @@ export function Settings(): React.ReactElement {
               {importResult && <p className="text-xs text-astro-muted mt-2">{importResult}</p>}
             </div>
           </div>
+        </div>
+
+        <div id="settings-companions" className="scroll-mt-6">
+          <CompanionSettings />
         </div>
 
         <div id="settings-reset" className="scroll-mt-6 bg-astro-surface border border-red-500/30 rounded-lg p-4">
