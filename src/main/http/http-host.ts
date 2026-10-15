@@ -26,8 +26,11 @@ export interface HttpHostOptions {
    * PI-022). Each API call must carry a paired screen's key, and /api/companion/ pairs new ones.
    */
   companions?: Companion
-  /** Host names a request may address, without port; anything else is refused (PI-008). */
-  allowedHosts: string[]
+  /**
+   * Host names a request may address, without port; anything else is refused (PI-008). A function
+   * is asked on each request, for a host whose machine can gain addresses while it runs.
+   */
+  allowedHosts: string[] | (() => string[])
   maxBodyBytes?: number
 }
 
@@ -131,7 +134,9 @@ const webPage = (url: string) => /^https?:\/\//i.test(url)
  */
 export function createHttpHost(options: HttpHostOptions): http.Server {
   const limit = options.maxBodyBytes ?? MAX_BODY_BYTES
-  const allowed = new Set(options.allowedHosts.map(h => h.toLowerCase()))
+  const fixedHosts = Array.isArray(options.allowedHosts) ? new Set(options.allowedHosts.map(h => h.toLowerCase())) : null
+  const allows = (host: string) =>
+    fixedHosts ? fixedHosts.has(host) : (options.allowedHosts as () => string[])().some(h => h.toLowerCase() === host)
   const root = path.resolve(options.staticDir)
   let realRootCache: string | null = null
   const realRoot = () => (realRootCache ??= fs.realpathSync(root))
@@ -157,7 +162,7 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
       if (action === 'pair') {
         const name = field('name')
         if (name === null) return send(res, 400, { error: 'Say what the screen is called.' })
-        return send(res, 200, { value: await c.requestPairing(name) })
+        return send(res, 200, { value: await c.requestPairing(name, req.socket.remoteAddress ?? '') })
       }
       if (action === 'pair-status') {
         const requestId = field('requestId')
@@ -260,7 +265,7 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
     // Nothing a request carries may take the server down (PI-016).
     try {
       const host = hostName(req.headers.host)
-      if (host === null || !allowed.has(host)) return send(res, 403, { error: 'astrorepo does not answer to that address. Add it to ASTRO_HOSTS.' }, req.method)
+      if (host === null || !allows(host)) return send(res, 403, { error: 'astrorepo does not answer to that address. Add it to ASTRO_HOSTS.' }, req.method)
       let pathname: string
       try {
         pathname = new URL(req.url ?? '/', 'http://localhost').pathname

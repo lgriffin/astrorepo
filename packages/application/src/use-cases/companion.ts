@@ -58,13 +58,22 @@ export interface CompanionScreenView {
 interface Waiting {
   code: string
   name: string
+  /** Who asked (the screen's network address), so a screen asking again replaces its own request. */
+  caller: string
+  /** Until the code is typed, when it stops working; after, when the key can no longer be collected. */
   expiresAt: Date
   key: string | null
+  deviceId: string | null
+  delivered: boolean
 }
 
 export interface Companion {
-  /** A companion asks to pair; it shows the code, which a person types on the PC. */
-  requestPairing(name: string): Promise<PairingStarted>
+  /**
+   * A companion asks to pair; it shows the code, which a person types on the PC. A screen asking
+   * again (the same caller) replaces its earlier request, so it never holds more than one place.
+   */
+  requestPairing(name: string, caller?: string): Promise<PairingStarted>
+  /** After approval the key is handed over on every ask until the pickup time runs out. */
   pairingStatus(requestId: string): Promise<PairingStatus>
   /** On the PC: the code a person read off the companion. */
   approvePairing(typedCode: string): Promise<CompanionView>
@@ -85,16 +94,44 @@ export function makeCompanion(deps: CompanionDeps): Companion {
   const waiting = new Map<string, Waiting>()
   let pcRoute: string | null = null
 
+  // Approvals run one at a time, so a double click cannot pair one code twice or pass the limit.
+  let approvals: Promise<unknown> = Promise.resolve()
+
   const now = () => deps.clock.now()
-  const prune = () => {
-    for (const [id, w] of waiting) if (pairingExpired(w.expiresAt, now())) waiting.delete(id)
+  /** Drops what has run out; a pairing whose key was never collected is undone (PI-019). */
+  const prune = async () => {
+    for (const [id, w] of waiting) {
+      if (!pairingExpired(w.expiresAt, now())) continue
+      waiting.delete(id)
+      if (w.deviceId !== null && !w.delivered) await deps.devices.removeCompanion(w.deviceId)
+    }
+  }
+
+  async function approve(typedCode: string): Promise<CompanionView> {
+    const code = readPairingCode(typedCode)
+    if (code === null) throw new CompanionRefusedError('A pairing code has six digits, as the screen shows it.')
+    await prune()
+    const entry = [...waiting.values()].find(w => w.code === code && w.key === null)
+    if (!entry) throw new CompanionRefusedError('No screen is showing that code. Check it, or have the screen show a new one.')
+    if ((await deps.devices.listCompanions()).length >= MAX_COMPANIONS) {
+      throw new CompanionRefusedError(`This PC already has ${MAX_COMPANIONS} screens paired. Remove one first.`)
+    }
+    const key = deps.secrets.newSecret()
+    const device = { id: deps.secrets.newSecret(), name: entry.name, keyHash: deps.secrets.hashKey(key), screen: 'follow' as const, pairedAt: now(), lastSeenAt: null }
+    await deps.devices.addCompanion(device)
+    entry.key = key
+    entry.deviceId = device.id
+    // The screen gets a full pickup time, however close to its code's expiry the code was typed.
+    entry.expiresAt = new Date(now().getTime() + PAIRING_LIFETIME_MS)
+    return view(device)
   }
 
   return {
-    async requestPairing(name) {
+    async requestPairing(name, caller = '') {
       const problem = companionNameProblem(name)
       if (problem) throw new CompanionRefusedError(problem)
-      prune()
+      await prune()
+      if (caller !== '') for (const [id, w] of waiting) if (w.caller === caller && w.key === null) waiting.delete(id)
       if ([...waiting.values()].filter(w => w.key === null).length >= MAX_WAITING_PAIRINGS) {
         throw new CompanionRefusedError('Too many screens are waiting to pair. Try again in a few minutes.')
       }
@@ -103,33 +140,23 @@ export function makeCompanion(deps: CompanionDeps): Companion {
       while (taken.has(code)) code = deps.secrets.newCode()
       const requestId = deps.secrets.newSecret()
       const expiresAt = new Date(now().getTime() + PAIRING_LIFETIME_MS)
-      waiting.set(requestId, { code, name: name.trim(), expiresAt, key: null })
+      waiting.set(requestId, { code, name: name.trim(), caller, expiresAt, key: null, deviceId: null, delivered: false })
       return { requestId, code, expiresAt }
     },
 
     async pairingStatus(requestId) {
-      prune()
+      await prune()
       const w = waiting.get(requestId)
       if (!w) return { state: 'expired' }
       if (w.key === null) return { state: 'waiting', expiresAt: w.expiresAt }
-      waiting.delete(requestId)
+      w.delivered = true
       return { state: 'paired', key: w.key, name: w.name }
     },
 
-    async approvePairing(typedCode) {
-      const code = readPairingCode(typedCode)
-      if (code === null) throw new CompanionRefusedError('A pairing code has six digits, as the screen shows it.')
-      prune()
-      const entry = [...waiting.values()].find(w => w.code === code && w.key === null)
-      if (!entry) throw new CompanionRefusedError('No screen is showing that code. Check it, or have the screen show a new one.')
-      if ((await deps.devices.listCompanions()).length >= MAX_COMPANIONS) {
-        throw new CompanionRefusedError(`This PC already has ${MAX_COMPANIONS} screens paired. Remove one first.`)
-      }
-      const key = deps.secrets.newSecret()
-      const device = { id: deps.secrets.newSecret(), name: entry.name, keyHash: deps.secrets.hashKey(key), screen: 'follow' as const, pairedAt: now(), lastSeenAt: null }
-      await deps.devices.addCompanion(device)
-      entry.key = key
-      return view(device)
+    approvePairing(typedCode) {
+      const run = approvals.then(() => approve(typedCode))
+      approvals = run.catch(() => undefined)
+      return run
     },
 
     async authenticate(key) {

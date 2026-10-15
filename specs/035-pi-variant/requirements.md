@@ -140,9 +140,10 @@ with no second database and no copying.
   kiosk chooses which address to open.
 - **Pairing by a code the screen shows.** The screen asks with a name and shows six digits for
   five minutes; a person types them on the PC. Only then does the PC hand that screen a 256-bit
-  key, once, which the screen keeps in its browser storage and sends in `X-Astrorepo-Device` on
-  every call. The PC keeps only the key's SHA-256 hash, at most five screens may wait at once and
-  eight may be paired. Removing a screen on the PC sends it back to the pairing page.
+  key, during a five-minute pickup time that starts when the code is typed, which the screen keeps in its browser storage and sends in `X-Astrorepo-Device` on
+  every call. The PC keeps only the key's SHA-256 hash, at most five screens may wait at once (a screen
+  asking again replaces its own request) and eight may be paired. A pairing whose key is never
+  collected is undone. Approvals run one at a time, so typing a code twice pairs once. Removing a screen on the PC sends it back to the pairing page.
 - **A paired screen is trusted like someone at the PC**, so it can run jobs or change settings,
   but it cannot pair, remove or reconfigure companions (any `companion:*` channel or a
   `companion_` setting) or wipe the library (`db:reset`). Its calls use the served Desktop, so
@@ -158,9 +159,9 @@ with no second database and no copying.
 | ID | Pattern | Requirement |
 | --- | --- | --- |
 | PI-017 | Optional | Where "Allow companion screens" is on, the desktop app shall serve its pages and channels on every network interface on port 8090, or on the port chosen in Settings from 1024 to 65535, list the addresses a screen can open, and say why when the port is in use or the pages are not built; where it is off, nothing shall be served, and the headless server shall have no pairing address. |
-| PI-018 | Event | When a screen asks to pair with a name, the desktop app shall give it a six-digit code that lasts five minutes, and when a person types that code in Settings → Companion screens, it shall pair the screen following the PC, keep only a hash of a new key, and hand the key to that screen once. |
-| PI-019 | Unwanted | If a pairing request has no usable name, five screens are already waiting, or a typed code is not six digits, matches no waiting screen, has expired or would make a ninth paired screen, then the desktop app shall refuse it with a message saying what to do and pair nothing. |
+| PI-018 | Event | When a screen asks to pair with a name, the desktop app shall give it a six-digit code that lasts five minutes, replacing any code that screen asked for before, and when a person types that code in Settings → Companion screens, it shall pair the screen following the PC, keep only a hash of a new key, and hand the key to that screen during the five minutes after the code was typed. |
+| PI-019 | Unwanted | If a pairing request has no usable name, five screens are already waiting, or a typed code is not six digits, matches no waiting screen, has expired, was already typed or would make a ninth paired screen, then the desktop app shall refuse it with a message saying what to do and pair nothing; and if a paired screen never collects its key in time, it shall be unpaired again. |
 | PI-020 | Unwanted | If a request from a companion carries no key, a key the PC never gave, or the key of a screen since removed, then the desktop app shall refuse it with 401 and run nothing, and the screen shall forget its key and show the pairing page. |
-| PI-021 | State | While a companion follows the PC, it shall show the page the desktop app is on, staying on the last page it could show while the PC is in Settings and staying put for a minute after it is touched; while it is set to Home, the Sky planner, Jobs, the Gallery or the Messier mosaic, it shall show that place. |
+| PI-021 | State | While a companion follows the PC, it shall show the page the desktop app is on, staying on the last page it could show while the PC is in Settings and staying put for a minute after it is touched; while it is set to Home, the Sky planner, Jobs, the Gallery or the Messier mosaic, it shall go to that place as soon as it is chosen and return to it a minute after it is touched. |
 | PI-022 | Unwanted | If a paired companion calls a companion channel, reads or writes a companion setting, or wipes the library, then the desktop app shall refuse it with 403 and run nothing. |
 | PI-023 | Ubiquitous | Settings → Companion screens shall list each paired screen with its name, when it was paired and when it was last seen (written at most once a minute), and let the person pair a screen by its code, choose what it shows and remove it. |

@@ -95,12 +95,22 @@ describe('A companion screen in the browser (specs/035-pi-variant)', () => {
     await expect(askScreen(fakeFetch(401, { error: 'gone' }).fetchFn, 'k')).rejects.not.toBeInstanceOf(NotPairedError)
   })
 
-  it('[PI-021] Given where the screen is and where the PC wants it, When it decides, Then it moves only to another page and not within a minute of a touch', () => {
+  it('[PI-021] Given a screen following the PC, When it decides, Then it moves only to another page and not within a minute of a touch', () => {
     const now = 1_000_000
-    expect(shouldMove({ current: '/dashboard', wanted: '/jobs', lastTouchAt: null, now })).toBe(true)
-    expect(shouldMove({ current: '/jobs', wanted: '/jobs', lastTouchAt: null, now })).toBe(false)
-    expect(shouldMove({ current: '/jobs', wanted: null, lastTouchAt: null, now })).toBe(false)
-    expect(shouldMove({ current: '/dashboard', wanted: '/jobs', lastTouchAt: now - TOUCH_HOLD_MS + 1, now })).toBe(false)
-    expect(shouldMove({ current: '/dashboard', wanted: '/jobs', lastTouchAt: now - TOUCH_HOLD_MS, now })).toBe(true)
+    const follow = { screen: 'follow', previous: '/dashboard', now }
+    expect(shouldMove({ ...follow, current: '/dashboard', wanted: '/jobs', lastTouchAt: null })).toBe(true)
+    expect(shouldMove({ ...follow, current: '/jobs', wanted: '/jobs', lastTouchAt: null })).toBe(false)
+    expect(shouldMove({ ...follow, current: '/jobs', wanted: null, lastTouchAt: null })).toBe(false)
+    expect(shouldMove({ ...follow, current: '/dashboard', wanted: '/jobs', lastTouchAt: now - TOUCH_HOLD_MS + 1 })).toBe(false)
+    expect(shouldMove({ ...follow, current: '/dashboard', wanted: '/jobs', lastTouchAt: now - TOUCH_HOLD_MS })).toBe(true)
+  })
+
+  it('[PI-021] Given a screen set to a place, When the place is newly chosen, Then it goes at once despite a touch, and otherwise returns a minute after one', () => {
+    const now = 1_000_000
+    const touched = now - 1_000
+    expect(shouldMove({ screen: 'jobs', current: '/targets', wanted: '/jobs', previous: '/targets/m31', lastTouchAt: touched, now })).toBe(true)
+    expect(shouldMove({ screen: 'jobs', current: '/targets', wanted: '/jobs', previous: null, lastTouchAt: touched, now })).toBe(true)
+    expect(shouldMove({ screen: 'jobs', current: '/targets', wanted: '/jobs', previous: '/jobs', lastTouchAt: touched, now })).toBe(false)
+    expect(shouldMove({ screen: 'jobs', current: '/targets', wanted: '/jobs', previous: '/jobs', lastTouchAt: now - TOUCH_HOLD_MS, now })).toBe(true)
   })
 })

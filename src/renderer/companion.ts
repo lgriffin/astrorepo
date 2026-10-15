@@ -8,11 +8,21 @@ export const FOLLOW_EVERY_MS = 3_000
 export const PAIR_CHECK_EVERY_MS = 2_000
 
 /**
- * Whether a companion moves to the page the PC wants: only to a different page, and not within a
- * minute of someone touching it (PI-021).
+ * Whether a companion moves to the page the PC wants (PI-021). Following the PC, it moves to another
+ * page unless someone touched it in the last minute. Set to a place, it goes there as soon as that
+ * place is chosen on the PC, and back to it a minute after someone touched it and wandered off.
  */
-export function shouldMove(input: { current: string; wanted: string | null; lastTouchAt: number | null; now: number }): boolean {
+export function shouldMove(input: {
+  current: string
+  wanted: string | null
+  screen: string
+  /** What the PC wanted at the last ask, or null at the first. */
+  previous: string | null
+  lastTouchAt: number | null
+  now: number
+}): boolean {
   if (input.wanted === null || input.wanted === input.current) return false
+  if (input.screen !== 'follow' && input.wanted !== input.previous) return true
   return input.lastTouchAt === null || input.now - input.lastTouchAt >= TOUCH_HOLD_MS
 }
 

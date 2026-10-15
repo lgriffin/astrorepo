@@ -81,7 +81,7 @@ describe('The companion host (specs/035-pi-variant, companion slice)', () => {
     expect(page.body).not.toContain('astrorepo-token')
   })
 
-  it('[PI-018] Given a screen with a name, When it asks to pair, Then it gets a six-digit code and waits until the code is typed on the PC, then gets its key once', async () => {
+  it('[PI-018] Given a screen with a name, When it asks to pair, Then it gets a six-digit code and waits until the code is typed on the PC, then gets its key', async () => {
     const started = await post('/api/companion/pair', { name: 'Pi by the scope' })
     expect(started.status).toBe(200)
     const { requestId, code } = started.json().value as { requestId: string; code: string }
@@ -90,9 +90,16 @@ describe('The companion host (specs/035-pi-variant, companion slice)', () => {
     await world.companion.approvePairing(code)
     const paired = (await post('/api/companion/pair-status', { requestId })).json().value as { state: string; key: string; name: string }
     expect(paired).toMatchObject({ state: 'paired', name: 'Pi by the scope' })
-    expect((await post('/api/companion/pair-status', { requestId })).json().value).toEqual({ state: 'expired' })
+    expect((await post('/api/companion/pair-status', { requestId })).json().value).toMatchObject({ state: 'paired', key: paired.key })
     const echoed = await post('/api/invoke/echo', { args: [1] }, { 'X-Astrorepo-Device': paired.key })
     expect(echoed.json()).toEqual({ value: { args: [1] } })
+  })
+
+  it('[PI-019] Given a screen that asks for a code again, When it asks, Then its earlier code stops working', async () => {
+    const first = (await post('/api/companion/pair', { name: 'Porch' })).json().value as { code: string }
+    const second = (await post('/api/companion/pair', { name: 'Porch' })).json().value as { code: string }
+    await expect(world.companion.approvePairing(first.code)).rejects.toThrow('No screen is showing that code.')
+    await expect(world.companion.approvePairing(second.code)).resolves.toMatchObject({ name: 'Porch' })
   })
 
   it('[PI-019] Given a pairing request without a usable name or request id, When it arrives, Then it is refused with what to do', async () => {
@@ -167,9 +174,11 @@ describe('Serving companions from the desktop app (specs/035-pi-variant, PI-017)
     for (const h of hosts.splice(0)) await h.stop()
   })
 
-  function hostWith(options: { staticDir?: string; settings?: Record<string, string>; listen?: (s: http.Server, port: number) => Promise<void> } = {}) {
+  function hostWith(options: { staticDir?: string; settings?: Record<string, string>; listen?: (s: http.Server, port: number) => Promise<void>; addresses?: string[] } = {}) {
     const settings = new Map(Object.entries(options.settings ?? {}))
     const ports: number[] = []
+    const servers: http.Server[] = []
+    const addresses = options.addresses ?? ['127.0.0.1', '192.168.1.20']
     const listen = options.listen ?? ((s: http.Server, p: number) => {
       ports.push(p)
       return new Promise<void>(resolve => s.listen(0, '127.0.0.1', () => resolve()))
@@ -179,11 +188,11 @@ describe('Serving companions from the desktop app (specs/035-pi-variant, PI-017)
       staticDir: options.staticDir ?? staticDir,
       companion: () => companionWith().companion as Companion,
       settings: { get: k => settings.get(k) ?? null, set: (k, v) => { settings.set(k, v) } },
-      network: () => ({ hostname: 'studio-pc', addresses: ['127.0.0.1', '192.168.1.20'], shown: ['192.168.1.20'] }),
-      listen
+      network: () => ({ hostname: 'studio-pc', addresses: addresses, shown: addresses.filter(a => a !== '127.0.0.1') }),
+      listen: (s: http.Server, p: number) => { servers.push(s); return listen(s, p) }
     })
     hosts.push(host)
-    return { host, settings, ports }
+    return { host, settings, ports, addresses, servers }
   }
 
   it('[PI-017] Given companion screens are off, When the app starts, Then nothing is served', async () => {
@@ -234,6 +243,31 @@ describe('Serving companions from the desktop app (specs/035-pi-variant, PI-017)
     expect(await failing.host.setEnabled(true)).toMatchObject({ running: false, problem: 'Companions cannot be served: no network' })
     const unbuilt = hostWith({ staticDir: path.join(staticDir, 'missing') })
     expect(await unbuilt.host.setEnabled(true)).toMatchObject({ running: false, problem: 'The pages companions are served are not built. Build astrorepo (npm run build) and turn this on again.' })
+  })
+
+  it('[PI-017] Given the PC gains an address while serving, When a screen opens that address, Then it is answered without a restart', async () => {
+    const { host, addresses, servers } = hostWith()
+    await host.setEnabled(true)
+    const served = (servers[0].address() as AddressInfo).port
+    const get = (hostHeader: string) => new Promise<number>((resolve, reject) => {
+      const req = http.request({ host: '127.0.0.1', port: served, path: '/', headers: { Host: hostHeader } }, res => { res.resume(); resolve(res.statusCode ?? 0) })
+      req.on('error', reject)
+      req.end()
+    })
+    expect(await get('192.168.1.77')).toBe(403)
+    addresses.push('192.168.1.77')
+    expect(host.status().addresses).toContain('http://192.168.1.77:8090/')
+    expect(await get('192.168.1.77')).toBe(200)
+  })
+
+  it('[PI-017] Given companion screens are turned on and straight off again, When both changes finish, Then nothing is left listening', async () => {
+    const { host, settings, servers } = hostWith()
+    const on = host.setEnabled(true)
+    const off = host.setEnabled(false)
+    await Promise.all([on, off])
+    expect(host.status()).toMatchObject({ enabled: false, running: false })
+    expect(settings.get('companion_enabled')).toBe('false')
+    expect(servers.every(s => !s.listening)).toBe(true)
   })
 
   it('[PI-017] Given this PC, When its network is read, Then its host name, every address and only its outward IPv4 addresses for showing come back', () => {

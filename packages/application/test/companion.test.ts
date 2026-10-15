@@ -27,14 +27,54 @@ describe('Companion pairing (specs/035-pi-variant)', () => {
     expect(await s.companion.pairingStatus('secret-1')).toEqual({ state: 'waiting', expiresAt: new Date('2026-10-15T21:05:00Z') })
   })
 
-  it('[PI-018] Given a waiting screen, When its code is typed on the PC, Then it is paired following the PC, only the key hash is kept, and the key is handed over once', async () => {
+  it('[PI-018] Given a waiting screen, When its code is typed on the PC, Then it is paired following the PC, only the key hash is kept, and the key is handed over until the pickup time ends', async () => {
     const s = setup(['482913'])
     const started = await s.companion.requestPairing('  Pi by the scope ')
     const device = await s.companion.approvePairing('482 913')
     expect(device).toEqual({ id: 'secret-3', name: 'Pi by the scope', screen: 'follow', pairedAt: new Date('2026-10-15T21:00:00Z'), lastSeenAt: null })
     expect(await s.devices.listCompanions()).toEqual([{ ...device, keyHash: 'hash:secret-2' }])
     expect(await s.companion.pairingStatus(started.requestId)).toEqual({ state: 'paired', key: 'secret-2', name: 'Pi by the scope' })
+    // A screen that lost the answer (its storage refused it, a poll failed) can ask again.
+    expect(await s.companion.pairingStatus(started.requestId)).toEqual({ state: 'paired', key: 'secret-2', name: 'Pi by the scope' })
+    s.clock.advance(5 * 60_000)
     expect(await s.companion.pairingStatus(started.requestId)).toEqual({ state: 'expired' })
+    expect(await s.devices.listCompanions()).toHaveLength(1)
+  })
+
+  it('[PI-018] Given a code typed just before it expires, When the screen asks after the code\'s expiry, Then it still gets its key', async () => {
+    const s = setup(['482913'])
+    const started = await s.companion.requestPairing('Pi')
+    s.clock.advance(5 * 60_000 - 1)
+    await s.companion.approvePairing('482913')
+    s.clock.advance(2_000)
+    expect(await s.companion.pairingStatus(started.requestId)).toMatchObject({ state: 'paired' })
+  })
+
+  it('[PI-019] Given a pairing the screen never collected, When its pickup time runs out, Then the screen is unpaired again so it holds no place', async () => {
+    const s = setup(['482913'])
+    const started = await s.companion.requestPairing('Pi')
+    await s.companion.approvePairing('482913')
+    expect(await s.devices.listCompanions()).toHaveLength(1)
+    s.clock.advance(5 * 60_000)
+    expect(await s.companion.pairingStatus(started.requestId)).toEqual({ state: 'expired' })
+    expect(await s.devices.listCompanions()).toEqual([])
+  })
+
+  it('[PI-019] Given one code, When it is typed twice at once on the PC, Then the screen is paired once and the second is refused', async () => {
+    const s = setup(['482913'])
+    await s.companion.requestPairing('Pi')
+    const both = await Promise.allSettled([s.companion.approvePairing('482913'), s.companion.approvePairing('482913')])
+    expect(both.map(r => r.status)).toEqual(['fulfilled', 'rejected'])
+    expect(await s.devices.listCompanions()).toHaveLength(1)
+  })
+
+  it('[PI-019] Given a screen that asks again, When it asks, Then its earlier request is replaced and never fills the waiting places', async () => {
+    const s = setup()
+    for (let i = 0; i < 10; i++) await s.companion.requestPairing('Pi', '192.168.1.40')
+    for (let i = 0; i < 4; i++) await s.companion.requestPairing(`Other ${i}`, `192.168.1.${50 + i}`)
+    await expect(s.companion.requestPairing('Tablet', '192.168.1.60')).rejects.toThrow('Too many screens are waiting to pair.')
+    await expect(s.companion.approvePairing('100000')).rejects.toThrow('No screen is showing that code.')
+    await expect(s.companion.approvePairing('100009')).resolves.toMatchObject({ name: 'Pi' })
   })
 
   it('[PI-018] Given a code already shown on another screen, When a new screen asks, Then it gets a different code', async () => {

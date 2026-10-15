@@ -6,14 +6,15 @@ import { COMPANION_KEY, storedCompanionKey } from '../../bridge'
 const fetchFn = (url: string, init: { method: string; headers: Record<string, string>; body: string }) => window.fetch(url, init)
 
 /**
- * On a companion screen: asks the PC where to be every few seconds and goes there, unless someone
- * touched the screen in the last minute (specs/035-pi-variant, PI-021).
+ * On a companion screen: asks the PC where to be every few seconds and goes there, holding for a
+ * minute after a touch (specs/035-pi-variant, PI-021).
  */
 export function CompanionFollower(): null {
   const navigate = useNavigate()
   const location = useLocation()
   const current = useRef('')
   const lastTouchAt = useRef<number | null>(null)
+  const previous = useRef<string | null>(null)
   useEffect(() => {
     current.current = `${location.pathname}${location.search}`
   }, [location.pathname, location.search])
@@ -25,8 +26,10 @@ export function CompanionFollower(): null {
     const key = storedCompanionKey(window)
     const timer = window.setInterval(() => {
       askScreen(fetchFn, key)
-        .then(({ route }) => {
-          if (shouldMove({ current: current.current, wanted: route, lastTouchAt: lastTouchAt.current, now: Date.now() })) navigate(route)
+        .then(({ screen, route }) => {
+          const move = shouldMove({ current: current.current, wanted: route, screen, previous: previous.current, lastTouchAt: lastTouchAt.current, now: Date.now() })
+          previous.current = route
+          if (move) navigate(route)
         })
         .catch(error => {
           if (!(error instanceof NotPairedError)) return

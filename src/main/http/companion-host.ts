@@ -95,12 +95,15 @@ export function makeCompanionHost(options: CompanionHostOptions): CompanionHost 
       problem = 'The pages companions are served are not built. Build astrorepo (npm run build) and turn this on again.'
       return
     }
-    const net = options.network()
     const candidate = createHttpHost({
       router: options.router,
       staticDir: options.staticDir,
       companions: options.companion(),
-      allowedHosts: hostsFor(net.hostname, net.addresses, [])
+      // Asked on each request, so an address the PC gains while serving works as soon as Settings shows it.
+      allowedHosts: () => {
+        const net = options.network()
+        return hostsFor(net.hostname, net.addresses, [])
+      }
     })
     try {
       await listen(candidate, port())
@@ -120,23 +123,34 @@ export function makeCompanionHost(options: CompanionHostOptions): CompanionHost 
     }
   }
 
+  // Turning on and off runs one change at a time, and each starts only if the saved choice is still
+  // on, so quick changes in Settings never leave the PC listening while the setting says off.
+  let changes: Promise<unknown> = Promise.resolve()
+  const oneAtATime = <T>(work: () => Promise<T>): Promise<T> => {
+    const run = changes.then(work)
+    changes = run.catch(() => undefined)
+    return run
+  }
+
   return {
     status,
-    async setEnabled(on, newPort) {
-      if (newPort !== undefined) {
-        if (!validPort(newPort)) throw new Error('The companion port is a whole number from 1024 to 65535.')
-        options.settings.set('companion_port', String(newPort))
-      }
+    setEnabled(on, newPort) {
+      if (newPort !== undefined && !validPort(newPort)) return Promise.reject(new Error('The companion port is a whole number from 1024 to 65535.'))
+      if (newPort !== undefined) options.settings.set('companion_port', String(newPort))
       options.settings.set('companion_enabled', on ? 'true' : 'false')
-      await stop()
-      problem = null
-      if (on) await start()
-      return status()
+      return oneAtATime(async () => {
+        await stop()
+        problem = null
+        if (enabled()) await start()
+        return status()
+      })
     },
-    async resume() {
-      if (enabled() && !server) await start()
-      return status()
+    resume() {
+      return oneAtATime(async () => {
+        if (enabled() && !server) await start()
+        return status()
+      })
     },
-    stop
+    stop: () => oneAtATime(stop)
   }
 }
