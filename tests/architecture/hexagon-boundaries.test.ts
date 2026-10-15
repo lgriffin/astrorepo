@@ -77,8 +77,8 @@ describe('Hexagon boundaries', () => {
     expect(violations(['services', 'fits', 'raw'].map(d => dir('src', 'main', d)), legacyRule)).toEqual([])
   })
 
-  it('[PI-005] Given the main process, When its imports are read, Then only the Electron host imports Electron', () => {
-    expect(violations([dir('src', 'main')], electronRule)).toEqual([])
+  it('[PI-005] Given the main process and the headless server, When their imports are read, Then only the Electron host imports Electron', () => {
+    expect(violations([dir('src', 'main'), dir('src', 'server')], electronRule)).toEqual([])
   })
 
   it('[PI-005] Given the channel router and the Desktop port, When their imports are read, Then they import nothing at all', () => {
@@ -162,10 +162,11 @@ describe('The architecture check itself', () => {
     }
   })
 
-  it('[PI-005] Given Electron imported by the job runner and by an Electron adapter, When checked, Then only the adapter is allowed', () => {
+  it('[PI-005] Given Electron imported by the job runner, the server and an Electron adapter, When checked, Then only the adapter is allowed', () => {
     const judge = (file: string) => electronRule(importsOf(file, "import { app } from 'electron'")[0], null, file)
     expect(judge(path.join(root, 'src', 'main', 'jobs-host.ts'))).toMatch(/belongs to/)
     expect(judge(path.join(root, 'src', 'main', 'ipc', 'handlers.ts'))).toMatch(/belongs to/)
+    expect(judge(path.join(root, 'src', 'server', 'main.ts'))).toMatch(/belongs to/)
     expect(judge(path.join(root, 'src', 'main', 'electron', 'probe.ts'))).toBeNull()
     expect(judge(path.join(root, 'src', 'main', 'index.ts'))).toBeNull()
   })
