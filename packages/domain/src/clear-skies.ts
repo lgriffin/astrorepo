@@ -1,7 +1,7 @@
 import { moonPhase, type NightSky } from './sky'
 
 /**
- * Clear skies (specs/035-clear-skies): whether a night's dark window is forecast clear, from the
+ * Clear skies (specs/036-clear-skies): whether a night's dark window is forecast clear, from the
  * hourly forecast of a public provider and the user's own weather service.
  */
 

@@ -16,13 +16,16 @@ packages/
 src/main/
   adapters/      driven adapters for the desktop app (SQLite today) and presenters for IPC.
   composition.ts composition root: builds use cases from adapters. The only place they meet.
-  ipc/           driving adapter: IPC handlers call use cases from the composition root.
+  ipc/           driving adapter: handlers call use cases from the composition root.
+  transport/     the ChannelRouter the handlers sit on and the Desktop port (pickers, saving, opening).
+  electron/      the only Electron code: IPC host, Desktop over dialogs and shell, image decoders.
   services/      legacy services, shrinking as logic moves into packages/.
 ```
 
 ```mermaid
 flowchart LR
-  UI[Renderer] -->|IPC recommendations:list, cockpit:*, discovery:target| H[ipc/handlers.ts]
+  UI[Renderer] -->|IPC recommendations:list, cockpit:*, discovery:target| R[transport/router.ts]
+  R --> H[ipc/handlers.ts]
   H --> C[composition.ts]
   C --> UC[application use cases]
   UC --> D[domain rules]
@@ -179,6 +182,7 @@ better-sqlite3 without any gain.
 | Use cases (`make*`) are built only in `composition.ts` (HEX-005) | the same test |
 | The testkit never imports the desktop app (HEX-006); legacy services and codecs never import adapters, IPC or composition (HEX-007) | the same test |
 | Only `system-clock.ts` reads the time; every other adapter takes a Clock (HEX-010) | the same test |
+| Only `src/main/index.ts` and `src/main/electron/` import Electron; `src/main/transport/` imports nothing, so a headless host can serve the same handlers (PI-005) | the same test |
 | Legacy code only shrinks: `getSqlite()` calls, legacy service files and legacy calls from the IPC handlers may fall, never rise (HEX-008, HEX-009) | `tests/architecture/legacy-ratchet.test.ts` against `legacy-ratchet.json`; lower the numbers there when a service moves into the core |
 | Every adapter of a port passes the port's contract suite (NFR-006) | `packages/testkit/src/contracts/*.contract.ts`, run in `tests/contracts/` on the testkit fake and the real adapter; `tests/contracts/coverage.test.ts` fails a port without a suite run on both |
 | Core code takes its dependencies as arguments; no `getSqlite()`, no `vi.mock` of modules in core tests | Review; adapters take a `Database` in their constructor |

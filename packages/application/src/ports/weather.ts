@@ -1,7 +1,7 @@
 import type { PublicWeatherProvider, Site, WeatherReport } from '@astro/domain'
 
 /**
- * Driven port: one source of weather forecasts (specs/035-clear-skies, WX-003).
+ * Driven port: one source of weather forecasts (specs/036-clear-skies, WX-003).
  * Adapters: Open-Meteo and MET Norway (public providers), the user's own weatherlink_website
  * service, and a scripted source (testkit).
  */

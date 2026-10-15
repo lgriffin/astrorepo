@@ -1,4 +1,4 @@
-# 035 Clear skies: requirements
+# 036 Clear skies: requirements
 
 Leigh asked (15 October 2026) for weather on Home: "a good guess as to whether tonight has clear
 skies or not allowing us at a glance see the next 3 nights forecast with the keyword clear skies

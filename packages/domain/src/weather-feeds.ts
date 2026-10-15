@@ -2,7 +2,7 @@ import type { Site } from './sky'
 import type { ForecastHour, StationNight, WarningLevel, WeatherReport, WeatherWarning } from './clear-skies'
 
 /**
- * Reading what weather sources answer (specs/035-clear-skies, WX-003, WX-006, WX-011). Each feed
+ * Reading what weather sources answer (specs/036-clear-skies, WX-003, WX-006, WX-011). Each feed
  * is untrusted JSON: a reader returns hours, nights and warnings in range, or throws
  * WeatherFeedError, and nothing else.
  */

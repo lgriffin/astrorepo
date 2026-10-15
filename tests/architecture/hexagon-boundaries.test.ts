@@ -77,11 +77,25 @@ describe('Hexagon boundaries', () => {
     expect(violations(['services', 'fits', 'raw'].map(d => dir('src', 'main', d)), legacyRule)).toEqual([])
   })
 
+  it('[PI-005] Given the main process, When its imports are read, Then only the Electron host imports Electron', () => {
+    expect(violations([dir('src', 'main')], electronRule)).toEqual([])
+  })
+
+  it('[PI-005] Given the channel router and the Desktop port, When their imports are read, Then they import nothing at all', () => {
+    expect(violations([dir('src', 'main', 'transport')], (ref, to) => (under(to, 'src/main/transport') ? null : `"${ref.spec}" is not the transport's own`))).toEqual([])
+  })
+
   it('[HEX-010] Given the adapters, When their code is read, Then only the system clock reads the time', () => {
     const files = sourceFiles(dir('src', 'main', 'adapters')).filter(f => path.basename(f) !== 'system-clock.ts')
     expect(ambientUses(files).filter(u => /reads the clock/.test(u))).toEqual([])
   })
 })
+
+/** Electron only in the desktop app's entry point and its Electron adapters (PI-005). */
+function electronRule(ref: ImportRef, _to: string | null, file: string): string | null {
+  const host = rel(file) === 'src/main/index.ts' || rel(file).startsWith('src/main/electron/')
+  return ref.spec === 'electron' && !host ? 'Electron belongs to src/main/index.ts and src/main/electron' : null
+}
 
 function adapterRule(ref: ImportRef, to: string | null, file: string): string | null {
   if (to === null) return ref.spec === 'electron' ? 'Electron belongs to the hosts that compose adapters' : null
@@ -146,6 +160,14 @@ describe('The architecture check itself', () => {
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true })
     }
+  })
+
+  it('[PI-005] Given Electron imported by the job runner and by an Electron adapter, When checked, Then only the adapter is allowed', () => {
+    const judge = (file: string) => electronRule(importsOf(file, "import { app } from 'electron'")[0], null, file)
+    expect(judge(path.join(root, 'src', 'main', 'jobs-host.ts'))).toMatch(/belongs to/)
+    expect(judge(path.join(root, 'src', 'main', 'ipc', 'handlers.ts'))).toMatch(/belongs to/)
+    expect(judge(path.join(root, 'src', 'main', 'electron', 'probe.ts'))).toBeNull()
+    expect(judge(path.join(root, 'src', 'main', 'index.ts'))).toBeNull()
   })
 
   it('[HEX-004] [HEX-007] Given imports written through the @main alias, When checked, Then they are judged by where they lead', () => {

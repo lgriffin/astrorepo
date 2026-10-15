@@ -11,7 +11,7 @@ const PROVIDERS = [
   { id: 'none', label: 'None: only my weather service' }
 ] as const
 
-/** Settings > Weather: the public forecast and the user's own weather service (specs/035-clear-skies, WX-003). */
+/** Settings > Weather: the public forecast and the user's own weather service (specs/036-clear-skies, WX-003). */
 export function WeatherSettings(): React.ReactElement {
   const [provider, setProvider] = useState('open-meteo')
   const [address, setAddress] = useState('')

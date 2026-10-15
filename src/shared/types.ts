@@ -1093,7 +1093,7 @@ export type ForwardPlanView =
       seasons: TargetSeasonView[]
     }
 
-/** One night on Home's clear-skies card (specs/035-clear-skies). */
+/** One night on Home's clear-skies card (specs/036-clear-skies). */
 export interface NightSkyView {
   night: string
   /** "Tonight", then "Fri 16 Oct". */

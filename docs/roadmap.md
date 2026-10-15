@@ -35,7 +35,9 @@ when the code says otherwise, and the reasons are recorded here.
 | F2 · Vespera ingest | Leigh's Vespera Pro FTP ingest design: every session on the scope parsed from listings alone (sessions by time and kind, runs by suffix), counted by kind with findings (missing frames, partial listings, no TIFF), its target named from the folder, observation.json, the stack's EXIF or a FITS header, and the ticked sessions copied one after another into their targets' folders, each in a folder named for what it holds (`M31/M31_2026-10-14_FIT=400_TIF=1`), resuming after a Wi-Fi drop and ending in a SHA-256 manifest. Replaces F1's list and copy: one flow on the Vespera page | [034](../specs/034-vespera-ingest/requirements.md) | Done |
 | H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
 | J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
-| W · Clear skies | Home opens on tonight and the next two nights, each "Clear skies", "Clear spells" (with times) or "Cloudy" over its dark window, from Open-Meteo or MET Norway (chosen in Settings → Weather) and Leigh's own weatherlink_website service (tonight's rain and frost chances, the low, the warnings in force), with dew warnings and the moon | [035](../specs/035-clear-skies/requirements.md) | Done |
+| R1 · Pi variant: transport seam | Every IPC handler on a channel router with no Electron in it, and a Desktop port for pickers, saving exports, opening folders and links, so a headless server can host the same channels for a Raspberry Pi kiosk. Nothing changes on Windows | [035](../specs/035-pi-variant/requirements.md) | Done |
+| R2 to R5 · Pi variant | Headless host over HTTP, the Pi install and kiosk, touch-first tonight view with red night mode and an idle slideshow, field ingest to the NAS | [035](../specs/035-pi-variant/requirements.md) | Next: R2 |
+| W · Clear skies | Home opens on tonight and the next two nights, each "Clear skies", "Clear spells" (with times) or "Cloudy" over its dark window, from Open-Meteo or MET Norway (chosen in Settings → Weather) and Leigh's own weatherlink_website service (tonight's rain and frost chances, the low, the warnings in force), with dew warnings and the moon | [036](../specs/036-clear-skies/requirements.md) | Done |
 | E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
@@ -143,6 +145,10 @@ app has run on real data on the Windows PC and the licence is settled.
   home folder's raw folder, where the home scan already finds targets. Reading the scope's JSON
   metadata and XISF wait for a sample night (#23). The FTP layout comes from Vaonis's support
   pages and owners' write-ups, and has not yet been checked against a real Vespera.
+- **A Raspberry Pi variant** (spec 035). Leigh asked (15 October 2026) for a variant of the app
+  on a Pi, with RaspAstroDisplay as inspiration, and chose a headless server with a kiosk over
+  an Electron build for arm64. It is also the web UI step after the Windows app. R1 moves the
+  handlers onto a router any host can serve; R2 serves it over HTTP.
 - **One Vespera copy flow** (spec 034). Leigh's ingest design adds what F1 did not: a review of
   each session's counts and findings before anything is copied, a target astrorepo names (with
   why) and the user can override, folder names that carry the counts, resume from a `.part` with
@@ -152,7 +158,7 @@ app has run on real data on the Windows PC and the licence is settled.
   room first, copies land in the target's folder for the home scan, and the home scan runs after.
   FITS and TIFF are copied by default, JSON only when ticked (Leigh). The keys inside
   observation.json and the TIFF file name are not yet seen on a real scope (#23).
-- **Weather is FWD-003, as its own card** (spec 035). Leigh asked for the next three nights at a
+- **Weather is FWD-003, as its own card** (spec 036). Leigh asked for the next three nights at a
   glance with "clear skies" when that is the forecast, a choice of weather service, and his own
   weatherlink_website integrated. One `WeatherSource` port has Open-Meteo, MET Norway and the
   user's service behind it; ideas taken from kshetline/aw-clock are the chosen service with others

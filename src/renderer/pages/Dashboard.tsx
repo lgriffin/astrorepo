@@ -19,7 +19,7 @@ const FAILED = 'failed' as const
 const REFRESH_MS = 15_000
 
 /**
- * Home (specs/017-unified-ux, UX-006): the next three nights' skies at a glance (specs/035-clear-skies),
+ * Home (specs/017-unified-ux, UX-006): the next three nights' skies at a glance (specs/036-clear-skies),
  * what to do next, then the coming nights and what is hiding in the files, then how far the
  * targets have got. Totals live on Insights.
  */

@@ -247,7 +247,7 @@ folder, scan your library and point Settings → Tools at Siril.
 | [032](specs/032-messier-mosaic/requirements.md) | Messier mosaic |
 | [033](specs/033-vespera-ftp/requirements.md) | Vespera control |
 | [034](specs/034-vespera-ingest/requirements.md) | Vespera Pro ingest |
-| [035](specs/035-clear-skies/requirements.md) | Clear skies |
+| [036](specs/036-clear-skies/requirements.md) | Clear skies |
 
 ## Architecture
 

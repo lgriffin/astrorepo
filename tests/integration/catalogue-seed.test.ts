@@ -9,14 +9,6 @@ vi.mock('../../src/main/db/connection', () => ({
   getSqlite: () => sqlite
 }))
 
-vi.mock('electron', () => ({
-  app: {
-    isPackaged: false,
-    getAppPath: () => process.cwd(),
-    getPath: () => '/tmp'
-  }
-}))
-
 const { initFts, rebuildFtsIndex } = await import('../../src/main/db/fts')
 
 describe('Catalogue Seed Loading (Integration)', () => {

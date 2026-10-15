@@ -260,7 +260,7 @@ export function composeCore(db: Database.Database) {
       grading.setNightLeftOut(await sourceLightPaths(new NodeSirilWorkspace(db), sourceDir), night, leftOut),
     estimateSirilRun,
     planForward,
-    /** The next three nights' skies on Home (specs/035-clear-skies). */
+    /** The next three nights' skies on Home (specs/036-clear-skies). */
     clearSkies: makeClearSkies({
       planning: planningSettings,
       weather: new SqliteWeatherSettings(db),
