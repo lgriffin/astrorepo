@@ -16,7 +16,7 @@ below; the rest is backlog.
 | 1 · Transport seam | Every handler on a channel router with no Electron in it; a Desktop port for pickers, saving, opening folders and links; the database, catalogues and job runner told their folders by the host; Electron only in `src/main/index.ts` and `src/main/electron/` | Built (PI-001 to PI-006) |
 | 2 · Headless host | A Node entry point (`npm run serve`) that serves the built renderer and `POST /api/invoke/<channel>` with the same Zod schemas; only this machine's names, same-origin checks and a per-start token on every API call; the renderer's `api.invoke` falls back to fetch | Built (PI-007 to PI-016) |
 | Companion screens | The Windows app serves its own pages to the home network when "Allow companion screens" is on; a Pi (or any browser) pairs by a code typed on the PC, then follows the page the PC is on or stays on a place of its own, as a second screen of the Windows app (Leigh, 15 October 2026) | Built (PI-017 to PI-023) |
-| 3 · Pi install | Linux arm64 build, a systemd service for the server, a user service for a Chromium kiosk on Wayland (labwc or Wayfire), an install script, a Pi profile (data on the NAS mount, job runner off), a Node image decoder for JPEG and TIFF, and the kiosk's choice between the PC as companion and its own server when the PC is off | Backlog |
+| 3 · Pi install | Linux arm64 build, a systemd service for the server, a user service for a Chromium kiosk on Wayland (labwc or Wayfire), an install script, a Pi profile (data on the NAS mount, job runner off), a Node image decoder for JPEG and TIFF, HTTPS for companion screens with a self-signed certificate pinned at pairing (Leigh, 15 October 2026), and the kiosk's choice between the PC as companion and its own server when the PC is off | Backlog |
 | 4 · Tonight on the touchscreen | Touch-first navigation at 800 × 480 (large targets, swipe between pages, no keyboard), red night mode, backlight dimming where the first touch only wakes the screen, and an idle screen preset in Settings: a slideshow of the gallery, tonight's plan or the Messier mosaic until the screen is touched (Leigh, 15 October 2026) | Backlog |
 | 5 · Field ingest | The Vespera copy flow of spec 034 run from the Pi at the end of a session, straight into the NAS landing folder | Backlog |
 
@@ -153,6 +153,9 @@ with no second database and no copying.
   companion stays where it was. Someone touching the companion holds it for a minute. A screen
   can instead stay on Home, the Sky planner, Jobs, the Gallery or the Messier mosaic. The idle
   slideshow comes with the touchscreen slice.
+- **Plain HTTP for now.** Someone already on the home network who intercepts traffic could copy a
+  screen's key, as with the headless server's token. Leigh chose (15 October 2026) to add HTTPS,
+  with a self-signed certificate the kiosk trusts and pins at pairing, in the Pi install slice.
 - **Off by default.** Nothing listens on the network until "Allow companion screens" is ticked;
   the choice and the port are kept as the settings `companion_enabled` and `companion_port`.
 
