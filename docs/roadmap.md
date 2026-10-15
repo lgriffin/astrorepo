@@ -38,6 +38,7 @@ when the code says otherwise, and the reasons are recorded here.
 | R1 · Pi variant: transport seam | Every IPC handler on a channel router with no Electron in it, and a Desktop port for pickers, saving exports, opening folders and links, so a headless server can host the same channels for a Raspberry Pi kiosk. Nothing changes on Windows | [035](../specs/035-pi-variant/requirements.md) | Done |
 | R2 · Pi variant: headless host | `npm run serve` runs astrorepo without Electron: the same pages and handlers in any browser over HTTP, locked to this machine's names with a per-start token. The web UI step after the Windows app | [035](../specs/035-pi-variant/requirements.md) | Done |
 | R3 to R5 · Pi variant | The Pi install and kiosk, touch-first tonight view with red night mode and an idle slideshow, field ingest to the NAS | [035](../specs/035-pi-variant/requirements.md) | Next: R3 |
+| W · Clear skies | Home opens on tonight and the next two nights, each "Clear skies", "Clear spells" (with times) or "Cloudy" over its dark window, from Open-Meteo or MET Norway (chosen in Settings → Weather) and Leigh's own weatherlink_website service (tonight's rain and frost chances, the low, the warnings in force), with dew warnings and the moon | [036](../specs/036-clear-skies/requirements.md) | Done |
 | E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
@@ -158,6 +159,14 @@ app has run on real data on the Windows PC and the licence is settled.
   room first, copies land in the target's folder for the home scan, and the home scan runs after.
   FITS and TIFF are copied by default, JSON only when ticked (Leigh). The keys inside
   observation.json and the TIFF file name are not yet seen on a real scope (#23).
+- **Weather is FWD-003, as its own card** (spec 036). Leigh asked for the next three nights at a
+  glance with "clear skies" when that is the forecast, a choice of weather service, and his own
+  weatherlink_website integrated. One `WeatherSource` port has Open-Meteo, MET Norway and the
+  user's service behind it; ideas taken from kshetline/aw-clock are the chosen service with others
+  alongside and the on-screen credit, not its scraped or keyed providers. weatherlink_website has
+  no cloud cover yet, so the public forecast judges the sky and Leigh's station adds what it knows
+  about tonight (and holds back a clear night it expects rain on). The verdict is shown above Next
+  actions rather than used to rank them until it has been checked against real nights.
 - **C4 diagrams** live in [architecture/c4.md](architecture/c4.md) and are updated by every slice
   that adds a port, an adapter or an external tool.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the

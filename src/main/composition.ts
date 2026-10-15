@@ -46,6 +46,8 @@ import {
   makeVesperaCopyQueue,
   makeMessierMosaic,
   makePictureGallery,
+  makeClearSkies,
+  makeWeatherCache,
   type Gallery,
   type MessierMosaicService,
   type PictureGallery,
@@ -89,6 +91,8 @@ import { AppFolders } from './adapters/app-folders'
 import { NodeScopeFiles } from './adapters/node-ftp-scope'
 import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture-folder'
 import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
+import { WeatherServiceSource, publicWeatherSource } from './adapters/http-weather'
+import { SqliteWeatherSettings } from './adapters/sqlite-weather-settings'
 
 /** The app's clock, for hosts that stamp what they show (the IPC handlers). */
 export const clock = systemClock
@@ -117,6 +121,10 @@ export const targetHolds = makeTargetHolds()
 
 /** SyQon's model list, reused for two minutes per syqon-cli path; a health check in Settings lists afresh. */
 const syqonModels = makeSyqonModelCache(() => systemClock.now().getTime(), 2 * 60_000)
+
+/** Weather answers kept for 30 minutes, so opening Home again asks no source twice (WX-009). */
+export const WEATHER_CACHE_MS = 30 * 60_000
+const weatherCache = makeWeatherCache(() => systemClock.now().getTime(), WEATHER_CACHE_MS)
 
 /** One registry reader for the app, so its short-lived lookups are shared across calls. */
 const appPaths = new WindowsAppPathsRegistry()
@@ -252,6 +260,24 @@ export function composeCore(db: Database.Database) {
       grading.setNightLeftOut(await sourceLightPaths(new NodeSirilWorkspace(db), sourceDir), night, leftOut),
     estimateSirilRun,
     planForward,
+    /** The next three nights' skies on Home (specs/036-clear-skies). */
+    clearSkies: makeClearSkies({
+      planning: planningSettings,
+      weather: new SqliteWeatherSettings(db),
+      ephemeris,
+      clock: systemClock,
+      publicSource: provider => weatherCache(publicWeatherSource(provider)),
+      serviceSource: address => weatherCache(new WeatherServiceSource(address))
+    }),
+    /** The same outlook with every source asked now, for Settings → Weather's check (WX-009). */
+    checkWeather: makeClearSkies({
+      planning: planningSettings,
+      weather: new SqliteWeatherSettings(db),
+      ephemeris,
+      clock: systemClock,
+      publicSource: provider => publicWeatherSource(provider),
+      serviceSource: address => new WeatherServiceSource(address)
+    }),
     listTools: makeListTools({ tools }),
     /** Runs each tool's version flag and SyQon's model list (NFR-017). */
     checkToolHealth: makeCheckToolHealth({ tools, probe, cache: syqonModels }),
