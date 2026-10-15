@@ -1,4 +1,3 @@
-import { app, powerMonitor, powerSaveBlocker } from 'electron'
 import path from 'path'
 import type { JobScheduler } from '@astro/application'
 import { composeJobs } from './composition'
@@ -7,7 +6,22 @@ import { getSqlite } from './db/connection'
 /** How often the queue is checked against the run window and the PC's load. */
 const TICK_MS = 60_000
 
+/**
+ * What the job runner needs from the machine it runs on (specs/035-pi-variant, PI-005): where its
+ * logs go, how long the user has been away, a way to keep the machine awake while a job runs, and
+ * a call when the app quits. The desktop app answers with Electron; a headless host its own way.
+ */
+export interface JobsHostEnvironment {
+  dataFolder: string
+  userIdleSeconds: () => number
+  /** Keeps the machine from sleeping; returns a handle for `allowSleep`. */
+  preventSleep: () => number
+  allowSleep: (handle: number) => void
+  onQuit: (listener: () => void) => void
+}
+
 let scheduler: JobScheduler | null = null
+let environment: JobsHostEnvironment | null = null
 let blocker: number | null = null
 let ticking = false
 let again = false
@@ -34,19 +48,21 @@ export function kickJobs(): void {
 
 /** Keeps the PC from sleeping while a job runs, and lets it sleep again after. */
 function holdAwake(): void {
+  if (!environment) return
   const busy = scheduler?.busy() ?? false
-  if (busy && blocker === null) blocker = powerSaveBlocker.start('prevent-app-suspension')
+  if (busy && blocker === null) blocker = environment.preventSleep()
   if (!busy && blocker !== null) {
-    powerSaveBlocker.stop(blocker)
+    environment.allowSleep(blocker)
     blocker = null
   }
 }
 
 /** Starts the job runner: recovers jobs the last session left running, then checks every minute. */
-export async function startJobs(): Promise<JobScheduler> {
+export async function startJobs(host: JobsHostEnvironment): Promise<JobScheduler> {
+  environment = host
   scheduler = composeJobs(getSqlite(), {
-    logsDir: path.join(app.getPath('userData'), 'jobs'),
-    userIdleSeconds: () => powerMonitor.getSystemIdleTime(),
+    logsDir: path.join(host.dataFolder, 'jobs'),
+    userIdleSeconds: host.userIdleSeconds,
     onChange: () => {
       holdAwake()
       setTimeout(kickJobs, 0)
@@ -54,7 +70,7 @@ export async function startJobs(): Promise<JobScheduler> {
   })
   await scheduler.recover()
   const timer = setInterval(kickJobs, TICK_MS)
-  app.on('before-quit', () => {
+  host.onQuit(() => {
     clearInterval(timer)
     scheduler?.shutdown()
   })

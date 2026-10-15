@@ -1,18 +1,13 @@
 import Database from 'better-sqlite3'
-import { app } from 'electron'
 import path from 'path'
 import { initFts } from './fts'
 import { runMigrations } from './migrations'
 
 let sqlite: Database.Database | null = null
 
-export function getDbPath(): string {
-  const userDataPath = app.getPath('userData')
-  return path.join(userDataPath, 'astrorepo.db')
-}
-
-export function initDatabase(): void {
-  const dbPath = getDbPath()
+/** Opens astrorepo.db in the app's data folder, which the host that starts the app names (PI-005). */
+export function initDatabase(dataFolder: string): void {
+  const dbPath = path.join(dataFolder, 'astrorepo.db')
   sqlite = new Database(dbPath)
   sqlite.pragma('journal_mode = WAL')
   // Safe with WAL (a power cut can lose the last commits, never corrupt the file) and spares a

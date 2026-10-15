@@ -1,14 +1,18 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { initDatabase } from './db/connection'
-import { registerIpcHandlers } from './ipc/handlers'
+import { registerHandlers } from './ipc/handlers'
+import { ChannelRouter } from './transport/router'
+import { electronDesktop } from './electron/electron-desktop'
+import { electronJobsEnvironment } from './electron/jobs-environment'
+import { hostOverIpc } from './electron/ipc-host'
 import { startJobs } from './jobs-host'
 import { drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData } from './composition'
-import { nativeThumbnail } from './native-thumbnails'
-import { shrinkPicture } from './picture-shrinker'
+import { nativeThumbnail } from './electron/native-thumbnails'
+import { shrinkPicture } from './electron/picture-shrinker'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
 import createInspectWorker from './workers/inspect-worker?nodeWorker'
-import { loadCatalogueSeedData } from './services/catalogue'
+import { loadCatalogueSeedData, useSeedFolder } from './services/catalogue'
 import { autoGenerateCatalogueCollections } from './services/collection'
 
 let mainWindow: BrowserWindow | null = null
@@ -39,7 +43,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  initDatabase()
+  initDatabase(app.getPath('userData'))
+  useSeedFolder(app.isPackaged ? path.join(process.resourcesPath, 'data', 'catalogues') : path.join(app.getAppPath(), 'data', 'catalogues'))
   useAppData(app.getPath('userData'))
   const measurer = measureOnWorkers(() => createMeasureWorker({}))
   const pixels = inspectOnWorkers(() => createInspectWorker({}))
@@ -55,8 +60,10 @@ app.whenReady().then(() => {
   } catch (err) {
     console.error('Seed data loading failed (non-fatal):', err)
   }
-  registerIpcHandlers()
-  startJobs().catch(err => console.error('The job runner did not start:', err))
+  const router = new ChannelRouter()
+  registerHandlers(router, electronDesktop)
+  hostOverIpc(router)
+  startJobs(electronJobsEnvironment()).catch(err => console.error('The job runner did not start:', err))
   createWindow()
 
   app.on('activate', () => {

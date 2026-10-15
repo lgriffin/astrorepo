@@ -71,7 +71,7 @@ flowchart LR
    `midnightMonth` for the month it is highest at midnight, `highestAltitudeDeg` from your site,
    and `suitsNarrowband` from its type. The sentence at the top is `describeObject`.
 4. **Pictures.** Thumbnails (400 pixels) and the large view (2,048 pixels) are made by
-   `src/main/picture-shrinker.ts` with Electron's image decoder, which on Windows and macOS uses
+   `src/main/electron/picture-shrinker.ts` with Electron's image decoder, which on Windows and macOS uses
    the system's own thumbnailer and cache. Shrunk pictures are kept in memory (64 MB, least
    recently used first), so scrolling back does not decode them again. Where no system thumbnailer
    is available, a picture over 50 MB is not decoded; the viewer says so and offers its folder.
