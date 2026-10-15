@@ -1,12 +1,13 @@
 import fs from 'fs'
 import path from 'path'
 import type { Desktop, SaveResult } from '../transport/desktop'
+import { OpenInBrowser } from './http-host'
 
 /**
  * The Desktop port when astrorepo is served to a browser (specs/035-pi-variant, PI-012). The
  * server has no screen of its own: pickers are answered in the browser (the bridge asks for a
- * typed path), exports are saved in an exports folder on the server, and folders and links cannot
- * be opened from here, which each says.
+ * typed path), exports are saved in an exports folder on the server, web pages open in the
+ * browser, and folders cannot be opened from here, which it says.
  */
 export class ServedDesktop implements Desktop {
   constructor(private readonly exportsDir: string) {}
@@ -39,7 +40,8 @@ export class ServedDesktop implements Desktop {
     return `Folders open only on the computer astrorepo runs on. The folder is ${folderPath}`
   }
 
+  /** The browser opens the page itself: the server hands it the address (PI-012). */
   async openExternal(url: string): Promise<void> {
-    throw new Error(`Links open only on the computer astrorepo runs on. The link is ${url}`)
+    throw new OpenInBrowser(url)
   }
 }

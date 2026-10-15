@@ -39,6 +39,7 @@ const environment: JobsHostEnvironment = {
   // The server cannot tell whether anyone is at the machine, so the run window never starts a job by
   // itself; Run now still does (PI-013).
   userIdleSeconds: () => 0,
+  windowJobs: false,
   preventSleep: () => 0,
   allowSleep: () => undefined,
   onQuit: listener => { quitters.push(listener) }

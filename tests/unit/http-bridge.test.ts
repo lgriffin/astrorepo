@@ -12,7 +12,7 @@ function fakeFetch(status: number, body: unknown | Error) {
   return { fetchFn, sent }
 }
 
-const never = () => { throw new Error('asked') }
+const never = { ask: () => { throw new Error('asked') }, tell: () => { throw new Error('told') }, open: () => { throw new Error('opened') } }
 
 describe('The browser bridge (specs/035-pi-variant)', () => {
   it('[PI-010] Given a call, When it is made, Then it posts the arguments with the token and resolves with the value', async () => {
@@ -44,7 +44,7 @@ describe('The browser bridge (specs/035-pi-variant)', () => {
     const { fetchFn, sent } = fakeFetch(200, {})
     const questions: string[] = []
     const answers = ['  /mnt/nas/astro  ', '', null]
-    const bridge = httpBridge(fetchFn, 'tok', q => { questions.push(q); return answers.shift() ?? null })
+    const bridge = httpBridge(fetchFn, 'tok', { ...never, ask: q => { questions.push(q); return answers.shift() ?? null } })
     await expect(bridge.invoke('settings:pick-folder')).resolves.toEqual({ path: '/mnt/nas/astro' })
     await expect(bridge.invoke('import:pick-file')).resolves.toEqual({ path: null })
     await expect(bridge.invoke('fits:pick-folder')).resolves.toEqual({ path: null })
@@ -62,11 +62,43 @@ describe('The browser bridge (specs/035-pi-variant)', () => {
     const sent: Sent[] = []
     const browserWin = {
       fetch: async (url: string, init: Sent['init']) => { sent.push({ url, init }); return { ok: true, status: 200, json: async () => ({ value: 'served' }) } },
-      prompt: () => null
+      prompt: () => null,
+      alert: () => undefined,
+      open: () => null
     } as unknown as Window & { api?: Bridge }
     const doc = { querySelector: (sel: string) => (sel === 'meta[name="astrorepo-token"]' ? { getAttribute: () => 'page-token' } : null) } as unknown as Document
     installBridge(browserWin, doc)
     await expect(browserWin.api!.invoke('dashboard:stats')).resolves.toBe('served')
     expect(sent[0].init.headers['X-Astrorepo-Token']).toBe('page-token')
+  })
+
+  it('[PI-012] Given a web page the server cannot open, When the server hands back its address, Then the browser opens it in a new tab', async () => {
+    const opened: string[] = []
+    const { fetchFn } = fakeFetch(200, { openInBrowser: 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=M31' })
+    await expect(httpBridge(fetchFn, 'tok', { ...never, open: u => opened.push(u) }).invoke('gallery:open-reference', { object_id: 'x', site: 'simbad' })).resolves.toEqual({ opened: true })
+    expect(opened).toEqual(['https://simbad.cds.unistra.fr/simbad/sim-id?Ident=M31'])
+  })
+
+  it('[PI-012] Given an address that is not a web page, When the server hands it back, Then nothing is opened', async () => {
+    const { fetchFn } = fakeFetch(200, { openInBrowser: 'javascript:alert(1)', value: { opened: false } })
+    await expect(httpBridge(fetchFn, 'tok', never).invoke('gallery:open-reference')).resolves.toEqual({ opened: false })
+  })
+
+  it('[PI-012] Given a folder that cannot open from the server, When it is asked for, Then the browser is told why and where it is', async () => {
+    const told: string[] = []
+    const { fetchFn } = fakeFetch(200, { value: { success: false, error: 'Folders open only on the computer astrorepo runs on. The folder is /data/M31' } })
+    await httpBridge(fetchFn, 'tok', { ...never, tell: m => told.push(m) }).invoke('home:open-folder', { folder_path: '/data/M31' })
+    expect(told).toEqual(['Folders open only on the computer astrorepo runs on. The folder is /data/M31'])
+  })
+
+  it('[PI-012] Given an export from Settings saved on the server, When it returns, Then the browser is told where; a cancelled one says nothing', async () => {
+    const told: string[] = []
+    const saved = fakeFetch(200, { value: { saved: true, path: '/home/pi/.config/astrorepo-server/exports/targets.csv' } })
+    await httpBridge(saved.fetchFn, 'tok', { ...never, tell: m => told.push(m) }).invoke('export:targets-csv')
+    expect(told).toEqual(['Saved on the computer astrorepo runs on: /home/pi/.config/astrorepo-server/exports/targets.csv'])
+    const cancelled = fakeFetch(200, { value: { saved: false } })
+    await expect(httpBridge(cancelled.fetchFn, 'tok', never).invoke('export:sessions-csv')).resolves.toEqual({ saved: false })
+    const grades = fakeFetch(200, { value: { saved: true, path: '/x.csv' } })
+    await expect(httpBridge(grades.fetchFn, 'tok', never).invoke('grades:export', { target_id: 't' })).resolves.toEqual({ saved: true, path: '/x.csv' })
   })
 })

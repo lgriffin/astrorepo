@@ -1,11 +1,12 @@
 import fs from 'fs'
 import http from 'http'
+import net from 'net'
 import os from 'os'
 import path from 'path'
 import type { AddressInfo } from 'net'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createHttpHost, hostName, hostsFor } from '../../src/main/http/http-host'
+import { createHttpHost, hostName, hostsFor, OpenInBrowser } from '../../src/main/http/http-host'
 import { ChannelRouter } from '../../src/main/transport/router'
 
 const TOKEN = 'a'.repeat(48)
@@ -14,12 +15,19 @@ fs.writeFileSync(path.join(staticDir, 'index.html'), '<html><head><title>astrore
 fs.mkdirSync(path.join(staticDir, 'assets'))
 fs.writeFileSync(path.join(staticDir, 'assets', 'app.js'), 'console.log(1)')
 fs.writeFileSync(path.join(os.tmpdir(), 'http-host-secret.txt'), 'secret')
+let linked = true
+try {
+  fs.symlinkSync(path.join(os.tmpdir(), 'http-host-secret.txt'), path.join(staticDir, 'leak.txt'))
+} catch {
+  linked = false // Windows without the right to make links
+}
 
 const ran: string[] = []
 const router = new ChannelRouter()
 router.handle('echo', (...args: unknown[]) => { ran.push('echo'); return { args } })
 router.handle('nothing', () => { ran.push('nothing'); return undefined })
 router.handle('broken', () => { ran.push('broken'); throw new Error('The disk is full.') })
+router.handle('link', (url: unknown) => { ran.push('link'); throw new OpenInBrowser(String(url)) })
 router.handle('strict', (raw: unknown) => { ran.push('strict'); return z.object({ n: z.number() }).parse(raw) })
 
 const server = createHttpHost({ router, staticDir, token: TOKEN, allowedHosts: ['127.0.0.1', 'astropi.local'], maxBodyBytes: 2048 })
@@ -34,7 +42,21 @@ afterAll(async () => {
   fs.rmSync(staticDir, { recursive: true, force: true })
 })
 
-interface Answer { status: number; headers: http.IncomingHttpHeaders; body: string; json: () => { value?: unknown; error?: string } }
+interface Answer { status: number; headers: http.IncomingHttpHeaders; body: string; json: () => { value?: unknown; error?: string; openInBrowser?: string } }
+
+/** Sends raw bytes and returns what comes back, or '' when the server closes without answering. */
+function raw(bytes: string, keepOpen = false): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(port, '127.0.0.1', () => socket.write(bytes))
+    let got = ''
+    socket.on('data', d => {
+      got += d.toString('utf-8')
+      if (keepOpen && got.includes('\r\n\r\n')) socket.destroy()
+    })
+    socket.on('close', () => resolve(got))
+    socket.on('error', e => (got ? resolve(got) : reject(e)))
+  })
+}
 
 function request(options: { method?: string; path: string; headers?: Record<string, string>; body?: string }): Promise<Answer> {
   return new Promise((resolve, reject) => {
@@ -151,6 +173,35 @@ describe('The headless HTTP host (specs/035-pi-variant)', () => {
     }
     expect((await request({ path: '/a%00b' })).status).toBe(400)
     expect((await request({ method: 'DELETE', path: '/' })).status).toBe(405)
+  })
+})
+
+describe('The headless HTTP host under hostile requests (specs/035-pi-variant)', () => {
+  it('[PI-016] Given a request line the URL parser rejects, When it arrives, Then the server answers 400 and keeps serving', async () => {
+    const answer = await raw('GET http://a:99999/ HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n')
+    expect(answer).toMatch(/^HTTP\/1\.1 400/)
+    expect((await request({ path: '/' })).status).toBe(200)
+  })
+
+  it('[PI-011] Given a chunked body that keeps streaming past the limit, When it crosses the limit, Then 413 comes back without waiting for the end', async () => {
+    const head = `POST /api/invoke/echo HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nX-Astrorepo-Token: ${TOKEN}\r\nTransfer-Encoding: chunked\r\n\r\n`
+    const chunk = 'x'.repeat(3000)
+    const answer = await raw(`${head}${chunk.length.toString(16)}\r\n${chunk}\r\n`, true)
+    expect(answer).toMatch(/^HTTP\/1\.1 413/)
+  })
+
+  it('[PI-015] Given a link inside the built renderer to a file outside it, When it is read, Then it is not found', async () => {
+    if (!linked) return
+    const answer = await request({ path: '/leak.txt' })
+    expect(answer.status).toBe(404)
+    expect(answer.body).not.toContain('secret')
+  })
+
+  it('[PI-012] Given a handler that asks the browser to open a web page, When posted, Then the address comes back for the browser; any other address is an error', async () => {
+    expect((await call('link', ['https://en.wikipedia.org/wiki/M31'])).json()).toEqual({ openInBrowser: 'https://en.wikipedia.org/wiki/M31' })
+    const notWeb = await call('link', ['file:///etc/passwd'])
+    expect(notWeb.status).toBe(500)
+    expect(notWeb.json().openInBrowser).toBeUndefined()
   })
 })
 

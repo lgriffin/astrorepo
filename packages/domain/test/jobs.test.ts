@@ -146,6 +146,21 @@ describe('scheduling', () => {
     expect(scheduleJobs(input({ jobs: [j], load: { userIdleSeconds: 3600, cpuPercent: 80 } })).queue[0].wait).toEqual({ code: 'cpu', maxCpuPercent: 30, cpuPercent: 80 })
   })
 
+  it('[PI-013] Given a machine that never starts window jobs, When the window is open and no idle time is asked, Then a window job does not start and waits for Run now', () => {
+    const settings = { ...input().settings, idleMinutes: 0 }
+    const load = { userIdleSeconds: 0, cpuPercent: 0, windowJobs: false as const }
+    const s = scheduleJobs(input({ settings, jobs: [job()], load }))
+    expect(s.start).toBeNull()
+    expect(s.queue[0].wait).toEqual({ code: 'manual' })
+    expect(scheduleJobs(input({ settings, jobs: [job()], load: { userIdleSeconds: 0, cpuPercent: 0 } })).start).not.toBeNull()
+  })
+
+  it('[PI-013] Given a machine that never starts window jobs, When a job is Run now, Then it starts', () => {
+    const j = job({ timing: 'now' })
+    const s = scheduleJobs(input({ now: local(14), jobs: [j], load: { userIdleSeconds: 0, cpuPercent: 99, windowJobs: false } }))
+    expect(s.start).toBe(j.id)
+  })
+
   it('[JOB-003] Given the machine will not report its load, When the window is open, Then the job starts', () => {
     const j = job()
     expect(scheduleJobs(input({ jobs: [j], load: { userIdleSeconds: null, cpuPercent: null } })).start).toBe(j.id)

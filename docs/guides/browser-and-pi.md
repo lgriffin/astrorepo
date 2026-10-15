@@ -11,12 +11,13 @@ npm run build    # builds the pages into out/renderer
 npm run serve    # serves them at http://127.0.0.1:8090/
 ```
 
-Open that address in a browser. The desktop app and the server share one data folder by default,
-so both show the same library.
+Open that address in a browser. The server keeps its own library in an `astrorepo-server` folder
+beside the desktop app's, so the two never run jobs from one queue. Do not point `ASTRO_DATA` at the
+desktop app's folder while the desktop app is open.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `ASTRO_DATA` | the desktop app's data folder (`%APPDATA%\astrorepo`, `~/.config/astrorepo`) | Where the database, jobs logs and exports live |
+| `ASTRO_DATA` | `astrorepo-server` beside the desktop app's data folder (`%APPDATA%\astrorepo-server`, `~/.config/astrorepo-server`) | Where the database, jobs logs and exports live |
 | `ASTRO_BIND` | `127.0.0.1` | Set `0.0.0.0` to let other computers on your network open it |
 | `ASTRO_PORT` | `8090` | The port to listen on |
 | `ASTRO_HOSTS` | none | Extra names the server answers to, comma separated (it already answers to `localhost`, its host name, `<host name>.local` and its own addresses) |
@@ -28,11 +29,12 @@ so both show the same library.
   such as `/mnt/astro/images` on a Pi with the NAS mounted.
 - **Exports** (CSV of targets, grades, mosaic plans) are saved in the `exports` folder inside the
   data folder, and the page tells you the path.
-- **Open folder and web links** (SIMBAD, Wikipedia) cannot open from the server; the message shows
-  the folder or link instead.
+- **Web links** (SIMBAD, Wikipedia) open in a new tab. **Open folder** cannot open from the server;
+  the message shows the folder instead.
 - **Jobs** run when you press Run now. The run window never starts one by itself, because the
   server cannot tell whether anyone is using the computer.
-- **Gallery pictures** are sent at full size, since the server has no image shrinker yet.
+- **Gallery pictures** are sent at full size, and Messier tiles whose only pictures are JPEG or
+  TIFF are not drawn, since the server has no image decoder yet.
 
 ## Keep it on your home network
 

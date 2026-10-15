@@ -293,6 +293,8 @@ export interface JobsHostOptions {
   logsDir: string
   /** Seconds since the last keyboard or mouse input (Electron's powerMonitor). */
   userIdleSeconds: () => number | null
+  /** False where the run window must never start a job (the headless server, PI-013). */
+  windowJobs?: false
   onChange: () => void
 }
 
@@ -302,7 +304,7 @@ export function composeJobs(db: Database.Database, options: JobsHostOptions): Jo
   return makeJobScheduler({
     store: new SqliteJobStore(db),
     settings: new SqliteJobSettings(db),
-    machine: new NodeMachineMonitor({ userIdleSeconds: options.userIdleSeconds }),
+    machine: new NodeMachineMonitor({ userIdleSeconds: options.userIdleSeconds, windowJobs: options.windowJobs }),
     runner: new NodeProcessRunner(),
     logs: new FileJobLogs(options.logsDir),
     workspace,

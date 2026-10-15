@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_PORT, serverSettings } from '../../src/server/settings'
 
 describe('The headless server settings (specs/035-pi-variant)', () => {
-  it('[PI-013] Given no settings on Linux, When read, Then it binds to 127.0.0.1 on the default port and shares the desktop app\'s data folder', () => {
+  it('[PI-013] Given no settings on Linux, When read, Then it binds to 127.0.0.1 on the default port and keeps its own data folder beside the desktop app\'s', () => {
     const s = serverSettings({}, 'linux', '/home/pi', '/opt/astrorepo')
     expect(s).toEqual({
-      dataFolder: path.join('/home/pi', '.config', 'astrorepo'),
+      dataFolder: path.join('/home/pi', '.config', 'astrorepo-server'),
       seedFolder: path.join('/opt/astrorepo', 'data', 'catalogues'),
       staticDir: path.join('/opt/astrorepo', 'out', 'renderer'),
       bind: '127.0.0.1',
@@ -16,10 +16,10 @@ describe('The headless server settings (specs/035-pi-variant)', () => {
     expect(DEFAULT_PORT).toBe(8090)
   })
 
-  it('[PI-013] Given Windows and macOS, When read, Then the data folder is where Electron keeps it', () => {
-    expect(serverSettings({ APPDATA: 'C:\\Users\\leigh\\AppData\\Roaming' }, 'win32', 'C:\\Users\\leigh', 'C:\\astro').dataFolder).toBe(path.join('C:\\Users\\leigh\\AppData\\Roaming', 'astrorepo'))
-    expect(serverSettings({}, 'darwin', '/Users/leigh', '/x').dataFolder).toBe(path.join('/Users/leigh', 'Library', 'Application Support', 'astrorepo'))
-    expect(serverSettings({ XDG_CONFIG_HOME: '/cfg' }, 'linux', '/home/pi', '/x').dataFolder).toBe(path.join('/cfg', 'astrorepo'))
+  it('[PI-013] Given Windows and macOS, When read, Then the data folder sits beside the one Electron keeps', () => {
+    expect(serverSettings({ APPDATA: 'C:\\Users\\leigh\\AppData\\Roaming' }, 'win32', 'C:\\Users\\leigh', 'C:\\astro').dataFolder).toBe(path.join('C:\\Users\\leigh\\AppData\\Roaming', 'astrorepo-server'))
+    expect(serverSettings({}, 'darwin', '/Users/leigh', '/x').dataFolder).toBe(path.join('/Users/leigh', 'Library', 'Application Support', 'astrorepo-server'))
+    expect(serverSettings({ XDG_CONFIG_HOME: '/cfg' }, 'linux', '/home/pi', '/x').dataFolder).toBe(path.join('/cfg', 'astrorepo-server'))
   })
 
   it('[PI-013] Given ASTRO_ settings, When read, Then each overrides its default', () => {

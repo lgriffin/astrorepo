@@ -15,9 +15,9 @@ export const DEFAULT_PORT = 8090
 
 /**
  * Reads ASTRO_DATA, ASTRO_STATIC, ASTRO_BIND, ASTRO_PORT and ASTRO_HOSTS. The data folder defaults
- * to the desktop app's own (`%APPDATA%\astrorepo`, `~/Library/Application Support/astrorepo` or
- * `~/.config/astrorepo`), so both see the same library on one machine. The server binds to
- * 127.0.0.1 unless told otherwise, so nothing on the network reaches it by accident.
+ * to `astrorepo-server` beside the desktop app's own (`%APPDATA%`, `~/Library/Application Support`
+ * or `~/.config`), never the desktop app's folder itself, so two job runners never share one queue.
+ * The server binds to 127.0.0.1 unless told otherwise, so nothing on the network reaches it by accident.
  */
 export function serverSettings(env: Record<string, string | undefined>, platform: string, home: string, cwd: string): ServerSettings {
   const appData = platform === 'win32'
@@ -30,7 +30,7 @@ export function serverSettings(env: Record<string, string | undefined>, platform
     throw new Error(`ASTRO_PORT must be a port number from 1 to 65535, not "${env.ASTRO_PORT}".`)
   }
   return {
-    dataFolder: env.ASTRO_DATA || path.join(appData, 'astrorepo'),
+    dataFolder: env.ASTRO_DATA || path.join(appData, 'astrorepo-server'),
     seedFolder: path.join(cwd, 'data', 'catalogues'),
     staticDir: env.ASTRO_STATIC || path.join(cwd, 'out', 'renderer'),
     bind: env.ASTRO_BIND || '127.0.0.1',

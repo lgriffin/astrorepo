@@ -69,27 +69,50 @@ function send(res: http.ServerResponse, status: number, body: unknown, method = 
   res.end(method === 'HEAD' ? undefined : text)
 }
 
-/** Reads the body up to `limit` bytes; resolves null when it is longer. */
+/**
+ * Reads the body up to `limit` bytes; resolves null as soon as it is longer, without reading the
+ * rest, so a sender cannot hold the connection by streaming without end (PI-011).
+ */
 function readBody(req: http.IncomingMessage, limit: number): Promise<string | null> {
   return new Promise((resolve, reject) => {
-    const declared = Number(req.headers['content-length'] ?? 0)
-    if (declared > limit) {
+    if (Number(req.headers['content-length'] ?? 0) > limit) {
       resolve(null)
-      req.resume()
       return
     }
     const chunks: Buffer[] = []
     let size = 0
-    let over = false
-    req.on('data', (chunk: Buffer) => {
+    const onData = (chunk: Buffer) => {
       size += chunk.length
-      if (size > limit) over = true
-      else if (!over) chunks.push(chunk)
-    })
-    req.on('end', () => resolve(over ? null : Buffer.concat(chunks).toString('utf-8')))
+      if (size > limit) {
+        req.off('data', onData)
+        req.pause()
+        resolve(null)
+      } else {
+        chunks.push(chunk)
+      }
+    }
+    req.on('data', onData)
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')))
     req.on('error', reject)
   })
 }
+
+/** Answers and then closes the connection, for a request whose body is left unread. */
+function refuseUnread(res: http.ServerResponse, status: number, body: unknown): void {
+  res.setHeader('Connection', 'close')
+  send(res, status, body)
+  res.on('finish', () => res.req.destroy())
+}
+
+/** An error a Desktop throws when the browser itself should open a web page (PI-012). */
+export class OpenInBrowser extends Error {
+  constructor(readonly url: string) {
+    super(`Open ${url} in the browser.`)
+    this.name = 'OpenInBrowser'
+  }
+}
+
+const webPage = (url: string) => /^https?:\/\//i.test(url)
 
 /**
  * Serves the renderer and every channel of the router over HTTP, so a browser on the network or a
@@ -100,6 +123,8 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
   const limit = options.maxBodyBytes ?? MAX_BODY_BYTES
   const allowed = new Set(options.allowedHosts.map(h => h.toLowerCase()))
   const root = path.resolve(options.staticDir)
+  let realRootCache: string | null = null
+  const realRoot = () => (realRootCache ??= fs.realpathSync(root))
 
   async function api(req: http.IncomingMessage, res: http.ServerResponse, pathname: string): Promise<void> {
     const m = /^\/api\/invoke\/([^/]+)$/.exec(pathname)
@@ -111,7 +136,7 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
     if (!sameToken(req.headers[TOKEN_HEADER], options.token)) return send(res, 401, { error: 'The page is out of date. Reload it to carry on.' })
     if (!(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return send(res, 415, { error: 'API requests carry JSON.' })
     const text = await readBody(req, limit)
-    if (text === null) return send(res, 413, { error: `The request is larger than ${Math.round(limit / 1024)} KB.` })
+    if (text === null) return refuseUnread(res, 413, { error: `The request is larger than ${Math.round(limit / 1024)} KB.` })
     let body: unknown
     try {
       body = JSON.parse(text)
@@ -131,6 +156,7 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
       const value = await options.router.invoke(channel, ...args)
       send(res, 200, { value: value === undefined ? null : value })
     } catch (error) {
+      if (error instanceof OpenInBrowser && webPage(error.url)) return send(res, 200, { openInBrowser: error.url })
       const message = error instanceof Error ? error.message : String(error)
       send(res, error instanceof Error && error.name === 'ZodError' ? 400 : 500, { error: message })
     }
@@ -149,8 +175,11 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
     if (target !== root && !target.startsWith(root + path.sep)) return send(res, 404, { error: 'Not found.' }, req.method)
     let data: Buffer
     try {
-      if (!fs.statSync(target).isFile()) return send(res, 404, { error: 'Not found.' }, req.method)
-      data = fs.readFileSync(target)
+      // A link inside the built renderer must not lead outside it.
+      const real = fs.realpathSync(target)
+      if (real !== realRoot() && !real.startsWith(realRoot() + path.sep)) return send(res, 404, { error: 'Not found.' }, req.method)
+      if (!fs.statSync(real).isFile()) return send(res, 404, { error: 'Not found.' }, req.method)
+      data = fs.readFileSync(real)
     } catch {
       return send(res, 404, { error: 'Not found.' }, req.method)
     }
@@ -165,14 +194,29 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
     res.end(req.method === 'HEAD' ? undefined : data)
   }
 
+  const fail = (res: http.ServerResponse, error: unknown) => {
+    if (res.headersSent) res.destroy()
+    else send(res, 500, { error: error instanceof Error ? error.message : String(error) })
+  }
+
   return http.createServer((req, res) => {
-    const host = hostName(req.headers.host)
-    if (host === null || !allowed.has(host)) return send(res, 403, { error: 'astrorepo does not answer to that address. Add it to ASTRO_HOSTS.' }, req.method)
-    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
-    if (pathname.startsWith('/api/')) {
-      api(req, res, pathname).catch(error => send(res, 500, { error: error instanceof Error ? error.message : String(error) }))
-      return
+    // Nothing a request carries may take the server down (PI-016).
+    try {
+      const host = hostName(req.headers.host)
+      if (host === null || !allowed.has(host)) return send(res, 403, { error: 'astrorepo does not answer to that address. Add it to ASTRO_HOSTS.' }, req.method)
+      let pathname: string
+      try {
+        pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+      } catch {
+        return send(res, 400, { error: 'The address is not valid.' }, req.method)
+      }
+      if (pathname.startsWith('/api/')) {
+        api(req, res, pathname).catch(error => fail(res, error))
+        return
+      }
+      file(req, res, pathname)
+    } catch (error) {
+      fail(res, error)
     }
-    file(req, res, pathname)
   })
 }

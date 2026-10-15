@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ServedDesktop } from '../../src/main/http/served-desktop'
+import { OpenInBrowser } from '../../src/main/http/http-host'
 
 const dirs: string[] = []
 const exportsDir = () => {
@@ -34,9 +35,11 @@ describe('The Desktop port when served to a browser (specs/035-pi-variant)', () 
     await expect(desktop.pickFile()).resolves.toBeNull()
   })
 
-  it('[PI-012] Given a folder or a link to open, When asked, Then it cannot open them here and says where they are', async () => {
+  it('[PI-012] Given a folder or a link to open, When asked, Then the folder cannot open here and says where it is, and the link is handed to the browser', async () => {
     const desktop = new ServedDesktop(exportsDir())
     await expect(desktop.openFolder('/data/M31')).resolves.toBe('Folders open only on the computer astrorepo runs on. The folder is /data/M31')
-    await expect(desktop.openExternal('https://simbad.cds.unistra.fr/')).rejects.toThrow('Links open only on the computer astrorepo runs on. The link is https://simbad.cds.unistra.fr/')
+    const opening = desktop.openExternal('https://simbad.cds.unistra.fr/')
+    await expect(opening).rejects.toBeInstanceOf(OpenInBrowser)
+    await expect(opening).rejects.toMatchObject({ url: 'https://simbad.cds.unistra.fr/' })
   })
 })
