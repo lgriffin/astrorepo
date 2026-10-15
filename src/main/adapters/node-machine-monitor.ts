@@ -7,6 +7,8 @@ type CpuTimes = { idle: number; total: number }
 export interface NodeMachineMonitorOptions {
   /** Seconds since the last keyboard or mouse input (Electron's powerMonitor); null when unknown. */
   userIdleSeconds?: () => number | null
+  /** False where the run window must never start a job (the headless server, PI-013). */
+  windowJobs?: false
   cpus?: () => os.CpuInfo[]
   wait?: (ms: number) => Promise<void>
 }
@@ -40,6 +42,7 @@ export class NodeMachineMonitor implements MachineMonitor {
     const busy = now.total - this.last.total
     const cpuPercent = busy > 0 ? Math.round((100 * (busy - (now.idle - this.last.idle))) / busy) : null
     this.last = now
-    return { userIdleSeconds: this.options.userIdleSeconds?.() ?? null, cpuPercent }
+    const load: MachineLoad = { userIdleSeconds: this.options.userIdleSeconds?.() ?? null, cpuPercent }
+    return this.options.windowJobs === false ? { ...load, windowJobs: false } : load
   }
 }

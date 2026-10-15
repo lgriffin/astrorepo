@@ -36,7 +36,8 @@ when the code says otherwise, and the reasons are recorded here.
 | H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
 | J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
 | R1 · Pi variant: transport seam | Every IPC handler on a channel router with no Electron in it, and a Desktop port for pickers, saving exports, opening folders and links, so a headless server can host the same channels for a Raspberry Pi kiosk. Nothing changes on Windows | [035](../specs/035-pi-variant/requirements.md) | Done |
-| R2 to R5 · Pi variant | Headless host over HTTP, the Pi install and kiosk, touch-first tonight view with red night mode and an idle slideshow, field ingest to the NAS | [035](../specs/035-pi-variant/requirements.md) | Next: R2 |
+| R2 · Pi variant: headless host | `npm run serve` runs astrorepo without Electron: the same pages and handlers in any browser over HTTP, locked to this machine's names with a per-start token. The web UI step after the Windows app | [035](../specs/035-pi-variant/requirements.md) | Done |
+| R3 to R5 · Pi variant | The Pi install and kiosk, touch-first tonight view with red night mode and an idle slideshow, field ingest to the NAS | [035](../specs/035-pi-variant/requirements.md) | Next: R3 |
 | W · Clear skies | Home opens on tonight and the next two nights, each "Clear skies", "Clear spells" (with times) or "Cloudy" over its dark window, from Open-Meteo or MET Norway (chosen in Settings → Weather) and Leigh's own weatherlink_website service (tonight's rain and frost chances, the low, the warnings in force), with dew warnings and the moon | [036](../specs/036-clear-skies/requirements.md) | Done |
 | E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
@@ -148,7 +149,7 @@ app has run on real data on the Windows PC and the licence is settled.
 - **A Raspberry Pi variant** (spec 035). Leigh asked (15 October 2026) for a variant of the app
   on a Pi, with RaspAstroDisplay as inspiration, and chose a headless server with a kiosk over
   an Electron build for arm64. It is also the web UI step after the Windows app. R1 moves the
-  handlers onto a router any host can serve; R2 serves it over HTTP.
+  handlers onto a router any host can serve; R2 serves it over HTTP (`npm run serve`).
 - **One Vespera copy flow** (spec 034). Leigh's ingest design adds what F1 did not: a review of
   each session's counts and findings before anything is copied, a target astrorepo names (with
   why) and the user can override, folder names that carry the counts, resume from a `.part` with

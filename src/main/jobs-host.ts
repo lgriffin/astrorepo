@@ -14,6 +14,8 @@ const TICK_MS = 60_000
 export interface JobsHostEnvironment {
   dataFolder: string
   userIdleSeconds: () => number
+  /** False where the run window must never start a job (the headless server, PI-013). */
+  windowJobs?: false
   /** Keeps the machine from sleeping; returns a handle for `allowSleep`. */
   preventSleep: () => number
   allowSleep: (handle: number) => void
@@ -63,6 +65,7 @@ export async function startJobs(host: JobsHostEnvironment): Promise<JobScheduler
   scheduler = composeJobs(getSqlite(), {
     logsDir: path.join(host.dataFolder, 'jobs'),
     userIdleSeconds: host.userIdleSeconds,
+    windowJobs: host.windowJobs,
     onChange: () => {
       holdAwake()
       setTimeout(kickJobs, 0)

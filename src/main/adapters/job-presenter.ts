@@ -43,6 +43,8 @@ export function waitText(wait: WaitReason, estimate: JobEstimate, now: Date): st
       return `Waits until the PC has been idle for ${wait.idleMinutes} minutes (last used ${formatDuration(wait.idleSeconds)} ago).`
     case 'cpu':
       return `Waits for CPU use to drop below ${wait.maxCpuPercent}% (now ${wait.cpuPercent}%).`
+    case 'manual':
+      return 'Waits for Run now: astrorepo served without the desktop app never starts a job from the run window.'
     case 'overrun':
       return `Would run past ${localClock(wait.closesAt)} (about ${formatDuration(estimate.seconds)}, with ${formatDuration(wait.leftSeconds)} left), so it waits for the window at ${when(wait.opensAt, now)}.`
   }

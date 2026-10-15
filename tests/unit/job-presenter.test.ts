@@ -93,6 +93,7 @@ describe('job presenter', () => {
     const now = local(2, 30)
     const est = { seconds: 45 * 60, basis: 'guess' as const }
     expect(waitText({ code: 'running' }, est, now)).toBe('Waits for the running job to finish.')
+    expect(waitText({ code: 'manual' }, est, now)).toBe('Waits for Run now: astrorepo served without the desktop app never starts a job from the run window.')
     expect(waitText({ code: 'space', shortBytes: 2 * GB }, est, now)).toBe('Waits for disk space: 2.0 GB short where it writes.')
     expect(waitText({ code: 'space-unknown' }, est, now)).toBe('Waits until the disk it writes to reports its free space.')
     expect(waitText({ code: 'window', opensAt: local(2, 0, 31) }, est, now)).toBe('Waits for the run window at 02:00 tomorrow.')

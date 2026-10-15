@@ -19,6 +19,8 @@ src/main/
   ipc/           driving adapter: handlers call use cases from the composition root.
   transport/     the ChannelRouter the handlers sit on and the Desktop port (pickers, saving, opening).
   electron/      the only Electron code: IPC host, Desktop over dialogs and shell, image decoders.
+  http/          the HTTP host and the Desktop port for a browser (npm run serve).
+src/server/      the headless server's entry point and settings; no Electron (PI-005).
   services/      legacy services, shrinking as logic moves into packages/.
 ```
 

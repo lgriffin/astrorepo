@@ -187,6 +187,11 @@ export interface MachineLoad {
   userIdleSeconds: number | null
   /** CPU use across all cores, 0 to 100; null when unknown. */
   cpuPercent: number | null
+  /**
+   * False on a machine that cannot tell whether anyone is using it (the headless server), which
+   * never starts a window job by itself; Run now still starts (specs/035-pi-variant, PI-013).
+   */
+  windowJobs?: false
 }
 
 /** Why a queued job is not starting. */
@@ -199,6 +204,7 @@ export type WaitReason =
   | { code: 'idle'; idleMinutes: number; idleSeconds: number }
   | { code: 'cpu'; maxCpuPercent: number; cpuPercent: number }
   | { code: 'overrun'; closesAt: Date; leftSeconds: number; opensAt: Date }
+  | { code: 'manual' }
 
 export interface QueueEntry {
   jobId: string
@@ -245,6 +251,7 @@ export function scheduleJobs(input: ScheduleInput): Schedule {
   let start: string | null = input.jobs.some(j => j.state === 'running') ? 'running' : null
 
   const machineWait = (): WaitReason | null => {
+    if (load.windowJobs === false) return { code: 'manual' }
     if (!window.open) return { code: 'window', opensAt: window.opensAt }
     if (load.userIdleSeconds !== null && load.userIdleSeconds < settings.idleMinutes * 60) {
       return { code: 'idle', idleMinutes: settings.idleMinutes, idleSeconds: load.userIdleSeconds }
