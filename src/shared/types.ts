@@ -1093,6 +1093,38 @@ export type ForwardPlanView =
       seasons: TargetSeasonView[]
     }
 
+/** One night on Home's clear-skies card (specs/036-clear-skies). */
+export interface NightSkyView {
+  night: string
+  /** "Tonight", then "Fri 16 Oct". */
+  label: string
+  verdict: 'clear' | 'clear-spells' | 'cloudy' | 'no-forecast' | 'no-darkness'
+  /** "Clear skies", "Clear spells", "Cloudy", "No forecast yet" or "No dark window". */
+  headline: string
+  darkStart: string | null
+  darkEnd: string | null
+  /** The longest clear stretch, when the night has clear spells. */
+  spellStart: string | null
+  spellEnd: string | null
+  /** Short figures: cloud, chance of rain, clear hours, the moon. */
+  figures: string[]
+  /** Sentences: what the user's weather service says, dew, why a clear forecast was held back. */
+  notes: string[]
+  warnings: { level: 'yellow' | 'orange' | 'red' | 'unknown'; text: string }[]
+}
+
+export type ClearSkiesView =
+  | { status: 'no-site'; message: string }
+  | { status: 'off'; message: string }
+  | {
+      status: 'ok'
+      nights: NightSkyView[]
+      /** Each source asked, and why it could not be used, if it could not. */
+      sources: { name: string; problem: string | null }[]
+      /** Who the forecast is from, as each provider's licence asks. */
+      credit: string | null
+    }
+
 /** One external tool in Settings > Tools (specs/015-tool-hub). */
 export interface ToolView {
   id: string

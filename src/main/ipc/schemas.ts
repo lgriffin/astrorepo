@@ -368,6 +368,7 @@ export const schemas = {
   'cockpit:dismiss': z.object({ suggestion_id: id }),
   'discovery:target': z.object({ target_id: id }),
   'planning:forward': z.object({}).optional(),
+  'weather:outlook': z.object({ fresh: z.boolean().optional() }).optional(),
   'sky:solve-target': z.object({ target_id: id, timing: z.enum(['window', 'now']).optional() }),
   'sky:target-geometry': z.object({ target_id: id }),
   'mosaic:plan': mosaicRequest,

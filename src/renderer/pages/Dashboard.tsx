@@ -6,9 +6,10 @@ import { invoke } from '../hooks/useIPC'
 import { ProgressStrip } from '../components/cockpit/ProgressStrip'
 import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
 import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
+import { ClearSkiesCard } from '../components/cockpit/ClearSkiesCard'
 import { SetupCard } from '../components/cockpit/SetupCard'
 import { useToast } from '../contexts/ToastContext'
-import type { Recommendation, CockpitOverview, ForwardPlanView } from '@shared/types'
+import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
 
@@ -18,8 +19,9 @@ const FAILED = 'failed' as const
 const REFRESH_MS = 15_000
 
 /**
- * Home (specs/017-unified-ux, UX-006): what to do next first, then the coming nights and what is
- * hiding in the files, then how far the targets have got. Totals live on Insights.
+ * Home (specs/017-unified-ux, UX-006): the next three nights' skies at a glance (specs/036-clear-skies),
+ * what to do next, then the coming nights and what is hiding in the files, then how far the
+ * targets have got. Totals live on Insights.
  */
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
@@ -28,6 +30,7 @@ export function Dashboard(): React.ReactElement {
   const [recommendations, setRecommendations] = useState<Recommendation[] | null | typeof FAILED>(null)
   const [cockpit, setCockpit] = useState<CockpitOverview | null | typeof FAILED>(null)
   const [plan, setPlan] = useState<ForwardPlanView | null | typeof FAILED>(null)
+  const [skies, setSkies] = useState<ClearSkiesView | null | typeof FAILED>(null)
   const { addToast } = useToast()
   // Only the newest recommendations request may update the list, so a slow old one never wins.
   const recommendationsRequest = useRef(0)
@@ -49,7 +52,14 @@ export function Dashboard(): React.ReactElement {
       .then(setPlan)
       .catch(() => setPlan(FAILED))
 
+  const loadSkies = (): Promise<void> =>
+    invoke<ClearSkiesView>('weather:outlook')
+      .then(setSkies)
+      .catch(() => setSkies(FAILED))
+
   useEffect(() => {
+    // The forecast asks services on the network, so it loads on its own like the plan.
+    void loadSkies()
     void loadRecommendations()
     void loadCockpit()
     // Planning computes a year of nights, so it loads on its own and never holds up the page.
@@ -119,6 +129,16 @@ export function Dashboard(): React.ReactElement {
     >
       <div className="space-y-4">
         <SetupCard />
+
+        {skies === null ? (
+          <Card title="Clear skies"><EmptyState>Looking at the forecast for the next three nights…</EmptyState></Card>
+        ) : skies === FAILED ? (
+          <Card title="Clear skies">
+            <EmptyState action={<LinkButton onClick={() => { setSkies(null); void loadSkies() }}>Try again</LinkButton>}>Could not read the forecast.</EmptyState>
+          </Card>
+        ) : (
+          <ClearSkiesCard outlook={skies} />
+        )}
 
         <Card title="Next actions">
           {recommendations === null ? (

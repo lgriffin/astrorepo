@@ -94,6 +94,7 @@ export function locate(pathname: string): Location | null {
 /** The sections of Settings, in page order; links elsewhere open Settings at one of them. */
 export const SETTINGS_SECTIONS = [
   { id: 'location', label: 'Your site' },
+  { id: 'weather', label: 'Weather' },
   { id: 'folders', label: 'Folders' },
   { id: 'tools', label: 'Tools' },
   { id: 'run-window', label: 'Run window' },

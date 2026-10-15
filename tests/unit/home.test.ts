@@ -29,10 +29,11 @@ const job = (over: Partial<{ targetId: string; kind: 'stack' | 'post-process'; s
 })
 
 describe('Home', () => {
-  it('[UX-006] Given Home, When it is drawn, Then Next actions come first, then Coming nights and hidden data, then progress', () => {
+  it('[UX-006, WX-001] Given Home, When it is drawn, Then the next nights\' skies come first, then Next actions, then Coming nights and hidden data, then progress', () => {
     const home = read('pages/Dashboard.tsx')
     const at = (title: string) => home.indexOf(`title="${title}"`)
-    expect(at('Next actions')).toBeGreaterThan(-1)
+    expect(at('Clear skies')).toBeGreaterThan(-1)
+    expect(at('Clear skies')).toBeLessThan(at('Next actions'))
     expect(at('Next actions')).toBeLessThan(at('Coming nights'))
     expect(at('Coming nights')).toBeLessThan(at('Hidden in your files'))
     expect(at('Hidden in your files')).toBeLessThan(at('Where your targets are'))
@@ -50,7 +51,8 @@ describe('Home', () => {
     expect(home).toContain('Could not work out the next actions.')
     expect(home).toContain('Could not work out the coming nights.')
     expect(home).toContain('Could not look through your files.')
-    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(3)
+    expect(home).toContain('Could not read the forecast.')
+    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(4)
     const insights = read('pages/Insights.tsx')
     // The totals sit before the loading and failure branch, so a trends failure never hides them.
     expect(insights.indexOf('<ObservatoryTotals />')).toBeLessThan(insights.indexOf('Could not read the seeing, filter and activity trends.'))

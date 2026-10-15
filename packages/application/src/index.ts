@@ -43,3 +43,5 @@ export type { ObjectCatalogue, ObjectFacts, Picture, PictureFile, PictureFolder 
 export * from './use-cases/picture-gallery'
 export type { MessierCatalogue, MessierObject, TilePicture, TilePictures } from './ports/messier'
 export * from './use-cases/messier-mosaic'
+export type { WeatherSettings, WeatherSource } from './ports/weather'
+export * from './use-cases/clear-skies'
