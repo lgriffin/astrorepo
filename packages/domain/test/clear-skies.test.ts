@@ -218,6 +218,14 @@ describe('judgeNight', () => {
     expect(judgeNight(NIGHT, sky(8), report({ hours: [...clouds(10, 10, 10, 10, 10, 10, 10, 10), hour(9, { humidityPct: 99 })] })).dew).toBe(false)
   })
 
+  it('[WX-008] Given a humid dark hour with no cloud figure, When judged, Then dew is still likely', () => {
+    const hours = clouds(10, 10, 10, null, 10, 10, 10, 10)
+    hours[3] = { ...hours[3], humidityPct: 97 }
+    const n = judgeNight(NIGHT, sky(8), report({ hours }))
+    expect(n.clearHours).toBe(7)
+    expect(n.dew).toBe(true)
+  })
+
   it('[WX-001] Given a night with no dark window, When judged, Then it says so, keeps the station\'s forecast and the warnings of that day', () => {
     const n = judgeNight(NIGHT, null, report({
       hours: clouds(10),

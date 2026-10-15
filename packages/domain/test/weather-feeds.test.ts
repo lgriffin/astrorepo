@@ -222,6 +222,14 @@ describe('readWeatherService', () => {
     expect(r.warnings).toHaveLength(1)
   })
 
+  it('[WX-004] Given a stale forecast whose evening cannot be read, When read, Then it is not refused and the warnings are kept', () => {
+    for (const forecast of [{ stale: true }, { stale: true, payload: { evening: { date: 'last week' } } }]) {
+      const r = readWeatherService({ forecast, warnings: serviceAnswer().warnings })
+      expect(r.nights).toEqual([])
+      expect(r.warnings.map(w => w.headline)).toEqual(['Status Yellow wind warning for Galway'])
+    }
+  })
+
   it('[WX-004] Given no forecast yet and no warnings fetched, When read, Then the report is empty', () => {
     expect(readWeatherService({ forecast: null, warnings: null })).toEqual({ hours: [], nights: [], warnings: [] })
   })

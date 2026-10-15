@@ -16,6 +16,7 @@ export function WeatherSettings(): React.ReactElement {
   const [provider, setProvider] = useState('open-meteo')
   const [address, setAddress] = useState('')
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [check, setCheck] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -30,18 +31,27 @@ export function WeatherSettings(): React.ReactElement {
       .catch(() => undefined)
   }, [])
 
-  async function save(): Promise<void> {
-    await Promise.all([
-      invoke('settings:set', { key: PROVIDER_KEY, value: provider }),
-      invoke('settings:set', { key: SERVICE_KEY, value: address.trim() })
-    ])
-    setSaved(true)
+  /** Saves the forecast, then the address; says so if either could not be saved. */
+  async function save(): Promise<boolean> {
+    setSaveError(null)
+    try {
+      await invoke('settings:set', { key: PROVIDER_KEY, value: provider })
+      await invoke('settings:set', { key: SERVICE_KEY, value: address.trim() })
+      setSaved(true)
+      return true
+    } catch (error) {
+      setSaved(false)
+      setSaveError(`Could not save the weather settings: ${error instanceof Error ? error.message : String(error)}`)
+      return false
+    }
   }
 
+  /** Saves what the form holds, then asks every source now rather than using the answers kept for Home. */
   async function checkNow(): Promise<void> {
+    if (!(await save())) return
     setCheck(['Asking…'])
     try {
-      const outlook = await invoke<ClearSkiesView>('weather:outlook')
+      const outlook = await invoke<ClearSkiesView>('weather:outlook', { fresh: true })
       if (outlook.status !== 'ok') setCheck([outlook.message])
       else setCheck(outlook.sources.map(s => (s.problem === null ? `${s.name} answered.` : `${s.name} could not be used: ${s.problem}`)))
     } catch {
@@ -95,9 +105,10 @@ export function WeatherSettings(): React.ReactElement {
           {saved ? 'Saved' : 'Save'}
         </button>
         <button onClick={() => void checkNow()} className="px-3 py-1 text-xs border border-astro-border text-astro-muted rounded hover:text-astro-text">
-          Check the forecast
+          Save and check
         </button>
       </div>
+      {saveError && <p className="text-xs text-red-400 mt-2">{saveError}</p>}
       {check && (
         <ul className="mt-2 space-y-0.5">
           {check.map(line => (

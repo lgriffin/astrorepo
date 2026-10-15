@@ -6,7 +6,7 @@ export interface SeenRequest {
   headers: http.IncomingHttpHeaders
 }
 
-export type Reply = { status?: number; body: string; delayMs?: number; contentType?: string }
+export type Reply = { status?: number; body: string; delayMs?: number; contentType?: string; /** Send the headers and the body, then never finish. */ stall?: boolean }
 
 /** A local HTTP server for weather adapters: answers every request with what the test sets, and records what it was asked. */
 export class TestHttpServer {
@@ -18,7 +18,8 @@ export class TestHttpServer {
     const send = () => {
       if (res.destroyed) return
       res.writeHead(r.status ?? 200, { 'content-type': r.contentType ?? 'application/json' })
-      res.end(r.body)
+      if (r.stall) res.write(r.body)
+      else res.end(r.body)
     }
     if (r.delayMs) setTimeout(send, r.delayMs)
     else send()

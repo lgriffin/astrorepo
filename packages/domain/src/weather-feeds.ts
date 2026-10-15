@@ -171,22 +171,22 @@ export function readWeatherService(json: unknown): WeatherReport {
   if (!isObject(json) || !('forecast' in json)) throw new WeatherFeedError('The weather service did not answer with a forecast')
   const nights: StationNight[] = []
   const forecast = json.forecast
-  if (forecast !== null) {
+  // A stale forecast is from an earlier evening and is not used, so its shape does not matter.
+  const stale = isObject(forecast) && forecast.stale === true
+  if (forecast !== null && !stale) {
     const payload = isObject(forecast) ? forecast.payload : undefined
     const evening = isObject(payload) ? payload.evening : undefined
     if (!isObject(payload) || !isObject(evening) || typeof evening.date !== 'string' || !NIGHT.test(evening.date)) {
       throw new WeatherFeedError('The weather service forecast has no evening date')
     }
-    if (isObject(forecast) && forecast.stale !== true) {
-      nights.push({
-        night: evening.date,
-        rainChance: chance(evening.rain_next_24h_chance),
-        frostChance: chance(evening.frost_chance),
-        lowC: celsius(evening.night_min),
-        cloudPct: serviceCloud(evening, payload.guidance),
-        brief: typeof payload.brief === 'string' && payload.brief.trim() !== '' ? payload.brief.trim().slice(0, 1000) : null
-      })
-    }
+    nights.push({
+      night: evening.date,
+      rainChance: chance(evening.rain_next_24h_chance),
+      frostChance: chance(evening.frost_chance),
+      lowC: celsius(evening.night_min),
+      cloudPct: serviceCloud(evening, payload.guidance),
+      brief: typeof payload.brief === 'string' && payload.brief.trim() !== '' ? payload.brief.trim().slice(0, 1000) : null
+    })
   }
   const warnings = Array.isArray(json.warnings) ? json.warnings.map(serviceWarning).filter((w): w is WeatherWarning => w !== null) : []
   return { hours: [], nights, warnings }

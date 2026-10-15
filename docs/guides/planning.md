@@ -86,7 +86,8 @@ Choose in **Settings → Weather**:
   forecast off, tonight is judged from the service's own cloud cover when it sends one
   (`evening.cloud_night`, or each model's `guidance.<model>.cloud_night`).
 
-**Check the forecast** in Settings asks every source at once and says which answered. A source
+**Save and check** in Settings saves what the form holds, then asks every source afresh (not the
+answers kept for Home) and says which answered. A source
 that cannot be reached, answers with an error or takes more than 15 seconds is named on Home
 with the reason, and the other one still counts. Answers are kept for 30 minutes, so opening Home
 again does not ask twice; changing the site, the forecast or the address asks afresh.

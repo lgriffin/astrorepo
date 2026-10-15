@@ -269,6 +269,15 @@ export function composeCore(db: Database.Database) {
       publicSource: provider => weatherCache(publicWeatherSource(provider)),
       serviceSource: address => weatherCache(new WeatherServiceSource(address))
     }),
+    /** The same outlook with every source asked now, for Settings → Weather's check (WX-009). */
+    checkWeather: makeClearSkies({
+      planning: planningSettings,
+      weather: new SqliteWeatherSettings(db),
+      ephemeris,
+      clock: systemClock,
+      publicSource: provider => publicWeatherSource(provider),
+      serviceSource: address => new WeatherServiceSource(address)
+    }),
     listTools: makeListTools({ tools }),
     /** Runs each tool's version flag and SyQon's model list (NFR-017). */
     checkToolHealth: makeCheckToolHealth({ tools, probe, cache: syqonModels }),

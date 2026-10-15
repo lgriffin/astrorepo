@@ -200,6 +200,8 @@ export function judgeNight(
     const ms = Math.max(0, Math.min(stepMs, endMs - start))
     if (ms === 0) continue
     const f = forecastAt(report.hours, s.at)
+    // Dew needs only humidity or temperatures, so an hour with no cloud figure still counts for it.
+    if (f && isDewHour(f, policy)) dew = true
     if (!f || f.cloudPct === null) {
       closeSpell()
       continue
@@ -207,7 +209,6 @@ export function judgeNight(
     coveredMs += ms
     cloudWeighted += f.cloudPct * ms
     if (f.precipChancePct !== null) precip = Math.max(precip ?? 0, f.precipChancePct)
-    if (isDewHour(f, policy)) dew = true
     if (isClearHour(f, policy)) {
       clearMs += ms
       if (spell && spell.end === start) spell.end = start + ms

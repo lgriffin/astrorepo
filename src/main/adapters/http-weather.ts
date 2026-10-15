@@ -28,25 +28,51 @@ const MAX_BYTES = 5 * 1024 * 1024
 /** JSON over HTTP with Node's fetch, given up after `timeoutMs` (WX-006). */
 export function httpJson(timeoutMs = 15_000): JsonGet {
   return async (url, headers = {}) => {
+    const signal = AbortSignal.timeout(timeoutMs)
+    const timedOut = (error: unknown) => signal.aborted || (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'))
+    const slow = (error: unknown) => new Error(`no answer within ${Math.round(timeoutMs / 1000)} s`, { cause: error })
     let response: Response
     try {
-      response = await fetch(url, {
-        headers: { accept: 'application/json', 'user-agent': WEATHER_USER_AGENT, ...headers },
-        signal: AbortSignal.timeout(timeoutMs)
-      })
+      response = await fetch(url, { headers: { accept: 'application/json', 'user-agent': WEATHER_USER_AGENT, ...headers }, signal })
     } catch (error) {
-      const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
-      throw new Error(timedOut ? `no answer within ${Math.round(timeoutMs / 1000)} s` : `could not be reached (${reason(error)})`, { cause: error })
+      throw timedOut(error) ? slow(error) : new Error(`could not be reached (${reason(error)})`, { cause: error })
     }
-    if (!response.ok) throw new Error(`answered ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`)
-    const text = await response.text()
-    if (text.length > MAX_BYTES) throw new WeatherFeedError('sent more than a forecast should hold')
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined)
+      throw new Error(`answered ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`)
+    }
+    let text: string
+    try {
+      text = await readLimited(response, MAX_BYTES)
+    } catch (error) {
+      if (error instanceof WeatherFeedError) throw error
+      throw timedOut(error) ? slow(error) : new Error(`stopped answering (${reason(error)})`, { cause: error })
+    }
     try {
       return JSON.parse(text) as unknown
     } catch {
       throw new WeatherFeedError('did not answer with JSON')
     }
   }
+}
+
+/** The body as text, read a chunk at a time and given up as soon as it passes `limit` bytes. */
+async function readLimited(response: Response, limit: number): Promise<string> {
+  if (!response.body) return ''
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > limit) {
+      await reader.cancel().catch(() => undefined)
+      throw new WeatherFeedError('sent more than a forecast should hold')
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks).toString('utf8')
 }
 
 function reason(error: unknown): string {

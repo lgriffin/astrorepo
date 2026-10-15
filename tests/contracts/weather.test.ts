@@ -174,6 +174,16 @@ describe('HTTP weather sources', () => {
     await expect(httpJson(1000)(`${base}/slow`)).rejects.toThrow('no answer within 1 s')
   })
 
+  it('[WX-006] Given a server that sends its headers then stops part way through the body, When asked, Then it fails saying how long it waited', async () => {
+    const { base } = await serve({ body: '{"hourly": {"time": [', stall: true })
+    await expect(httpJson(300)(`${base}/stalls`)).rejects.toThrow('no answer within 0 s')
+  })
+
+  it('[WX-006] Given an error status, When the body is never read, Then the failure still names the status', async () => {
+    const { base } = await serve({ status: 404, body: 'not here', stall: true })
+    await expect(httpJson(2000)(`${base}/missing`)).rejects.toThrow('answered 404 Not Found')
+  })
+
   it('[WX-006] Given a dead address, When asked, Then it fails saying it could not be reached', async () => {
     await expect(httpJson()(`${await deadHttpAddress()}/x`)).rejects.toThrow(/^could not be reached \(.+\)$/)
   })

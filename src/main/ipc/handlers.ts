@@ -871,7 +871,9 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   const sky = () => composeCore(getSqlite())
   handle('planning:forward', async () => toForwardPlanView(await sky().planForward()))
 
-  handle('weather:outlook', async () => toClearSkiesView(await sky().clearSkies()))
+  // fresh: Settings' check asks every source now instead of using the answers kept for Home.
+  handle('weather:outlook', validated('weather:outlook', async (args) =>
+    toClearSkiesView(await (args?.fresh ? sky().checkWeather() : sky().clearSkies()))))
 
   handle('sky:solve-target', validated('sky:solve-target', async (args) => {
     const result = await composeCore(getSqlite()).queueSolves(args.target_id, args.timing ?? 'now')
