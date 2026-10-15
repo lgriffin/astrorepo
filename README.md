@@ -10,7 +10,7 @@
 
 AstroRepo is a desktop app that sits on top of the astrophotography data you already have. It reads
 your FITS and camera RAW files where they are, shows what is hiding in them, tells you what each
-target is ready to become and what to shoot in the coming nights, and drives the tools you already
+target is ready to become, whether the next three nights look clear and what to shoot in them, and drives the tools you already
 use (Siril, Siril_Scripts, RC Astro, SyQon and ASTAP) as a small queue of jobs on your own PC. It
 copies a Vespera's observations off the scope over its Wi-Fi, and shows your finished pictures as
 a gallery and as a Messier mosaic. Your source folders are never renamed or changed.
@@ -69,6 +69,10 @@ How these four fit together, from a night on the scope to a tile on the mosaic, 
 
 ### Plan the coming nights
 
+- **Clear skies.** Home opens on tonight and the next two nights, each marked **Clear skies**,
+  **Clear spells** (with the longest clear stretch) or **Cloudy** over its dark window, from
+  Open-Meteo or MET Norway, plus tonight's chance of rain and frost and the weather warnings from
+  your own [weatherlink_website](https://github.com/lgriffin/weatherlink_website) service.
 - **Seasons and moon.** From your site: tonight's targets with work left and how close the moon
   comes, targets whose season closes within 30 days, new-moon windows with their best targets and
   a 12-month season table. Bright-moon filtering knows dual-band and narrowband filters, including
@@ -142,6 +146,8 @@ catalogues it needs are there.
 | [ASTAP](https://www.hnsky.org/astap.htm) with a star database | Plate solving (preferred over Siril's solver) | Optional |
 | Git Bash | Running Siril_Scripts' shell scripts on Windows | With Siril_Scripts |
 | [Vaonis Vespera Pro](https://vaonis.com) | Copying observations off the scope over its Wi-Fi (anonymous FTP, read-only) | Only for the Vespera page |
+| [Open-Meteo](https://open-meteo.com) or [MET Norway](https://api.met.no) | The next three nights' cloud forecast on Home (free, no key; only rounded coordinates are sent) | Optional, on by default |
+| [weatherlink_website](https://github.com/lgriffin/weatherlink_website) | Your own station's forecast for tonight and the weather warnings in force | Optional |
 
 One exit-code contract explains how each tool's run ended. Tool output parsing (ASTAP and Siril
 solve results, SyQon flags and model names, RC Astro model file names) follows the tools'
@@ -241,6 +247,7 @@ folder, scan your library and point Settings → Tools at Siril.
 | [032](specs/032-messier-mosaic/requirements.md) | Messier mosaic |
 | [033](specs/033-vespera-ftp/requirements.md) | Vespera control |
 | [034](specs/034-vespera-ingest/requirements.md) | Vespera Pro ingest |
+| [035](specs/035-clear-skies/requirements.md) | Clear skies |
 
 ## Architecture
 

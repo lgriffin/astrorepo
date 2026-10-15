@@ -10,12 +10,14 @@ Each step links to where it is done and is ticked off once it is. **Hide** puts 
 away; **Start again** in Settings brings it back.
 
 Below that, from the top, Home shows:
-1. **Next actions**: what is worth doing next.
-2. **Coming nights** and **Hidden in your files**, side by side.
-3. **Where your targets are**: how many targets are at each stage.
-4. **Other checks**.
+1. **Clear skies**: whether tonight and the next two nights look clear (see
+   [Planning ahead](planning.md#clear-skies)).
+2. **Next actions**: what is worth doing next.
+3. **Coming nights** and **Hidden in your files**, side by side.
+4. **Where your targets are**: how many targets are at each stage.
+5. **Other checks**.
 
-Everything on it is worked out from the files the app has indexed (the Library and FITS files
+Apart from the weather, everything on it is worked out from the files the app has indexed (the Library and FITS files
 scans), so it changes as you capture, stack and process. Totals, catalogue progress and
 breakdowns by object type and equipment are on **Insights**, under **Your observatory**.
 

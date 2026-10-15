@@ -4,6 +4,7 @@ import { invoke } from '../hooks/useIPC'
 import type { CatalogueView, ToolHealthView, ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 import { GradingSettings } from '../components/target/GradingSettings'
+import { WeatherSettings } from '../components/weather/WeatherSettings'
 import { useLocation } from 'react-router-dom'
 import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
@@ -142,7 +143,7 @@ export function Settings(): React.ReactElement {
 
         <div id="settings-location" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Your site</h2>
-          <p className="text-xs text-astro-muted mb-4">Used by the Sky planner and Home's coming-nights card for seasons, moon windows, twilight times and altitude curves.</p>
+          <p className="text-xs text-astro-muted mb-4">Used by the Sky planner, Home's clear-skies and coming-nights cards for the weather, seasons, moon windows, twilight times and altitude curves.</p>
           <div className="grid grid-cols-3 gap-3 mb-3">
             {OBSERVER_SETTINGS.map(s => (
               <label key={s.key} className="block">
@@ -192,6 +193,10 @@ export function Settings(): React.ReactElement {
               </span>
             </span>
           </label>
+        </div>
+
+        <div id="settings-weather" className="scroll-mt-6">
+          <WeatherSettings />
         </div>
 
         <div id="settings-folders" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">

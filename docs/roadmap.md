@@ -35,6 +35,7 @@ when the code says otherwise, and the reasons are recorded here.
 | F2 · Vespera ingest | Leigh's Vespera Pro FTP ingest design: every session on the scope parsed from listings alone (sessions by time and kind, runs by suffix), counted by kind with findings (missing frames, partial listings, no TIFF), its target named from the folder, observation.json, the stack's EXIF or a FITS header, and the ticked sessions copied one after another into their targets' folders, each in a folder named for what it holds (`M31/M31_2026-10-14_FIT=400_TIF=1`), resuming after a Wi-Fi drop and ending in a SHA-256 manifest. Replaces F1's list and copy: one flow on the Vespera page | [034](../specs/034-vespera-ingest/requirements.md) | Done |
 | H2 · Gallery | Every PNG and JPEG in the images folder as a gallery; each picture's name (M31.png, NGC7000_HOO.png, Andromeda Galaxy.jpg, or the folder it is in) matched to the catalogue, with a side panel on what the object is, when it is best placed, what you have of it, and links to its target page, mosaic plan, collections, SIMBAD and Wikipedia | [031](../specs/031-gallery/requirements.md) | Done |
 | J · Messier mosaic | All 110 Messier objects on one page with your own picture in each tile, how far each has come, when each gap is up from your site (tonight, held back by the moon, a later month, or never), the gaps up tonight in Next actions, and the whole mosaic saved as one PNG | [032](../specs/032-messier-mosaic/requirements.md) | Done |
+| W · Clear skies | Home opens on tonight and the next two nights, each "Clear skies", "Clear spells" (with times) or "Cloudy" over its dark window, from Open-Meteo or MET Norway (chosen in Settings → Weather) and Leigh's own weatherlink_website service (tonight's rain and frost chances, the low, the warnings in force), with dew warnings and the moon | [035](../specs/035-clear-skies/requirements.md) | Done |
 | E, F, I, K, M | Seestar and Vespera adapters, store parity, NAS deploy, describe-a-capture. Order after the slices above: I, then E, F, K and M as their blockers clear ([#33](https://github.com/lgriffin/astrorepo/issues/33)) | later | Backlog |
 
 ## Releases
@@ -151,6 +152,14 @@ app has run on real data on the Windows PC and the licence is settled.
   room first, copies land in the target's folder for the home scan, and the home scan runs after.
   FITS and TIFF are copied by default, JSON only when ticked (Leigh). The keys inside
   observation.json and the TIFF file name are not yet seen on a real scope (#23).
+- **Weather is FWD-003, as its own card** (spec 035). Leigh asked for the next three nights at a
+  glance with "clear skies" when that is the forecast, a choice of weather service, and his own
+  weatherlink_website integrated. One `WeatherSource` port has Open-Meteo, MET Norway and the
+  user's service behind it; ideas taken from kshetline/aw-clock are the chosen service with others
+  alongside and the on-screen credit, not its scraped or keyed providers. weatherlink_website has
+  no cloud cover yet, so the public forecast judges the sky and Leigh's station adds what it knows
+  about tonight (and holds back a clear night it expects rain on). The verdict is shown above Next
+  actions rather than used to rank them until it has been checked against real nights.
 - **C4 diagrams** live in [architecture/c4.md](architecture/c4.md) and are updated by every slice
   that adds a port, an adapter or an external tool.
 - **Postgres, GraphQL and pnpm workspaces wait** until a second app (the NAS core-api) needs the

@@ -1,8 +1,8 @@
 # Planning ahead: seasons, the moon and tonight
 
-The app looks ahead from your site for the targets that still need data. It shows up in two
-places: the **Coming nights** card on Home, and the **Seasons** table and **New-moon
-windows** list at the bottom of the Sky planner.
+The app looks ahead from your site for the targets that still need data. It shows up in three
+places: the **Clear skies** and **Coming nights** cards on Home, and the **Seasons** table and
+**New-moon windows** list at the bottom of the Sky planner.
 
 ## Before you start
 
@@ -53,6 +53,44 @@ Subs rejected by quality checks do not count toward a goal.
 The same captures also lead Home's **Next actions** list, ranked with closing seasons
 first (see [Using the cockpit](cockpit.md#next-actions)).
 
+## Clear skies
+
+The first card on Home looks at tonight and the next two nights and says, for each, whether its
+dark window is forecast clear. Look for **Clear skies**.
+
+- **Clear skies**: at least three quarters of the dark window is clear. A half hour counts as
+  clear at 25% cloud or less, with a chance of rain below 40%.
+- **Clear spells**: not that clear, but with an unbroken clear stretch of two hours or more. The
+  card gives its times.
+- **Cloudy**: neither.
+- **No forecast yet**: less than half of the dark window is forecast (MET Norway turns six-hourly
+  after about two and a half days), so the card does not guess.
+- **No dark window**: the sun does not get 12° down that night.
+
+Each night also shows its dark window, the average cloud cover, the highest chance of rain, the
+clear hours and how lit the moon is, and says when dew is likely (95% humidity, or the dew point
+within 2 °C of the air) so the dew heater goes on.
+
+### Where the forecast comes from
+
+Choose in **Settings → Weather**:
+
+- **Forecast**: [Open-Meteo](https://open-meteo.com) (the default) or
+  [MET Norway](https://api.met.no), both free with no key, or **None**. Only your site's latitude
+  and longitude, rounded to two decimal places (about a kilometre), are sent.
+- **Your weather service**: the address of your
+  [weatherlink_website](https://github.com/lgriffin/weatherlink_website) server, such as
+  `http://nas.local:1456`. Its `/api/v1/forecast` gives tonight's chance of rain and frost, the
+  overnight low and the Met Éireann warnings in force; they appear on tonight's tile, and a night
+  your station gives rain a 60% chance or more is never called clear. If you turn the public
+  forecast off, tonight is judged from the service's own cloud cover when it sends one
+  (`evening.cloud_night`, or each model's `guidance.<model>.cloud_night`).
+
+**Check the forecast** in Settings asks every source at once and says which answered. A source
+that cannot be reached, answers with an error or takes more than 15 seconds is named on Home
+with the reason, and the other one still counts. Answers are kept for 30 minutes, so opening Home
+again does not ask twice; changing the site, the forecast or the address asks afresh.
+
 ## Seasons table
 
 One row per target, one column per month for the next 12 months. Each cell is the average usable
@@ -63,5 +101,5 @@ earlier in the month too.
 ## Limits for now
 
 - One site. Several sites come with the sky geometry slice.
-- No weather. A forecast service could be added later as an optional adapter.
+- Weather is shown beside the plan, not used to rank it: a cloudy tonight does not yet move tonight's captures down Next actions.
 - Positions are J2000 and refraction is ignored; both matter far less than the 30° cut-off.
