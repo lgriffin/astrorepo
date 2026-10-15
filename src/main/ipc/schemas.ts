@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { PALETTE_IDS, REFERENCE_SITES } from '@astro/domain'
+import { COMPANION_SCREENS, PALETTE_IDS, REFERENCE_SITES } from '@astro/domain'
 import { GALLERY_VIEW_WIDTH } from '@shared/gallery'
 
 const objectTypes = [
@@ -397,7 +397,16 @@ export const schemas = {
   'insights:equipment-effectiveness': z.object({}).optional(),
   'insights:quality-trends': z.object({ months: z.number().int().positive().optional() }),
   'insights:filter-usage': z.object({}).optional(),
-  'insights:target-progress': z.object({ limit: z.number().int().positive().optional() })
+  'insights:target-progress': z.object({ limit: z.number().int().positive().optional() }),
+
+  // Companion screens, the desktop app only (specs/035-pi-variant, PI-017 to PI-023)
+  'companion:status': z.object({}).optional(),
+  'companion:set-enabled': z.object({ enabled: z.boolean(), port: z.number().int().min(1024).max(65535).optional() }),
+  'companion:approve': z.object({ code: z.string().max(20) }),
+  'companion:list': z.object({}).optional(),
+  'companion:remove': z.object({ id: z.string().min(1).max(200) }),
+  'companion:set-screen': z.object({ id: z.string().min(1).max(200), screen: z.enum(COMPANION_SCREENS) }),
+  'companion:report-route': z.object({ route: z.string().max(2048) })
 } as const
 
 export type SchemaMap = typeof schemas

@@ -7,7 +7,11 @@ import { electronDesktop } from './electron/electron-desktop'
 import { electronJobsEnvironment } from './electron/jobs-environment'
 import { hostOverIpc } from './electron/ipc-host'
 import { startJobs } from './jobs-host'
-import { drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData } from './composition'
+import { composeCompanion, drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData } from './composition'
+import { ServedDesktop } from './http/served-desktop'
+import { makeCompanionHost, osNetwork } from './http/companion-host'
+import { registerCompanionHandlers } from './ipc/companion-handlers'
+import { getSetting, setSetting } from './services/settings'
 import { nativeThumbnail } from './electron/native-thumbnails'
 import { shrinkPicture } from './electron/picture-shrinker'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
@@ -43,7 +47,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  initDatabase(app.getPath('userData'))
+  const db = initDatabase(app.getPath('userData'))
   useSeedFolder(app.isPackaged ? path.join(process.resourcesPath, 'data', 'catalogues') : path.join(app.getAppPath(), 'data', 'catalogues'))
   useAppData(app.getPath('userData'))
   const measurer = measureOnWorkers(() => createMeasureWorker({}))
@@ -62,7 +66,22 @@ app.whenReady().then(() => {
   }
   const router = new ChannelRouter()
   registerHandlers(router, electronDesktop)
+  // Companion screens get the same channels with the served Desktop, so nothing they do opens a
+  // dialog on this PC (specs/035-pi-variant, companion slice).
+  const companionRouter = new ChannelRouter()
+  registerHandlers(companionRouter, new ServedDesktop(path.join(app.getPath('userData'), 'exports')))
+  const companion = () => composeCompanion(db)
+  const companionHost = makeCompanionHost({
+    router: companionRouter,
+    staticDir: path.join(__dirname, '../renderer'),
+    companion,
+    settings: { get: getSetting, set: setSetting },
+    network: osNetwork
+  })
+  registerCompanionHandlers(router, { host: companionHost, companion })
   hostOverIpc(router)
+  companionHost.resume().catch(err => console.error('Companion screens were not served:', err))
+  app.on('will-quit', () => { void companionHost.stop() })
   startJobs(electronJobsEnvironment()).catch(err => console.error('The job runner did not start:', err))
   createWindow()
 

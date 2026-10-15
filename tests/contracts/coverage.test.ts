@@ -32,7 +32,8 @@ const NOT_PORTS: Record<string, string> = {
   Picture: 'what PictureFolder.read returns',
   ObjectFacts: 'what ObjectCatalogue.objectFacts returns',
   MessierObject: 'what MessierCatalogue lists',
-  TilePicture: 'what TilePictures.draw returns'
+  TilePicture: 'what TilePictures.draw returns',
+  CompanionDevice: 'what CompanionDeviceStore saves'
 }
 
 const read = (dir: string, suffix: string) =>

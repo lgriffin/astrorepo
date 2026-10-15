@@ -2,6 +2,8 @@ import crypto from 'crypto'
 import fs from 'fs'
 import http from 'http'
 import path from 'path'
+import { companionMayCall } from '@astro/domain'
+import { CompanionRefusedError, type Companion } from '@astro/application'
 import type { ChannelRouter } from '../transport/router'
 
 /** The largest request body read; anything bigger is refused unread (PI-011). */
@@ -10,14 +12,25 @@ export const MAX_BODY_BYTES = 1024 * 1024
 /** The header that carries the per-start token on every API request (PI-009). */
 export const TOKEN_HEADER = 'x-astrorepo-token'
 
+/** The header a paired companion carries its key in, instead of a token (PI-020). */
+export const DEVICE_HEADER = 'x-astrorepo-device'
+
 export interface HttpHostOptions {
   router: ChannelRouter
   /** The built renderer (out/renderer). */
   staticDir: string
   /** Made fresh at each start and written into index.html; every API request must carry it. */
-  token: string
-  /** Host names a request may address, without port; anything else is refused (PI-008). */
-  allowedHosts: string[]
+  token?: string
+  /**
+   * Paired companion screens instead of a token: the desktop app's companion host (PI-017 to
+   * PI-022). Each API call must carry a paired screen's key, and /api/companion/ pairs new ones.
+   */
+  companions?: Companion
+  /**
+   * Host names a request may address, without port; anything else is refused (PI-008). A function
+   * is asked on each request, for a host whose machine can gain addresses while it runs.
+   */
+  allowedHosts: string[] | (() => string[])
   maxBodyBytes?: number
 }
 
@@ -121,19 +134,59 @@ const webPage = (url: string) => /^https?:\/\//i.test(url)
  */
 export function createHttpHost(options: HttpHostOptions): http.Server {
   const limit = options.maxBodyBytes ?? MAX_BODY_BYTES
-  const allowed = new Set(options.allowedHosts.map(h => h.toLowerCase()))
+  const fixedHosts = Array.isArray(options.allowedHosts) ? new Set(options.allowedHosts.map(h => h.toLowerCase())) : null
+  const allows = (host: string) =>
+    fixedHosts ? fixedHosts.has(host) : (options.allowedHosts as () => string[])().some(h => h.toLowerCase() === host)
   const root = path.resolve(options.staticDir)
   let realRootCache: string | null = null
   const realRoot = () => (realRootCache ??= fs.realpathSync(root))
 
+  const companions = options.companions
+  if ((options.token === undefined) === (companions === undefined)) throw new Error('A host needs either a token or companions, not both.')
+
+  /** The paired screen a request's key belongs to, or null. */
+  const pairedScreen = (req: http.IncomingMessage) => {
+    const key = req.headers[DEVICE_HEADER]
+    return companions && typeof key === 'string' ? companions.authenticate(key) : Promise.resolve(null)
+  }
+  const notPaired = (res: http.ServerResponse) => send(res, 401, { error: 'This screen is not paired with the PC. Pair it again in Settings → Companion screens.', pair: true })
+
+  /** Pairing a screen and telling a paired one where to be (PI-018, PI-021). */
+  async function companionApi(req: http.IncomingMessage, res: http.ServerResponse, action: string, body: unknown): Promise<void> {
+    const c = companions as Companion
+    const field = (name: string) => {
+      const value = (body as Record<string, unknown> | null)?.[name]
+      return typeof value === 'string' ? value : null
+    }
+    try {
+      if (action === 'pair') {
+        const name = field('name')
+        if (name === null) return send(res, 400, { error: 'Say what the screen is called.' })
+        return send(res, 200, { value: await c.requestPairing(name, req.socket.remoteAddress ?? '') })
+      }
+      if (action === 'pair-status') {
+        const requestId = field('requestId')
+        if (requestId === null) return send(res, 400, { error: 'Say which pairing to look up.' })
+        return send(res, 200, { value: await c.pairingStatus(requestId) })
+      }
+      const screen = await pairedScreen(req)
+      if (!screen) return notPaired(res)
+      send(res, 200, { value: await c.screenFor(screen.id) })
+    } catch (error) {
+      if (error instanceof CompanionRefusedError) return send(res, 400, { error: error.message })
+      throw error
+    }
+  }
+
   async function api(req: http.IncomingMessage, res: http.ServerResponse, pathname: string): Promise<void> {
     const m = /^\/api\/invoke\/([^/]+)$/.exec(pathname)
-    if (!m) return send(res, 404, { error: 'There is no such API address.' })
+    const pairing = companions ? /^\/api\/companion\/(pair|pair-status|screen)$/.exec(pathname) : null
+    if (!m && !pairing) return send(res, 404, { error: 'There is no such API address.' })
     if (req.method !== 'POST') return send(res, 405, { error: 'API requests are POSTs.' })
     const origin = req.headers.origin
     if (origin !== undefined && origin !== `http://${req.headers.host}`) return send(res, 403, { error: 'Requests from another site are refused.' })
     if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, { error: 'Requests from another site are refused.' })
-    if (!sameToken(req.headers[TOKEN_HEADER], options.token)) return send(res, 401, { error: 'The page is out of date. Reload it to carry on.' })
+    if (options.token !== undefined && !sameToken(req.headers[TOKEN_HEADER], options.token)) return send(res, 401, { error: 'The page is out of date. Reload it to carry on.' })
     if (!(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return send(res, 415, { error: 'API requests carry JSON.' })
     const text = await readBody(req, limit)
     if (text === null) return refuseUnread(res, 413, { error: `The request is larger than ${Math.round(limit / 1024)} KB.` })
@@ -143,6 +196,8 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
     } catch {
       return send(res, 400, { error: 'The request is not valid JSON.' })
     }
+    if (pairing) return companionApi(req, res, pairing[1], body)
+    if (!m) return
     const args = (body as { args?: unknown } | null)?.args
     if (!Array.isArray(args)) return send(res, 400, { error: 'The request has no list of arguments.' })
     let channel: string
@@ -150,6 +205,10 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
       channel = decodeURIComponent(m[1])
     } catch {
       return send(res, 400, { error: 'The channel name is not valid.' })
+    }
+    if (companions) {
+      if (!(await pairedScreen(req))) return notPaired(res)
+      if (!companionMayCall(channel, args)) return send(res, 403, { error: 'Companion screens cannot pair, remove or change companions. Do that on the PC.' })
     }
     if (!options.router.has(channel)) return send(res, 404, { error: `No handler for the channel "${channel}".` })
     try {
@@ -184,7 +243,10 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
       return send(res, 404, { error: 'Not found.' }, req.method)
     }
     const isIndex = target === path.join(root, 'index.html')
-    if (isIndex) data = Buffer.from(data.toString('utf-8').replace('</head>', `<meta name="astrorepo-token" content="${options.token}">\n</head>`))
+    if (isIndex) {
+      const meta = options.token !== undefined ? `<meta name="astrorepo-token" content="${options.token}">` : '<meta name="astrorepo-companion" content="pair">'
+      data = Buffer.from(data.toString('utf-8').replace('</head>', `${meta}\n</head>`))
+    }
     res.writeHead(200, {
       ...SECURITY_HEADERS,
       'Content-Type': TYPES[path.extname(target).toLowerCase()] ?? 'application/octet-stream',
@@ -203,7 +265,7 @@ export function createHttpHost(options: HttpHostOptions): http.Server {
     // Nothing a request carries may take the server down (PI-016).
     try {
       const host = hostName(req.headers.host)
-      if (host === null || !allowed.has(host)) return send(res, 403, { error: 'astrorepo does not answer to that address. Add it to ASTRO_HOSTS.' }, req.method)
+      if (host === null || !allows(host)) return send(res, 403, { error: 'astrorepo does not answer to that address. Add it to ASTRO_HOSTS.' }, req.method)
       let pathname: string
       try {
         pathname = new URL(req.url ?? '/', 'http://localhost').pathname

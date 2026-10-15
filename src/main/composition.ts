@@ -5,6 +5,8 @@ import type { Worker } from 'worker_threads'
 import { MESSIER_GAPS_IN_NEXT_ACTIONS } from '@astro/domain'
 import {
   makeArchiveTarget,
+  makeCompanion,
+  type Companion,
   makeTargetHolds,
   makeDiscoverTarget,
   makeDiscoverTargets,
@@ -93,6 +95,9 @@ import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture
 import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
 import { WeatherServiceSource, publicWeatherSource } from './adapters/http-weather'
 import { SqliteWeatherSettings } from './adapters/sqlite-weather-settings'
+import { SqliteCompanionStore } from './adapters/sqlite-companion-store'
+import { nodeCompanionSecrets } from './adapters/node-companion-secrets'
+import { NAV_ITEMS } from '@shared/navigation'
 
 /** The app's clock, for hosts that stamp what they show (the IPC handlers). */
 export const clock = systemClock
@@ -397,4 +402,22 @@ export function composePictureGallery(db: Database.Database): PictureGallery {
     pictureGallery = { db, shrinker: pictureShrinker, gallery: made }
   }
   return pictureGallery.gallery
+}
+
+/** The companion screens last composed; one per database, so a waiting pairing outlives a request. */
+let companion: { db: Database.Database; companion: Companion } | null = null
+
+const placeRoute = (id: string) => {
+  const item = NAV_ITEMS.find(i => i.id === id)
+  if (!item) throw new Error(`The map of places has no "${id}".`)
+  return item.to
+}
+
+/** Pairing and steering companion screens (specs/035-pi-variant, PI-017 to PI-023). */
+export function composeCompanion(db: Database.Database): Companion {
+  if (companion?.db !== db) {
+    const places = { home: placeRoute('home'), sky: placeRoute('sky'), jobs: placeRoute('jobs'), images: placeRoute('images'), messier: placeRoute('messier') }
+    companion = { db, companion: makeCompanion({ devices: new SqliteCompanionStore(db), secrets: nodeCompanionSecrets, clock: systemClock, places }) }
+  }
+  return companion.companion
 }

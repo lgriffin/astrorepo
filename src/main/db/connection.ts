@@ -5,8 +5,8 @@ import { runMigrations } from './migrations'
 
 let sqlite: Database.Database | null = null
 
-/** Opens astrorepo.db in the app's data folder, which the host that starts the app names (PI-005). */
-export function initDatabase(dataFolder: string): void {
+/** Opens astrorepo.db in the app's data folder, which the host that starts the app names (PI-005), and returns the handle getSqlite gives. */
+export function initDatabase(dataFolder: string): Database.Database {
   const dbPath = path.join(dataFolder, 'astrorepo.db')
   sqlite = new Database(dbPath)
   sqlite.pragma('journal_mode = WAL')
@@ -21,6 +21,7 @@ export function initDatabase(dataFolder: string): void {
   } catch {
     console.warn('FTS5 initialization skipped — search will use LIKE fallback')
   }
+  return sqlite
 }
 
 export function getSqlite(): Database.Database {

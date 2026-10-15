@@ -557,6 +557,18 @@ export function runMigrations(sqlite: Database.Database): void {
       updated_at TEXT NOT NULL
     );
   `)
+
+  // Migration: screens paired with this PC as companions; only a hash of each key is kept (PI-018)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS companion_devices (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      screen TEXT NOT NULL DEFAULT 'follow',
+      paired_at TEXT NOT NULL,
+      last_seen_at TEXT
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {
