@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { nativeImage } from 'electron'
 import type { Picture } from '@astro/application'
-import { MAX_UNSHRUNK_BYTES } from './adapters/node-picture-folder'
+import { MAX_UNSHRUNK_BYTES } from '../adapters/node-picture-folder'
 
 /** How much shrunk picture data is kept, so scrolling back through the gallery does not decode it again. */
 const KEEP_BYTES = 64 * 1024 * 1024

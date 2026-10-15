@@ -3,7 +3,6 @@ import { getSqlite } from '../db/connection'
 import { rebuildFtsIndex } from '../db/fts'
 import fs from 'fs'
 import path from 'path'
-import { app } from 'electron'
 import type { Catalogue, CatalogueProgress } from '@shared/types'
 
 interface SeedObject {
@@ -193,9 +192,13 @@ export function getCatalogueProgress(): CatalogueProgress[] {
   }))
 }
 
+let seedFolder = path.join(process.cwd(), 'data', 'catalogues')
+
+/** Where the built-in catalogues are read from; the host that starts the app says (specs/035-pi-variant, PI-005). */
+export function useSeedFolder(folder: string): void {
+  seedFolder = folder
+}
+
 function getSeedDataPath(): string {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'data', 'catalogues')
-  }
-  return path.join(app.getAppPath(), 'data', 'catalogues')
+  return seedFolder
 }

@@ -21,7 +21,7 @@ vi.mock('electron', () => ({
   }
 }))
 
-const { NATIVE_DECODE_MAX_BYTES, nativeThumbnail } = await import('../../src/main/native-thumbnails')
+const { NATIVE_DECODE_MAX_BYTES, nativeThumbnail } = await import('../../src/main/electron/native-thumbnails')
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'thumbs-'))
 const file = (name: string, bytes: number) => {

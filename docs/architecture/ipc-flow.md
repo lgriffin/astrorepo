@@ -1,5 +1,7 @@
 # IPC Communication Flow
 
+The handlers live on a `ChannelRouter` (`src/main/transport/router.ts`, spec 035) that holds no Electron types; `src/main/electron/ipc-host.ts` hosts its channels with `ipcMain.handle`, and pickers, saving exports and opening folders go through the `Desktop` port (`src/main/transport/desktop.ts`), answered in the desktop app by `src/main/electron/electron-desktop.ts`. A headless host can serve the same router over HTTP.
+
 All communication between the React renderer and the Node.js main process uses Electron's IPC (Inter-Process Communication) mechanism. The renderer never has direct access to Node.js APIs or the database. Instead, React components call typed wrapper functions exposed on `window.api` by the preload script's `contextBridge`. These wrappers invoke `ipcRenderer.invoke()`, which sends an asynchronous message to the main process. On the main-process side, `ipcMain.handle()` receives the call, validates the arguments against a Zod schema, delegates to the appropriate service method, and returns the result (or a structured error) back through the same channel.
 
 ```mermaid

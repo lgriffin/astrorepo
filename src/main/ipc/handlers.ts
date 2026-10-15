@@ -1,4 +1,3 @@
-import { ipcMain, IpcMainInvokeEvent, dialog, shell } from 'electron'
 import { z } from 'zod'
 import { schemas, type Channel, type SchemaMap } from './schemas'
 import { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, getCatalogueEntriesForTarget, mergeTargets, getTargetThumbnail } from '../services/target'
@@ -46,7 +45,8 @@ import { batchAdvanceStage, batchAddToCollection, batchDeleteTargets } from '../
 import { exportTargetsCsv, exportSessionsCsv, exportFitsAggregatesCsv } from '../services/export'
 import { importNinaSequence } from '../services/nina-import'
 import { getRecommendations } from '../services/recommendations'
-import fs from 'fs'
+import type { ChannelHandler, ChannelRouter } from '../transport/router'
+import type { Desktop, FileKind } from '../transport/desktop'
 
 /** The folders the app reads from and writes to, from the composition root. */
 const folders = () => composeFolders(getSqlite())
@@ -63,17 +63,11 @@ function mosaicOptions(args: { target_id: string; field_width_deg?: number; fiel
   }
 }
 
-type HandlerFn = (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+const CSV: FileKind[] = [{ name: 'CSV', extensions: ['csv'] }]
 
-const registeredChannels: string[] = []
-
-export function handle(channel: string, handler: HandlerFn): void {
-  ipcMain.handle(channel, handler)
-  registeredChannels.push(channel)
-}
-
-function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): HandlerFn {
-  return async (_e: IpcMainInvokeEvent, rawArgs: unknown) => {
+/** A handler that checks its arguments against the channel's schema before it runs (PI-001). */
+function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): ChannelHandler {
+  return async (rawArgs: unknown) => {
     const args = schemas[channel].parse(rawArgs) as z.infer<SchemaMap[C]>
     return handler(args)
   }
@@ -83,7 +77,10 @@ function validated<C extends Channel>(channel: C, handler: (args: z.infer<Schema
 const gallery = () => composeGallery(getSqlite())
 const messier = () => composeMessier(getSqlite())
 
-export function registerIpcHandlers(): void {
+/** Puts every channel the renderer can call on the router; the machine's own pickers and shell come from `desktop`. */
+export function registerHandlers(router: ChannelRouter, desktop: Desktop): void {
+  const handle = (channel: string, handler: ChannelHandler) => router.handle(channel, handler)
+
   handle('targets:search', validated('targets:search', (args) => {
     return searchTargets(args.query, args.limit, args.offset, {
       objectType: args.object_type,
@@ -196,7 +193,7 @@ export function registerIpcHandlers(): void {
     return listStages()
   })
 
-  handle('equipment:list', async (_e, rawArgs) => {
+  handle('equipment:list', async (rawArgs: unknown) => {
     const args = rawArgs ? schemas['equipment:list']!.parse(rawArgs) as { type?: string } : undefined
     return { equipment: listEquipment(args?.type) }
   })
@@ -249,7 +246,7 @@ export function registerIpcHandlers(): void {
   handle('gallery:open-reference', validated('gallery:open-reference', async args => {
     const url = await pictures().reference(args.object_id, args.site)
     if (!url) return { opened: false }
-    await shell.openExternal(url)
+    await desktop.openExternal(url)
     return { opened: true }
   }))
 
@@ -270,19 +267,14 @@ export function registerIpcHandlers(): void {
   }))
 
   handle('fits:pick-folder', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory'],
-      title: 'Select FITS Folder'
-    })
-    if (result.canceled || result.filePaths.length === 0) return { path: null }
-    return { path: result.filePaths[0] }
+    return { path: await desktop.pickFolder('Select FITS Folder') }
   })
 
   handle('fits:start-scan', validated('fits:start-scan', (args) => {
     return startFolderScan(args.folder_path)
   }))
 
-  handle('fits:list-scans', async (_e, rawArgs) => {
+  handle('fits:list-scans', async (rawArgs: unknown) => {
     const args = rawArgs ? schemas['fits:list-scans']!.parse(rawArgs) as { limit?: number; offset?: number } : undefined
     return listScans(args?.limit, args?.offset)
   })
@@ -343,12 +335,7 @@ export function registerIpcHandlers(): void {
   })
 
   handle('settings:pick-folder', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory'],
-      title: 'Select Folder'
-    })
-    if (result.canceled || result.filePaths.length === 0) return { path: null }
-    return { path: result.filePaths[0] }
+    return { path: await desktop.pickFolder('Select Folder') }
   })
 
   handle('fits:link-files', validated('fits:link-files', (args) => {
@@ -403,7 +390,7 @@ export function registerIpcHandlers(): void {
     return getCurrentStorageStats()
   })
 
-  handle('storage:history', async (_e, rawArgs) => {
+  handle('storage:history', async (rawArgs: unknown) => {
     const args = rawArgs ? schemas['storage:history']!.parse(rawArgs) as { limit?: number } : undefined
     return { snapshots: getStorageHistory(args?.limit) }
   })
@@ -424,12 +411,12 @@ export function registerIpcHandlers(): void {
     return { filters: getStorageByFilter() }
   })
 
-  handle('calibration:library', async (_e, rawArgs) => {
+  handle('calibration:library', async (rawArgs: unknown) => {
     const args = rawArgs ? schemas['calibration:library']!.parse(rawArgs) as { type?: string; gain?: number; temp?: number; binning?: string } : undefined
     return { groups: getCalibrationLibrary(args ?? undefined) }
   })
 
-  handle('calibration:match-lights', async (_e, rawArgs) => {
+  handle('calibration:match-lights', async (rawArgs: unknown) => {
     const args = rawArgs ? schemas['calibration:match-lights']!.parse(rawArgs) as { scan_id?: string } : undefined
     return matchCalibrationToLights(args?.scan_id)
   })
@@ -490,10 +477,7 @@ export function registerIpcHandlers(): void {
 
   handle('grades:export', validated('grades:export', async args => {
     const csv = await composeGrading(getSqlite()).exportCsv(args.target_id)
-    const result = await dialog.showSaveDialog({ defaultPath: 'frame-grades.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
-    if (result.canceled || !result.filePath) return { saved: false }
-    fs.writeFileSync(result.filePath, csv, 'utf-8')
-    return { saved: true, path: result.filePath }
+    return desktop.saveText('frame-grades.csv', csv, CSV)
   }))
 
   handle('tools:list', async () => toToolsView(await composeCore(getSqlite()).listTools()))
@@ -703,7 +687,7 @@ export function registerIpcHandlers(): void {
   })
 
   handle('home:open-folder', validated('home:open-folder', async (args) => {
-    const result = await shell.openPath(args.folder_path)
+    const result = await desktop.openFolder(args.folder_path)
     return { success: !result, error: result || undefined }
   }))
 
@@ -825,39 +809,26 @@ export function registerIpcHandlers(): void {
 
   handle('export:targets-csv', async () => {
     const csv = exportTargetsCsv()
-    const result = await dialog.showSaveDialog({ defaultPath: 'targets.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
-    if (result.canceled || !result.filePath) return { saved: false }
-    fs.writeFileSync(result.filePath, csv, 'utf-8')
-    return { saved: true, path: result.filePath }
+    return desktop.saveText('targets.csv', csv, CSV)
   })
 
   handle('export:sessions-csv', async () => {
     const csv = exportSessionsCsv()
-    const result = await dialog.showSaveDialog({ defaultPath: 'sessions.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
-    if (result.canceled || !result.filePath) return { saved: false }
-    fs.writeFileSync(result.filePath, csv, 'utf-8')
-    return { saved: true, path: result.filePath }
+    return desktop.saveText('sessions.csv', csv, CSV)
   })
 
   handle('export:fits-csv', async () => {
     const csv = exportFitsAggregatesCsv()
-    const result = await dialog.showSaveDialog({ defaultPath: 'fits-aggregates.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
-    if (result.canceled || !result.filePath) return { saved: false }
-    fs.writeFileSync(result.filePath, csv, 'utf-8')
-    return { saved: true, path: result.filePath }
+    return desktop.saveText('fits-aggregates.csv', csv, CSV)
   })
 
   handle('import:pick-file', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile'],
-      title: 'Select NINA Sequence File',
-      filters: [
+    return {
+      path: await desktop.pickFile('Select NINA Sequence File', [
         { name: 'NINA Sequence', extensions: ['xml', 'json'] },
         { name: 'All Files', extensions: ['*'] }
-      ]
-    })
-    if (result.canceled || result.filePaths.length === 0) return { path: null }
-    return { path: result.filePaths[0] }
+      ])
+    }
   })
 
   handle('import:nina-sequence', validated('import:nina-sequence', (args) => {
@@ -923,10 +894,7 @@ export function registerIpcHandlers(): void {
   handle('mosaic:export', validated('mosaic:export', async (args) => {
     const exported = await composeCore(getSqlite()).exportMosaicCsv(mosaicOptions(args))
     if (!exported) return { saved: false }
-    const result = await dialog.showSaveDialog({ defaultPath: exported.fileName, filters: [{ name: 'CSV', extensions: ['csv'] }] })
-    if (result.canceled || !result.filePath) return { saved: false }
-    fs.writeFileSync(result.filePath, exported.csv, 'utf-8')
-    return { saved: true, path: result.filePath }
+    return desktop.saveText(exported.fileName, exported.csv, CSV)
   }))
 
   handle('discovery:target', validated('discovery:target', async (args) => {
@@ -946,8 +914,4 @@ export function registerIpcHandlers(): void {
     }
     return result
   })
-}
-
-export function getRegisteredChannels(): string[] {
-  return [...registeredChannels]
 }
