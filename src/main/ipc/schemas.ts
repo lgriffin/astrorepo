@@ -23,6 +23,24 @@ const id = z.string().min(1)
 /** A SyQon model id as `--list-models` prints it; never a flag or a path. */
 const syqonModel = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
 
+/**
+ * A mosaic workspace's grid as the editor sends it (specs/037-mosaic-workspace). Bounds here only
+ * keep the numbers sane; the core's gridProblems says what is wrong in words.
+ */
+const workspaceGrid = z.object({
+  ra_deg: z.number().min(-720).max(720),
+  dec_deg: z.number().min(-90).max(90),
+  position_angle_deg: z.number().min(-720).max(720),
+  rows: z.number().int().min(1).max(12),
+  columns: z.number().int().min(1).max(12),
+  overlap_x: z.number().min(0).max(0.6),
+  overlap_y: z.number().min(0).max(0.6),
+  field_width_deg: z.number().positive().max(30),
+  field_height_deg: z.number().positive().max(30),
+  field_source: z.enum(['equipment', 'manual', 'solve', 'target-plan']),
+  field_label: z.string().max(200).nullable().optional()
+})
+
 /** A mosaic plan for a target: one panel's field in degrees, its rotation and the overlap (specs/024-sky-geometry). */
 const mosaicRequest = z.object({
   target_id: id,
@@ -374,6 +392,16 @@ export const schemas = {
   'mosaic:plan': mosaicRequest,
   'mosaic:save': mosaicRequest.extend({ field_width_deg: z.number().positive().max(60), field_height_deg: z.number().positive().max(60), rotation_deg: z.number().min(-360).max(360), overlap: z.number().min(0).max(0.5) }),
   'mosaic:export': mosaicRequest,
+  'workspace:list': z.object({}).optional(),
+  'workspace:preview': z.object({ grid: workspaceGrid, shift: z.object({ right_deg: z.number().min(-90).max(90), up_deg: z.number().min(-90).max(90) }).optional(), drag: z.object({ x_deg: z.number().min(-90).max(90), y_deg: z.number().min(-90).max(90) }).optional() }),
+  'workspace:parse-centre': z.object({ ra: z.string().max(40), dec: z.string().max(40) }),
+  'workspace:create': z.object({ name: z.string().max(120), target_id: id.nullable().optional(), grid: workspaceGrid, note: z.string().max(500).nullable().optional() }),
+  'workspace:save': z.object({ workspace_id: id, grid: workspaceGrid, note: z.string().max(500).nullable().optional() }),
+  'workspace:get': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
+  'workspace:export': z.object({ workspace_id: id, format: z.enum(['csv', 'json']), revision: z.number().int().min(1).optional() }),
+  'workspace:from-target': z.object({ target_id: id }),
+  'workspace:from-solve': z.object({ path: z.string().min(1).max(1000) }),
+  'workspace:archive': z.object({ workspace_id: id, archived: z.boolean() }),
 
   'vespera:settings': z.object({}).optional(),
 

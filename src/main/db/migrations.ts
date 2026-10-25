@@ -569,6 +569,51 @@ export function runMigrations(sqlite: Database.Database): void {
       last_seen_at TEXT
     );
   `)
+
+  // Migration: mosaic workspaces, each a named grid on the sky saved as revisions that are never
+  // changed once written, with the panels laid out for each revision (MO-001, MO-002, MO-010)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS mosaic_workspaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      target_id TEXT REFERENCES targets(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mosaic_revisions (
+      workspace_id TEXT NOT NULL REFERENCES mosaic_workspaces(id) ON DELETE CASCADE,
+      revision INTEGER NOT NULL,
+      centre_ra_deg REAL NOT NULL,
+      centre_dec_deg REAL NOT NULL,
+      position_angle_deg REAL NOT NULL,
+      grid_rows INTEGER NOT NULL,
+      grid_columns INTEGER NOT NULL,
+      overlap_x REAL NOT NULL,
+      overlap_y REAL NOT NULL,
+      field_width_deg REAL NOT NULL,
+      field_height_deg REAL NOT NULL,
+      field_source TEXT NOT NULL,
+      field_label TEXT,
+      note TEXT,
+      saved_at TEXT NOT NULL,
+      PRIMARY KEY (workspace_id, revision)
+    );
+
+    CREATE TABLE IF NOT EXISTS mosaic_panels (
+      workspace_id TEXT NOT NULL,
+      revision INTEGER NOT NULL,
+      panel_id TEXT NOT NULL,
+      row INTEGER NOT NULL,
+      col INTEGER NOT NULL,
+      ra_deg REAL NOT NULL,
+      dec_deg REAL NOT NULL,
+      position_angle_deg REAL NOT NULL,
+      footprint TEXT NOT NULL,
+      PRIMARY KEY (workspace_id, revision, panel_id),
+      FOREIGN KEY (workspace_id, revision) REFERENCES mosaic_revisions(workspace_id, revision) ON DELETE CASCADE
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

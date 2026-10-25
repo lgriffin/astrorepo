@@ -2,7 +2,7 @@ import os from 'os'
 import path from 'path'
 import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
-import { MESSIER_GAPS_IN_NEXT_ACTIONS } from '@astro/domain'
+import { MESSIER_GAPS_IN_NEXT_ACTIONS, parseDec, parseRa } from '@astro/domain'
 import {
   makeArchiveTarget,
   makeCompanion,
@@ -33,6 +33,16 @@ import {
   makeReportHiddenData,
   makeDescribeTargetGeometry,
   makeExportMosaicCsv,
+  makeArchiveWorkspace,
+  makeGridFromSolvedFile,
+  editGrid,
+  makeCreateWorkspace,
+  makeDescribeWorkspace,
+  makeExportWorkspace,
+  makeListWorkspaces,
+  makeSaveWorkspaceRevision,
+  makeWorkspaceFromTarget,
+  type PlanMosaicForTarget,
   makeListMosaicGaps,
   makePlanMosaic,
   makePreferredSolver,
@@ -82,6 +92,7 @@ import { SqliteArchiveStore } from './adapters/sqlite-archive-store'
 import { NodeToolProbe } from './adapters/node-tool-probe'
 import { WindowsAppPathsRegistry } from './adapters/windows-app-paths'
 import { SqliteMosaicStore, SqliteSolveStore } from './adapters/sqlite-sky-geometry'
+import { SqliteMosaicWorkspaceStore } from './adapters/sqlite-mosaic-workspace'
 import { AstapPlateSolver, SirilPlateSolver } from './adapters/node-plate-solvers'
 import { NodeImagePixels } from './adapters/node-image-pixels'
 import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
@@ -314,8 +325,29 @@ export function composeCore(db: Database.Database) {
     planMosaic,
     saveMosaicPlan: makeSaveMosaicPlan({ store: solves, mosaics, clock: systemClock }),
     exportMosaicCsv: makeExportMosaicCsv(planMosaic),
+    /** Mosaic workspaces: versioned grids on the sky (specs/037-mosaic-workspace). */
+    workspaces: composeWorkspaces(db, { planMosaic, settings: planningSettings, ephemeris, solves }),
     setCometOrbit: makeSetCometOrbit({ comets }),
     planComet: makePlanComet({ comets, workspace: new NodeSirilWorkspace(db), selection: grading, ephemeris, settings: planningSettings, targets: stacks })
+  }
+}
+
+/** The mosaic workspace's use cases over SQLite (specs/037-mosaic-workspace). */
+function composeWorkspaces(db: Database.Database, deps: { planMosaic: PlanMosaicForTarget; settings: SqlitePlanningSettings; ephemeris: AstronomyEngineEphemeris; solves: SqliteSolveStore }) {
+  const store = new SqliteMosaicWorkspaceStore(db)
+  const base = { store, clock: systemClock }
+  return {
+    list: makeListWorkspaces(base),
+    create: makeCreateWorkspace(base),
+    saveRevision: makeSaveWorkspaceRevision(base),
+    describe: makeDescribeWorkspace({ ...base, settings: deps.settings, ephemeris: deps.ephemeris }),
+    exportPlan: makeExportWorkspace(base),
+    fromTarget: makeWorkspaceFromTarget({ ...base, planMosaic: deps.planMosaic }),
+    archive: makeArchiveWorkspace(base),
+    fromSolve: makeGridFromSolvedFile({ store: deps.solves }),
+    preview: editGrid,
+    /** A centre typed as text, read in the core (MO-014). */
+    parseCentre: (ra: string, dec: string) => ({ raDeg: parseRa(ra), decDeg: parseDec(dec) })
   }
 }
 

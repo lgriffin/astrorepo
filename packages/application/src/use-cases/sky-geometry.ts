@@ -388,7 +388,8 @@ export const DEFAULT_MOSAIC_OVERLAP = 0.2
 /** Nights ahead the planner marks. */
 export const MOSAIC_NIGHTS = 90
 
-async function comingSkies(deps: Pick<MosaicPlannerDeps, 'settings' | 'ephemeris' | 'clock'>, count: number) {
+/** The site and the coming nights' skies, or null with no site set. */
+export async function comingSkies(deps: Pick<MosaicPlannerDeps, 'settings' | 'ephemeris' | 'clock'>, count: number) {
   const site = await deps.settings.site()
   if (!site) return null
   const nights = nightsFrom(siteNightOf(deps.clock.now(), site.longitudeDeg), count, 1)
