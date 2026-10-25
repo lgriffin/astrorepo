@@ -12,6 +12,8 @@ import { Images } from './pages/Images'
 import { Library } from './pages/Library'
 import { Poster } from './pages/Poster'
 import { MessierMosaic } from './pages/MessierMosaic'
+import { MosaicWorkspaces } from './pages/MosaicWorkspaces'
+import { MosaicWorkspaceDetail } from './pages/MosaicWorkspace'
 import { Settings } from './pages/Settings'
 import { Jobs } from './pages/Jobs'
 import { Vespera } from './pages/Vespera'
@@ -53,6 +55,8 @@ export function App(): React.ReactElement {
               <Route path="/calibration" element={<Calibration />} />
               <Route path="/timeline" element={<SessionTimeline />} />
               <Route path="/poster" element={<Poster />} />
+              <Route path="/mosaics" element={<MosaicWorkspaces />} />
+              <Route path="/mosaics/:id" element={<MosaicWorkspaceDetail />} />
               <Route path="/messier" element={<MessierMosaic />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/vespera" element={<Vespera />} />

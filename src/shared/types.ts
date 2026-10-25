@@ -1472,6 +1472,91 @@ export interface MosaicPlanView {
   nights: { summary: string; ranges: string[]; clear: number; of: number } | null
 }
 
+// ── Mosaic workspace (spec 037) ───────────────────────────────────────────
+
+/** A workspace grid as the editor holds it and sends it back; snake case, as IPC arguments are. */
+export interface WorkspaceGridInput {
+  ra_deg: number
+  dec_deg: number
+  position_angle_deg: number
+  rows: number
+  columns: number
+  overlap_x: number
+  overlap_y: number
+  field_width_deg: number
+  field_height_deg: number
+  field_source: 'equipment' | 'manual' | 'solve' | 'target-plan'
+  field_label?: string | null
+}
+
+export interface WorkspacePanelView {
+  id: string
+  row: number
+  column: number
+  ra: string
+  dec: string
+  raDeg: number
+  decDeg: number
+  /** "+12.3°" */
+  positionAngle: string
+  /** The footprint on the drawing (x west, y north, degrees about the grid's centre). */
+  outline: { x: number; y: number }[]
+  /** "Clear on 12 of the next 30 nights, from 2026-10-26"; null without a site. */
+  outlook: string | null
+  clearNights: number | null
+}
+
+export interface WorkspaceDrawingView {
+  ok: boolean
+  /** What is wrong with the grid, when it cannot be drawn. */
+  problems: string[]
+  /** The grid as laid out (after a drag, its new centre). */
+  grid: WorkspaceGridInput
+  centre: string
+  /** "3 × 4 panels, 15% overlap across and down, up axis at 0° east of north, covering 2.1° × 4.3°." */
+  summary: string | null
+  panels: WorkspacePanelView[]
+  /** Half the drawing's width and height, in degrees, with a margin. */
+  bounds: { x: number; y: number } | null
+}
+
+export interface WorkspaceSummaryView {
+  id: string
+  name: string
+  targetId: string | null
+  archived: boolean
+  createdAt: string
+  revision: number
+  /** "3 × 4 panels" */
+  size: string
+}
+
+export interface WorkspaceView {
+  id: string
+  name: string
+  targetId: string | null
+  archived: boolean
+  revision: number
+  latestRevision: number
+  savedAt: string
+  note: string | null
+  /** "Field from Seestar S50 (equipment)" */
+  fieldFrom: string
+  drawing: WorkspaceDrawingView
+  revisions: { revision: number; savedAt: string; note: string | null; size: string }[]
+  /** Null with a site set; else says to set one for panel visibility. */
+  outlookNote: string | null
+}
+
+export interface WorkspaceSaveView {
+  ok: boolean
+  /** The workspace to open (a new one after create). */
+  workspaceId: string | null
+  revision: number | null
+  message: string
+  problems: string[]
+}
+
 // ── Gallery inspector (spec 025) ──────────────────────────────────────────
 
 export interface ChannelStatsView {

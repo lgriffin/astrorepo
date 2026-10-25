@@ -476,6 +476,13 @@ export interface MosaicPlan {
 
 /** The position `xi` east and `eta` north of a centre on the tangent plane (degrees), back on the sky. */
 export function offsetPosition(centre: { raDeg: number; decDeg: number }, xiDeg: number, etaDeg: number): { raDeg: number; decDeg: number } {
+  const at = deprojectPosition(centre, xiDeg, etaDeg)
+  // Rounding can carry 359.9999999 up to 360, which is 0.
+  return { raDeg: round(at.raDeg, 6) % 360, decDeg: round(at.decDeg, 6) }
+}
+
+/** offsetPosition without the rounding, for geometry that takes differences of nearby positions. RA in [0, 360). */
+export function deprojectPosition(centre: { raDeg: number; decDeg: number }, xiDeg: number, etaDeg: number): { raDeg: number; decDeg: number } {
   const xi = xiDeg * RAD
   const eta = etaDeg * RAD
   const ra0 = centre.raDeg * RAD
@@ -483,8 +490,25 @@ export function offsetPosition(centre: { raDeg: number; decDeg: number }, xiDeg:
   const denom = Math.cos(dec0) - eta * Math.sin(dec0)
   const ra = ra0 + Math.atan2(xi, denom)
   const dec = Math.atan2(Math.sin(dec0) + eta * Math.cos(dec0), Math.sqrt(xi * xi + denom * denom))
-  // Rounding can carry 359.9999999 up to 360, which is 0.
-  return { raDeg: round(((ra / RAD) % 360 + 360) % 360, 6) % 360, decDeg: round(dec / RAD, 6) }
+  const raDeg = (((ra / RAD) % 360) + 360) % 360
+  return { raDeg: raDeg >= 360 ? 0 : raDeg, decDeg: dec / RAD }
+}
+
+/** A panel's up and right axes on the tangent plane (xi east, eta north) at a position angle east of north; right is west at 0. */
+export function panelAxes(positionAngleDeg: number): { up: { xi: number; eta: number }; right: { xi: number; eta: number } } {
+  const theta = positionAngleDeg * RAD
+  return { up: { xi: Math.sin(theta), eta: Math.cos(theta) }, right: { xi: -Math.cos(theta), eta: Math.sin(theta) } }
+}
+
+/**
+ * Where a grid's panel sits on the tangent plane about the grid's centre: columns step along the
+ * right axis and rows down the up axis, centred on the middle of the grid. Row and column from 0.
+ */
+export function gridOffset(row: number, column: number, rows: number, columns: number, stepX: number, stepY: number, positionAngleDeg: number): { xi: number; eta: number } {
+  const { up, right } = panelAxes(positionAngleDeg)
+  const u = (column - (columns - 1) / 2) * stepX
+  const v = ((rows - 1) / 2 - row) * stepY
+  return { xi: u * right.xi + v * up.xi, eta: u * right.eta + v * up.eta }
 }
 
 function panelsAlong(targetDeg: number, fieldDeg: number, overlap: number): number {
@@ -507,16 +531,11 @@ export function planMosaic(req: MosaicRequest): MosaicPlan {
   const rows = panelsAlong(w * sin + h * cos, heightDeg, overlap)
   const stepX = widthDeg * (1 - overlap)
   const stepY = heightDeg * (1 - overlap)
-  // The panel's up axis points at the position angle; its right axis is a quarter turn on, toward the west at 0.
-  const up = { xi: Math.sin(theta), eta: Math.cos(theta) }
-  const right = { xi: -Math.cos(theta), eta: Math.sin(theta) }
   const tiles: MosaicTile[] = []
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < columns; c++) {
-      const u = (c - (columns - 1) / 2) * stepX
-      const v = ((rows - 1) / 2 - r) * stepY
-      const at = offsetPosition(req.centre, u * right.xi + v * up.xi, u * right.eta + v * up.eta)
-      tiles.push({ index: r * columns + c + 1, row: r + 1, column: c + 1, ...at })
+      const { xi, eta } = gridOffset(r, c, rows, columns, stepX, stepY, normaliseAngle(req.rotationDeg))
+      tiles.push({ index: r * columns + c + 1, row: r + 1, column: c + 1, ...offsetPosition(req.centre, xi, eta) })
     }
   }
   return {

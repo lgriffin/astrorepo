@@ -55,6 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Collections',
     items: [
       { id: 'collections', to: '/collections', label: 'Collections', icon: '▦', hint: 'Catalogues and lists of targets, and how far through each you are' },
+      { id: 'mosaics', to: '/mosaics', label: 'Mosaics', icon: '⊡', hint: 'Mosaic plans drawn on the sky, revision by revision, with exact panel coordinates' },
       { id: 'messier', to: '/messier', label: 'Messier mosaic', icon: '▩', hint: 'All 110 Messier objects with your own images, the gaps, and when each gap is up' },
       { id: 'posters', to: '/poster', label: 'Posters', icon: '▣', hint: 'A printable grid of a collection' }
     ]
@@ -152,6 +153,18 @@ export function targetLink(targetId: string, tab: TargetTab = 'overview'): strin
 /** The Sky planner opened on a target's mosaic plan (specs/024-sky-geometry). */
 export function mosaicPlannerLink(targetId: string): string {
   return `/sky-planner?mosaic=${encodeURIComponent(targetId)}#mosaic`
+}
+
+/** A mosaic workspace's page (specs/037-mosaic-workspace), at a revision when one is named. */
+export function workspaceLink(workspaceId: string, revision?: number): string {
+  const path = `/mosaics/${encodeURIComponent(workspaceId)}`
+  return revision === undefined ? path : `${path}?revision=${revision}`
+}
+
+/** The revision a workspace link asks for, or null for the latest. */
+export function workspaceRevisionFrom(search: string): number | null {
+  const n = Number(new URLSearchParams(search).get('revision'))
+  return Number.isInteger(n) && n >= 1 ? n : null
 }
 
 /** The target a Sky planner link asks to plan a mosaic for, or null. */
