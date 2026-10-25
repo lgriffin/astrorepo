@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
 import { ulid } from 'ulid'
-import type { MosaicWorkspaceStore, StoredRevision, WorkspaceRecord, WorkspaceStatus } from '@astro/application'
+import type { MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord, WorkspaceStatus } from '@astro/application'
 import type { FieldSource, PlannedPanel, SkyPoint } from '@astro/domain'
 
 interface WorkspaceRow {
@@ -91,6 +91,13 @@ export class SqliteMosaicWorkspaceStore implements MosaicWorkspaceStore {
   async revisions(id: string): Promise<StoredRevision[]> {
     const rows = this.db.prepare('SELECT * FROM mosaic_revisions WHERE workspace_id = ? ORDER BY revision').all(id) as RevisionRow[]
     return rows.map(r => this.toRevision(r))
+  }
+
+  async history(id: string): Promise<RevisionSummary[]> {
+    const rows = this.db
+      .prepare('SELECT revision, saved_at, note, grid_rows, grid_columns FROM mosaic_revisions WHERE workspace_id = ? ORDER BY revision')
+      .all(id) as { revision: number; saved_at: string; note: string | null; grid_rows: number; grid_columns: number }[]
+    return rows.map(r => ({ revision: r.revision, savedAt: new Date(r.saved_at), note: r.note, rows: r.grid_rows, columns: r.grid_columns }))
   }
 
   async revision(id: string, revision: number): Promise<StoredRevision | null> {

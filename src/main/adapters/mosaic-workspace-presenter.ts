@@ -134,5 +134,7 @@ export function toRevisionSavedView(workspaceId: string, result: SaveRevisionRes
       return { ok: false, workspaceId, revision: null, message: 'The grid was not saved.', problems: result.problems }
     case 'no-workspace':
       return { ok: false, workspaceId: null, revision: null, message: 'That mosaic no longer exists.', problems: [] }
+    case 'stale':
+      return { ok: false, workspaceId, revision: result.revision, message: `Revision ${result.revision} was saved meanwhile, so this grid was not saved. Open the latest revision and try again.`, problems: [] }
   }
 }

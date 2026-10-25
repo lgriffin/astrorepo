@@ -1,4 +1,4 @@
-import type { MosaicWorkspaceStore, StoredRevision, WorkspaceRecord } from '@astro/application'
+import type { MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
 import { DEFAULT_GRID_OVERLAP, type GridDefinition } from '@astro/domain'
 
 const copy = <T>(value: T): T => structuredClone(value)
@@ -36,6 +36,10 @@ export class InMemoryMosaicWorkspaceStore implements MosaicWorkspaceStore {
 
   async revisions(id: string): Promise<StoredRevision[]> {
     return (this.saved.get(id) ?? []).map(copy)
+  }
+
+  async history(id: string): Promise<RevisionSummary[]> {
+    return (this.saved.get(id) ?? []).map(r => ({ revision: r.revision, savedAt: new Date(r.savedAt), note: r.note, rows: r.grid.rows, columns: r.grid.columns }))
   }
 
   async revision(id: string, revision: number): Promise<StoredRevision | null> {

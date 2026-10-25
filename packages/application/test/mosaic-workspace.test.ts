@@ -109,6 +109,27 @@ describe('creating and revising a workspace', () => {
     expect(await save(made.workspace.id, gridDefinition({ columns: 20 }))).toEqual({ status: 'invalid', problems: ['Columns must be a whole number from 1 to 12.'] })
     expect(await r.store.revisions(made.workspace.id)).toHaveLength(1)
   })
+
+  it('[MO-015] Given another save landing first, When saved, Then this one is refused as stale and only the other revision is kept', async () => {
+    const r = rig()
+    const made = await makeCreateWorkspace(r)({ name: 'M 31', grid: gridDefinition() })
+    if (!made.ok) throw new Error('expected a workspace')
+    const save = makeSaveWorkspaceRevision(r)
+    // The other save reads revision 1 too and writes revision 2 while this one is between reading and writing.
+    const add = r.store.addRevision.bind(r.store)
+    r.store.addRevision = async revision => {
+      r.store.addRevision = add
+      await save(made.workspace.id, gridDefinition({ positionAngleDeg: 10 }))
+      return add(revision)
+    }
+    expect(await save(made.workspace.id, gridDefinition({ positionAngleDeg: 20 }))).toEqual({ status: 'stale', revision: 2 })
+    expect((await r.store.revisions(made.workspace.id)).map(v => v.grid.positionAngleDeg)).toEqual([0, 10])
+    // A store failing for another reason still fails loudly.
+    r.store.addRevision = async () => {
+      throw new Error('disk full')
+    }
+    await expect(save(made.workspace.id, gridDefinition({ positionAngleDeg: 30 }))).rejects.toThrow('disk full')
+  })
 })
 
 describe('describing a workspace', () => {

@@ -133,7 +133,9 @@ export function rectangleOnSky(centre: SkyPoint, widthDeg: number, heightDeg: nu
     const at = deprojectPosition(centre, r * right.xi + u * up.xi, r * right.eta + u * up.eta)
     return { raDeg: round(at.raDeg, 6) % 360, decDeg: round(at.decDeg, 6) }
   }
-  const [w, h] = [widthDeg / 2, heightDeg / 2]
+  // Each edge's middle is half the field from the centre on the sky, so the plane's offsets are its tangents.
+  const tangent = (deg: number) => Math.tan(deg * RAD) / RAD
+  const [w, h] = [tangent(widthDeg / 2), tangent(heightDeg / 2)]
   return { frame: 'ICRS', vertices: [corner(-w, h), corner(w, h), corner(w, -h), corner(-w, -h)] }
 }
 
@@ -171,7 +173,10 @@ export function layoutGrid(def: GridDefinition): PlannedPanel[] {
   return panels
 }
 
-/** Whether two grids lay out the same panels: a saved plan is only revised when this is false. */
+/**
+ * Whether two grids are the same plan: they lay out the same panels and name their field the same
+ * way. A saved plan is only revised when this is false.
+ */
 export function sameGeometry(a: GridDefinition, b: GridDefinition): boolean {
   const near = (x: number, y: number, eps: number) => Math.abs(x - y) <= eps
   return (
@@ -183,7 +188,9 @@ export function sameGeometry(a: GridDefinition, b: GridDefinition): boolean {
     near(a.overlapX, b.overlapX, 1e-9) &&
     near(a.overlapY, b.overlapY, 1e-9) &&
     near(a.field.widthDeg, b.field.widthDeg, 1e-9) &&
-    near(a.field.heightDeg, b.field.heightDeg, 1e-9)
+    near(a.field.heightDeg, b.field.heightDeg, 1e-9) &&
+    a.field.source === b.field.source &&
+    (a.field.label ?? null) === (b.field.label ?? null)
   )
 }
 
@@ -213,10 +220,33 @@ export function toDrawing(centre: SkyPoint, at: SkyPoint): { x: number; y: numbe
 
 // ── Typed coordinates ───────────────────────────────────────────────────
 
-/** Three sexagesimal parts with a sign, or null when they are not three numbers in range. */
-function sexagesimalParts(text: string, firstMax: number): { sign: number; value: number } | null {
-  const parts = text.trim().replace(/^[+-]/, '').split(/[\s:hdms°'′"″]+/i).filter(p => p !== '')
-  if (parts.length < 2 || parts.length > 3 || !parts.every(p => /^\d+(?:\.\d+)?$/.test(p))) return null
+/** The unit marks each coordinate may carry, in order: hours or degrees, then minutes, then seconds. */
+const MARKS = {
+  ra: [['h'], ['m'], ['s']],
+  dec: [['d', '°'], ['m', "'", '′'], ['s', '"', '″']]
+} as const
+
+/**
+ * Two or three sexagesimal parts with a sign, or null when they are not numbers in range. They are
+ * split by colons or spaces, or carry their own coordinate's unit marks in order ("05h35m17s",
+ * "-05°23'28\""); marks of the other coordinate, or out of order, are refused.
+ */
+function sexagesimalParts(text: string, kind: 'ra' | 'dec', firstMax: number): { sign: number; value: number } | null {
+  const body = text.trim().replace(/^[+-]/, '').trim()
+  const tokens = body.match(/\d+(?:\.\d+)?|\D+/g) ?? []
+  const parts: string[] = []
+  const marks: string[] = []
+  for (const token of tokens) {
+    if (/^\d/.test(token)) parts.push(token)
+    else if (parts.length === 0) return null
+    else marks.push(token.trim().toLowerCase())
+  }
+  if (parts.length < 2 || parts.length > 3 || marks.length > parts.length || marks.length < parts.length - 1) return null
+  const plain = marks.every(m => m === '' || m === ':')
+  const marked = marks.every((m, i) => (MARKS[kind][i] as readonly string[]).includes(m))
+  if (!plain && !marked) return null
+  // A plain form has no trailing mark; colons and spaces only ever sit between parts.
+  if (plain && marks.length === parts.length && marks[marks.length - 1] !== '') return null
   const [a, b, c = 0] = parts.map(Number)
   if (a > firstMax || b >= 60 || c >= 60) return null
   if (!Number.isInteger(a) || (parts.length === 3 && !Number.isInteger(b))) return null
@@ -238,7 +268,7 @@ export function parseRa(text: string): number | null {
     const deg = Number(t.replace(/\s*(?:°|d|deg)$/i, ''))
     return deg < 360 ? deg : null
   }
-  const hms = sexagesimalParts(t, 23)
+  const hms = sexagesimalParts(t, 'ra', 23)
   return hms ? round(hms.value * 15, 9) : null
 }
 
@@ -249,7 +279,7 @@ export function parseDec(text: string): number | null {
     const deg = Number(t.replace(/\s*(?:°|d|deg)$/i, ''))
     return Math.abs(deg) <= 90 ? deg + 0 : null
   }
-  const dms = sexagesimalParts(t, 90)
+  const dms = sexagesimalParts(t, 'dec', 90)
   if (!dms) return null
   const deg = dms.sign * dms.value
   return Math.abs(deg) <= 90 ? round(deg, 9) + 0 : null

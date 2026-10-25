@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext'
 import { targetLink, workspaceLink, workspaceRevisionFrom } from '@shared/navigation'
 import type { WorkspaceGridInput, WorkspaceSaveView, WorkspaceView } from '@shared/types'
 import { GridWorkbench, PanelTable } from './MosaicWorkspaces'
+import type { FlushCentre } from '../components/mosaic/GridEditor'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const button = 'px-3 py-1.5 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -21,9 +22,14 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
   const [grid, setGrid] = useState<WorkspaceGridInput | null>(null)
   const [note, setNote] = useState('')
   const [problems, setProblems] = useState<string[]>([])
+  const flushRef = useRef<FlushCentre | null>(null)
+  const loading = useRef(0)
 
   const load = useCallback(async () => {
+    // Only the newest request is shown, so a slow answer for another revision never replaces it.
+    const mine = ++loading.current
     const v = await invoke<WorkspaceView | null>('workspace:get', { workspace_id: id, ...(wanted ? { revision: wanted } : {}) }).catch(() => null)
+    if (mine !== loading.current) return
     setView(v)
     setGrid(v ? v.drawing.grid : null)
   }, [id, wanted])
@@ -42,7 +48,13 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
   }
 
   const save = async () => {
-    const result = await invoke<WorkspaceSaveView>('workspace:save', { workspace_id: view.id, grid, note: note.trim() || null })
+    const typed = flushRef.current ? await flushRef.current() : grid
+    if (!typed) return
+    const result = await invoke<WorkspaceSaveView>('workspace:save', { workspace_id: view.id, grid: typed, note: note.trim() || null }).catch(() => null)
+    if (!result) {
+      addToast('The revision could not be saved.', 'error')
+      return
+    }
     setProblems(result.problems)
     addToast(result.message, result.ok ? 'success' : 'error')
     if (result.ok && result.revision) {
@@ -117,7 +129,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
 
         <Card title="Change the grid">
           <div className="space-y-4 text-sm">
-            <GridWorkbench grid={grid} setGrid={setGrid} />
+            <GridWorkbench grid={grid} setGrid={setGrid} flushRef={flushRef} />
             {problems.length > 0 && (
               <ul className="text-sm text-amber-400 list-disc pl-5">
                 {problems.map(p => (

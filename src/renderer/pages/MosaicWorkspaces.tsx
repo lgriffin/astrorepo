@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
-import { GridEditor } from '../components/mosaic/GridEditor'
+import { GridEditor, type FlushCentre } from '../components/mosaic/GridEditor'
 import { MosaicCanvas } from '../components/mosaic/MosaicCanvas'
 import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
@@ -81,16 +81,22 @@ export function PanelTable({ drawing }: { drawing: WorkspaceDrawingView }): Reac
 }
 
 /** The grid editor beside the drawing it lays out, shared by a new mosaic and a saved one. */
-export function GridWorkbench({ grid, setGrid }: { grid: WorkspaceGridInput; setGrid: (g: WorkspaceGridInput) => void }): React.ReactElement {
+export function GridWorkbench({ grid, setGrid, flushRef }: { grid: WorkspaceGridInput; setGrid: (g: WorkspaceGridInput) => void; flushRef?: MutableRefObject<FlushCentre | null> }): React.ReactElement {
   const [drawing, move] = useDrawing(grid)
   const [selected, setSelected] = useState<string | null>(null)
+  const latest = useRef(grid)
+  useEffect(() => {
+    latest.current = grid
+  }, [grid])
   const apply = async (m: Parameters<typeof move>[0]) => {
-    const next = await move(m)
-    if (next) setGrid(next)
+    const sent = grid
+    const next = await move(m).catch(() => null)
+    // A move answered after another edit would undo that edit, so it is dropped.
+    if (next && latest.current === sent) setGrid(next)
   }
   return (
     <div className="space-y-4">
-      <GridEditor grid={grid} onChange={setGrid} onShift={(right, up) => apply({ shift: { right_deg: right, up_deg: up } })} />
+      <GridEditor grid={grid} onChange={setGrid} onShift={(right, up) => apply({ shift: { right_deg: right, up_deg: up } })} flushRef={flushRef} />
       {drawing && !drawing.ok && (
         <ul className="text-sm text-amber-400 list-disc pl-5">
           {drawing.problems.map(p => (
@@ -123,6 +129,8 @@ export function MosaicWorkspaces(): React.ReactElement {
   const [target, setTarget] = useState<{ id: string; name: string } | null>(null)
   const [solves, setSolves] = useState<TargetGeometryView['solves']>([])
   const [problems, setProblems] = useState<string[]>([])
+  const flushRef = useRef<FlushCentre | null>(null)
+  const picking = useRef(0)
 
   useEffect(() => {
     invoke<WorkspaceSummaryView[]>('workspace:list')
@@ -145,15 +153,21 @@ export function MosaicWorkspaces(): React.ReactElement {
   }, [query])
 
   const pick = async (t: TargetSummary) => {
+    // Answers for a target picked before this one are dropped, so two targets never mix.
+    const mine = ++picking.current
     setQuery('')
     setMatches([])
     setTarget({ id: t.id, name: t.canonicalName })
+    setSolves([])
     if (!name) setName(`${t.canonicalName} mosaic`)
-    const detail = await invoke<{ raHours: number | null; decDegrees: number | null } | null>('targets:get', { id: t.id })
+    const [detail, geometry] = await Promise.all([
+      invoke<{ raHours: number | null; decDegrees: number | null } | null>('targets:get', { id: t.id }).catch(() => null),
+      invoke<TargetGeometryView | null>('sky:target-geometry', { target_id: t.id }).catch(() => null)
+    ])
+    if (mine !== picking.current) return
     if (detail?.raHours !== null && detail?.raHours !== undefined && detail.decDegrees !== null) {
       setGrid(g => ({ ...g, ra_deg: (detail.raHours as number) * 15, dec_deg: detail.decDegrees as number }))
     }
-    const geometry = await invoke<TargetGeometryView | null>('sky:target-geometry', { target_id: t.id }).catch(() => null)
     setSolves((geometry?.solves ?? []).filter(s => s.solved))
   }
 
@@ -170,8 +184,11 @@ export function MosaicWorkspaces(): React.ReactElement {
   }
 
   const create = async () => {
-    const result = await invoke<WorkspaceSaveView>('workspace:create', { name, target_id: target?.id ?? null, grid })
-    if (result.ok && result.workspaceId) {
+    const typed = flushRef.current ? await flushRef.current() : grid
+    if (!typed) return
+    const result = await invoke<WorkspaceSaveView>('workspace:create', { name, target_id: target?.id ?? null, grid: typed }).catch(() => null)
+    if (!result) addToast('The mosaic could not be saved.', 'error')
+    else if (result.ok && result.workspaceId) {
       addToast(result.message, 'success')
       navigate(workspaceLink(result.workspaceId))
     } else setProblems(result.problems)
@@ -241,7 +258,7 @@ export function MosaicWorkspaces(): React.ReactElement {
               </div>
             )}
 
-            <GridWorkbench grid={grid} setGrid={setGrid} />
+            <GridWorkbench grid={grid} setGrid={setGrid} flushRef={flushRef} />
 
             {problems.length > 0 && (
               <ul className="text-sm text-amber-400 list-disc pl-5">

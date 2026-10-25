@@ -34,6 +34,8 @@ export function resetDatabase(): { cleared: boolean } {
   sqlite.exec(`
     DELETE FROM jobs;
     DELETE FROM plate_solves;
+    -- Their revisions and panels go with them.
+    DELETE FROM mosaic_workspaces;
     DELETE FROM mosaic_plans;
     DELETE FROM dismissed_suggestions;
     DELETE FROM quarantined_files;

@@ -35,12 +35,16 @@ describe('the mosaic workspace presenter', () => {
     expect(toRevisionSavedView('w1', { status: 'saved', revision: 3 }).message).toBe('Saved as revision 3. Earlier revisions are kept.')
     expect(toRevisionSavedView('w1', { status: 'unchanged', revision: 2 }).message).toBe('Nothing changed since revision 2, so no new revision was saved.')
     expect(toRevisionSavedView('w1', { status: 'no-workspace' })).toMatchObject({ ok: false, workspaceId: null })
+    expect(toRevisionSavedView('w1', { status: 'stale', revision: 4 })).toMatchObject({ ok: false, revision: 4, message: 'Revision 4 was saved meanwhile, so this grid was not saved. Open the latest revision and try again.' })
     expect(fieldFrom(gridDefinition({ field: { widthDeg: 0.72, heightDeg: 1.28, source: 'equipment', label: 'Seestar S50' } }))).toBe('Field 43′ × 77′ from Seestar S50 (equipment)')
   })
 
-  it('[MO-015] Given a grid out of bounds from the renderer, When validated, Then it is refused before it reaches the core', () => {
-    const grid = { ...toGridInput(gridDefinition()), rows: 13 }
-    expect(() => schemas['workspace:create'].parse({ name: 'x', grid })).toThrow()
+  it('[MO-015] Given a grid past sane bounds from the renderer, When validated, Then it is refused before it reaches the core; one the core can word is let through', () => {
+    expect(() => schemas['workspace:create'].parse({ name: 'x', grid: { ...toGridInput(gridDefinition()), rows: 5000 } })).toThrow()
+    expect(() => schemas['workspace:create'].parse({ name: 'x', grid: { ...toGridInput(gridDefinition()), rows: 2.5 } })).toThrow()
+    // 13 rows, no overlap or a zero field reach the core, which says what is wrong in words.
+    const typed = schemas['workspace:preview'].parse({ grid: { ...toGridInput(gridDefinition()), rows: 13, overlap_x: 0.7, field_width_deg: 0 } })
+    expect(previewGrid(toGridDefinition(typed.grid))).toMatchObject({ ok: false, problems: ['Rows must be a whole number from 1 to 12.', 'The overlap across must be from 0% to 60%.', "Each panel's field must be more than 0° and at most 30° on a side."] })
     expect(schemas['workspace:preview'].parse({ grid: toGridInput(gridDefinition()), drag: { x_deg: 0.5, y_deg: -0.2 } })).toMatchObject({ drag: { x_deg: 0.5 } })
   })
 })

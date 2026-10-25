@@ -43,8 +43,9 @@ angle differs between panels, and the export gives each panel's own.
 
 ## Revisions
 
-**Save as revision N** adds a revision only when the panels change; saving the same grid again
-says nothing changed. Earlier revisions are kept exactly as saved, with their panels, and open from
+**Save as revision N** adds a revision only when the panels or where the field came from change;
+saving the same grid again says nothing changed. If the same mosaic was saved from elsewhere in the
+meantime, the save is refused and asks you to open the latest revision. Earlier revisions are kept exactly as saved, with their panels, and open from
 the links under the panel table. Editing an earlier revision and saving it makes a new latest
 revision; nothing is overwritten.
 

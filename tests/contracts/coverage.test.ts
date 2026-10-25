@@ -35,6 +35,7 @@ const NOT_PORTS: Record<string, string> = {
   TilePicture: 'what TilePictures.draw returns',
   CompanionDevice: 'what CompanionDeviceStore saves',
   WorkspaceRecord: 'what MosaicWorkspaceStore saves',
+  RevisionSummary: 'what MosaicWorkspaceStore.history lists',
   StoredRevision: 'what MosaicWorkspaceStore saves'
 }
 

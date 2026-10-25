@@ -31,12 +31,12 @@ const workspaceGrid = z.object({
   ra_deg: z.number().min(-720).max(720),
   dec_deg: z.number().min(-90).max(90),
   position_angle_deg: z.number().min(-720).max(720),
-  rows: z.number().int().min(1).max(12),
-  columns: z.number().int().min(1).max(12),
-  overlap_x: z.number().min(0).max(0.6),
-  overlap_y: z.number().min(0).max(0.6),
-  field_width_deg: z.number().positive().max(30),
-  field_height_deg: z.number().positive().max(30),
+  rows: z.number().int().min(0).max(1000),
+  columns: z.number().int().min(0).max(1000),
+  overlap_x: z.number().min(-1).max(1),
+  overlap_y: z.number().min(-1).max(1),
+  field_width_deg: z.number().min(0).max(360),
+  field_height_deg: z.number().min(0).max(360),
   field_source: z.enum(['equipment', 'manual', 'solve', 'target-plan']),
   field_label: z.string().max(200).nullable().optional()
 })

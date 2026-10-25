@@ -18,7 +18,7 @@ import {
   type PlannedPanel
 } from '@astro/domain'
 import type { Clock } from '../ports/clock'
-import type { MosaicWorkspaceStore, StoredRevision, WorkspaceRecord } from '../ports/mosaic-workspace'
+import type { MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '../ports/mosaic-workspace'
 import type { Ephemeris, PlanningSettings } from '../ports/sky'
 import type { SolveStore } from '../ports/sky-geometry'
 import { comingSkies, type PlanMosaicForTarget } from './sky-geometry'
@@ -98,6 +98,8 @@ export type SaveRevisionResult =
   | { status: 'unchanged'; revision: number }
   | { status: 'invalid'; problems: string[] }
   | { status: 'no-workspace' }
+  /** Another save got there first; nothing of this one was written. */
+  | { status: 'stale'; revision: number }
 
 export type SaveWorkspaceRevision = (workspaceId: string, grid: GridDefinition, note?: string | null) => Promise<SaveRevisionResult>
 
@@ -114,7 +116,14 @@ export function makeSaveWorkspaceRevision(deps: WorkspaceDeps): SaveWorkspaceRev
     const latest = await deps.store.revision(workspaceId, workspace.latestRevision)
     if (latest && sameGeometry(latest.grid, grid)) return { status: 'unchanged', revision: latest.revision }
     const revision = workspace.latestRevision + 1
-    await deps.store.addRevision({ workspaceId, revision, grid, panels: layoutGrid(grid), note, savedAt: deps.clock.now() })
+    try {
+      await deps.store.addRevision({ workspaceId, revision, grid, panels: layoutGrid(grid), note, savedAt: deps.clock.now() })
+    } catch (error) {
+      // The store refuses a number that no longer follows the latest: another save came in between.
+      const now = await deps.store.get(workspaceId)
+      if (now && now.latestRevision >= revision) return { status: 'stale', revision: now.latestRevision }
+      throw error
+    }
     return { status: 'saved', revision }
   }
 }
@@ -127,14 +136,6 @@ export interface PanelOutlook {
   clearNights: number
   /** The first of them, or null. */
   firstClear: string | null
-}
-
-export interface RevisionSummary {
-  revision: number
-  savedAt: Date
-  note: string | null
-  rows: number
-  columns: number
 }
 
 export interface WorkspaceView {
@@ -167,9 +168,9 @@ export function makeDescribeWorkspace(deps: DescribeWorkspaceDeps, nightsAhead =
   return async (workspaceId, wanted) => {
     const workspace = await deps.store.get(workspaceId)
     if (!workspace) return null
-    const revisions = await deps.store.revisions(workspaceId)
-    const revision = revisions.find(r => r.revision === (wanted ?? workspace.latestRevision))
+    const revision = await deps.store.revision(workspaceId, wanted ?? workspace.latestRevision)
     if (!revision) return null
+    const revisions = await deps.store.history(workspaceId)
     const drawing: Extract<GridPreview, { ok: true }> = {
       ok: true,
       grid: revision.grid,
@@ -196,7 +197,7 @@ export function makeDescribeWorkspace(deps: DescribeWorkspaceDeps, nightsAhead =
       workspace,
       revision,
       drawing,
-      revisions: revisions.map(r => ({ revision: r.revision, savedAt: r.savedAt, note: r.note, rows: r.grid.rows, columns: r.grid.columns })),
+      revisions,
       outlook
     }
   }

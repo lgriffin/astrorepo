@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, type MutableRefObject } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import type { Equipment, FOVResult, WorkspaceGridInput } from '@shared/types'
 
@@ -10,7 +10,15 @@ interface GridEditorProps {
   onChange: (grid: WorkspaceGridInput) => void
   /** A nudge along the grid's own axes, in degrees. */
   onShift: (rightDeg: number, upDeg: number) => void
+  /**
+   * Set to a function that reads the typed centre now and gives the grid with it, or null when it
+   * cannot be read, so a save never sends the centre from before the typing.
+   */
+  flushRef?: MutableRefObject<FlushCentre | null>
 }
+
+/** Reads the typed centre into the grid; null when it cannot be read. */
+export type FlushCentre = () => Promise<WorkspaceGridInput | null>
 
 const fmt = (n: number, places: number) => String(Math.round(n * 10 ** places) / 10 ** places)
 
@@ -19,10 +27,12 @@ const fmt = (n: number, places: number) => String(Math.round(n * 10 ** places) /
  * usual form (read by the core), the up axis's position angle, rows, columns, the overlap each
  * way and the field from Equipment or typed in. Every change is laid out again by the core.
  */
-export function GridEditor({ grid, onChange, onShift }: GridEditorProps): React.ReactElement {
+export function GridEditor({ grid, onChange, onShift, flushRef }: GridEditorProps): React.ReactElement {
   const [ra, setRa] = useState(fmt(grid.ra_deg, 5))
   const [dec, setDec] = useState(fmt(grid.dec_deg, 5))
   const [centreProblem, setCentreProblem] = useState<string | null>(null)
+  // Only typing changes the centre: leaving an untouched field must not round a precise centre.
+  const [typed, setTyped] = useState(false)
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [scope, setScope] = useState('')
   const [camera, setCamera] = useState('')
@@ -31,6 +41,7 @@ export function GridEditor({ grid, onChange, onShift }: GridEditorProps): React.
   useEffect(() => {
     setRa(fmt(grid.ra_deg, 5))
     setDec(fmt(grid.dec_deg, 5))
+    setTyped(false)
   }, [grid.ra_deg, grid.dec_deg])
 
   useEffect(() => {
@@ -39,15 +50,23 @@ export function GridEditor({ grid, onChange, onShift }: GridEditorProps): React.
       .catch(() => setEquipment([]))
   }, [])
 
-  const readCentre = async () => {
+  const readCentre: FlushCentre = async () => {
+    if (!typed) return grid
     const parsed = await invoke<{ raDeg: number | null; decDeg: number | null }>('workspace:parse-centre', { ra, dec })
     if (parsed.raDeg === null || parsed.decDeg === null) {
       setCentreProblem(parsed.raDeg === null ? 'Type RA as hh:mm:ss, 5.59h or degrees.' : 'Type Dec as ±dd:mm:ss or degrees from -90 to +90.')
-      return
+      return null
     }
     setCentreProblem(null)
-    if (parsed.raDeg !== grid.ra_deg || parsed.decDeg !== grid.dec_deg) onChange({ ...grid, ra_deg: parsed.raDeg, dec_deg: parsed.decDeg })
+    setTyped(false)
+    if (parsed.raDeg === grid.ra_deg && parsed.decDeg === grid.dec_deg) return grid
+    const next = { ...grid, ra_deg: parsed.raDeg, dec_deg: parsed.decDeg }
+    onChange(next)
+    return next
   }
+  useEffect(() => {
+    if (flushRef) flushRef.current = readCentre
+  })
 
   const pickEquipment = async (scopeId: string, cameraId: string) => {
     setScope(scopeId)
@@ -77,11 +96,11 @@ export function GridEditor({ grid, onChange, onShift }: GridEditorProps): React.
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-astro-muted">Centre RA (ICRS)</span>
-          <input value={ra} onChange={e => setRa(e.target.value)} onBlur={readCentre} onKeyDown={e => e.key === 'Enter' && readCentre()} className={`${input} w-36 font-mono`} />
+          <input value={ra} onChange={e => (setRa(e.target.value), setTyped(true))} onBlur={readCentre} onKeyDown={e => e.key === 'Enter' && readCentre()} className={`${input} w-36 font-mono`} />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-astro-muted">Centre Dec</span>
-          <input value={dec} onChange={e => setDec(e.target.value)} onBlur={readCentre} onKeyDown={e => e.key === 'Enter' && readCentre()} className={`${input} w-36 font-mono`} />
+          <input value={dec} onChange={e => (setDec(e.target.value), setTyped(true))} onBlur={readCentre} onKeyDown={e => e.key === 'Enter' && readCentre()} className={`${input} w-36 font-mono`} />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-astro-muted" title="The angle of each panel's up edge, measured from north through east">Position angle (°)</span>

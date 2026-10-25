@@ -24,6 +24,15 @@ export interface StoredRevision {
   savedAt: Date
 }
 
+/** A line of a workspace's history: enough to list a revision without reading its panels. */
+export interface RevisionSummary {
+  revision: number
+  savedAt: Date
+  note: string | null
+  rows: number
+  columns: number
+}
+
 /**
  * Driven port: mosaic workspaces and their revisions. A revision, once added, is kept as it was
  * saved, so captures placed on it stay traceable. Adapters: SQLite (desktop), in-memory (testkit).
@@ -38,6 +47,8 @@ export interface MosaicWorkspaceStore {
   addRevision(revision: StoredRevision): Promise<void>
   /** A workspace's revisions, oldest first. */
   revisions(id: string): Promise<StoredRevision[]>
+  /** The same revisions as summaries, oldest first, without their panels. */
+  history(id: string): Promise<RevisionSummary[]>
   revision(id: string, revision: number): Promise<StoredRevision | null>
   update(id: string, change: Partial<Pick<WorkspaceRecord, 'name' | 'status'>>): Promise<void>
 }

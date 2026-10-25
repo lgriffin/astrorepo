@@ -34,6 +34,11 @@ export function mosaicWorkspaceStoreContract(adapterName: string, make: () => Mo
       const all = await store.revisions(made.id)
       expect(all.map(r => [r.revision, r.grid.positionAngleDeg, r.note])).toEqual([[1, 12.5, null], [2, 40, 'turned']])
       expect(all[0].panels).toEqual(layoutGrid(grid))
+      expect(await store.history(made.id)).toEqual([
+        { revision: 1, savedAt: at('2026-10-25T20:00:00Z'), note: null, rows: 2, columns: 3 },
+        { revision: 2, savedAt: at('2026-10-25T21:00:00Z'), note: 'turned', rows: 2, columns: 3 }
+      ])
+      expect(await store.history('nope')).toEqual([])
     })
 
     it('[MO-010] Given a revision number that does not follow the latest, When added, Then it is refused and nothing changes', async () => {

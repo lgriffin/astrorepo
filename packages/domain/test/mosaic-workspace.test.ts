@@ -43,10 +43,10 @@ describe('laying out a grid', () => {
 
   it('[MO-001] Given one panel at RA 0° Dec 0° with a 2° square field and the up axis north, When laid out, Then its corners are where the tangent plane puts them, east on the left', () => {
     const [p] = layoutGrid(grid({ centre: { raDeg: 0, decDeg: 0 }, rows: 1, columns: 1, field: { widthDeg: 2, heightDeg: 2, source: 'manual', label: null } }))
-    // A corner at ξ = η = π/180 on the tangent plane: RA atan ξ, Dec atan(η / √(1 + ξ²)).
-    const t = Math.PI / 180
-    const ra = Math.atan(t) / t
-    const dec = Math.atan(t / Math.sqrt(1 + t * t)) / t
+    // A corner at ξ = η = tan 1° on the tangent plane, so each edge's middle is 1° from the centre: RA atan ξ, Dec atan(η / √(1 + ξ²)).
+    const t = Math.tan(Math.PI / 180)
+    const ra = (Math.atan(t) * 180) / Math.PI
+    const dec = (Math.atan(t / Math.sqrt(1 + t * t)) * 180) / Math.PI
     const [tl, tr, br, bl] = p.footprint.vertices
     expect(tl.raDeg).toBeCloseTo(ra, 6)
     expect(tl.decDeg).toBeCloseTo(dec, 6)
@@ -140,7 +140,21 @@ describe('revising a grid', () => {
     expect(sameGeometry(grid(), grid({ rows: 3 }))).toBe(false)
     expect(sameGeometry(grid(), grid({ overlapY: 0.2 }))).toBe(false)
     expect(sameGeometry(grid(), grid({ field: { widthDeg: 0.8, heightDeg: 1.28, source: 'manual', label: null } }))).toBe(false)
-    expect(sameGeometry(grid(), grid({ field: { widthDeg: 0.72, heightDeg: 1.28, source: 'equipment', label: 'another label' } }))).toBe(true)
+    // Where the field came from is part of the plan: the same size from Equipment is a new revision.
+    expect(sameGeometry(grid(), grid({ field: { widthDeg: 0.72, heightDeg: 1.28, source: 'equipment', label: 'Seestar S50' } }))).toBe(false)
+    expect(sameGeometry(grid({ field: { widthDeg: 0.72, heightDeg: 1.28, source: 'equipment', label: 'a' } }), grid({ field: { widthDeg: 0.72, heightDeg: 1.28, source: 'equipment', label: 'b' } }))).toBe(false)
+  })
+
+  it('[MO-001] Given the widest field allowed, 30° square, When laid out, Then each edge is 30° long through the middle, not shrunk by the projection', () => {
+    const [p] = layoutGrid(grid({ centre: { raDeg: 90, decDeg: 20 }, rows: 1, columns: 1, field: { widthDeg: 30, heightDeg: 30, source: 'manual', label: null } }))
+    const [tl, tr, br, bl] = p.footprint.vertices
+    const mid = (a: { raDeg: number; decDeg: number }, b: { raDeg: number; decDeg: number }) => {
+      const v = [a, b].map(q => [Math.cos(q.decDeg * Math.PI / 180) * Math.cos(q.raDeg * Math.PI / 180), Math.cos(q.decDeg * Math.PI / 180) * Math.sin(q.raDeg * Math.PI / 180), Math.sin(q.decDeg * Math.PI / 180)])
+      const s = [0, 1, 2].map(i => v[0][i] + v[1][i])
+      return { raDeg: (Math.atan2(s[1], s[0]) * 180) / Math.PI, decDeg: (Math.atan2(s[2], Math.hypot(s[0], s[1])) * 180) / Math.PI }
+    }
+    expect(angularDistanceDeg(mid(tl, tr).raDeg, mid(tl, tr).decDeg, mid(bl, br).raDeg, mid(bl, br).decDeg)).toBeCloseTo(30, 4)
+    expect(angularDistanceDeg(mid(tl, bl).raDeg, mid(tl, bl).decDeg, mid(tr, br).raDeg, mid(tr, br).decDeg)).toBeCloseTo(30, 4)
   })
 
   it('[MO-002] Given a grid dragged half a panel to its right, When shifted, Then its centre moves west by that angle and the panels follow', () => {
@@ -195,6 +209,14 @@ describe('typed coordinates', () => {
     for (const bad of ['', '-5h', '24h', '24:00:00', '12:60:00', '12:30:60', '360', '1e3', 'abc', '5.5:30:00', '12:30.5:10']) expect(parseRa(bad)).toBeNull()
     for (const bad of ['', '91', '-90:00:01', '+41:60:00', 'north', '1e2', '41:16.5:2']) expect(parseDec(bad)).toBeNull()
     expect(Object.is(parseDec('-0'), -0)).toBe(false)
+  })
+
+  it("[MO-014] Given units of the other coordinate, out of order, or mixed with colons, When read, Then they are refused", () => {
+    for (const bad of ['05d35m17s', '05°35\'17"', '05m35h17s', '05h35s17m', '05h35:17', '05:35:17s', '5.', '05h35m17s9']) expect(parseRa(bad)).toBeNull()
+    for (const bad of ['41h16m09s', '41m16d09s', "41°16:09", '41:16:09"']) expect(parseDec(bad)).toBeNull()
+    expect(parseRa('05h 35m 17s')).toBeCloseTo(83.82083, 5)
+    expect(parseDec('41d16m09s')).toBeCloseTo(41.26917, 5)
+    expect(parseDec("-05° 23' 28\"")).toBeCloseTo(-5.39111, 5)
   })
 })
 
