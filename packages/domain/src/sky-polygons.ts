@@ -29,7 +29,7 @@ const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b
 export function centroid(points: SkyPoint[]): SkyPoint {
   const sum = points.map(unit).reduce((s, v) => [s[0] + v[0], s[1] + v[1], s[2] + v[2]], [0, 0, 0])
   const r = Math.hypot(sum[0], sum[1], sum[2])
-  if (r === 0) return points[0] ?? { raDeg: 0, decDeg: 0 }
+  if (r < 1e-12) return points[0] ?? { raDeg: 0, decDeg: 0 }
   const ra = Math.atan2(sum[1], sum[0]) / RAD
   return { raDeg: ((ra % 360) + 360) % 360, decDeg: Math.asin(Math.max(-1, Math.min(1, sum[2] / r))) / RAD }
 }

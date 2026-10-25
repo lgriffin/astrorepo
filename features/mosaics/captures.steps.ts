@@ -1,5 +1,5 @@
 import { expect } from 'vitest'
-import { makeAssignCapture, makeCreateWorkspace, makePlaceCaptures, makePreviewRevisionChanges, type CapturePlacements, type RevisionChange } from '@astro/application'
+import { lightsCaptureId, makeAssignCapture, makeCreateWorkspace, makePlaceCaptures, makePreviewRevisionChanges, type CapturePlacements, type RevisionChange } from '@astro/application'
 import { layoutGrid, parseDec, parseRa, type GridDefinition, type PlannedPanel } from '@astro/domain'
 import { FixedClock, InMemoryMosaicAssignmentStore, InMemoryMosaicStore, InMemoryMosaicWorkspaceStore, InMemorySolveStore, skyFile, solvedField } from '@astro/testkit'
 import { defineSteps } from '@astro/testkit/bdd'
@@ -16,6 +16,11 @@ class Captures {
   night = 'D:/astro/ngc4565/2026-10-01/Light_001.fit'
   placed: CapturePlacements | null = null
   changes: RevisionChange[] | null = null
+
+  /** The night's lights as one capture: target, night and folder. */
+  get nightId(): string {
+    return lightsCaptureId({ targetId: 'ngc4565', capturedAt: new Date('2026-10-01T22:00:00Z'), folder: this.night.slice(0, this.night.lastIndexOf('/')) })
+  }
 
   get deps() {
     return { workspaces: this.workspaces, assignments: this.assignments, solves: this.solves, mosaics: this.mosaics }
@@ -64,7 +69,7 @@ export const captureSteps = defineSteps(() => new Captures(), ({ Given, When, Th
     w.placed = await makePlaceCaptures(w.deps)(w.workspaceId)
   })
   When('I put that night on {word} by hand because {string}', async (w, panel: string, reason: string) => {
-    expect(await makeAssignCapture({ ...w.deps, clock: w.clock })(w.workspaceId, w.night, { action: 'assign', panelId: panel, reason })).toEqual({ ok: true })
+    expect(await makeAssignCapture({ ...w.deps, clock: w.clock })(w.workspaceId, w.nightId, { action: 'assign', panelId: panel, reason })).toEqual({ ok: true })
     w.placed = await makePlaceCaptures(w.deps)(w.workspaceId)
   })
   When('I move the grid one and a half panels east', async w => {
@@ -74,7 +79,7 @@ export const captureSteps = defineSteps(() => new Captures(), ({ Given, When, Th
   })
 
   const theNight = (w: Captures) => {
-    const found = w.placed?.placed.find(p => p.capture.id === w.night)
+    const found = w.placed?.placed.find(p => p.capture.id === w.nightId)
     if (!found) throw new Error('that night is not placed')
     return found
   }
@@ -100,7 +105,7 @@ export const captureSteps = defineSteps(() => new Captures(), ({ Given, When, Th
     expect(p.placement.primary).toBe(computed)
   })
   Then('I am told that night would move from {word} to {word}', (w, from: string, to: string) => {
-    expect(w.changes?.map(c => [c.captureId, c.from, c.to])).toEqual([[w.night, from, to]])
+    expect(w.changes?.map(c => [c.captureId, c.from, c.to])).toEqual([[w.nightId, from, to]])
   })
   Then('revision {int} still places it on {word}', async (w, revision: number, panel: string) => {
     w.placed = await makePlaceCaptures(w.deps)(w.workspaceId, revision)

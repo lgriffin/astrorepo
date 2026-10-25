@@ -56,12 +56,14 @@ export interface MosaicWorkspaceStore {
 /**
  * Driven port: what the user said about captures on a workspace (put on a panel, or left out),
  * kept apart from what is computed so working placements out again never loses it (MO-009).
- * One override per capture per workspace. Adapters: SQLite (desktop), in-memory (testkit).
+ * Each change is kept with the revision it was made on, so a later change never alters what an
+ * earlier revision shows. Adapters: SQLite (desktop), in-memory (testkit).
  */
 export interface MosaicAssignmentStore {
-  overrides(workspaceId: string): Promise<AssignmentOverride[]>
-  /** Sets the capture's override, replacing any it had. */
+  /** The overrides in force at a revision: per capture, the last one made on that revision or before, unless cleared then. */
+  overrides(workspaceId: string, revision: number): Promise<AssignmentOverride[]>
+  /** Sets the capture's override from its revision on, replacing one made on the same revision. */
   set(workspaceId: string, override: AssignmentOverride): Promise<void>
-  /** Clears it, so the computed placement counts again. */
-  clear(workspaceId: string, captureId: string): Promise<void>
+  /** Clears it from that revision on, so the computed placement counts again there; earlier revisions keep theirs. */
+  clear(workspaceId: string, captureId: string, revision: number, at: Date): Promise<void>
 }

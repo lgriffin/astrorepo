@@ -24,10 +24,13 @@ import type { MosaicStore, SolveStore, StoredSolve } from '../ports/sky-geometry
 /**
  * One thing that is placed on a mosaic: a master, or the lights of one target from one folder on
  * one night, which one plate solve stands for (spec 024 solves one light per folder per night).
- * Its id is the path of the file its position comes from, else of its first file.
+ * A master's id is its path; lights' id is their target, night and folder (lightsCaptureId), so
+ * what the user said about them stays with them whichever of their files is solved.
  */
 export interface Capture {
   id: string
+  /** The file its position and thumbnail come from: the solved one, else the one tried, else the first. */
+  anchorPath: string
   kind: 'lights' | 'master'
   targetId: string
   night: string | null
@@ -45,6 +48,19 @@ export interface Capture {
 }
 
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p
+const folderOf = (p: string) => p.replace(/[\\/][^\\/]*$/, '')
+
+/** The id of one target's lights from one folder on one night. */
+export function lightsCaptureId(f: Pick<SkyFile, 'targetId' | 'capturedAt' | 'folder'>): string {
+  return `lights:${panelGroupKey(f)}`
+}
+
+/** What a lights id names, or null for a master's path. */
+function lightsOf(id: string): { targetId: string; night: string; folder: string } | null {
+  if (!id.startsWith('lights:')) return null
+  const [targetId = '', night = '', ...folder] = id.slice('lights:'.length).split('|')
+  return { targetId, night, folder: folder.join('|') }
+}
 
 /** The index's lights and masters as captures, each with the field its solve gives. */
 export function capturesFrom(files: SkyFile[], solves: StoredSolve[]): Capture[] {
@@ -57,7 +73,8 @@ export function capturesFrom(files: SkyFile[], solves: StoredSolve[]): Capture[]
     const anchor = solved ?? tried ?? members[0]
     const solve = byPath.get(anchor.path)
     return {
-      id: anchor.path,
+      id: kind === 'master' ? anchor.path : lightsCaptureId(anchor),
+      anchorPath: anchor.path,
       kind,
       targetId: anchor.targetId,
       night: anchor.capturedAt ? observingNightOf(anchor.capturedAt) : null,
@@ -90,6 +107,8 @@ export interface PlacedCapture {
 
 export interface MissingCapture {
   captureId: string
+  /** "lights of m31 from D:/a/n1, 2026-10-01" or "master stack.fit". */
+  label: string
   override: AssignmentOverride
   /** Where it last pointed, from its stored solve; null when it was never solved. */
   lastField: SolvedField | null
@@ -131,7 +150,7 @@ export function makePlaceCaptures(deps: PlacementDeps): PlaceCaptures {
     if (!workspace) return null
     const revision = await deps.workspaces.revision(workspaceId, wanted ?? workspace.latestRevision)
     if (!revision) return null
-    const [files, solves, overrides] = await Promise.all([deps.solves.files(), deps.solves.solves(), deps.assignments.overrides(workspaceId)])
+    const [files, solves, overrides] = await Promise.all([deps.solves.files(), deps.solves.solves(), deps.assignments.overrides(workspaceId, revision.revision)])
     const targetIds = workspace.targetId ? [workspace.targetId, ...(await deps.mosaics.linked(workspace.targetId))] : []
     const own = new Set(targetIds)
     const byCapture = new Map(overrides.map(o => [o.captureId, o]))
@@ -162,8 +181,12 @@ export function makePlaceCaptures(deps: PlacementDeps): PlaceCaptures {
     }
     const known = new Set(captures.map(c => c.id))
     const gone = overrides.filter(o => !known.has(o.captureId))
-    const lastSolves = new Map((await deps.solves.solves(gone.map(o => o.captureId))).map(s => [s.path, s.field]))
-    const missing = gone.map(o => ({ captureId: o.captureId, override: o, lastField: lastSolves.get(o.captureId) ?? null }))
+    // Where each last pointed: a master's own solve, or a solve of a light in the lights' folder.
+    const lastField = (id: string): SolvedField | null => {
+      const lights = lightsOf(id)
+      return solves.find(s => s.field && (lights ? folderOf(s.path) === lights.folder : s.path === id))?.field ?? null
+    }
+    const missing = gone.map(o => ({ captureId: o.captureId, label: missingLabel(o.captureId), override: o, lastField: lastField(o.captureId) }))
     return { workspace, revision, placed, unsolved, outside, missing, targetIds }
   }
 }
@@ -184,7 +207,7 @@ export function makeAssignCapture(deps: Pick<PlacementDeps, 'workspaces' | 'assi
     const workspace = await deps.workspaces.get(workspaceId)
     if (!workspace) return { ok: false, reason: 'That mosaic no longer exists.' }
     if (change.action === 'clear') {
-      await deps.assignments.clear(workspaceId, captureId)
+      await deps.assignments.clear(workspaceId, captureId, workspace.latestRevision, deps.clock.now())
       return { ok: true }
     }
     const latest = await deps.workspaces.revision(workspaceId, workspace.latestRevision)
@@ -207,6 +230,8 @@ export interface RevisionChange extends PanelChange {
   label: string
   /** The user put it on a panel by hand; their choice stays, but is shown for review. */
   overridden: boolean
+  /** The panel they put it on, when they did. */
+  overridePanel: string | null
 }
 
 export type PreviewRevisionChanges = (workspaceId: string, grid: GridDefinition) => Promise<RevisionChange[] | null>
@@ -223,18 +248,27 @@ export function makePreviewRevisionChanges(deps: PlacementDeps): PreviewRevision
     // A grid that cannot be laid out moves nothing yet; saving it is refused with its problems.
     if (gridProblems(grid).length > 0) return []
     const after = layoutGrid(grid)
-    const changes = panelChanges(now.placed.map(p => ({ captureId: p.capture.id, footprint: p.footprint })), now.revision.panels, after)
-    const byId = new Map(now.placed.map(p => [p.capture.id, p]))
+    // Captures outside the grid now can come onto it.
+    const all = [...now.placed, ...now.outside]
+    const changes = panelChanges(all.map(p => ({ captureId: p.capture.id, footprint: p.footprint })), now.revision.panels, after)
+    const byId = new Map(all.map(p => [p.capture.id, p]))
     return changes.map(c => {
       const p = byId.get(c.captureId) as PlacedCapture
-      return { ...c, label: captureLabel(p.capture), overridden: p.override?.action === 'assign' }
+      const overridden = p.override?.action === 'assign'
+      return { ...c, label: captureLabel(p.capture), overridden, overridePanel: overridden ? (p.override?.panelId ?? null) : null }
     })
   }
 }
 
+/** For an override on files the index no longer has. */
+function missingLabel(id: string): string {
+  const lights = lightsOf(id)
+  return lights ? `lights of ${lights.targetId} from ${lights.folder}, ${lights.night}` : `master ${fileName(id)}`
+}
+
 /** "48 lights, 2026-10-01, M31/panel2" or "master stack.fit". */
 export function captureLabel(c: Capture): string {
-  if (c.kind === 'master') return `master ${fileName(c.id)}`
+  if (c.kind === 'master') return `master ${fileName(c.anchorPath)}`
   const folder = c.folder.split(/[\\/]/).slice(-2).join('/')
   return `${c.paths.length} ${c.paths.length === 1 ? 'light' : 'lights'}, ${c.night ?? 'undated'}, ${folder}`
 }

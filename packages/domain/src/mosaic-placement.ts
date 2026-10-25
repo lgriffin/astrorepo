@@ -47,6 +47,8 @@ export interface Placement {
   primary: string | null
   /** Strong: placed without review. Weak: it meets panels but no one panel clearly holds most of it. */
   strength: 'strong' | 'weak' | 'none'
+  /** Every panel the footprint reaches at all, edge brushes included, so a hand placement there is no conflict. */
+  reaches: string[]
 }
 
 /**
@@ -56,6 +58,7 @@ export interface Placement {
 export function placeFootprint(footprint: SkyPolygon, panels: PlannedPanel[]): Placement {
   const ownArea = sphericalArea(footprint.vertices)
   const intersections: PanelIntersection[] = []
+  const reaches: string[] = []
   const middle = centroid(footprint.vertices)
   const reach = radiusOf(footprint, middle)
   if (ownArea > 0) {
@@ -65,6 +68,7 @@ export function placeFootprint(footprint: SkyPolygon, panels: PlannedPanel[]): P
       if (angularDistanceDeg(middle.raDeg, middle.decDeg, panelMiddle.raDeg, panelMiddle.decDeg) > reach + radiusOf(panel.footprint, panelMiddle)) continue
       const meet = intersectFootprints(panel.footprint, footprint)
       if (!meet) continue
+      reaches.push(panel.id)
       const panelArea = sphericalArea(panel.footprint.vertices)
       const captureFraction = Math.min(1, meet.areaSqDeg / ownArea)
       if (captureFraction < MIN_CAPTURE_FRACTION) continue
@@ -74,7 +78,7 @@ export function placeFootprint(footprint: SkyPolygon, panels: PlannedPanel[]): P
   intersections.sort((a, b) => b.captureFraction - a.captureFraction || a.panelId.localeCompare(b.panelId))
   const [best, next] = intersections
   const clear = best && best.captureFraction >= AUTO_ACCEPT_FRACTION && best.captureFraction - (next?.captureFraction ?? 0) >= AUTO_ACCEPT_LEAD
-  return { intersections, primary: best?.panelId ?? null, strength: !best ? 'none' : clear ? 'strong' : 'weak' }
+  return { intersections, primary: best?.panelId ?? null, strength: !best ? 'none' : clear ? 'strong' : 'weak', reaches: reaches.sort() }
 }
 
 /** How far the furthest corner of a footprint is from its middle, in degrees. */
@@ -116,8 +120,7 @@ export function assignmentOf(placement: Placement, override: AssignmentOverride 
     if (!panelIds.has(override.panelId)) {
       return { panelId: null, source: 'user-override', state: 'needs-review', note: `Put on ${override.panelId}, which revision ${revision} no longer has.` }
     }
-    const meets = placement.intersections.find(i => i.panelId === override.panelId)
-    if (!meets) {
+    if (!placement.reaches.includes(override.panelId)) {
       return { panelId: override.panelId, source: 'user-override', state: 'conflict', note: `Put on ${override.panelId} by hand, but its solved footprint does not reach that panel.` }
     }
     if (override.revision !== revision) {

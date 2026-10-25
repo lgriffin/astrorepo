@@ -71,16 +71,29 @@ export function mosaicAssignmentStoreContract(adapterName: string, make: () => M
       await store.set('w1', { captureId: '/a.fit', action: 'assign', panelId: 'R1C2', reason: 'by eye', revision: 1, at: at('2026-10-25T20:00:00Z') })
       await store.set('w1', { captureId: '/b.fit', action: 'exclude', panelId: null, reason: null, revision: 1, at: at('2026-10-25T20:01:00Z') })
       await store.set('w2', { captureId: '/a.fit', action: 'exclude', panelId: null, reason: 'trailed', revision: 3, at: at('2026-10-25T20:02:00Z') })
-      await store.set('w1', { captureId: '/a.fit', action: 'assign', panelId: 'R2C2', reason: null, revision: 2, at: at('2026-10-25T21:00:00Z') })
-      expect(await store.overrides('w1')).toEqual([
-        { captureId: '/a.fit', action: 'assign', panelId: 'R2C2', reason: null, revision: 2, at: at('2026-10-25T21:00:00Z') },
+      await store.set('w1', { captureId: '/a.fit', action: 'assign', panelId: 'R2C1', reason: null, revision: 1, at: at('2026-10-25T20:30:00Z') })
+      expect(await store.overrides('w1', 1)).toEqual([
+        { captureId: '/a.fit', action: 'assign', panelId: 'R2C1', reason: null, revision: 1, at: at('2026-10-25T20:30:00Z') },
         { captureId: '/b.fit', action: 'exclude', panelId: null, reason: null, revision: 1, at: at('2026-10-25T20:01:00Z') }
       ])
-      await store.clear('w1', '/b.fit')
-      await store.clear('w1', '/never.fit')
-      expect((await store.overrides('w1')).map(o => o.captureId)).toEqual(['/a.fit'])
-      expect((await store.overrides('w2')).map(o => o.reason)).toEqual(['trailed'])
-      expect(await store.overrides('nope')).toEqual([])
+      await store.clear('w1', '/b.fit', 1, at('2026-10-25T20:40:00Z'))
+      await store.clear('w1', '/never.fit', 1, at('2026-10-25T20:40:00Z'))
+      expect((await store.overrides('w1', 1)).map(o => o.captureId)).toEqual(['/a.fit'])
+      expect((await store.overrides('w2', 3)).map(o => o.reason)).toEqual(['trailed'])
+      expect(await store.overrides('w2', 2)).toEqual([])
+      expect(await store.overrides('nope', 1)).toEqual([])
+    })
+
+    it('[MO-009, MO-010] Given a placement changed and another cleared on revision 2, When revision 1 is read, Then it still shows what was said there', async () => {
+      const store = make()
+      await store.set('w1', { captureId: '/a.fit', action: 'assign', panelId: 'R1C2', reason: 'by eye', revision: 1, at: at('2026-10-25T20:00:00Z') })
+      await store.set('w1', { captureId: '/b.fit', action: 'exclude', panelId: null, reason: 'clouds', revision: 1, at: at('2026-10-25T20:01:00Z') })
+      await store.set('w1', { captureId: '/a.fit', action: 'exclude', panelId: null, reason: null, revision: 2, at: at('2026-10-25T21:00:00Z') })
+      await store.clear('w1', '/b.fit', 2, at('2026-10-25T21:01:00Z'))
+      expect((await store.overrides('w1', 1)).map(o => [o.captureId, o.action, o.panelId])).toEqual([['/a.fit', 'assign', 'R1C2'], ['/b.fit', 'exclude', null]])
+      expect((await store.overrides('w1', 2)).map(o => [o.captureId, o.action, o.revision])).toEqual([['/a.fit', 'exclude', 2]])
+      // A revision with no change of its own carries the last one forward.
+      expect((await store.overrides('w1', 3)).map(o => o.captureId)).toEqual(['/a.fit'])
     })
   })
 }

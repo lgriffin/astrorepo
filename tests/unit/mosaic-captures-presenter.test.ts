@@ -20,7 +20,7 @@ async function placed() {
   )
   await deps.solves.save({ path: 'D:/a/n1/L_1.fit', field: solvedField(r1c1.centre.raDeg, 0), source: 'astap', solvedAt: clock.now(), error: null })
   await deps.solves.save({ path: 'D:/a/n2/L.fit', field: solvedField(r1c2.centre.raDeg - 0.3, 0), source: 'astap', solvedAt: clock.now(), error: null })
-  await makeAssignCapture({ ...deps, clock })(made.workspace.id, 'D:/a/n2/L.fit', { action: 'assign', panelId: 'R1C1', reason: 'log' })
+  await makeAssignCapture({ ...deps, clock })(made.workspace.id, 'lights:ngc1|2026-10-01|D:/a/n2', { action: 'assign', panelId: 'R1C1', reason: 'log' })
   await makeAssignCapture({ ...deps, clock })(made.workspace.id, 'D:/gone.fit', { action: 'exclude', reason: 'trailed' })
   return (await makePlaceCaptures(deps)(made.workspace.id))!
 }
@@ -33,13 +33,13 @@ describe('the mosaic captures presenter', () => {
     expect(first).toMatchObject({ label: '2 lights, 2026-10-01, a/n1', files: 2, exposure: '1 h', filters: ['Ha'], fileId: 'f1', panelId: 'R1C1', state: 'accepted', source: 'computed', reason: null })
     expect(first.panels[0]).toEqual({ panelId: 'R1C1', share: '100%', coverage: '99%' })
     expect(second).toMatchObject({ panelId: 'R1C1', state: 'conflict', source: 'user-override', reason: 'log', exposure: null, primary: 'R1C2' })
-    expect(view.unsolved).toEqual([{ id: 'D:/a/n3/L.fit', label: '1 light, 2026-10-01, a/n3', targetId: 'ngc1', solveError: null }])
-    expect(view.missing).toEqual([{ captureId: 'D:/gone.fit', said: 'Left out', reason: 'trailed', lastCentre: null }])
+    expect(view.unsolved).toEqual([{ id: 'lights:ngc1|2026-10-01|D:/a/n3', label: '1 light, 2026-10-01, a/n3', targetId: 'ngc1', solveError: null }])
+    expect(view.missing).toEqual([{ captureId: 'D:/gone.fit', label: 'master gone.fit', said: 'Left out', reason: 'trailed', lastCentre: null }])
     expect(view.targetIds).toEqual(['ngc1'])
   })
 
   it('[MO-010] Given captures that would change panel, When shown, Then each keeps its label, panels and whether it was placed by hand', () => {
-    expect(toChangeViews([{ captureId: 'a', from: 'R1C1', to: null, label: 'x', overridden: true }])).toEqual([{ captureId: 'a', label: 'x', from: 'R1C1', to: null, overridden: true }])
+    expect(toChangeViews([{ captureId: 'a', from: 'R1C1', to: null, label: 'x', overridden: true, overridePanel: 'R1C2' }])).toEqual([{ captureId: 'a', label: 'x', from: 'R1C1', to: null, overridden: true, overridePanel: 'R1C2' }])
   })
 
   it('[MO-007] Given a footprint on the drawing, When a thumbnail is laid on it, Then its corners land on the top left, top right and bottom left of the footprint', () => {

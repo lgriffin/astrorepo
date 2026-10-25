@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
@@ -41,6 +41,13 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
     load()
   }, [load])
 
+  // A warning is about the grid it was given: editing the grid again asks again on save.
+  useEffect(() => {
+    setChanges(null)
+  }, [grid])
+
+  const latestPanels = useMemo(() => view?.drawing.panels.map(p => p.id) ?? [], [view])
+
   if (view === undefined) return <PageContainer title="Mosaic">Loading…</PageContainer>
   if (view === null || !grid) {
     return (
@@ -55,7 +62,12 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
     if (!typed) return
     if (!confirmed) {
       const list = await invoke<WorkspaceChangeView[] | null>('workspace:preview-changes', { workspace_id: view.id, grid: typed }).catch(() => null)
-      if (list && list.length > 0) {
+      // Without the list of captures that would move, nothing is saved.
+      if (!list) {
+        addToast('Could not check which captures this grid would move, so it was not saved.', 'error')
+        return
+      }
+      if (list.length > 0) {
         setChanges({ grid: typed, list })
         return
       }
@@ -138,7 +150,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
           </div>
         </Card>
 
-        <MosaicCaptures workspaceId={view.id} revision={view.revision} drawing={view.drawing} latestPanels={view.drawing.panels.map(p => p.id)} />
+        <MosaicCaptures workspaceId={view.id} revision={view.revision} drawing={view.drawing} latestPanels={latestPanels} />
 
         <Card title="Change the grid">
           <div className="space-y-4 text-sm">
@@ -169,7 +181,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
                   {changes.list.map(c => (
                     <li key={c.captureId} className="text-astro-text">
                       {c.label}: {c.from ?? 'no panel'} to {c.to ?? 'no panel'}
-                      {c.overridden && <span className="text-amber-400"> (you put it on {c.from} by hand; that stays, marked for review)</span>}
+                      {c.overridden && <span className="text-amber-400"> (you put it on {c.overridePanel} by hand; that stays, marked for review)</span>}
                     </li>
                   ))}
                 </ul>

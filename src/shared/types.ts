@@ -1595,6 +1595,7 @@ export interface WorkspaceUnsolvedView {
 
 export interface WorkspaceMissingView {
   captureId: string
+  label: string
   /** "Put on R1C2" or "Left out". */
   said: string
   reason: string | null
@@ -1623,6 +1624,8 @@ export interface WorkspaceChangeView {
   to: string | null
   /** The user put it on a panel; that choice stays and is shown for review. */
   overridden: boolean
+  /** The panel they put it on. */
+  overridePanel: string | null
 }
 
 // ── Gallery inspector (spec 025) ──────────────────────────────────────────

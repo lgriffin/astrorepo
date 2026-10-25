@@ -616,7 +616,8 @@ export function runMigrations(sqlite: Database.Database): void {
   `)
 
   // Migration: what the user said about a capture on a mosaic (put on a panel, or left out), kept
-  // apart from computed placements and keyed by the capture's file path, which rescans keep (MO-009)
+  // apart from computed placements. Keyed by the capture (a master's path, or lights:<target>|<night>|<folder>)
+  // and the revision it was said at; a 'clear' row cancels it from that revision on (MO-009)
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS mosaic_overrides (
       workspace_id TEXT NOT NULL REFERENCES mosaic_workspaces(id) ON DELETE CASCADE,
@@ -626,7 +627,7 @@ export function runMigrations(sqlite: Database.Database): void {
       reason TEXT,
       revision INTEGER NOT NULL,
       at TEXT NOT NULL,
-      PRIMARY KEY (workspace_id, capture_id)
+      PRIMARY KEY (workspace_id, capture_id, revision)
     );
   `)
 }

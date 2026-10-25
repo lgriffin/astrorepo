@@ -120,10 +120,13 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [
           const isSelected = c.id === selectedCapture
           return (
             <g key={c.id} data-capture={c.id} className={onSelectCapture ? 'cursor-pointer' : undefined}>
-              {thumbnail && matrix && <image href={thumbnail} x={0} y={0} width={1} height={1} preserveAspectRatio="none" transform={matrix} opacity={0.75} />}
+              {thumbnail && matrix && <image href={thumbnail} x={0} y={0} width={1} height={1} preserveAspectRatio="none" transform={matrix} opacity={0.75} pointerEvents="none" />}
+              {/* Only the outline picks the capture, so a click inside it still reaches the panel underneath. */}
               <polygon
                 points={c.outline.map(v => `${v.x},${-v.y}`).join(' ')}
-                className={`fill-white/0 ${CAPTURE_STYLE[c.state]}`}
+                fill="none"
+                pointerEvents="stroke"
+                className={CAPTURE_STYLE[c.state]}
                 strokeWidth={isSelected ? stroke * 3 : stroke}
                 strokeDasharray={c.source === 'user-override' ? `${stroke * 4} ${stroke * 2}` : undefined}
               >

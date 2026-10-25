@@ -161,20 +161,29 @@ export class SqliteMosaicWorkspaceStore implements MosaicWorkspaceStore {
 
 interface OverrideRow {
   capture_id: string
-  action: AssignmentOverride['action']
+  action: AssignmentOverride['action'] | 'clear'
   panel_id: string | null
   reason: string | null
   revision: number
   at: string
 }
 
-/** MosaicAssignmentStore over mosaic_overrides: one row per capture per workspace. */
+/** MosaicAssignmentStore over mosaic_overrides: one row per capture per revision it was changed on; 'clear' rows end an override. */
 export class SqliteMosaicAssignmentStore implements MosaicAssignmentStore {
   constructor(private readonly db: Database.Database) {}
 
-  async overrides(workspaceId: string): Promise<AssignmentOverride[]> {
-    const rows = this.db.prepare('SELECT * FROM mosaic_overrides WHERE workspace_id = ? ORDER BY capture_id').all(workspaceId) as OverrideRow[]
-    return rows.map(r => ({ captureId: r.capture_id, action: r.action, panelId: r.panel_id, reason: r.reason, revision: r.revision, at: new Date(r.at) }))
+  async overrides(workspaceId: string, revision: number): Promise<AssignmentOverride[]> {
+    // Per capture, the row of the latest revision up to this one; a 'clear' row means none.
+    const rows = this.db
+      .prepare(
+        `SELECT o.* FROM mosaic_overrides o
+         WHERE o.workspace_id = ? AND o.revision = (
+           SELECT MAX(i.revision) FROM mosaic_overrides i WHERE i.workspace_id = o.workspace_id AND i.capture_id = o.capture_id AND i.revision <= ?
+         ) AND o.action != 'clear'
+         ORDER BY o.capture_id`
+      )
+      .all(workspaceId, revision) as OverrideRow[]
+    return rows.map(r => ({ captureId: r.capture_id, action: r.action as AssignmentOverride['action'], panelId: r.panel_id, reason: r.reason, revision: r.revision, at: new Date(r.at) }))
   }
 
   async set(workspaceId: string, o: AssignmentOverride): Promise<void> {
@@ -183,7 +192,9 @@ export class SqliteMosaicAssignmentStore implements MosaicAssignmentStore {
       .run(workspaceId, o.captureId, o.action, o.panelId, o.reason, o.revision, o.at.toISOString())
   }
 
-  async clear(workspaceId: string, captureId: string): Promise<void> {
-    this.db.prepare('DELETE FROM mosaic_overrides WHERE workspace_id = ? AND capture_id = ?').run(workspaceId, captureId)
+  async clear(workspaceId: string, captureId: string, revision: number, at: Date): Promise<void> {
+    this.db
+      .prepare("INSERT OR REPLACE INTO mosaic_overrides (workspace_id, capture_id, action, panel_id, reason, revision, at) VALUES (?, ?, 'clear', NULL, NULL, ?, ?)")
+      .run(workspaceId, captureId, revision, at.toISOString())
   }
 }

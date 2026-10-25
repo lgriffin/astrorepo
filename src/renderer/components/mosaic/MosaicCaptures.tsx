@@ -49,6 +49,8 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
   const [capture, setCapture] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const loading = useRef(0)
+  // Thumbnails asked for already, so a reload after a change does not fetch them again.
+  const asked = useRef(new Set<string>())
 
   const load = useCallback(async () => {
     const mine = ++loading.current
@@ -64,10 +66,12 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
   useEffect(() => {
     if (!view) return
     let current = true
-    const wanted = [...new Set(view.placed.map(c => c.fileId).filter((id): id is string => !!id))].slice(0, MAX_THUMBNAILS)
+    const room = MAX_THUMBNAILS - asked.current.size
+    const wanted = [...new Set(view.placed.map(c => c.fileId).filter((id): id is string => !!id && !asked.current.has(id)))].slice(0, Math.max(0, room))
     ;(async () => {
       for (const fileId of wanted) {
         if (!current) return
+        asked.current.add(fileId)
         const t = await invoke<{ dataBase64: string } | null>('fits:get-thumbnail', { file_id: fileId }).catch(() => null)
         if (current && t) setThumbnails(all => ({ ...all, [fileId]: `data:image/png;base64,${t.dataBase64}` }))
       }
@@ -94,6 +98,7 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
     try {
       const result = await invoke<SolveQueuedView>('sky:solve-target', { target_id: targetId })
       addToast(result.message, result.queued ? 'success' : 'info')
+      await load()
     } catch (error) {
       addToast(`Plate solving could not be queued: ${error instanceof Error ? error.message : String(error)}`, 'error')
     }
@@ -171,8 +176,13 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
 
         {view.unsolved.length > 0 && (
           <Tray title={`Not solved yet (${view.unsolved.length})`}>
-            <p className="text-xs text-astro-muted">These have no position, so they are not placed on any panel. Plate solve them to place them.</p>
+            <p className="text-xs text-astro-muted">
+              These have no position, so they are not placed on any panel. Plate solve them to place them; solving runs in Jobs, so check again when it has finished.
+            </p>
             <div className="flex flex-wrap gap-2">
+              <button className={small} onClick={() => load()}>
+                Check again
+              </button>
               {unsolvedTargets.map(t => (
                 <button key={t} className={small} onClick={() => solve(t)}>
                   Plate solve {t}
@@ -215,7 +225,9 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
             <ul className="text-xs space-y-1">
               {view.missing.map(m => (
                 <li key={m.captureId} className="flex flex-wrap items-center gap-2">
-                  <span className="text-astro-text font-mono break-all">{m.captureId}</span>
+                  <span className="text-astro-text break-all" title={m.captureId}>
+                    {m.label}
+                  </span>
                   <span className="text-astro-muted">
                     {m.said}
                     {m.reason ? ` (${m.reason})` : ''}
@@ -262,7 +274,9 @@ function CaptureInspector({
   useEffect(() => {
     setTarget(capture.panelId ?? capture.primary ?? panels[0] ?? '')
     setReason(capture.reason ?? '')
-  }, [capture.id, capture.panelId, capture.primary, capture.reason, panels])
+    // Keyed on the panel ids, not the array, so a re-render of the page keeps what was typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capture.id, capture.panelId, capture.primary, capture.reason, panels.join(',')])
 
   return (
     <div className="space-y-2 rounded border border-astro-border p-3">

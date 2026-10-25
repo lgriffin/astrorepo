@@ -193,6 +193,7 @@ export function toCapturesView(c: CapturePlacements): WorkspaceCapturesView {
     unsolved: c.unsolved.map(u => ({ id: u.id, label: captureLabel(u), targetId: u.targetId, solveError: u.solveError })),
     missing: c.missing.map(m => ({
       captureId: m.captureId,
+      label: m.label,
       said: m.override.action === 'assign' ? `Put on ${m.override.panelId}` : 'Left out',
       reason: m.override.reason,
       lastCentre: m.lastField ? `${formatRaHms(m.lastField.raDeg)} ${formatDecDms(m.lastField.decDeg)}` : null
@@ -203,5 +204,5 @@ export function toCapturesView(c: CapturePlacements): WorkspaceCapturesView {
 }
 
 export function toChangeViews(changes: RevisionChange[]): WorkspaceChangeView[] {
-  return changes.map(c => ({ captureId: c.captureId, label: c.label, from: c.from, to: c.to, overridden: c.overridden }))
+  return changes.map(c => ({ captureId: c.captureId, label: c.label, from: c.from, to: c.to, overridden: c.overridden, overridePanel: c.overridePanel }))
 }
