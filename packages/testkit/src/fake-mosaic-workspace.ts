@@ -1,5 +1,5 @@
-import type { MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
-import { DEFAULT_GRID_OVERLAP, type GridDefinition } from '@astro/domain'
+import type { MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
+import { DEFAULT_GRID_OVERLAP, type AssignmentOverride, type GridDefinition } from '@astro/domain'
 
 const copy = <T>(value: T): T => structuredClone(value)
 
@@ -64,5 +64,24 @@ export function gridDefinition(over: Partial<GridDefinition> = {}): GridDefiniti
     overlapY: DEFAULT_GRID_OVERLAP,
     field: { widthDeg: 0.72, heightDeg: 1.28, source: 'manual', label: null },
     ...over
+  }
+}
+
+/** Overrides in memory, one per capture per workspace. */
+export class InMemoryMosaicAssignmentStore implements MosaicAssignmentStore {
+  readonly byWorkspace = new Map<string, Map<string, AssignmentOverride>>()
+
+  async overrides(workspaceId: string): Promise<AssignmentOverride[]> {
+    return [...(this.byWorkspace.get(workspaceId)?.values() ?? [])].map(copy).sort((a, b) => a.captureId.localeCompare(b.captureId))
+  }
+
+  async set(workspaceId: string, override: AssignmentOverride): Promise<void> {
+    const all = this.byWorkspace.get(workspaceId) ?? new Map<string, AssignmentOverride>()
+    all.set(override.captureId, copy(override))
+    this.byWorkspace.set(workspaceId, all)
+  }
+
+  async clear(workspaceId: string, captureId: string): Promise<void> {
+    this.byWorkspace.get(workspaceId)?.delete(captureId)
   }
 }

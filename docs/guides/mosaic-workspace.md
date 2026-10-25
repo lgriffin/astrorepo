@@ -56,7 +56,40 @@ revision; nothing is overwritten.
 position angle and rotation, the field, and the four corners. A device-specific export (a
 Seestar or N.I.N.A. sequence) can be built from the JSON later.
 
+## Your captures on the grid
+
+**Captures on this revision** places what you have already shot. A capture is either a master,
+or the lights of one target from one folder on one night: plate solving (on the target's page, or
+**Plate solve** here) solves one light of each such group, and that solve places the whole group.
+Folder and file names are never used to decide the panel.
+
+Each capture is drawn at its solved footprint, with its thumbnail laid on it, over the panels:
+
+- **Green**: most of it (60% or more, and clearly more than in any other panel) falls in one
+  panel, so it is placed there.
+- **Amber**: it sits between panels, or only partly on the grid; it is placed on the panel holding
+  most of it, and every overlap is listed with its share, so check it.
+- **Red**: you put it on a panel by hand that its footprint does not reach. Your choice counts, but
+  stays flagged.
+- **Grey**: you left it out.
+
+Click a capture (on the drawing or in the table) to put it on a panel by hand, leave it out, or go
+back to the computed panel; a reason is optional and kept. Dashed outlines are your placements.
+Click a panel to list everything that falls on it. Your placements are kept apart from what is
+computed, with the revision you made them on: open a later revision and they are shown for review.
+
+Below the drawing, trays list the mosaic's targets' captures **not solved yet** (with the solver's
+reason when it failed), those **outside the grid**, and your placements on files **no longer in
+the index**, kept with where they last pointed in case the files come back.
+
+When you change the grid and save, the captures that would change panel are listed first; **Save
+anyway** saves the revision, and the earlier revision keeps its placements.
+
+Not yet checked against real files: the thumbnail's orientation on a mirrored or bottom-up FITS,
+and the solver rotation sign on real ASTAP and Siril output. Spec 024's own overlap check on the
+target page still reads the rotation as a position angle; this page does not.
+
 ## Coming next
 
-Slice X2 places the FITS files you have already captured at their solved footprints over the
-grid; slice X3 works out each panel's coverage, its usable exposure per filter, and the gaps.
+Slice X3 works out each panel's coverage, its usable exposure per filter (rejected frames out,
+nothing counted twice), and the gaps to shoot next.

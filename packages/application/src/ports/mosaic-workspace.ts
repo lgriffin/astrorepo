@@ -1,4 +1,4 @@
-import type { GridDefinition, PlannedPanel } from '@astro/domain'
+import type { AssignmentOverride, GridDefinition, PlannedPanel } from '@astro/domain'
 
 export type WorkspaceStatus = 'active' | 'archived'
 
@@ -51,4 +51,17 @@ export interface MosaicWorkspaceStore {
   history(id: string): Promise<RevisionSummary[]>
   revision(id: string, revision: number): Promise<StoredRevision | null>
   update(id: string, change: Partial<Pick<WorkspaceRecord, 'name' | 'status'>>): Promise<void>
+}
+
+/**
+ * Driven port: what the user said about captures on a workspace (put on a panel, or left out),
+ * kept apart from what is computed so working placements out again never loses it (MO-009).
+ * One override per capture per workspace. Adapters: SQLite (desktop), in-memory (testkit).
+ */
+export interface MosaicAssignmentStore {
+  overrides(workspaceId: string): Promise<AssignmentOverride[]>
+  /** Sets the capture's override, replacing any it had. */
+  set(workspaceId: string, override: AssignmentOverride): Promise<void>
+  /** Clears it, so the computed placement counts again. */
+  clear(workspaceId: string, captureId: string): Promise<void>
 }

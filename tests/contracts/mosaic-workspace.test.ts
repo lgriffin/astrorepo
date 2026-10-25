@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { layoutGrid } from '@astro/domain'
-import { gridDefinition, InMemoryMosaicWorkspaceStore } from '@astro/testkit'
-import { mosaicWorkspaceStoreContract } from '@astro/testkit/contracts/mosaic-workspace.contract'
-import { SqliteMosaicWorkspaceStore } from '../../src/main/adapters/sqlite-mosaic-workspace'
+import { gridDefinition, InMemoryMosaicAssignmentStore, InMemoryMosaicWorkspaceStore } from '@astro/testkit'
+import { mosaicAssignmentStoreContract, mosaicWorkspaceStoreContract } from '@astro/testkit/contracts/mosaic-workspace.contract'
+import { SqliteMosaicAssignmentStore, SqliteMosaicWorkspaceStore } from '../../src/main/adapters/sqlite-mosaic-workspace'
 import { seedTarget, setupTestDb, teardownTestDb } from '../helpers/setup'
 
 afterEach(() => teardownTestDb())
@@ -13,6 +13,16 @@ mosaicWorkspaceStoreContract('SQLite', () => {
   const db = setupTestDb()
   seedTarget(db, { id: 'm31', canonicalName: 'M 31' })
   return new SqliteMosaicWorkspaceStore(db)
+})
+
+mosaicAssignmentStoreContract('in-memory', () => new InMemoryMosaicAssignmentStore())
+
+mosaicAssignmentStoreContract('SQLite', () => {
+  const db = setupTestDb()
+  const insert = db.prepare("INSERT INTO mosaic_workspaces (id, name, target_id, status, created_at) VALUES (?, ?, NULL, 'active', '2026-10-25T20:00:00Z')")
+  insert.run('w1', 'One')
+  insert.run('w2', 'Two')
+  return new SqliteMosaicAssignmentStore(db)
 })
 
 describe('SqliteMosaicWorkspaceStore', () => {

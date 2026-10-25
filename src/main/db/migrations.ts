@@ -614,6 +614,21 @@ export function runMigrations(sqlite: Database.Database): void {
       FOREIGN KEY (workspace_id, revision) REFERENCES mosaic_revisions(workspace_id, revision) ON DELETE CASCADE
     );
   `)
+
+  // Migration: what the user said about a capture on a mosaic (put on a panel, or left out), kept
+  // apart from computed placements and keyed by the capture's file path, which rescans keep (MO-009)
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS mosaic_overrides (
+      workspace_id TEXT NOT NULL REFERENCES mosaic_workspaces(id) ON DELETE CASCADE,
+      capture_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      panel_id TEXT,
+      reason TEXT,
+      revision INTEGER NOT NULL,
+      at TEXT NOT NULL,
+      PRIMARY KEY (workspace_id, capture_id)
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

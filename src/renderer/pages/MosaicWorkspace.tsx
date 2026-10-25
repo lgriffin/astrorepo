@@ -5,7 +5,8 @@ import { Card, EmptyState } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { targetLink, workspaceLink, workspaceRevisionFrom } from '@shared/navigation'
-import type { WorkspaceGridInput, WorkspaceSaveView, WorkspaceView } from '@shared/types'
+import type { WorkspaceChangeView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceView } from '@shared/types'
+import { MosaicCaptures } from '../components/mosaic/MosaicCaptures'
 import { GridWorkbench, PanelTable } from './MosaicWorkspaces'
 import type { FlushCentre } from '../components/mosaic/GridEditor'
 
@@ -23,6 +24,8 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
   const [note, setNote] = useState('')
   const [problems, setProblems] = useState<string[]>([])
   const flushRef = useRef<FlushCentre | null>(null)
+  // Captures that would change panel if this grid were saved, shown before it is (MO-010).
+  const [changes, setChanges] = useState<{ grid: WorkspaceGridInput; list: WorkspaceChangeView[] } | null>(null)
   const loading = useRef(0)
 
   const load = useCallback(async () => {
@@ -47,9 +50,17 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
     )
   }
 
-  const save = async () => {
-    const typed = flushRef.current ? await flushRef.current() : grid
+  const save = async (confirmed: WorkspaceGridInput | null = null) => {
+    const typed = confirmed ?? (flushRef.current ? await flushRef.current() : grid)
     if (!typed) return
+    if (!confirmed) {
+      const list = await invoke<WorkspaceChangeView[] | null>('workspace:preview-changes', { workspace_id: view.id, grid: typed }).catch(() => null)
+      if (list && list.length > 0) {
+        setChanges({ grid: typed, list })
+        return
+      }
+    }
+    setChanges(null)
     const result = await invoke<WorkspaceSaveView>('workspace:save', { workspace_id: view.id, grid: typed, note: note.trim() || null }).catch(() => null)
     if (!result) {
       addToast('The revision could not be saved.', 'error')
@@ -127,6 +138,8 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
           </div>
         </Card>
 
+        <MosaicCaptures workspaceId={view.id} revision={view.revision} drawing={view.drawing} latestPanels={view.drawing.panels.map(p => p.id)} />
+
         <Card title="Change the grid">
           <div className="space-y-4 text-sm">
             <GridWorkbench grid={grid} setGrid={setGrid} flushRef={flushRef} />
@@ -142,13 +155,35 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
                 <span className="text-xs text-astro-muted">What changed (optional)</span>
                 <input value={note} onChange={e => setNote(e.target.value)} className={`${input} w-80`} />
               </label>
-              <button onClick={save} className={button}>
+              <button onClick={() => save()} className={button}>
                 Save as revision {view.latestRevision + 1}
               </button>
-              <button onClick={() => setGrid(view.drawing.grid)} className={button}>
+              <button onClick={() => (setGrid(view.drawing.grid), setChanges(null))} className={button}>
                 Undo changes
               </button>
             </div>
+            {changes && (
+              <div className="space-y-2 rounded border border-amber-400/40 p-3">
+                <p className="text-astro-text">Saving this grid would move {changes.list.length === 1 ? 'one capture' : `${changes.list.length} captures`} to another panel:</p>
+                <ul className="text-xs list-disc pl-5 space-y-0.5">
+                  {changes.list.map(c => (
+                    <li key={c.captureId} className="text-astro-text">
+                      {c.label}: {c.from ?? 'no panel'} to {c.to ?? 'no panel'}
+                      {c.overridden && <span className="text-amber-400"> (you put it on {c.from} by hand; that stays, marked for review)</span>}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-astro-muted">Earlier revisions keep their placements. Nothing moves until you save.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => save(changes.grid)} className={button}>
+                    Save anyway
+                  </button>
+                  <button onClick={() => setChanges(null)} className={button}>
+                    Keep editing
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </div>

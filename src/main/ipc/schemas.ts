@@ -402,6 +402,13 @@ export const schemas = {
   'workspace:from-target': z.object({ target_id: id }),
   'workspace:from-solve': z.object({ path: z.string().min(1).max(1000) }),
   'workspace:archive': z.object({ workspace_id: id, archived: z.boolean() }),
+  'workspace:captures': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
+  'workspace:assign': z.discriminatedUnion('action', [
+    z.object({ action: z.literal('assign'), workspace_id: id, capture_id: z.string().min(1).max(1000), panel_id: z.string().regex(/^R\d{1,2}C\d{1,2}$/), reason: z.string().max(500).nullable().optional() }),
+    z.object({ action: z.literal('exclude'), workspace_id: id, capture_id: z.string().min(1).max(1000), reason: z.string().max(500).nullable().optional() }),
+    z.object({ action: z.literal('clear'), workspace_id: id, capture_id: z.string().min(1).max(1000) })
+  ]),
+  'workspace:preview-changes': z.object({ workspace_id: id, grid: workspaceGrid }),
 
   'vespera:settings': z.object({}).optional(),
 

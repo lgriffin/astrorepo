@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3'
 import { ulid } from 'ulid'
-import type { MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord, WorkspaceStatus } from '@astro/application'
-import type { FieldSource, PlannedPanel, SkyPoint } from '@astro/domain'
+import type { MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord, WorkspaceStatus } from '@astro/application'
+import type { AssignmentOverride, FieldSource, PlannedPanel, SkyPoint } from '@astro/domain'
 
 interface WorkspaceRow {
   id: string
@@ -156,5 +156,34 @@ export class SqliteMosaicWorkspaceStore implements MosaicWorkspaceStore {
       note: r.note,
       savedAt: new Date(r.saved_at)
     }
+  }
+}
+
+interface OverrideRow {
+  capture_id: string
+  action: AssignmentOverride['action']
+  panel_id: string | null
+  reason: string | null
+  revision: number
+  at: string
+}
+
+/** MosaicAssignmentStore over mosaic_overrides: one row per capture per workspace. */
+export class SqliteMosaicAssignmentStore implements MosaicAssignmentStore {
+  constructor(private readonly db: Database.Database) {}
+
+  async overrides(workspaceId: string): Promise<AssignmentOverride[]> {
+    const rows = this.db.prepare('SELECT * FROM mosaic_overrides WHERE workspace_id = ? ORDER BY capture_id').all(workspaceId) as OverrideRow[]
+    return rows.map(r => ({ captureId: r.capture_id, action: r.action, panelId: r.panel_id, reason: r.reason, revision: r.revision, at: new Date(r.at) }))
+  }
+
+  async set(workspaceId: string, o: AssignmentOverride): Promise<void> {
+    this.db
+      .prepare('INSERT OR REPLACE INTO mosaic_overrides (workspace_id, capture_id, action, panel_id, reason, revision, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(workspaceId, o.captureId, o.action, o.panelId, o.reason, o.revision, o.at.toISOString())
+  }
+
+  async clear(workspaceId: string, captureId: string): Promise<void> {
+    this.db.prepare('DELETE FROM mosaic_overrides WHERE workspace_id = ? AND capture_id = ?').run(workspaceId, captureId)
   }
 }
