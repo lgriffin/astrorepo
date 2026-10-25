@@ -31,6 +31,7 @@ import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
+import { toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
@@ -65,6 +66,7 @@ function mosaicOptions(args: { target_id: string; field_width_deg?: number; fiel
 }
 
 const CSV: FileKind[] = [{ name: 'CSV', extensions: ['csv'] }]
+const JSON_FILE: FileKind[] = [{ name: 'JSON', extensions: ['json'] }]
 
 /** A handler that checks its arguments against the channel's schema before it runs (PI-001). */
 export function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): ChannelHandler {
@@ -903,6 +905,32 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
     if (!exported) return { saved: false }
     return desktop.saveText(exported.fileName, exported.csv, CSV)
   }))
+
+  // Mosaic workspaces: versioned grids on the sky (specs/037-mosaic-workspace).
+  const workspaces = () => sky().workspaces
+  handle('workspace:list', async () => toWorkspaceSummaries(await workspaces().list()))
+  handle('workspace:preview', validated('workspace:preview', (args) =>
+    toDrawingView(workspaces().preview({ grid: toGridDefinition(args.grid), shift: args.shift ? { rightDeg: args.shift.right_deg, upDeg: args.shift.up_deg } : undefined, drag: args.drag ? { xDeg: args.drag.x_deg, yDeg: args.drag.y_deg } : undefined }))))
+  handle('workspace:parse-centre', validated('workspace:parse-centre', (args) => workspaces().parseCentre(args.ra, args.dec)))
+  handle('workspace:create', validated('workspace:create', async (args) =>
+    toCreatedView(await workspaces().create({ name: args.name, targetId: args.target_id ?? null, grid: toGridDefinition(args.grid), note: args.note ?? null }))))
+  handle('workspace:save', validated('workspace:save', async (args) =>
+    toRevisionSavedView(args.workspace_id, await workspaces().saveRevision(args.workspace_id, toGridDefinition(args.grid), args.note ?? null))))
+  handle('workspace:get', validated('workspace:get', async (args) => {
+    const view = await workspaces().describe(args.workspace_id, args.revision)
+    return view ? toWorkspaceView(view) : null
+  }))
+  handle('workspace:export', validated('workspace:export', async (args) => {
+    const exported = await workspaces().exportPlan(args.workspace_id, args.format, args.revision)
+    if (!exported) return { saved: false }
+    return desktop.saveText(exported.fileName, exported.text, args.format === 'csv' ? CSV : JSON_FILE)
+  }))
+  handle('workspace:from-target', validated('workspace:from-target', async (args) => toCreatedView(await workspaces().fromTarget(args.target_id))))
+  handle('workspace:from-solve', validated('workspace:from-solve', async (args) => {
+    const grid = await workspaces().fromSolve(args.path)
+    return grid ? toGridInput(grid) : null
+  }))
+  handle('workspace:archive', validated('workspace:archive', (args) => workspaces().archive(args.workspace_id, args.archived)))
 
   handle('discovery:target', validated('discovery:target', async (args) => {
     const d = await composeCore(getSqlite()).discoverTarget(args.target_id)

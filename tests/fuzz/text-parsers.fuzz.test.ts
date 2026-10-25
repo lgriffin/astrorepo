@@ -24,6 +24,14 @@ const SEEDS: Record<keyof typeof TEXT_CONTRACTS, { seeds: string[]; pieces: stri
     ],
     pieces: [' ', '  ', '.', '-', '+', '0', '9', '99999999', '1e9', '2024', '13', '31.999', ' 0 ', '360', '181', 'NaN', 'Infinity']
   },
+  parseRa: {
+    seeds: ['05h35m17.3s', '05:35:17.3', '05 35 17', '5.588h', '83.82', '83.82°', '0', '359.999'],
+    pieces: ['h', 'm', 's', ':', ' ', '.', '-', '+', '°', '24', '60', '360', '1e9', 'NaN', '٣']
+  },
+  parseDec: {
+    seeds: ['+41:16:09', "-05°23'28\"", '41 16 9', '-5.39', '90', '-0 30 00', '+00:00:00'],
+    pieces: ['°', "'", '"', ':', ' ', '.', '-', '+', '90', '91', '60', 'd', 'm', 's', '1e9', '-0']
+  },
   parseToolVersion: {
     seeds: ['siril 1.4.0-beta2\n', 'GNU bash, version 5.2.37(1)-release (x86_64-pc-msys)', 'syqon-cli v2.3.1\nCopyright SyQon', 'ASTAP version 2024.03.11'],
     pieces: ['.', '-', '+', 'v', '1', '.0', '\n', '\r\n', 'beta', '..']

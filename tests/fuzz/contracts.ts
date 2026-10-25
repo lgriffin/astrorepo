@@ -24,6 +24,8 @@ import {
   parseStackManifest,
   parseSyqonModels,
   parseToolVersion,
+  parseRa,
+  parseDec,
   splitSirilScript,
   stepScript,
   type SolveOutcome
@@ -82,6 +84,14 @@ export const TEXT_CONTRACTS: Record<string, (input: string) => void> = {
     ensure(Number.isFinite(o.perihelionAt.getTime()), 'a real perihelion date')
     ensure(o.epoch === null || /^\d{4}-\d{2}-\d{2}$/.test(o.epoch), 'an epoch as YYYY-MM-DD')
     ensure(typeof o.name === 'string' && o.name.length > 0, 'a name')
+  },
+  parseRa: input => {
+    const out = withinBudget('parseRa', () => parseRa(input))
+    ensure(out === null || (finite(out) && out >= 0 && out < 360), `RA in [0, 360) or nothing: ${show(out)}`)
+  },
+  parseDec: input => {
+    const out = withinBudget('parseDec', () => parseDec(input))
+    ensure(out === null || (finite(out) && Math.abs(out) <= 90 && !Object.is(out, -0)), `Dec in [-90, 90] or nothing: ${show(out)}`)
   },
   parseToolVersion: input => {
     const out = withinBudget('parseToolVersion', () => parseToolVersion(input))

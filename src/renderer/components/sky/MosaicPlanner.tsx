@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Card, EmptyState, LinkButton } from '../common/Card'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
-import { mosaicTargetFrom, targetLink } from '@shared/navigation'
-import type { Equipment, FOVResult, MosaicPlanView, TargetSummary } from '@shared/types'
+import { mosaicTargetFrom, targetLink, workspaceLink } from '@shared/navigation'
+import type { Equipment, FOVResult, MosaicPlanView, TargetSummary, WorkspaceSaveView } from '@shared/types'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const button = 'px-3 py-1.5 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -111,6 +111,14 @@ export function MosaicPlanner(): React.ReactElement {
     if (!targetId) return
     const result = await invoke<{ saved: boolean; path?: string }>('mosaic:export', request())
     if (result.saved) addToast(`Tiles saved to ${result.path}`, 'success')
+  }
+
+  // The saved plan copied into a mosaic workspace (specs/037-mosaic-workspace, MO-017).
+  const openAsMosaic = async () => {
+    if (!targetId) return
+    const result = await invoke<WorkspaceSaveView>('workspace:from-target', { target_id: targetId })
+    if (result.ok && result.workspaceId) navigate(workspaceLink(result.workspaceId))
+    else addToast(result.problems.join(' ') || result.message, 'error')
   }
 
   const pick = (id: string) => {
@@ -230,6 +238,9 @@ export function MosaicPlanner(): React.ReactElement {
                 </button>
                 <button onClick={save} disabled={view.fitsOneField} className={button}>
                   {view.saved ? 'Save changes' : 'Save plan'}
+                </button>
+                <button onClick={openAsMosaic} disabled={!view.saved} className={button} title={view.saved ? 'Keep this plan as a mosaic with revisions and exact panel coordinates' : 'Save the plan first'}>
+                  Open in Mosaics
                 </button>
               </div>
             </div>
