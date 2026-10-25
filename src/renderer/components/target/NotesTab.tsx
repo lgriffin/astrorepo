@@ -88,7 +88,7 @@ function EditableTextSection({ title, value, fieldName, targetId, onSaved }: {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-3 py-1.5 text-xs bg-astro-accent text-white rounded hover:bg-astro-accent/80 disabled:opacity-50"
+              className="px-3 py-1.5 text-xs bg-astro-accent text-astro-on-accent rounded hover:bg-astro-accent/80 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

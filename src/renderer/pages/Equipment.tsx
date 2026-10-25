@@ -188,7 +188,7 @@ export function Equipment(): React.ReactElement {
       actions={
         <button
           onClick={() => showForm ? cancelForm() : setShowForm(true)}
-          className="px-3 py-1.5 bg-astro-accent text-white rounded text-sm hover:bg-astro-accent/80"
+          className="px-3 py-1.5 bg-astro-accent text-astro-on-accent rounded text-sm hover:bg-astro-accent/80"
         >
           {showForm ? 'Cancel' : 'Add Equipment'}
         </button>
@@ -249,7 +249,7 @@ export function Equipment(): React.ReactElement {
           </label>
 
           <div className="flex gap-2">
-            <button type="submit" className="px-4 py-2 bg-astro-accent text-white rounded text-sm">
+            <button type="submit" className="px-4 py-2 bg-astro-accent text-astro-on-accent rounded text-sm">
               {editingId ? 'Update' : 'Save'}
             </button>
             <button type="button" onClick={cancelForm} className="px-4 py-2 border border-astro-border text-astro-muted rounded text-sm">
@@ -293,7 +293,7 @@ export function Equipment(): React.ReactElement {
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); setShowDelete(eq.id) }}
-                        className="text-xs text-astro-muted hover:text-red-400 px-1"
+                        className="text-xs text-astro-muted hover:text-astro-danger px-1"
                       >
                         Del
                       </button>
@@ -312,9 +312,9 @@ export function Equipment(): React.ReactElement {
 
                   {showDelete === eq.id && (
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-red-400">Delete?</span>
+                      <span className="text-xs text-astro-danger">Delete?</span>
                       <button onClick={e => { e.stopPropagation(); handleDelete(eq.id) }}
-                        className="text-xs px-2 py-1 bg-red-500 text-white rounded">Yes</button>
+                        className="text-xs px-2 py-1 bg-astro-danger text-astro-on-accent rounded">Yes</button>
                       <button onClick={e => { e.stopPropagation(); setShowDelete(null) }}
                         className="text-xs px-2 py-1 border border-astro-border text-astro-muted rounded">No</button>
                     </div>
@@ -388,7 +388,7 @@ export function Equipment(): React.ReactElement {
                   </label>
                 )}
                 <button onClick={calculateFOV} disabled={!fovTelescope || !fovCamera}
-                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50">
+                  className="px-3 py-1.5 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50">
                   Calculate
                 </button>
 

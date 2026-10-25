@@ -73,7 +73,7 @@ export function PairScreen(): React.ReactElement {
               aria-label="Screen name"
               className="w-full bg-astro-surface border border-astro-border rounded-lg px-4 py-3 text-lg"
             />
-            <button onClick={() => void showCode()} className="w-full px-6 py-4 bg-astro-accent text-white rounded-lg text-lg">
+            <button onClick={() => void showCode()} className="w-full px-6 py-4 bg-astro-accent text-astro-on-accent rounded-lg text-lg">
               Show a pairing code
             </button>
           </>

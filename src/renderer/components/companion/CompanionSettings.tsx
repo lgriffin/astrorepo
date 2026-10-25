@@ -131,7 +131,7 @@ export function CompanionSettings(): React.ReactElement {
               onChange={e => setCode(e.target.value)}
               className="w-48 bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text"
             />
-            <button onClick={() => void pair()} className="px-3 py-1 text-xs bg-astro-accent text-white rounded">
+            <button onClick={() => void pair()} className="px-3 py-1 text-xs bg-astro-accent text-astro-on-accent rounded">
               Pair
             </button>
           </div>

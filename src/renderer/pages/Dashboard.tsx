@@ -88,7 +88,7 @@ export function Dashboard(): React.ReactElement {
   const { nextActions, otherChecks } = splitRecommendations(Array.isArray(recommendations) ? recommendations : [])
 
   const recommendationRow = (rec: Recommendation) => {
-    const priorityColor = rec.priority === 'high' ? 'bg-red-500/20 text-red-400' : rec.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+    const priorityColor = rec.priority === 'high' ? 'bg-astro-danger/20 text-astro-danger' : rec.priority === 'medium' ? 'bg-astro-warning/20 text-astro-warning' : 'bg-astro-success/20 text-astro-success'
     const to = rec.actionTo ?? (rec.targetId ? `/targets/${rec.targetId}` : null)
     return (
       <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">

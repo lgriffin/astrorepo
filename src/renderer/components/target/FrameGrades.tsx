@@ -7,8 +7,8 @@ import { settingsLink } from '@shared/navigation'
 import type { FrameGradeView, GradesView, MeasureBatchView, NightGradeView } from '@shared/types'
 
 const VERDICT_STYLE: Record<FrameGradeView['verdict'], string> = {
-  keep: 'bg-green-500/15 text-green-400',
-  reject: 'bg-red-500/15 text-red-400',
+  keep: 'bg-astro-success/15 text-astro-success',
+  reject: 'bg-astro-danger/15 text-astro-danger',
   unmeasured: 'bg-astro-border text-astro-muted'
 }
 const VERDICT_LABEL: Record<FrameGradeView['verdict'], string> = { keep: 'Kept', reject: 'Rejected', unmeasured: 'Not measured' }
@@ -110,7 +110,7 @@ export function FrameGrades({ targetId, onChanged }: { targetId: string; onChang
         ) : (
           <>
             {view.unmeasured - failedCount > 0 && (
-              <button onClick={() => void measure(false)} className="px-3 py-1 text-xs bg-astro-accent text-white rounded">
+              <button onClick={() => void measure(false)} className="px-3 py-1 text-xs bg-astro-accent text-astro-on-accent rounded">
                 Measure {view.unmeasured - failedCount} lights
               </button>
             )}
@@ -217,11 +217,11 @@ export function Trend({ frames }: { frames: FrameGradeView[] }): React.ReactElem
         {frames.map((f, i) =>
           f.stars === null ? null : (
             <rect key={f.fileId} x={x(i) - barW / 2} width={barW} y={H - pad - (f.stars / maxStars) * (H - 2 * pad)} height={(f.stars / maxStars) * (H - 2 * pad)}
-              className={f.verdict === 'reject' ? 'fill-red-500/40' : 'fill-astro-border'} />
+              className={f.verdict === 'reject' ? 'fill-astro-danger/40' : 'fill-astro-border'} />
           )
         )}
         <polyline points={line} fill="none" className="stroke-astro-accent" strokeWidth={1.5} />
-        {frames.map((f, i) => (f.verdict === 'reject' && f.fwhm !== null ? <circle key={`r${f.fileId}`} cx={x(i)} cy={yF(f.fwhm)} r={2.5} className="fill-red-400" /> : null))}
+        {frames.map((f, i) => (f.verdict === 'reject' && f.fwhm !== null ? <circle key={`r${f.fileId}`} cx={x(i)} cy={yF(f.fwhm)} r={2.5} className="fill-astro-danger" /> : null))}
       </svg>
       <figcaption className="text-[11px] text-astro-muted">Line: FWHM (up to {maxFwhm.toFixed(1)} px). Bars: stars (up to {maxStars}). Red: rejected.</figcaption>
     </figure>

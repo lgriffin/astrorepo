@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { decodePixels, PixelCanvas, SkyOverlayLayer, toRgba } from '../gallery/PreviewImage'
 import type { ChannelStatsView, InspectionView, OpenedFileView, PreviewView } from '@shared/types'
+import { tokenColor } from '../../theme'
 
-const TONE: Record<ChannelStatsView['channel'], string> = { L: '#cbd5e1', R: '#f87171', G: '#4ade80', B: '#60a5fa' }
+const TONE: Record<ChannelStatsView['channel'], string> = { L: tokenColor('cat-8'), R: tokenColor('danger'), G: tokenColor('success'), B: tokenColor('info') }
 
 /** Every channel's histogram on one chart, binned over one shared range, counts on a log scale so the faint tail shows (INS-001). */
 function HistogramChart({ channels }: { channels: ChannelStatsView[] }): React.ReactElement {
@@ -95,7 +96,7 @@ export function Inspector({ fileId }: { fileId: string }): React.ReactElement {
 
   if (failed) return <p className="text-sm text-astro-muted">The inspector stopped before it finished. Close the file and open it again.</p>
   if (!view) return <p className="text-sm text-astro-muted">Reading the pixels…</p>
-  if (view.error) return <p className="text-sm text-yellow-400">{view.error}</p>
+  if (view.error) return <p className="text-sm text-astro-warning">{view.error}</p>
 
   return (
     <div className="space-y-3">
@@ -123,7 +124,7 @@ export function Inspector({ fileId }: { fileId: string }): React.ReactElement {
           ))}
         </tbody>
       </table>
-      {view.warnings.map(w => <p key={w} className="text-xs text-yellow-400">{w}</p>)}
+      {view.warnings.map(w => <p key={w} className="text-xs text-astro-warning">{w}</p>)}
       <div>
         <h5 className="text-xs text-astro-muted mb-1">Brightest unsaturated star</h5>
         {view.star ? (
@@ -139,7 +140,7 @@ export function Inspector({ fileId }: { fileId: string }): React.ReactElement {
           <p className="text-xs text-astro-muted">{view.starNote}</p>
         )}
       </div>
-      {preview && (preview.error ? <p className="text-xs text-yellow-400">{preview.error}</p> : <PreviewPanel view={preview} />)}
+      {preview && (preview.error ? <p className="text-xs text-astro-warning">{preview.error}</p> : <PreviewPanel view={preview} />)}
     </div>
   )
 }

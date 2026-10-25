@@ -4,6 +4,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
 import type { CalendarDay, CalendarMonth, YearSummaryMonth } from '@shared/types'
+import { tokenColor } from '../theme'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -61,8 +62,8 @@ function MiniMonthGrid({ year, monthNum, dayMap, maxExposure, onClick, isSelecte
               className="w-[10px] h-[10px] rounded-[1px]"
               style={{
                 backgroundColor: intensity > 0
-                  ? `rgba(99, 102, 241, ${0.15 + intensity * 0.75})`
-                  : 'rgba(55, 65, 81, 0.3)'
+                  ? tokenColor('accent', 0.15 + intensity * 0.75)
+                  : tokenColor('border', 0.6)
               }}
               title={data ? `${c.key}: ${formatExposure(data.totalExposureSec)}, ${data.fileCount} frames` : c.key}
             />
@@ -134,8 +135,8 @@ function FullMonthCalendar({ year, monthNum, dayMap, maxExposure, onSelectDay, s
                 }`}
                 style={{
                   backgroundColor: intensity > 0
-                    ? `rgba(99, 102, 241, ${0.1 + intensity * 0.5})`
-                    : 'rgba(55, 65, 81, 0.15)'
+                    ? tokenColor('accent', 0.1 + intensity * 0.5)
+                    : tokenColor('border', 0.3)
                 }}
               >
                 <span className="text-[11px] text-astro-text">{cell.day}</span>
@@ -193,7 +194,7 @@ export function SessionTimeline(): React.ReactElement {
       subtitle={`${totalDays} active nights in ${year} — ${formatExposure(totalExposure)} total`}
       actions={
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/sessions/new')} className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80">
+          <button onClick={() => navigate('/sessions/new')} className="px-3 py-1.5 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80">
             Log a night
           </button>
           <button
@@ -238,7 +239,7 @@ export function SessionTimeline(): React.ReactElement {
                 <div
                   key={i}
                   className="w-[10px] h-[10px] rounded-[1px]"
-                  style={{ backgroundColor: v === 0 ? 'rgba(55, 65, 81, 0.3)' : `rgba(99, 102, 241, ${0.15 + v * 0.75})` }}
+                  style={{ backgroundColor: v === 0 ? tokenColor('border', 0.6) : tokenColor('accent', 0.15 + v * 0.75) }}
                 />
               ))}
               <span>More</span>

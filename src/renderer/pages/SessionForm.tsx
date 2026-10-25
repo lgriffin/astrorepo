@@ -135,7 +135,7 @@ export function SessionForm(): React.ReactElement {
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 bg-astro-accent text-white rounded-lg hover:bg-astro-accent/80 disabled:opacity-50"
+            className="px-4 py-2 bg-astro-accent text-astro-on-accent rounded-lg hover:bg-astro-accent/80 disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save session'}
           </button>

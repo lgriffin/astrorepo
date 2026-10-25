@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable",
+        "ref": "skill-v4.6.0"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "impeccable@impeccable": true
+  }
+}

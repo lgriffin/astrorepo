@@ -48,10 +48,15 @@ queued the line is not shown.
 
 ## Settings
 
-Settings is one page in sections: **Your site**, **Folders**, **Tools**, **Run window**, **Import
-and export** and **Start again**. The buttons at the top jump to each. Links elsewhere open the
+Settings is one page in sections: **Your site**, **Weather**, **Folders**, **Tools**, **Run
+window**, **Frame grading**, **Appearance**, **Import and export**, **Companion screens** and
+**Start again**. The buttons at the top jump to each. Links elsewhere open the
 section they name: "Change the run window in Settings" on Jobs opens **Run window**, and "Set your
 site in Settings" on Home's Coming nights card opens **Your site**.
+
+**Appearance** picks the theme: match this computer (the default, following Windows' light or dark
+setting), dark, light, or night, which draws everything in red to keep your eyes dark-adapted. The
+choice is kept for the next start ([spec 041](../../specs/041-look-and-feel/requirements.md)).
 
 ## Words
 

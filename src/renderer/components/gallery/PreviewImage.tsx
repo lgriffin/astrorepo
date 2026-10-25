@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import type { OverlayView } from '@shared/types'
+import { tokenColor } from '../../theme'
 
 /** The pixels of a preview the main process sent, as bytes. */
 export function decodePixels(base64: string): Uint8Array {
@@ -41,9 +42,9 @@ export function SkyOverlayLayer({ overlay, width, height }: { overlay: OverlayVi
         const inside = l.points.find(([x, y]) => x >= 0 && y >= 0 && x <= width && y <= height)
         return (
           <g key={i}>
-            <polyline points={l.points.map(p => p.join(',')).join(' ')} fill="none" stroke={l.kind === 'ra' ? '#60a5fa' : '#34d399'} strokeOpacity={0.55} strokeWidth={Math.max(1, width / 900)} />
+            <polyline points={l.points.map(p => p.join(',')).join(' ')} fill="none" stroke={l.kind === 'ra' ? tokenColor('cat-2') : tokenColor('cat-6')} strokeOpacity={0.55} strokeWidth={Math.max(1, width / 900)} />
             {inside && (
-              <text x={inside[0] + 3} y={inside[1] - 3} fill={l.kind === 'ra' ? '#93c5fd' : '#6ee7b7'} fontSize={font}>
+              <text x={inside[0] + 3} y={inside[1] - 3} fill={l.kind === 'ra' ? tokenColor('cat-2') : tokenColor('cat-6')} fontSize={font}>
                 {l.label}
               </text>
             )}
@@ -52,8 +53,8 @@ export function SkyOverlayLayer({ overlay, width, height }: { overlay: OverlayVi
       })}
       {overlay.objects.map(o => (
         <g key={o.label}>
-          <circle cx={o.x} cy={o.y} r={Math.max(6, o.radius ?? 6)} fill="none" stroke="#fbbf24" strokeOpacity={0.8} strokeWidth={Math.max(1, width / 700)} />
-          <text x={o.x + Math.max(6, o.radius ?? 6) + 3} y={o.y} fill="#fde68a" fontSize={font}>
+          <circle cx={o.x} cy={o.y} r={Math.max(6, o.radius ?? 6)} fill="none" stroke={tokenColor('cat-7')} strokeOpacity={0.8} strokeWidth={Math.max(1, width / 700)} />
+          <text x={o.x + Math.max(6, o.radius ?? 6) + 3} y={o.y} fill={tokenColor('cat-7')} fontSize={font}>
             {o.label}
           </text>
         </g>

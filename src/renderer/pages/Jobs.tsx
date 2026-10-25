@@ -11,9 +11,9 @@ const time = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '')
 const STATE_COLOUR: Record<JobView['state'], string> = {
   queued: 'text-astro-muted',
   running: 'text-astro-accent',
-  succeeded: 'text-green-400',
-  failed: 'text-red-400',
-  cancelled: 'text-yellow-400'
+  succeeded: 'text-astro-success',
+  failed: 'text-astro-danger',
+  cancelled: 'text-astro-warning'
 }
 
 /** The job queue (specs/016-job-runner): what waits for the run window, what runs, and what ran. */
@@ -69,7 +69,7 @@ export function Jobs(): React.ReactElement {
             </button>
           )}
           {job.canCancel && (
-            <button onClick={() => void act('jobs:cancel', job)} className="px-2 py-1 text-xs border border-astro-border rounded text-red-400 hover:border-red-400">
+            <button onClick={() => void act('jobs:cancel', job)} className="px-2 py-1 text-xs border border-astro-border rounded text-astro-danger hover:border-astro-danger">
               Cancel
             </button>
           )}
@@ -88,7 +88,7 @@ export function Jobs(): React.ReactElement {
           .join(' · ')}
       </p>
       {job.progress && <p className="text-xs text-astro-text mt-1">{job.progress}</p>}
-      {job.note && <p className={`text-xs mt-1 ${job.state === 'failed' ? 'text-red-400' : 'text-yellow-400'}`}>{job.note}</p>}
+      {job.note && <p className={`text-xs mt-1 ${job.state === 'failed' ? 'text-astro-danger' : 'text-astro-warning'}`}>{job.note}</p>}
       {job.outputs.map(o => (
         <p key={o.path} className="text-xs text-astro-muted mt-1 break-all" title={o.manifest}>
           Published {o.path}, with its manifest beside it.
@@ -109,7 +109,7 @@ export function Jobs(): React.ReactElement {
         <Card title="Run window" action={<LinkButton onClick={() => navigate(settingsLink('run-window'))}>Change the run window in Settings</LinkButton>}>
           <p className="text-sm text-astro-text">{view?.windowStatus ?? 'Loading the queue…'}</p>
           {view && <p className="text-xs text-astro-muted mt-1">{view.rules} {view.load}</p>}
-          {message && <p className="text-xs text-red-400 mt-2">{message}</p>}
+          {message && <p className="text-xs text-astro-danger mt-2">{message}</p>}
         </Card>
 
         <Card title="Running">{view?.running ? row(view.running) : <EmptyState>Nothing is running.</EmptyState>}</Card>

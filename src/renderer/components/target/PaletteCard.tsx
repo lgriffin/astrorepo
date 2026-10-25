@@ -85,7 +85,7 @@ export function PaletteCard({ targetId }: { targetId: string }): React.ReactElem
                   <button onClick={() => void preview(o.id)} className="text-xs text-astro-accent hover:underline">Preview</button>
                 )}
                 {view.chosen === o.id ? (
-                  <button onClick={() => void choose(null)} className="text-xs text-green-400 hover:underline" title="Clear the choice">Chosen</button>
+                  <button onClick={() => void choose(null)} className="text-xs text-astro-success hover:underline" title="Clear the choice">Chosen</button>
                 ) : (
                   <button onClick={() => void choose(o.id)} className="text-xs text-astro-accent hover:underline">Use this one</button>
                 )}
@@ -93,11 +93,11 @@ export function PaletteCard({ targetId }: { targetId: string }): React.ReactElem
             ))}
           </ul>
           {others.length > 0 && <p className="text-xs text-astro-muted">{others.map(o => `${o.id}: ${o.note}`).join(' ')}</p>}
-          {message && <p className="text-xs text-yellow-400">{message}</p>}
+          {message && <p className="text-xs text-astro-warning">{message}</p>}
           {shown && (
             <div className="space-y-1">
               <p className="text-xs text-astro-muted">{shown.id} preview, auto-stretched from the masters.</p>
-              {shown.error ? <p className="text-xs text-yellow-400">{shown.error}</p> : shown.preview ? <PaletteComposite view={shown.preview} /> : <p className="text-xs text-astro-muted">Reading the masters…</p>}
+              {shown.error ? <p className="text-xs text-astro-warning">{shown.error}</p> : shown.preview ? <PaletteComposite view={shown.preview} /> : <p className="text-xs text-astro-muted">Reading the masters…</p>}
             </div>
           )}
           <p className="text-[10px] text-astro-muted">The chosen palette shows beside the post-processing command on Stack and process.</p>

@@ -78,7 +78,7 @@ export function MessierMosaic(): React.ReactElement {
             >
               Refresh
             </button>
-            <button onClick={() => void save()} disabled={saving} className="px-3 py-1.5 text-sm rounded bg-astro-accent text-white disabled:opacity-50">
+            <button onClick={() => void save()} disabled={saving} className="px-3 py-1.5 text-sm rounded bg-astro-accent text-astro-on-accent disabled:opacity-50">
               {saving ? 'Saving…' : 'Save as image'}
             </button>
           </>

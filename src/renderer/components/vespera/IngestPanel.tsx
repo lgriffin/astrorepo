@@ -4,7 +4,7 @@ import { invoke } from '../../hooks/useIPC'
 import type { IngestKindView, IngestPlanView, IngestProgressView, IngestScanView, IngestSessionView } from '@shared/types'
 
 const KIND_LABEL: Record<IngestKindView, string> = { fits: 'FITS', tiff: 'TIFF', jpeg: 'JPEG', json: 'JSON' }
-const LEVEL_COLOUR = { error: 'text-red-400', warn: 'text-yellow-400', info: 'text-astro-muted' } as const
+const LEVEL_COLOUR = { error: 'text-astro-danger', warn: 'text-astro-warning', info: 'text-astro-muted' } as const
 const LEVEL_WORD = { error: 'Error', warn: 'Check', info: 'Note' } as const
 const CONFIDENCE: Record<string, string> = {
   folder: 'from the folder name',
@@ -154,17 +154,17 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
     <Card
       title="On the Vespera"
       action={
-        <button onClick={() => void rescan()} disabled={busy || running} className="px-3 py-1 bg-astro-accent text-white text-xs rounded hover:bg-astro-accent/80 disabled:opacity-50">
+        <button onClick={() => void rescan()} disabled={busy || running} className="px-3 py-1 bg-astro-accent text-astro-on-accent text-xs rounded hover:bg-astro-accent/80 disabled:opacity-50">
           {busy ? 'Scanning…' : 'Scan the scope'}
         </button>
       }
     >
       {!scan && <EmptyState>Scan the scope to see each session's counts and what is already on the PC before anything is copied.</EmptyState>}
-      {scan && !scan.ok && <p className="text-sm text-red-400">{scan.error}</p>}
+      {scan && !scan.ok && <p className="text-sm text-astro-danger">{scan.error}</p>}
       {scan?.ok && (
         <>
           <p className="text-sm text-astro-text">{scan.summary}</p>
-          {!scan.destinationRoot && <p className="text-xs text-red-400 mt-1">Choose where copies land above before copying.</p>}
+          {!scan.destinationRoot && <p className="text-xs text-astro-danger mt-1">Choose where copies land above before copying.</p>}
           {scan.expertMode && <p className="text-xs text-astro-muted mt-1">Expert-mode darks are on the scope; they are listed, never copied.</p>}
           <label className="flex items-center gap-2 text-xs text-astro-muted mt-2">
             <input type="checkbox" checked={showOthers} onChange={() => setShowOthers(v => !v)} />
@@ -197,7 +197,7 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
                     <td className="py-1.5 text-astro-text" title={s.id}>{s.when ?? s.id}</td>
                     <td className="text-astro-text">
                       {s.target.name}
-                      {s.target.review && <span className="text-yellow-400"> ?</span>}
+                      {s.target.review && <span className="text-astro-warning"> ?</span>}
                     </td>
                     <td className="text-right">{s.counts.fits}</td>
                     <td className="text-right">{s.counts.tiff}</td>
@@ -205,9 +205,9 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
                     <td className="text-right text-astro-muted">{s.transferSize}</td>
                     <td className="pl-3">
                       {s.job?.state === 'done' ? (
-                        <span className="text-green-400">In the repository</span>
+                        <span className="text-astro-success">In the repository</span>
                       ) : s.job?.state === 'paused' || s.job?.state === 'failed' ? (
-                        <span className="text-yellow-400">Copy {s.job.state}</span>
+                        <span className="text-astro-warning">Copy {s.job.state}</span>
                       ) : s.worst ? (
                         <span className={LEVEL_COLOUR[s.worst]}>{LEVEL_WORD[s.worst]}</span>
                       ) : (
@@ -253,12 +253,12 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
                             </p>
                           )}
                           {s.job && (s.job.state === 'paused' || s.job.state === 'failed') && (
-                            <button onClick={() => void resume(s.job!.id)} disabled={running} className="px-3 py-1 bg-astro-accent text-white rounded hover:bg-astro-accent/80 disabled:opacity-50">
+                            <button onClick={() => void resume(s.job!.id)} disabled={running} className="px-3 py-1 bg-astro-accent text-astro-on-accent rounded hover:bg-astro-accent/80 disabled:opacity-50">
                               Resume
                             </button>
                           )}
-                          {s.job?.state === 'done' && s.job.manifestPath && <p className="text-green-400 break-all">Copied and checked: {s.job.manifestPath}</p>}
-                          {s.job?.reason && s.job.state !== 'done' && <p className="text-yellow-400">{s.job.reason}</p>}
+                          {s.job?.state === 'done' && s.job.manifestPath && <p className="text-astro-success break-all">Copied and checked: {s.job.manifestPath}</p>}
+                          {s.job?.reason && s.job.state !== 'done' && <p className="text-astro-warning">{s.job.reason}</p>}
                         </div>
                       </td>
                     </tr>
@@ -269,7 +269,7 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
           </table>
           {shown.length === 0 && <EmptyState>The scope holds no observations.</EmptyState>}
           <div className="flex items-center justify-between gap-3 mt-3">
-            <p className={`text-xs ${short ? 'text-red-400' : 'text-astro-muted'}`}>
+            <p className={`text-xs ${short ? 'text-astro-danger' : 'text-astro-muted'}`}>
               {chosen.length === 0
                 ? 'Tick the sessions to copy.'
                 : `${chosen.length} ${chosen.length === 1 ? 'session' : 'sessions'}, ${bytesText(chosenBytes)} of ${kindsText}`}
@@ -278,14 +278,14 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
             <button
               onClick={() => void transfer(chosen.map(s => s.id))}
               disabled={running || chosen.length === 0 || kinds.length === 0 || !scan.destinationRoot || short}
-              className="px-3 py-1 bg-astro-accent text-white text-xs rounded hover:bg-astro-accent/80 disabled:opacity-50 shrink-0"
+              className="px-3 py-1 bg-astro-accent text-astro-on-accent text-xs rounded hover:bg-astro-accent/80 disabled:opacity-50 shrink-0"
             >
               Copy selected
             </button>
           </div>
         </>
       )}
-      {message && <p className="text-xs text-red-400 mt-2">{message}</p>}
+      {message && <p className="text-xs text-astro-danger mt-2">{message}</p>}
       {progress && (
         <div className="mt-4 border-t border-astro-border pt-3">
           <div className="flex items-baseline justify-between">
@@ -305,7 +305,7 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
           {running && progress.current && <p className="text-xs text-astro-muted mt-1 break-all">{progress.current}</p>}
           {progress.outcomes.map(o => (
             <div key={o.sessionId} className="flex items-baseline justify-between gap-3 mt-1">
-              <p className={`text-xs ${o.level === 'info' ? 'text-green-400' : LEVEL_COLOUR[o.level]}`}>{o.message}</p>
+              <p className={`text-xs ${o.level === 'info' ? 'text-astro-success' : LEVEL_COLOUR[o.level]}`}>{o.message}</p>
               {o.refused && !running && (
                 <button onClick={() => void transfer([o.sessionId], true)} className="px-2 py-1 text-xs border border-astro-border rounded text-astro-text hover:border-astro-accent shrink-0">
                   Use the next free name

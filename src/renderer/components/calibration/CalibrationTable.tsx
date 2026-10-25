@@ -23,9 +23,9 @@ function typeLabel(type: string): string {
 
 function typeBadgeClass(type: string): string {
   switch (type) {
-    case 'dark': return 'bg-purple-500/20 text-purple-300'
-    case 'flat': return 'bg-sky-500/20 text-sky-300'
-    case 'bias': return 'bg-amber-500/20 text-amber-300'
+    case 'dark': return 'bg-astro-cat-1/20 text-astro-cat-1'
+    case 'flat': return 'bg-astro-cat-3/20 text-astro-cat-3'
+    case 'bias': return 'bg-astro-warning/20 text-astro-warning'
     default: return 'bg-astro-surface text-astro-muted'
   }
 }

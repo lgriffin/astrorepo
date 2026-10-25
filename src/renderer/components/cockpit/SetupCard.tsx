@@ -54,7 +54,7 @@ export function SetupCard(): React.ReactElement | null {
       <ol className="space-y-2">
         {steps.map((s, i) => (
           <li key={s.id} className="flex items-start gap-3 text-sm">
-            <span className={`shrink-0 w-5 text-center ${s.done ? 'text-green-400' : 'text-astro-muted'}`}>{s.done ? '✓' : `${i + 1}.`}</span>
+            <span className={`shrink-0 w-5 text-center ${s.done ? 'text-astro-success' : 'text-astro-muted'}`}>{s.done ? '✓' : `${i + 1}.`}</span>
             <div className="flex-1 min-w-0">
               <p className={s.done ? 'text-astro-muted line-through' : 'text-astro-text'}>{s.label}</p>
               {!s.done && <p className="text-xs text-astro-muted">{s.why}</p>}

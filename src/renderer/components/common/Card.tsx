@@ -15,8 +15,8 @@ interface CardProps {
  * small uppercase title, an optional action on the right, then the content.
  */
 export function Card({ title, action, tone = 'normal', id, className = '', children }: CardProps): React.ReactElement {
-  const border = tone === 'danger' ? 'border-red-500/30' : 'border-astro-border'
-  const heading = tone === 'danger' ? 'text-red-400' : 'text-astro-muted'
+  const border = tone === 'danger' ? 'border-astro-danger/30' : 'border-astro-border'
+  const heading = tone === 'danger' ? 'text-astro-danger' : 'text-astro-muted'
   return (
     <section id={id} className={`scroll-mt-6 bg-astro-surface border ${border} rounded-lg p-4 ${className}`}>
       <div className="flex items-center justify-between gap-3 mb-3">

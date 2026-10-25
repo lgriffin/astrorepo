@@ -211,7 +211,7 @@ export function MosaicPlanner(): React.ReactElement {
           </EmptyState>
         )}
 
-        {view && view.status !== 'ok' && <p className="text-amber-400">{view.message}</p>}
+        {view && view.status !== 'ok' && <p className="text-astro-warning">{view.message}</p>}
 
         {view && view.status === 'ok' && (
           <div className="space-y-3">

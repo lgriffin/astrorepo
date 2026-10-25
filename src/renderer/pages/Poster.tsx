@@ -30,7 +30,7 @@ export function Poster(): React.ReactElement {
   return (
     <PageContainer
       actions={
-        <button onClick={() => navigate(messierLink())} className="px-3 py-1.5 text-sm rounded bg-astro-accent text-white">
+        <button onClick={() => navigate(messierLink())} className="px-3 py-1.5 text-sm rounded bg-astro-accent text-astro-on-accent">
           View the Messier mosaic
         </button>
       }
