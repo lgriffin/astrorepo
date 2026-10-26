@@ -21,6 +21,11 @@ export function tabKeyTarget(key: string, index: number, count: number): number 
   return to === undefined ? null : (to + count) % count
 }
 
+/** Where an arrow key moves in a radio group (LF-007): up and left back, down and right on, wrapping. */
+export function radioKeyTarget(key: string, index: number, count: number): number | null {
+  return tabKeyTarget(({ ArrowDown: 'ArrowRight', ArrowUp: 'ArrowLeft' } as Record<string, string>)[key] ?? key, index, count)
+}
+
 /**
  * A row of tabs with the keyboard behaviour people expect (LF-007): arrows move between tabs,
  * Home and End jump to the ends, and only the active tab sits in the tab order.

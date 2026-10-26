@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest'
 import { contrastFailures, hexChannels, type ThemeName } from '../../src/shared/appearance'
 import { CONTRAST_PAIRS, PALETTES, TOKENS } from '../../src/shared/themes'
 import { NAV_ITEMS } from '../../src/shared/navigation'
-import { applyTheme, cachedChoice, cacheChoice, tokenColor } from '../../src/renderer/theme'
+import { applyTheme, cachedChoice, cacheChoice, makeThemeKeeper, tokenColor } from '../../src/renderer/theme'
 import { NAV_ICONS } from '../../src/renderer/components/common/nav-icons'
-import { Badge, Button, Field, Input, Skeleton, Stat, Table, Tabs, Td, Th, tabKeyTarget } from '../../src/renderer/components/ui'
+import { Badge, Button, Field, Input, Skeleton, Stat, Table, Tabs, Td, Th, radioKeyTarget, tabKeyTarget } from '../../src/renderer/components/ui'
 
 const root = path.resolve(__dirname, '../..')
 const renderer = path.join(root, 'src/renderer')
@@ -62,10 +62,45 @@ describe('Themes on screen (specs/041-look-and-feel)', () => {
     expect(cachedChoice(win)).toBe('system')
     cacheChoice(win, 'night')
     expect(cachedChoice(win)).toBe('night')
-    // The provider saves through settings:set and reads back ui_theme on start.
+    // The provider saves through settings:set and reads back ui_theme on start, except on a companion screen.
     const provider = fs.readFileSync(path.join(renderer, 'contexts/ThemeContext.tsx'), 'utf8')
     expect(provider).toContain("invoke('settings:set', { key: THEME_SETTING_KEY, value: next })")
     expect(provider).toContain("invoke<{ value: string | null }>('settings:get', { key: THEME_SETTING_KEY })")
+    expect(provider).toMatch(/astrorepoMode === 'companion'\) return \{ read: async \(\) => null/)
+    // Both the app and the pairing screen are drawn inside the provider.
+    expect(fs.readFileSync(path.join(renderer, 'main.tsx'), 'utf8')).toMatch(/<ThemeProvider>\s*\{window\.astrorepoMode === 'companion'[^}]*<PairScreen \/> : <App \/>\}\s*<\/ThemeProvider>/)
+  })
+
+  it('[LF-002] Given a pick made before the saved choice arrives, When the saved one is read, Then the pick is kept', async () => {
+    const store = new Map<string, string>()
+    const win = fakeWindow({ getItem: k => store.get(k) ?? null, setItem: (k, v) => void store.set(k, v) })
+    let answer: (v: 'dark') => void = () => undefined
+    const keeper = makeThemeKeeper(win, { read: () => new Promise(r => (answer = r)), save: async () => undefined })
+    const started = keeper.start()
+    expect(await keeper.choose('light')).toBe(true)
+    answer('dark')
+    expect(await started).toBeNull()
+    expect(cachedChoice(win)).toBe('light')
+  })
+
+  it('[LF-002] Given quick picks one after another, When they are saved, Then they are written in order and the last one is stored', async () => {
+    const written: string[] = []
+    const releases: (() => void)[] = []
+    const win = fakeWindow({ getItem: () => null, setItem: () => undefined })
+    const keeper = makeThemeKeeper(win, {
+      read: async () => null,
+      save: next => new Promise<void>(r => releases.push(() => (written.push(next), r())))
+    })
+    const first = keeper.choose('dark')
+    const second = keeper.choose('night')
+    await Promise.resolve()
+    expect(releases).toHaveLength(1)
+    releases[0]()
+    await first
+    await Promise.resolve()
+    releases[1]()
+    await second
+    expect(written).toEqual(['dark', 'night'])
   })
 
   it('[LF-003] Given storage that is blocked or holds nonsense, When the cached choice is read or written, Then it matches the computer and does not fail', () => {
@@ -75,6 +110,14 @@ describe('Themes on screen (specs/041-look-and-feel)', () => {
     expect(cachedChoice(fakeWindow({ getItem: () => 'sepia' }))).toBe('system')
     // A failed save is said on Settings → Appearance.
     expect(fs.readFileSync(path.join(renderer, 'components/settings/AppearanceSettings.tsx'), 'utf8')).toContain('could not be saved')
+  })
+
+  it('[LF-003] Given a save that fails, When the next start reads the cache, Then the last saved choice is drawn, not the unsaved one', async () => {
+    const store = new Map<string, string>([['astrorepo.theme', 'dark']])
+    const win = fakeWindow({ getItem: k => store.get(k) ?? null, setItem: (k, v) => void store.set(k, v) })
+    const keeper = makeThemeKeeper(win, { read: async () => null, save: async () => Promise.reject(new Error('offline')) })
+    expect(await keeper.choose('light')).toBe(false)
+    expect(cachedChoice(win)).toBe('dark')
   })
 
   it('[LF-004] Given the night theme, When its colours are read, Then each is red or black and pictures are tinted red', () => {
@@ -149,6 +192,12 @@ describe('Shared controls (specs/041-look-and-feel)', () => {
     expect(tabKeyTarget('Home', 2, 3)).toBe(0)
     expect(tabKeyTarget('End', 0, 3)).toBe(2)
     expect(tabKeyTarget('Enter', 1, 3)).toBeNull()
+    // A radio group, such as Settings → Appearance, moves on the up and down arrows too.
+    expect(radioKeyTarget('ArrowDown', 3, 4)).toBe(0)
+    expect(radioKeyTarget('ArrowUp', 0, 4)).toBe(3)
+    expect(radioKeyTarget('ArrowRight', 1, 4)).toBe(2)
+    expect(radioKeyTarget(' ', 1, 4)).toBeNull()
+    expect(fs.readFileSync(path.join(renderer, 'components/settings/AppearanceSettings.tsx'), 'utf8')).toContain('tabIndex={selected ? 0 : -1}')
     const out = html(h(Tabs<'overview' | 'files'>, { label: 'Target', active: 'files', onChange: () => undefined, tabs: [{ id: 'overview', label: 'Overview' }, { id: 'files', label: 'Files', badge: 3 }] }))
     expect(out).toContain('role="tablist" aria-label="Target"')
     expect(out).toMatch(/aria-selected="false" tabindex="-1"[^>]*>Overview/)

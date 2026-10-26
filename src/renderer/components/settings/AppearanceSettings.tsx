@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import type { ThemeChoice, ThemeName } from '@shared/appearance'
 import { PALETTES } from '@shared/themes'
 import { Card } from '../common/Card'
 import { useTheme } from '../../contexts/ThemeContext'
+import { radioKeyTarget } from '../ui'
 
 const CHOICES: { id: ThemeChoice; label: string; hint: string }[] = [
   { id: 'system', label: 'Match this computer', hint: 'Light or dark, as Windows or the browser is set' },
@@ -27,23 +28,36 @@ function Swatch({ theme }: { theme: ThemeName }): React.ReactElement {
 export function AppearanceSettings(): React.ReactElement {
   const { choice, theme, choose } = useTheme()
   const [failed, setFailed] = useState(false)
+  const refs = useRef<(HTMLButtonElement | null)[]>([])
 
   const pick = async (next: ThemeChoice): Promise<void> => {
     setFailed(!(await choose(next)))
   }
 
+  // One stop in the tab order; the arrows move the choice, as in any radio group.
+  const onKey = (e: React.KeyboardEvent, i: number): void => {
+    const next = radioKeyTarget(e.key, i, CHOICES.length)
+    if (next === null) return
+    e.preventDefault()
+    refs.current[next]?.focus()
+    void pick(CHOICES[next].id)
+  }
+
   return (
     <Card title="Appearance">
       <div role="radiogroup" aria-label="Theme" className="grid gap-2 sm:grid-cols-2">
-        {CHOICES.map(c => {
+        {CHOICES.map((c, i) => {
           const selected = c.id === choice
           return (
             <button
               key={c.id}
+              ref={el => (refs.current[i] = el)}
               type="button"
               role="radio"
               aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
               onClick={() => void pick(c.id)}
+              onKeyDown={e => onKey(e, i)}
               className={`flex items-center gap-3 rounded-md border p-2 text-left transition-colors ${
                 selected ? 'border-astro-accent bg-astro-accent/10' : 'border-astro-border hover:border-astro-muted'
               }`}

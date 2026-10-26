@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { App } from './App'
 import { installBridge, storedCompanionKey } from './bridge'
 import { PairScreen } from './components/companion/PairScreen'
+import { ThemeProvider } from './contexts/ThemeContext'
 import './styles/global.css'
 import { applyCachedTheme } from './theme'
 
@@ -12,6 +13,8 @@ applyCachedTheme(window)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {window.astrorepoMode === 'companion' && storedCompanionKey(window) === '' ? <PairScreen /> : <App />}
+    <ThemeProvider>
+      {window.astrorepoMode === 'companion' && storedCompanionKey(window) === '' ? <PairScreen /> : <App />}
+    </ThemeProvider>
   </React.StrictMode>
 )

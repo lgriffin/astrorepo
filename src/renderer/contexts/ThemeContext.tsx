@@ -1,7 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { THEME_SETTING_KEY, parseThemeChoice, resolveTheme, type ThemeChoice, type ThemeName } from '@shared/appearance'
 import { invoke } from '../hooks/useIPC'
-import { applyTheme, cacheChoice, cachedChoice, systemPrefersDark } from '../theme'
+import { applyTheme, cachedChoice, makeThemeKeeper, systemPrefersDark, type ThemeStore } from '../theme'
 
 interface ThemeContextValue {
   /** What the user picked, 'system' included. */
@@ -14,6 +14,20 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
+/** The PC's settings; a companion screen keeps its own theme on the screen, apart from the PC's. */
+function themeStore(): ThemeStore {
+  if (window.astrorepoMode === 'companion') return { read: async () => null, save: async () => undefined }
+  return {
+    read: async () => {
+      const r = await invoke<{ value: string | null }>('settings:get', { key: THEME_SETTING_KEY })
+      return parseThemeChoice(r?.value)
+    },
+    save: async next => {
+      await invoke('settings:set', { key: THEME_SETTING_KEY, value: next })
+    }
+  }
+}
+
 /**
  * Keeps the screen in the user's theme (LF-001 to LF-003): the saved choice, else the system's
  * light or dark, following the system while the choice is 'system'.
@@ -21,22 +35,18 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 export function ThemeProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   const [choice, setChoice] = useState<ThemeChoice>(() => cachedChoice(window))
   const [prefersDark, setPrefersDark] = useState(() => systemPrefersDark(window))
+  const keeper = useMemo(() => makeThemeKeeper(window, themeStore()), [])
   const theme = resolveTheme(choice, prefersDark)
 
   useEffect(() => {
     let current = true
-    invoke<{ value: string | null }>('settings:get', { key: THEME_SETTING_KEY })
-      .then(r => {
-        if (!current) return
-        const saved = parseThemeChoice(r?.value)
-        setChoice(saved)
-        cacheChoice(window, saved)
-      })
-      .catch(() => undefined)
+    void keeper.start().then(saved => {
+      if (current && saved) setChoice(saved)
+    })
     return () => {
       current = false
     }
-  }, [])
+  }, [keeper])
 
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)')
@@ -48,16 +58,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): Reac
 
   useEffect(() => applyTheme(document, theme), [theme])
 
-  const choose = useCallback(async (next: ThemeChoice) => {
-    setChoice(next)
-    cacheChoice(window, next)
-    try {
-      await invoke('settings:set', { key: THEME_SETTING_KEY, value: next })
-      return true
-    } catch {
-      return false
-    }
-  }, [])
+  const choose = useCallback(
+    (next: ThemeChoice) => {
+      setChoice(next)
+      return keeper.choose(next)
+    },
+    [keeper]
+  )
 
   return <ThemeContext.Provider value={{ choice, theme, choose }}>{children}</ThemeContext.Provider>
 }

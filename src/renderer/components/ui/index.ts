@@ -2,7 +2,7 @@
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button'
 export { Field, Input, Select, Textarea, Checkbox } from './Field'
 export { Table, Th, Td, Tr } from './Table'
-export { Tabs, tabKeyTarget, type TabItem } from './Tabs'
+export { Tabs, radioKeyTarget, tabKeyTarget, type TabItem } from './Tabs'
 export { Badge, type BadgeTone } from './Badge'
 export { Stat } from './Stat'
 export { Skeleton } from './Skeleton'

@@ -35,9 +35,9 @@ export async function mosaicPng(tiles: MessierTileView[], pictures: Map<number, 
       const crop = Math.min(img.width, img.height)
       ctx.drawImage(img, (img.width - crop) / 2, (img.height - crop) / 2, crop, crop, cell.x + 2, cell.y + 2, side, side)
     } else {
-      ctx.fillStyle = t.state === 'gap' ? EXPORT.bg : EXPORT.surface
+      ctx.fillStyle = t.state === 'gap' ? EXPORT.raised : EXPORT.surface
       ctx.fillRect(cell.x + 2, cell.y + 2, side, side)
-      ctx.fillStyle = t.state === 'gap' ? EXPORT.border : EXPORT.muted
+      ctx.fillStyle = EXPORT.muted
       ctx.font = 'bold 40px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(t.designation, cell.x + layout.tile / 2, cell.y + layout.tile / 2 + 14)

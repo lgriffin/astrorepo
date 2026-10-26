@@ -43,3 +43,47 @@ export function cacheChoice(win: Window, choice: ThemeChoice): void {
 export function applyCachedTheme(win: Window): void {
   applyTheme(win.document, resolveTheme(cachedChoice(win), systemPrefersDark(win)))
 }
+
+/** Where a choice is saved: the installation's settings, or nowhere when this screen keeps its own. */
+export interface ThemeStore {
+  read: () => Promise<ThemeChoice | null>
+  save: (choice: ThemeChoice) => Promise<void>
+}
+
+/**
+ * Keeps choices in order (LF-002, LF-003): saves go out one after another so the last pick is the
+ * one stored, a choice made before the saved one arrives is not overwritten by it, and a choice that
+ * could not be saved is not left in the cache for the next start.
+ */
+export function makeThemeKeeper(win: Window, store: ThemeStore) {
+  let picked = false
+  let latest = 0
+  let saved: ThemeChoice = cachedChoice(win)
+  let queue: Promise<unknown> = Promise.resolve()
+  return {
+    /** The saved choice, or null when there is none or the user has already picked on this screen. */
+    async start(): Promise<ThemeChoice | null> {
+      const read = await store.read().catch(() => null)
+      if (read === null || picked) return null
+      saved = read
+      cacheChoice(win, read)
+      return read
+    },
+    /** Saves a choice; resolves false when it could not be saved. */
+    async choose(next: ThemeChoice): Promise<boolean> {
+      picked = true
+      const ticket = ++latest
+      cacheChoice(win, next)
+      const write = queue.then(() => store.save(next))
+      queue = write.catch(() => undefined)
+      try {
+        await write
+        saved = next
+        return true
+      } catch {
+        if (ticket === latest) cacheChoice(win, saved)
+        return false
+      }
+    }
+  }
+}
