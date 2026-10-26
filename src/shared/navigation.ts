@@ -1,79 +1,99 @@
 import type { JobsView, JobView } from './types'
 
 /**
- * The app's one map of places (specs/017-unified-ux). The sidebar, every page's title and
- * subtitle, the breadcrumb above it and the back link on a detail page all come from here, so a
- * place has one name wherever it appears.
+ * The app's one map of places (specs/017-unified-ux, reshaped into eight places by
+ * specs/041-look-and-feel V2). The sidebar, the row of pages above a page's title, every page's
+ * title and subtitle, the back link on a detail page and the command palette all come from here,
+ * so a page has one name wherever it appears.
  */
 export interface NavItem {
   id: string
   to: string
   label: string
-  icon: string
   /** What the page answers, shown under its title. */
   hint: string
-  /** Other path prefixes that belong to this place (its detail pages and forms). */
+  /** Other path prefixes that belong to this page (its detail pages and forms). */
   also?: string[]
 }
 
-export interface NavGroup {
-  /** Null for the daily places at the top, which need no heading. */
-  label: string | null
-  items: NavItem[]
+/** One of the eight places in the sidebar, and the pages it holds, its first page opening it. */
+export interface NavPlace {
+  id: string
+  label: string
+  pages: NavItem[]
 }
 
-export const NAV_GROUPS: NavGroup[] = [
+export const NAV_PLACES: NavPlace[] = [
   {
-    label: null,
-    items: [
-      { id: 'home', to: '/dashboard', label: 'Home', icon: '◉', hint: 'What to do next, the coming nights, and what is hiding in your files' },
-      { id: 'targets', to: '/targets', label: 'Targets', icon: '★', hint: 'Every object you have captured or plan to' },
-      { id: 'sky', to: '/sky-planner', label: 'Sky planner', icon: '☽', hint: 'Tonight, the moon and the seasons from your site' },
-      { id: 'jobs', to: '/jobs', label: 'Jobs', icon: '▶', hint: 'Stacking and post-processing runs, queued for the run window' }
+    id: 'home',
+    label: 'Home',
+    pages: [{ id: 'home', to: '/dashboard', label: 'Home', hint: 'What to do next, the coming nights, and what is hiding in your files' }]
+  },
+  {
+    id: 'targets',
+    label: 'Targets',
+    pages: [
+      { id: 'targets', to: '/targets', label: 'Targets', hint: 'Every object you have captured or plan to' },
+      { id: 'collections', to: '/collections', label: 'Collections', hint: 'Catalogues and lists of targets, and how far through each you are' },
+      { id: 'messier', to: '/messier', label: 'Messier mosaic', hint: 'All 110 Messier objects with your own images, the gaps, and when each gap is up' }
     ]
   },
   {
-    label: 'Files',
-    items: [
-      { id: 'library', to: '/library', label: 'Library', icon: '⊟', hint: 'The folders that hold your captures, and their last scan' },
-      { id: 'fits', to: '/fits-analyzer', label: 'FITS files', icon: '◈', hint: 'What the headers say, file by file' },
-      { id: 'images', to: '/images', label: 'Gallery', icon: '▢', hint: 'Your finished pictures, and what each one shows' },
-      { id: 'calibration', to: '/calibration', label: 'Calibration', icon: '◇', hint: 'Darks, flats and biases, and which lights they cover' },
-      { id: 'vespera', to: '/vespera', label: 'Vespera', icon: '⌁', hint: 'Copy observations off your Vespera over its Wi-Fi' }
+    id: 'plan',
+    label: 'Plan',
+    pages: [
+      { id: 'sky', to: '/sky-planner', label: 'Sky planner', hint: 'Tonight, the moon and the seasons from your site' },
+      { id: 'projects', to: '/projects', label: 'Projects', hint: 'Campaigns over targets or a mosaic, with what finished means and the next step for each' },
+      { id: 'mosaics', to: '/mosaics', label: 'Mosaics', hint: 'Mosaic plans drawn on the sky, revision by revision, with exact panel coordinates' }
     ]
   },
   {
-    label: 'Review',
-    items: [
-      { id: 'nights', to: '/timeline', label: 'Nights', icon: '▥', hint: 'Every night you imaged, month by month', also: ['/sessions'] },
-      { id: 'stacks', to: '/stacking', label: 'Stacks', icon: '⊞', hint: "Integration so far against each target's goal" },
-      { id: 'insights', to: '/insights', label: 'Insights', icon: '◎', hint: 'Totals, catalogue progress, and seeing, filters and activity over time' },
-      { id: 'storage', to: '/analytics', label: 'Storage', icon: '▤', hint: 'How much space your data takes, and how fast it grows' }
+    id: 'process',
+    label: 'Process',
+    pages: [
+      { id: 'jobs', to: '/jobs', label: 'Jobs', hint: 'Stacking and post-processing runs, queued for the run window' },
+      { id: 'stacks', to: '/stacking', label: 'Stacks', hint: "Integration so far against each target's goal" },
+      { id: 'calibration', to: '/calibration', label: 'Calibration', hint: 'Darks, flats and biases, and which lights they cover' }
     ]
   },
   {
-    label: 'Collections',
-    items: [
-      { id: 'collections', to: '/collections', label: 'Collections', icon: '▦', hint: 'Catalogues and lists of targets, and how far through each you are' },
-      { id: 'projects', to: '/projects', label: 'Projects', icon: '☷', hint: 'Campaigns over targets or a mosaic, with what finished means and the next step for each' },
-      { id: 'mosaics', to: '/mosaics', label: 'Mosaics', icon: '⊡', hint: 'Mosaic plans drawn on the sky, revision by revision, with exact panel coordinates' },
-      { id: 'messier', to: '/messier', label: 'Messier mosaic', icon: '▩', hint: 'All 110 Messier objects with your own images, the gaps, and when each gap is up' },
-      { id: 'posters', to: '/poster', label: 'Posters', icon: '▣', hint: 'A printable grid of a collection' }
+    id: 'data',
+    label: 'Data',
+    pages: [
+      { id: 'library', to: '/library', label: 'Library', hint: 'The folders that hold your captures, and their last scan' },
+      { id: 'fits', to: '/fits-analyzer', label: 'FITS files', hint: 'What the headers say, file by file' },
+      { id: 'nights', to: '/timeline', label: 'Nights', hint: 'Every night you imaged, month by month', also: ['/sessions'] },
+      { id: 'vespera', to: '/vespera', label: 'Vespera', hint: 'Copy observations off your Vespera over its Wi-Fi' },
+      { id: 'storage', to: '/analytics', label: 'Storage', hint: 'How much space your data takes, and how fast it grows' }
     ]
   },
   {
-    label: 'Setup',
-    items: [
-      { id: 'equipment', to: '/equipment', label: 'Equipment', icon: '⚙', hint: 'Your scopes, cameras and filters, and their field of view' },
-      { id: 'settings', to: '/settings', label: 'Settings', icon: '⚒', hint: 'Your site, folders, tools and run window' }
+    id: 'gallery',
+    label: 'Gallery',
+    pages: [
+      { id: 'images', to: '/images', label: 'Pictures', hint: 'Your finished pictures, and what each one shows' },
+      { id: 'posters', to: '/poster', label: 'Posters', hint: 'A printable grid of a collection' }
+    ]
+  },
+  {
+    id: 'insights',
+    label: 'Insights',
+    pages: [{ id: 'insights', to: '/insights', label: 'Insights', hint: 'Totals, catalogue progress, and seeing, filters and activity over time' }]
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    pages: [
+      { id: 'settings', to: '/settings', label: 'Settings', hint: 'Your site, folders, tools and run window' },
+      { id: 'equipment', to: '/equipment', label: 'Equipment', hint: 'Your scopes, cameras and filters, and their field of view' }
     ]
   }
 ]
 
-export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap(g => g.items)
+export const NAV_ITEMS: NavItem[] = NAV_PLACES.flatMap(p => p.pages)
 
 export interface Location {
-  group: NavGroup
+  place: NavPlace
   item: NavItem
   /** A page below the place (a target, a collection, a form), which gets a back link to it. */
   detail: boolean
@@ -81,13 +101,13 @@ export interface Location {
 
 const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`)
 
-/** Which place a path belongs to, or null for a path the map does not know. */
+/** Which place and page a path belongs to, or null for a path the map does not know. */
 export function locate(pathname: string): Location | null {
   const path = pathname === '/' || pathname === '' ? '/dashboard' : pathname.replace(/\/+$/, '')
-  for (const group of NAV_GROUPS) {
-    for (const item of group.items) {
-      if (path === item.to) return { group, item, detail: false }
-      if (under(path, item.to) || (item.also ?? []).some(p => under(path, p))) return { group, item, detail: true }
+  for (const place of NAV_PLACES) {
+    for (const item of place.pages) {
+      if (path === item.to) return { place, item, detail: false }
+      if (under(path, item.to) || (item.also ?? []).some(p => under(path, p))) return { place, item, detail: true }
     }
   }
   return null

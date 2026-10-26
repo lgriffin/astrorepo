@@ -123,9 +123,9 @@ describe('Messier gaps in Next actions', () => {
 })
 
 describe('Finding the mosaic', () => {
-  it('[MES-013] Given the map of places, When the mosaic is looked up, Then it sits under Collections, and its links open a tile only for a number from 1 to 110', () => {
+  it('[MES-013] Given the map of places, When the mosaic is looked up, Then it is a page under Targets, and its links open a tile only for a number from 1 to 110', () => {
     expect(NAV_ITEMS.find(i => i.id === 'messier')).toMatchObject({ to: '/messier', label: 'Messier mosaic' })
-    expect(locate('/messier')).toMatchObject({ group: { label: 'Collections' }, item: { id: 'messier' }, detail: false })
+    expect(locate('/messier')).toMatchObject({ place: { label: 'Targets' }, item: { id: 'messier' }, detail: false })
     expect(messierLink()).toBe('/messier')
     expect(messierLink(31)).toBe('/messier?m=31')
     expect(messierNumberFrom('?m=31')).toBe(31)

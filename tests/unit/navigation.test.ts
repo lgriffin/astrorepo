@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import ts from 'typescript'
 import { describe, it, expect } from 'vitest'
-import { NAV_GROUPS, NAV_ITEMS, SETTINGS_SECTIONS, jobsStatus, locate, settingsLink, settingsSectionFrom } from '../../src/shared/navigation'
+import { NAV_PLACES, NAV_ITEMS, SETTINGS_SECTIONS, jobsStatus, locate, settingsLink, settingsSectionFrom } from '../../src/shared/navigation'
 import type { JobView } from '../../src/shared/types'
 
 const renderer = path.resolve(__dirname, '../../src/renderer')
@@ -48,9 +48,19 @@ const job = (over: Partial<JobView> = {}): JobView => ({
 })
 
 describe('navigation', () => {
-  it('[UX-001] Given the sidebar, When it is drawn, Then the four daily places lead, the rest sit under Files, Review, Collections and Setup, and each place appears once', () => {
-    expect(NAV_GROUPS.map(g => g.label)).toEqual([null, 'Files', 'Review', 'Collections', 'Setup'])
-    expect(NAV_GROUPS[0].items.map(i => i.label)).toEqual(['Home', 'Targets', 'Sky planner', 'Jobs'])
+  it('[UX-001] [LF-011] Given the sidebar, When it is drawn, Then it lists eight places, each page sits in exactly one, and each appears once', () => {
+    expect(NAV_PLACES.map(p => p.label)).toEqual(['Home', 'Targets', 'Plan', 'Process', 'Data', 'Gallery', 'Insights', 'Settings'])
+    expect(Object.fromEntries(NAV_PLACES.map(p => [p.id, p.pages.map(i => i.label)]))).toEqual({
+      home: ['Home'],
+      targets: ['Targets', 'Collections', 'Messier mosaic'],
+      plan: ['Sky planner', 'Projects', 'Mosaics'],
+      process: ['Jobs', 'Stacks', 'Calibration'],
+      data: ['Library', 'FITS files', 'Nights', 'Vespera', 'Storage'],
+      gallery: ['Pictures', 'Posters'],
+      insights: ['Insights'],
+      settings: ['Settings', 'Equipment']
+    })
+    expect(new Set(NAV_PLACES.map(p => p.id)).size).toBe(NAV_PLACES.length)
     expect(new Set(NAV_ITEMS.map(i => i.to)).size).toBe(NAV_ITEMS.length)
     expect(new Set(NAV_ITEMS.map(i => i.label)).size).toBe(NAV_ITEMS.length)
     // Every place has a route, so no sidebar link lands on a blank page.
@@ -86,7 +96,8 @@ describe('navigation', () => {
   })
 
   it('[UX-003] Given a page below a place, When it is located, Then that place stays lit and the page links back to it', () => {
-    expect(locate('/targets/01ABC')).toMatchObject({ item: { id: 'targets' }, detail: true })
+    expect(locate('/targets/01ABC')).toMatchObject({ place: { id: 'targets' }, item: { id: 'targets' }, detail: true })
+    expect(locate('/mosaics/w1')).toMatchObject({ place: { id: 'plan' }, item: { id: 'mosaics' }, detail: true })
     expect(locate('/collections/messier')).toMatchObject({ item: { id: 'collections' }, detail: true })
     expect(locate('/sessions/new')).toMatchObject({ item: { id: 'nights' }, detail: true })
     expect(locate('/sessions/01ABC/edit')).toMatchObject({ item: { id: 'nights' }, detail: true })

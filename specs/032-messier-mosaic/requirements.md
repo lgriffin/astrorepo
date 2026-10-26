@@ -74,7 +74,7 @@ adds the mosaic as its own place and leaves Posters as it is.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | MES-008 | Ubiquitous | The system shall list in Next actions the three Messier objects with nothing captured that are up tonight and not ruled out by the moon, closing seasons first and then the most usable hours, after tonight's captures and planned mosaic tiles and before stacking, leaving out an object already listed as a capture and one whose finished image is in its folder, and listing none when tonight's plan fails. |
-| MES-013 | Ubiquitous | The system shall open the mosaic from its own place under Collections in the sidebar, from a button on Home and on Posters, and from a Messier gap in Next actions, on that object's tile. |
+| MES-013 | Ubiquitous | The system shall open the mosaic from its own page under Targets (spec 041 V2 moved it from Collections), from a button on Home and on Posters, and from a Messier gap in Next actions, on that object's tile. |
 
 ## Saving
 

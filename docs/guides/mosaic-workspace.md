@@ -1,6 +1,6 @@
 # Mosaics: a plan on the sky
 
-**Collections → Mosaics** keeps a mosaic as a grid drawn on the sky by its coordinates. Each panel
+**Plan → Mosaics** keeps a mosaic as a grid drawn on the sky by its coordinates. Each panel
 has a name (R1C1, R1C2, …), an exact ICRS centre and the rectangle it covers, and the plan is kept
 revision by revision so that captures placed on it stay traceable. Spec
 [037](../../specs/037-mosaic-workspace/requirements.md); the proposal behind it is in

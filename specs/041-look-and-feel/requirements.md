@@ -81,3 +81,28 @@ like a deep-sky atlas you can work in. The direction contract is in
 |----|---------|-------------|
 | LF-009 | Ubiquitous | The system shall mark each kind of object with the symbol a deep-sky atlas uses for it (an ellipse for a galaxy, a dotted circle for an open cluster, a circle with a cross for a globular cluster, a disc with four rays for a planetary nebula, a square for a bright nebula, a dashed square for a dark nebula), in the atlas colour for that kind, with the kind's name in sentence case. |
 | LF-010 | Ubiquitous | The system shall title every section in sentence case at reading size, with no small uppercase labels above or in place of a heading. |
+
+## V2: the shell
+
+Eighteen sidebar entries become eight places, each holding its pages as a row of links above the
+page title, and a command palette reaches any page, Settings section, common action or target by
+typing.
+
+| Place | Pages |
+|-------|-------|
+| Home | Home |
+| Targets | Targets, Collections, Messier mosaic |
+| Plan | Sky planner, Projects, Mosaics |
+| Process | Jobs, Stacks, Calibration |
+| Data | Library, FITS files, Nights, Vespera, Storage |
+| Gallery | Pictures, Posters |
+| Insights | Insights |
+| Settings | Settings, Equipment |
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-011 | Ubiquitous | The system shall list eight places in the sidebar, each with a drawn icon, each opening on its first page and lit while any of its pages or their detail pages is open. |
+| LF-012 | State | While a page of a place with more than one page is open, the system shall show the place's pages as a row of links above the title with the open one marked, and on a detail page shall instead link back to the page it belongs to. |
+| LF-013 | Event | When the user presses Ctrl+K (Cmd+K on a Mac) or chooses Go to, the system shall open a palette that lists every page, Settings section and common action, narrows as the user types to entries with a word starting with each typed word, adds targets by name once two letters are typed, and opens the highlighted entry on Enter, moving with the arrow keys and closing on Escape with focus back where it was. |
+| LF-014 | Event | When the user folds the sidebar, the system shall show only the places' icons, each still named for screen readers and on hover, and remember the choice on that screen. |
+| LF-015 | Unwanted | If the palette finds nothing for what was typed, then the system shall say that nothing matches rather than show an empty list. |
