@@ -252,7 +252,7 @@ export function Settings(): React.ReactElement {
           <h2 className="text-base font-semibold text-astro-text mb-4">Import and export</h2>
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm text-astro-text mb-2">Export Data</h3>
+              <h3 className="text-sm text-astro-text mb-2">Export data</h3>
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => invoke('export:targets-csv')}

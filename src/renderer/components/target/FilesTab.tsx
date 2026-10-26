@@ -131,7 +131,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
       </div>
 
       <div className="mb-4">
-        <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Frame Breakdown</h4>
+        <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Frame breakdown</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="flex justify-between text-sm px-2 py-1 bg-astro-bg border border-astro-border rounded">
             <span className="text-astro-text">Lights</span>
@@ -177,7 +177,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
 
       {Object.keys(data.exposureByFilter).length > 0 && (
         <div className="mb-3">
-          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Exposure by Filter</h4>
+          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Exposure by filter</h4>
           <div className="space-y-1">
             {Object.entries(data.exposureByFilter)
               .sort(([, a], [, b]) => b - a)
@@ -194,7 +194,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
       {data.stackedDetails && data.stackedDetails.length > 0 && (
         <div className="mb-3">
           <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">
-            Stacked / Processed ({data.stackedDetails.length})
+            Stacked / processed ({data.stackedDetails.length})
           </h4>
           <div className="space-y-2">
             {data.stackedDetails.map((s, i) => (

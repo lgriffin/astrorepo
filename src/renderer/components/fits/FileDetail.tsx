@@ -175,7 +175,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         )}
 
         <div>
-          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Image Statistics</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Image statistics</h4>
           {file.pixelMin != null || file.pixelMax != null ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-astro-bg border border-astro-border rounded p-2">
@@ -217,7 +217,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Quality Metrics</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Quality metrics</h4>
           {quality ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div className="bg-astro-bg border border-astro-border rounded p-2">

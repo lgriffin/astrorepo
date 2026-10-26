@@ -75,7 +75,7 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
         )} />
         {Object.keys(a.nightsPerObject).length > 0 && (
           <div className="bg-astro-bg border border-astro-border rounded-lg p-3">
-            <h3 className="text-xs text-astro-muted mb-2 font-condensed">Sessions per Target</h3>
+            <h3 className="text-xs text-astro-muted mb-2 font-condensed">Sessions per target</h3>
             <div className="space-y-2">
               {Object.entries(a.nightsPerObject)
                 .sort(([, a], [, b]) => b.length - a.length)

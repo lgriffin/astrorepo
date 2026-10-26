@@ -94,7 +94,7 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
 
                 {Object.keys(t.exposureByFilter).length > 0 && (
                   <div className="mb-3">
-                    <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Exposure by Filter</h4>
+                    <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Exposure by filter</h4>
                     <div className="space-y-1">
                       {Object.entries(t.exposureByFilter)
                         .sort(([, a], [, b]) => b - a)

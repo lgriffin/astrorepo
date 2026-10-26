@@ -274,7 +274,7 @@ export function SkyPlanner(): React.ReactElement {
 
         {twilight && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-base font-semibold text-astro-text mb-3">Twilight Times</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-3">Twilight times</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-astro-muted text-xs">Sunset</span>
@@ -316,7 +316,7 @@ export function SkyPlanner(): React.ReactElement {
           {/* Best Targets */}
           <div className="lg:col-span-2 bg-astro-surface border border-astro-border rounded-lg p-4">
             <h2 className="text-base font-semibold text-astro-text mb-3">
-              Best Targets Tonight
+              Best targets tonight
             </h2>
             {loading ? (
               <p className="text-astro-muted text-sm">Computing visibility...</p>
@@ -366,17 +366,17 @@ export function SkyPlanner(): React.ReactElement {
           {/* Target Detail Panel */}
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
             <h2 className="text-base font-semibold text-astro-text mb-3">
-              {selectedName ? `${selectedName}` : 'Select a Target'}
+              {selectedName ? `${selectedName}` : 'Select a target'}
             </h2>
             {selectedTarget && altitudeCurve.length > 0 ? (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-xs text-astro-muted mb-2">Altitude Curve</h3>
+                  <h3 className="text-xs text-astro-muted mb-2">Altitude curve</h3>
                   <AltitudeChart data={altitudeCurve} />
                 </div>
                 {visibility.length > 0 && (
                   <div>
-                    <h3 className="text-xs text-astro-muted mb-2">12-Month Visibility</h3>
+                    <h3 className="text-xs text-astro-muted mb-2">12-month visibility</h3>
                     <VisibilityCalendar data={visibility} />
                   </div>
                 )}

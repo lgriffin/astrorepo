@@ -37,7 +37,7 @@ export function CoverageView({ coverage }: CoverageViewProps): React.ReactElemen
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-astro-border">
-        <h3 className="text-sm font-medium text-astro-text">Coverage Analysis</h3>
+        <h3 className="text-sm font-medium text-astro-text">Coverage analysis</h3>
       </div>
       <div className="p-4 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

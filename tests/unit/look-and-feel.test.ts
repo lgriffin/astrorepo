@@ -7,6 +7,7 @@ import { contrastFailures, hexChannels, type ThemeName } from '../../src/shared/
 import { CONTRAST_PAIRS, PALETTES, TOKENS } from '../../src/shared/themes'
 import { NAV_ITEMS } from '../../src/shared/navigation'
 import { applyTheme, cachedChoice, cacheChoice, makeThemeKeeper, tokenColor } from '../../src/renderer/theme'
+import { titleCaseWords, uiTextsOf } from '../helpers/ui-text'
 import { NAV_ICONS } from '../../src/renderer/components/common/nav-icons'
 import { ATLAS_MARKS, atlasMark } from '../../src/shared/atlas'
 import type { ObjectType } from '../../src/shared/types'
@@ -255,5 +256,12 @@ describe('The Star atlas world (specs/041-look-and-feel)', () => {
     }
     expect(offenders).toEqual([])
     expect(fs.readFileSync(path.join(renderer, 'components/common/Card.tsx'), 'utf8')).toContain("className={`text-base font-semibold ${heading}`}")
+  })
+
+  it('[LF-010] Given a section heading in title case, When the wording check reads it, Then it is caught, and every heading in the renderer is sentence case', () => {
+    const caught = uiTextsOf('x.tsx', '<h2 className="text-base">Best Targets Tonight</h2>').filter(t => titleCaseWords(t.text).length > 0)
+    expect(caught.map(t => t.text)).toEqual(['Best Targets Tonight'])
+    const headings = files(renderer, /\.tsx$/).flatMap(f => uiTextsOf(path.relative(renderer, f), fs.readFileSync(f, 'utf8')))
+    expect(headings.filter(t => titleCaseWords(t.text).length > 0).map(t => `${t.file}:${t.line} ${t.text}`)).toEqual([])
   })
 })

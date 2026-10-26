@@ -87,13 +87,13 @@ export function StorageAnalytics(): React.ReactElement {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Growth Trend */}
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-base font-semibold text-astro-text mb-4">Growth Trend</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">Growth trend</h2>
           <GrowthTrendChart snapshots={snapshots} />
         </div>
 
         {/* By Image Type */}
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-base font-semibold text-astro-text mb-4">By Image Type</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">By image type</h2>
           <StorageBreakdownChart
             data={stats.byImageType.map((t) => ({ label: t.type, value: t.sizeBytes }))}
             formatValue={formatBytes}
@@ -102,7 +102,7 @@ export function StorageAnalytics(): React.ReactElement {
 
         {/* By Target */}
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-base font-semibold text-astro-text mb-4">By Target</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">By target</h2>
           <StorageBreakdownChart
             data={stats.byTarget.slice(0, 10).map((t) => ({ label: t.name, value: t.sizeBytes }))}
             formatValue={formatBytes}
@@ -111,7 +111,7 @@ export function StorageAnalytics(): React.ReactElement {
 
         {/* By Filter */}
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-base font-semibold text-astro-text mb-4">By Filter</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">By filter</h2>
           <StorageBreakdownChart
             data={stats.byFilter.map((f) => ({ label: f.filter, value: f.sizeBytes }))}
             formatValue={formatBytes}
@@ -122,7 +122,7 @@ export function StorageAnalytics(): React.ReactElement {
       {/* Snapshot History */}
       {snapshots.length > 0 && (
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-base font-semibold text-astro-text mb-4">Snapshot History</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">Snapshot history</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

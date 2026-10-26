@@ -46,7 +46,7 @@ export function ScanHistory({ scans, selectedScanId, onSelectScan, onRefresh }: 
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-astro-border">
-        <h2 className="text-base font-semibold text-astro-text">Scan History</h2>
+        <h2 className="text-base font-semibold text-astro-text">Scan history</h2>
       </div>
       <div className="divide-y divide-astro-border">
         {scans.map((scan) => (
