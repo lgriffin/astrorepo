@@ -143,7 +143,7 @@ export function Library(): React.ReactElement {
       <div className="space-y-6 max-w-4xl">
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">Library Scanner</h2>
+            <h2 className="text-base font-semibold text-astro-text">Library scanner</h2>
             <button
               onClick={startScan}
               disabled={isScanning}
@@ -356,7 +356,7 @@ function ExpandedSubfolders({ label, subfolders, totalFiles }: {
   if (totalFiles === 0) return null
   return (
     <div className="mb-2 last:mb-0">
-      <p className="text-[11px] text-astro-muted font-medium uppercase tracking-wide mb-0.5">
+      <p className="text-[11px] text-astro-muted font-medium mb-0.5 font-condensed">
         {label} ({totalFiles} files)
       </p>
       <div className="space-y-0.5 pl-2">

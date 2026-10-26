@@ -144,7 +144,7 @@ export function Settings(): React.ReactElement {
         </nav>
 
         <div id="settings-location" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Your site</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">Your site</h2>
           <p className="text-xs text-astro-muted mb-4">Used by the Sky planner, Home's clear-skies and coming-nights cards for the weather, seasons, moon windows, twilight times and altitude curves.</p>
           <div className="grid grid-cols-3 gap-3 mb-3">
             {OBSERVER_SETTINGS.map(s => (
@@ -202,7 +202,7 @@ export function Settings(): React.ReactElement {
         </div>
 
         <div id="settings-folders" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Folders</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">Folders</h2>
           <div className="space-y-5">
             {folders.map((folder) => (
               <div key={folder.key}>
@@ -249,10 +249,10 @@ export function Settings(): React.ReactElement {
         </div>
 
         <div id="settings-import" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Import and export</h2>
+          <h2 className="text-base font-semibold text-astro-text mb-4">Import and export</h2>
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm text-astro-text mb-2">Export Data</h3>
+              <h3 className="text-sm text-astro-text mb-2">Export data</h3>
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => invoke('export:targets-csv')}
@@ -297,7 +297,7 @@ export function Settings(): React.ReactElement {
         </div>
 
         <div id="settings-reset" className="scroll-mt-6 bg-astro-surface border border-astro-danger/30 rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-astro-danger uppercase tracking-wider mb-2">Start again</h2>
+          <h2 className="text-base font-semibold text-astro-danger mb-2">Start again</h2>
           <p className="text-xs text-astro-muted mb-3">
             Hid the Get set up checklist on Home?{' '}
             <button onClick={() => void invoke('settings:set', { key: SETUP_HIDDEN_KEY, value: '' })} className="text-astro-accent hover:underline">
@@ -403,7 +403,7 @@ function ToolsSection(): React.ReactElement {
 
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Tools</h2>
+      <h2 className="text-base font-semibold text-astro-text mb-2">Tools</h2>
       <p className="text-xs text-astro-muted mb-4">
         Programs the app hands work to. Each is looked for in the path you give here, then in the places it usually installs to. Versions come from each tool&apos;s own version flag; nothing else is run to check.
         {view && <span className="text-astro-text"> {view.summary}</span>}

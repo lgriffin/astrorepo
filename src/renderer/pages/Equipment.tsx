@@ -329,7 +329,7 @@ export function Equipment(): React.ReactElement {
         <div className="space-y-4">
           {selected && (
             <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-              <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">Details</h2>
+              <h2 className="text-base font-semibold text-astro-text mb-3">Details</h2>
               <h3 className="font-semibold text-astro-text mb-1">{selected.name}</h3>
               <p className="text-xs text-astro-muted capitalize mb-3">{selected.equipmentType.replace(/_/g, ' ')}</p>
 
@@ -359,7 +359,7 @@ export function Equipment(): React.ReactElement {
           {/* FOV Calculator */}
           {telescopes.length > 0 && cameras.length > 0 && (
             <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-              <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">FOV Calculator</h2>
+              <h2 className="text-base font-semibold text-astro-text mb-3">FOV calculator</h2>
               <div className="space-y-2">
                 <label className="block">
                   <span className="text-xs text-astro-muted">Telescope</span>

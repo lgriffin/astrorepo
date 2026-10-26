@@ -15,7 +15,7 @@ function Buckets({ title, buckets }: { title: string; buckets: IntegrationBucket
   if (buckets.length === 0) return null
   return (
     <div>
-      <h3 className="text-xs text-astro-muted uppercase tracking-wider mb-1">{title}</h3>
+      <h3 className="text-xs text-astro-muted mb-1 font-condensed">{title}</h3>
       <ul className="space-y-0.5 text-sm">
         {buckets.map(b => (
           <li key={b.key} className="flex justify-between gap-2">

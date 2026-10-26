@@ -33,7 +33,7 @@ export function RunWindowSettings(): React.ReactElement {
 
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Run window</h2>
+      <h2 className="text-base font-semibold text-astro-text mb-2">Run window</h2>
       <p className="text-xs text-astro-muted mb-3">
         When queued Siril and Siril_Scripts jobs may start. Set the same time for both ends to allow any time of day. The app must be open for a job to start.
         {view && <span className="text-astro-text"> {view.rules}</span>}

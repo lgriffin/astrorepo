@@ -7,7 +7,11 @@ import { contrastFailures, hexChannels, type ThemeName } from '../../src/shared/
 import { CONTRAST_PAIRS, PALETTES, TOKENS } from '../../src/shared/themes'
 import { NAV_ITEMS } from '../../src/shared/navigation'
 import { applyTheme, cachedChoice, cacheChoice, makeThemeKeeper, tokenColor } from '../../src/renderer/theme'
+import { titleCaseWords, uiTextsOf } from '../helpers/ui-text'
 import { NAV_ICONS } from '../../src/renderer/components/common/nav-icons'
+import { ATLAS_MARKS, atlasMark } from '../../src/shared/atlas'
+import type { ObjectType } from '../../src/shared/types'
+import { AtlasKind, AtlasSymbol } from '../../src/renderer/components/atlas/AtlasSymbol'
 import { Badge, Button, Field, Input, Skeleton, Stat, Table, Tabs, Td, Th, radioKeyTarget, tabKeyTarget } from '../../src/renderer/components/ui'
 
 const root = path.resolve(__dirname, '../..')
@@ -207,5 +211,57 @@ describe('Shared controls (specs/041-look-and-feel)', () => {
   it('[LF-008] Given every place in the navigation, When the sidebar draws it, Then it has a drawn icon', () => {
     expect(NAV_ITEMS.filter(i => !NAV_ICONS[i.id]).map(i => i.id)).toEqual([])
     expect(fs.readFileSync(path.join(renderer, 'components/common/Sidebar.tsx'), 'utf8')).toContain('strokeWidth={1.75}')
+  })
+})
+
+describe('The Star atlas world (specs/041-look-and-feel)', () => {
+  it('[LF-009] Given every kind of object, When its atlas mark is read, Then it has a symbol, an atlas colour and a sentence-case name', () => {
+    const kinds: ObjectType[] = [
+      'galaxy', 'emission_nebula', 'reflection_nebula', 'planetary_nebula', 'dark_nebula', 'open_cluster', 'globular_cluster', 'star_cluster',
+      'supernova_remnant', 'molecular_cloud', 'galaxy_cluster', 'star', 'comet', 'asteroid', 'planet', 'moon', 'solar_object', 'variable_star',
+      'widefield_region', 'constellation', 'custom', 'unknown'
+    ]
+    expect(Object.keys(ATLAS_MARKS).sort()).toEqual([...kinds].sort())
+    for (const k of kinds) {
+      const mark = ATLAS_MARKS[k]
+      expect(TOKENS).toContain(mark.tone)
+      expect(mark.label.slice(1), k).toBe(mark.label.slice(1).toLowerCase())
+    }
+    expect(ATLAS_MARKS.galaxy.symbol).toBe('galaxy')
+    expect(ATLAS_MARKS.open_cluster.symbol).toBe('open-cluster')
+    expect(ATLAS_MARKS.globular_cluster.symbol).toBe('globular-cluster')
+    expect(ATLAS_MARKS.planetary_nebula.symbol).toBe('planetary-nebula')
+    expect(ATLAS_MARKS.emission_nebula.symbol).toBe('bright-nebula')
+    expect(ATLAS_MARKS.dark_nebula.symbol).toBe('dark-nebula')
+    expect(atlasMark('quasar')).toBe(ATLAS_MARKS.unknown)
+  })
+
+  it('[LF-009] Given a galaxy and an open cluster, When their symbols are drawn, Then the galaxy is an ellipse, the cluster a dotted circle, each in its own colour', () => {
+    const galaxy = html(h(AtlasSymbol, { objectType: 'galaxy', labelled: true }))
+    expect(galaxy).toContain('<ellipse')
+    expect(galaxy).toContain('aria-label="Galaxy"')
+    expect(galaxy).toContain('color:rgb(var(--astro-cat-1))')
+    const cluster = html(h(AtlasSymbol, { objectType: 'open_cluster' }))
+    expect(cluster).toMatch(/<circle[^>]*stroke-dasharray/)
+    expect(cluster).toContain('aria-hidden="true"')
+    expect(html(h(AtlasKind, { objectType: 'emission_nebula' }))).toContain('Emission nebula')
+  })
+
+  it('[LF-010] Given the renderer source, When its class names are read, Then no heading or label is set in small uppercase', () => {
+    const offenders: string[] = []
+    for (const file of files(renderer, /\.tsx$/)) {
+      fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+        if (/(?<![\w-])uppercase(?![\w-])/.test(line)) offenders.push(`${path.relative(root, file)}:${i + 1}`)
+      })
+    }
+    expect(offenders).toEqual([])
+    expect(fs.readFileSync(path.join(renderer, 'components/common/Card.tsx'), 'utf8')).toContain("className={`text-base font-semibold ${heading}`}")
+  })
+
+  it('[LF-010] Given a section heading in title case, When the wording check reads it, Then it is caught, and every heading in the renderer is sentence case', () => {
+    const caught = uiTextsOf('x.tsx', '<h2 className="text-base">Best Targets Tonight</h2>').filter(t => titleCaseWords(t.text).length > 0)
+    expect(caught.map(t => t.text)).toEqual(['Best Targets Tonight'])
+    const headings = files(renderer, /\.tsx$/).flatMap(f => uiTextsOf(path.relative(renderer, f), fs.readFileSync(f, 'utf8')))
+    expect(headings.filter(t => titleCaseWords(t.text).length > 0).map(t => `${t.file}:${t.line} ${t.text}`)).toEqual([])
   })
 })

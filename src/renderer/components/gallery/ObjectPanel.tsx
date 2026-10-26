@@ -20,7 +20,7 @@ function Rows({ rows }: { rows: { label: string; value: string }[] }): React.Rea
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[11px] font-semibold text-astro-muted uppercase tracking-wider">{title}</h4>
+      <h4 className="text-[11px] font-semibold text-astro-muted font-condensed">{title}</h4>
       {children}
     </div>
   )

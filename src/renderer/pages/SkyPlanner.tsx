@@ -274,7 +274,7 @@ export function SkyPlanner(): React.ReactElement {
 
         {twilight && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">Twilight Times</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-3">Twilight times</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-astro-muted text-xs">Sunset</span>
@@ -315,8 +315,8 @@ export function SkyPlanner(): React.ReactElement {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Best Targets */}
           <div className="lg:col-span-2 bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">
-              Best Targets Tonight
+            <h2 className="text-base font-semibold text-astro-text mb-3">
+              Best targets tonight
             </h2>
             {loading ? (
               <p className="text-astro-muted text-sm">Computing visibility...</p>
@@ -365,18 +365,18 @@ export function SkyPlanner(): React.ReactElement {
 
           {/* Target Detail Panel */}
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">
-              {selectedName ? `${selectedName}` : 'Select a Target'}
+            <h2 className="text-base font-semibold text-astro-text mb-3">
+              {selectedName ? `${selectedName}` : 'Select a target'}
             </h2>
             {selectedTarget && altitudeCurve.length > 0 ? (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-xs text-astro-muted mb-2">Altitude Curve</h3>
+                  <h3 className="text-xs text-astro-muted mb-2">Altitude curve</h3>
                   <AltitudeChart data={altitudeCurve} />
                 </div>
                 {visibility.length > 0 && (
                   <div>
-                    <h3 className="text-xs text-astro-muted mb-2">12-Month Visibility</h3>
+                    <h3 className="text-xs text-astro-muted mb-2">12-month visibility</h3>
                     <VisibilityCalendar data={visibility} />
                   </div>
                 )}
@@ -391,11 +391,11 @@ export function SkyPlanner(): React.ReactElement {
       {plan?.status === 'ok' && (
         <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Seasons for targets with work left</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-4">Seasons for targets with work left</h2>
             <SeasonsTable plan={plan} />
           </div>
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">New-moon windows</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-4">New-moon windows</h2>
             {plan.windows.length === 0 && <p className="text-sm text-astro-muted">No new moon in the next 90 days.</p>}
             <ul className="space-y-3">
               {plan.windows.map(w => (

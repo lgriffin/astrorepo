@@ -13,7 +13,7 @@ export interface UiText {
 /** Names that keep their capitals: products, catalogues, acronyms, and the app's own places. */
 const PROPER = new Set([
   'Siril', 'Siril_Scripts', 'Seestar', 'Vespera', 'Git', 'Bash', 'RC', 'Astro', 'NINA', 'SIMBAD', 'NED', 'Wikipedia', 'Messier', 'NGC', 'Command', 'Prompt',
-  'Windows', 'Linux', 'Bayer', 'Ha', 'OIII', 'SII', 'Dec', 'RA', 'I'
+  'SyQon', 'Studio', 'Windows', 'Linux', 'Bayer', 'Ha', 'OIII', 'SII', 'Dec', 'RA', 'I'
 ])
 const PLACES = [...NAV_ITEMS.map(i => i.label), ...TARGET_TABS.map(t => t.label), ...SETTINGS_SECTIONS.map(s => s.label)].sort((a, b) => b.length - a.length)
 
@@ -58,6 +58,9 @@ export function uiTexts(rendererDir: string): UiText[] {
 /** Components whose children are the text of a button they render. */
 const BUTTON_TAGS = new Set(['button', 'LinkButton', 'Link'])
 
+/** Section headings, which are sentence case too (specs/041-look-and-feel, LF-010). */
+const HEADING_TAGS = new Set(['h1', 'h2', 'h3', 'h4'])
+
 /** The UI texts of one TSX source. */
 export function uiTextsOf(rel: string, code: string): UiText[] {
   const source = ts.createSourceFile(rel, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
@@ -75,7 +78,7 @@ export function uiTextsOf(rel: string, code: string): UiText[] {
     ts.forEachChild(node, collectShown)
   }
   const visit = (node: ts.Node): void => {
-    if (ts.isJsxElement(node) && BUTTON_TAGS.has(node.openingElement.tagName.getText(source))) {
+    if (ts.isJsxElement(node) && (BUTTON_TAGS.has(node.openingElement.tagName.getText(source)) || HEADING_TAGS.has(node.openingElement.tagName.getText(source)))) {
       for (const child of node.children) collectShown(child)
     }
     if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && /^[A-Z]/.test(node.tagName.getText(source))) {
