@@ -7,6 +7,9 @@ import { invoke } from '../../hooks/useIPC'
 import { ACTION_ICON, NAV_ICONS } from './nav-icons'
 
 const ENTRIES = paletteEntries()
+/** Targets asked of the index per query, and the most shown. */
+const TARGET_POOL = 40
+const TARGETS_SHOWN = 6
 
 /** The icon beside an entry: the page's own, or the actions' one. */
 function EntryIcon({ entry }: { entry: PaletteEntry }): React.ReactElement {
@@ -21,31 +24,34 @@ function EntryIcon({ entry }: { entry: PaletteEntry }): React.ReactElement {
 export function CommandPalette({ onClose }: { onClose: () => void }): React.ReactElement {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const [targets, setTargets] = useState<PaletteEntry[]>([])
+  // Targets found for one query; shown only while that query is still the one typed.
+  const [found, setFound] = useState<{ query: string; targets: PaletteEntry[] }>({ query: '', targets: [] })
   const [index, setIndex] = useState(0)
   const input = useRef<HTMLInputElement>(null)
   const opener = useRef<Element | null>(null)
+  const went = useRef(false)
 
+  // Closing gives focus back to where it was; opening a page puts it on that page instead, since
+  // the control that opened the palette may have gone with the old page.
   useEffect(() => {
     opener.current = document.activeElement
     input.current?.focus()
     return () => {
-      if (opener.current instanceof HTMLElement) opener.current.focus()
+      if (went.current) document.getElementById('main')?.focus()
+      else if (opener.current instanceof HTMLElement && opener.current.isConnected) opener.current.focus()
     }
   }, [])
 
   // Targets are looked up as the user types; an older answer never replaces a newer one.
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) {
-      setTargets([])
-      return
-    }
+    if (q.length < 2) return
     let current = true
     const timer = setTimeout(() => {
-      invoke<{ targets: TargetSummary[] }>('targets:search', { query: q, limit: 6 })
-        .then(r => current && setTargets((r?.targets ?? []).map(targetEntry)))
-        .catch(() => current && setTargets([]))
+      // Ask for more than are shown, so the palette's own ranking, not the database's order, picks them.
+      invoke<{ targets: TargetSummary[] }>('targets:search', { query: q, limit: TARGET_POOL })
+        .then(r => current && setFound({ query: q, targets: (r?.targets ?? []).map(targetEntry) }))
+        .catch(() => current && setFound({ query: q, targets: [] }))
     }, 150)
     return () => {
       current = false
@@ -53,26 +59,32 @@ export function CommandPalette({ onClose }: { onClose: () => void }): React.Reac
     }
   }, [query])
 
-  // Targets rank with everything else; one the database found by a part of a name the palette does
-  // not read as a word start still shows, after the rest.
+  // Targets rank with everything else under the same word-start rule.
   const shown = useMemo(() => {
     if (!query.trim()) return ENTRIES
-    const ranked = matchEntries([...ENTRIES, ...targets], query, 12)
-    return [...ranked, ...targets.filter(t => !ranked.includes(t))]
-  }, [query, targets])
+    const targets = found.query === query.trim() ? found.targets : []
+    return matchEntries([...ENTRIES, ...matchEntries(targets, query, TARGETS_SHOWN)], query, 14)
+  }, [query, found])
   const active = Math.min(index, Math.max(0, shown.length - 1))
 
   const open = (entry: PaletteEntry): void => {
+    went.current = true
     onClose()
     navigate(entry.to)
   }
 
-  const onKey = (e: React.KeyboardEvent): void => {
+  // On the dialog, so Escape works wherever focus is in it; Tab stays on the input, the one stop.
+  const onDialogKey = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') {
       e.preventDefault()
       onClose()
-      return
+    } else if (e.key === 'Tab') {
+      e.preventDefault()
+      input.current?.focus()
     }
+  }
+
+  const onKey = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter') {
       e.preventDefault()
       if (shown[active]) open(shown[active])
@@ -93,6 +105,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }): React.Reac
         aria-label="Go to"
         className="w-full max-w-xl overflow-hidden rounded-lg border border-astro-border bg-astro-surface shadow-2xl"
         onMouseDown={e => e.stopPropagation()}
+        onKeyDown={onDialogKey}
       >
         <div className="flex items-center gap-3 border-b border-astro-border px-4">
           <Search aria-hidden className="h-4 w-4 text-astro-muted" strokeWidth={1.75} />

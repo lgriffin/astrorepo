@@ -17,8 +17,7 @@ export interface PaletteEntry {
 /** The actions that are not a page of their own. */
 const ACTIONS: PaletteEntry[] = [
   { id: 'log-night', label: 'Log a night', where: 'Nights', to: '/sessions/new', kind: 'action', icon: 'nights', keywords: 'session add new' },
-  { id: 'new-mosaic', label: 'Plan a mosaic', where: 'Mosaics', to: '/mosaics', kind: 'action', icon: 'mosaics', keywords: 'panels grid new' },
-  { id: 'scan', label: 'Scan your library', where: 'Library', to: '/library', kind: 'action', icon: 'library', keywords: 'rescan import folders' }
+  { id: 'new-mosaic', label: 'Plan a mosaic', where: 'Mosaics', to: '/mosaics', kind: 'action', icon: 'mosaics', keywords: 'panels grid new' }
 ]
 
 /** Other words people use for a page, so typing one finds it. */

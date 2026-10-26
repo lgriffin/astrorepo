@@ -19,9 +19,10 @@ are, sits on a smaller line below that.
 ## Go to (Ctrl+K)
 
 Press **Ctrl+K** (Cmd+K on a Mac), or choose **Go to** at the top of the sidebar, then type part of
-a name. Every page, every Settings section and a few common actions (log a night, plan a mosaic,
-scan your library) are listed. Type two letters or more and matching targets appear too. Use the
-arrow keys to move, Enter to open and Esc to close.
+a name. Every page, every Settings section and a few common actions (log a night, plan a mosaic)
+are listed. Type two letters or more and matching targets appear too, ranked with everything
+else. Use the arrow keys to move, Enter to open and Esc to close. Opening a page puts the
+keyboard on that page; closing without one puts it back where it was.
 
 To give your pages more room, choose **Fold** at the bottom of the sidebar. The sidebar then shows
 only icons, each named when you hover over it. AstroRepo remembers this choice on that screen.

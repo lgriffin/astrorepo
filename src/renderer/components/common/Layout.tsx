@@ -24,7 +24,7 @@ export function Layout({ children }: LayoutProps): React.ReactElement {
   return (
     <div className="flex h-screen bg-astro-bg text-astro-text overflow-hidden">
       <Sidebar onSearch={() => setPalette(true)} />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none focus-visible:outline-none">{children}</main>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
     </div>
   )

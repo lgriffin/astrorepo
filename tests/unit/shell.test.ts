@@ -52,6 +52,17 @@ describe('The shell (specs/041-look-and-feel V2)', () => {
     expect(matchEntries(entries, '', 100)).toHaveLength(entries.length)
   })
 
+  it('[LF-013] Given targets the index found, When the palette lists them, Then only those matching a word start show, and only for the query that found them', () => {
+    const found = [
+      targetEntry({ id: 'a', canonicalName: 'Andromeda Galaxy', aliases: ['M31'] }),
+      targetEntry({ id: 'b', canonicalName: 'IC 1812', aliases: ['Sandglass'] })
+    ]
+    expect(matchEntries(found, 'and').map(t => t.label)).toEqual(['Andromeda Galaxy'])
+    const palette = read('components/common/CommandPalette.tsx')
+    expect(palette).toContain('found.query === query.trim() ? found.targets : []')
+    expect(palette).toContain('matchEntries(targets, query, TARGETS_SHOWN)')
+  })
+
   it('[LF-013] Given a target found by name, When it is listed, Then it opens the target and names another of its names', () => {
     expect(targetEntry({ id: 't1', canonicalName: 'Andromeda Galaxy', aliases: ['Andromeda Galaxy', 'M31'] })).toMatchObject({
       label: 'Andromeda Galaxy',
@@ -75,8 +86,14 @@ describe('The shell (specs/041-look-and-feel V2)', () => {
     expect(opensPalette({ key: 'k', ctrlKey: true, metaKey: false, altKey: true })).toBe(false)
     const palette = read('components/common/CommandPalette.tsx')
     expect(palette).toContain("if (e.key === 'Escape')")
-    expect(palette).toContain('if (opener.current instanceof HTMLElement) opener.current.focus()')
     expect(palette).toContain('aria-activedescendant')
+    // Escape and Tab are handled on the dialog, so focus never wanders behind it.
+    expect(palette).toContain('onKeyDown={onDialogKey}')
+    expect(palette).toMatch(/e\.key === 'Tab'\) \{\s*e\.preventDefault\(\)\s*input\.current\?\.focus\(\)/)
+    // Closing gives focus back if its opener is still there; opening a page moves it to that page.
+    expect(palette).toContain("if (went.current) document.getElementById('main')?.focus()")
+    expect(palette).toContain('opener.current instanceof HTMLElement && opener.current.isConnected')
+    expect(read('components/common/Layout.tsx')).toContain('<main id="main" tabIndex={-1}')
   })
 
   it('[LF-014] Given a folded sidebar, When it is drawn, Then each place keeps its name for screen readers and on hover, and the choice is remembered', () => {
