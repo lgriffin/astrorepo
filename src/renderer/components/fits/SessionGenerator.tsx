@@ -92,7 +92,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
         <h3 className="text-lg font-semibold text-astro-text mb-4">Session Generation Complete</h3>
         <div className="space-y-2 mb-4">
           <p className="text-sm text-astro-text">
-            <span className="font-medium text-green-400">{result.created}</span> session{result.created !== 1 ? 's' : ''} created
+            <span className="font-medium text-astro-success">{result.created}</span> session{result.created !== 1 ? 's' : ''} created
           </p>
           {result.skipped > 0 && (
             <p className="text-sm text-astro-muted">
@@ -114,7 +114,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
         )}
         <button
           onClick={onComplete}
-          className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+          className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors"
         >
           Done
         </button>
@@ -133,7 +133,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
           <button
             onClick={handleGenerate}
             disabled={!hasSelection || generating}
-            className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
           >
             {generating ? 'Generating...' : `Generate ${selected.size > 0 ? `(${selected.size})` : 'All'}`}
           </button>
@@ -203,7 +203,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
                       {isExisting ? (
                         <span className="px-2 py-0.5 bg-astro-bg rounded text-xs text-astro-muted">Exists</span>
                       ) : (
-                        <span className="px-2 py-0.5 bg-green-900/30 text-green-400 rounded text-xs">Pending</span>
+                        <span className="px-2 py-0.5 bg-astro-success/10 text-astro-success rounded text-xs">Pending</span>
                       )}
                     </td>
                   </tr>

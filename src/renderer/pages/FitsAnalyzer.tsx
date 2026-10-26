@@ -90,7 +90,7 @@ export function FitsAnalyzer(): React.ReactElement {
               <button
                 onClick={handleLinkToTargets}
                 disabled={linking}
-                className="px-4 py-2 bg-astro-accent text-white rounded hover:bg-astro-accent/80 disabled:opacity-50 text-sm transition-colors"
+                className="px-4 py-2 bg-astro-accent text-astro-on-accent rounded hover:bg-astro-accent/80 disabled:opacity-50 text-sm transition-colors"
               >
                 {linking ? 'Linking...' : 'Link to Targets'}
               </button>

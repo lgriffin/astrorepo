@@ -171,15 +171,15 @@ function PrepForSiril({ rawPath, onPrepared }: { rawPath: string; onPrepared: (k
 }
 
 const VERDICT_TONE: Record<SirilScriptView['verdict'], string> = {
-  fits: 'text-green-400',
-  short: 'text-red-400',
+  fits: 'text-astro-success',
+  short: 'text-astro-danger',
   unknown: 'text-astro-muted'
 }
 
 const MEMORY_TONE: Record<NonNullable<SirilScriptView['memory']>['fit'], string> = {
   'one-pass': 'text-astro-muted',
-  blocks: 'text-yellow-400',
-  short: 'text-red-400',
+  blocks: 'text-astro-warning',
+  short: 'text-astro-danger',
   unknown: 'text-astro-muted'
 }
 
@@ -187,7 +187,7 @@ const CALIBRATION_TONE: Record<StackAdviceView['calibration'][number]['status'],
   matches: 'text-astro-muted',
   'not-needed': 'text-astro-muted',
   none: 'text-astro-muted',
-  mismatch: 'text-yellow-400'
+  mismatch: 'text-astro-warning'
 }
 
 /**
@@ -252,7 +252,7 @@ function StackAdvice({ rawPath, advice, onChanged }: { rawPath: string; advice: 
             </tbody>
           </table>
         )}
-        {advice.sharedFlatsNote && <p className="text-yellow-400">{advice.sharedFlatsNote}</p>}
+        {advice.sharedFlatsNote && <p className="text-astro-warning">{advice.sharedFlatsNote}</p>}
       </div>
     </details>
   )
@@ -316,7 +316,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued, filterQ
       )}
       {plan.gradingNote && <p className="text-xs text-astro-muted">{plan.gradingNote}</p>}
       {plan.leftoverNote && <p className="text-xs text-astro-muted">{plan.leftoverNote}</p>}
-      {plan.approximateNote && <p className="text-xs text-yellow-400">{plan.approximateNote}</p>}
+      {plan.approximateNote && <p className="text-xs text-astro-warning">{plan.approximateNote}</p>}
       <StackAdvice rawPath={rawPath} advice={plan.advice} onChanged={() => setReload(n => n + 1)} />
       {plan.scripts.length > 0 && (
         <details className="text-xs">
@@ -328,7 +328,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued, filterQ
                   <span className="font-mono text-astro-text">{script.file}</span>
                   <span className="text-astro-muted"> ({script.label}): {script.needed}, </span>
                   <span className={VERDICT_TONE[script.verdict]}>{script.verdictText}</span>
-                  {script.missing && <span className="text-yellow-400"> · {script.missing}</span>}
+                  {script.missing && <span className="text-astro-warning"> · {script.missing}</span>}
                 </summary>
                 {script.memory && <p className={`ml-2 mt-1 ${MEMORY_TONE[script.memory.fit]}`}>{script.memory.text}</p>}
                 <table className="mt-1 ml-2 text-astro-muted">
@@ -400,8 +400,8 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
       </div>
       <p className="text-xs text-astro-muted">{view.profileReason}</p>
       {view.paletteHint && <p className="text-xs text-astro-text">{view.paletteHint}</p>}
-      {view.missing && <p className="text-xs text-yellow-400">{view.missing}</p>}
-      {view.catalogues && <p className="text-xs text-yellow-400">{view.catalogues}</p>}
+      {view.missing && <p className="text-xs text-astro-warning">{view.missing}</p>}
+      {view.catalogues && <p className="text-xs text-astro-warning">{view.catalogues}</p>}
       {view.command && (
         <div className="flex gap-2 items-start">
           <code className="flex-1 block bg-astro-bg border border-astro-border rounded px-2 py-1.5 text-[11px] text-astro-text break-all">{view.command}</code>
@@ -423,7 +423,7 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
       )}
       {view.outputDir && <p className="text-xs text-astro-muted">Writes to <span className="font-mono">{view.outputDir}</span>.</p>}
       {view.skipped.map(s => <p key={s} className="text-xs text-astro-muted">Skips {s}</p>)}
-      {view.warnings.map(w => <p key={w} className="text-xs text-yellow-400">{w}</p>)}
+      {view.warnings.map(w => <p key={w} className="text-xs text-astro-warning">{w}</p>)}
       {view.canQueue && view.stackPath && !queued && (
         <QueueJob
           label="Queue post-processing"
@@ -504,7 +504,7 @@ function SyqonSteps({ targetId, rawPath, onQueued, queued }: { targetId: string;
       {view.output && <p className="text-xs text-astro-muted">Writes <span className="font-mono">{view.output}</span>{view.outputExists ? (view.overwrite ? ', replacing the file already there.' : ', where a file is already there.') : '.'}</p>}
       {view.space && <p className="text-xs text-astro-muted">{view.space}</p>}
       {view.command && <code className="block bg-astro-bg border border-astro-border rounded px-2 py-1.5 text-[11px] text-astro-text break-all">{view.command}</code>}
-      {view.blocked && <p className="text-xs text-yellow-400">{view.blocked}</p>}
+      {view.blocked && <p className="text-xs text-astro-warning">{view.blocked}</p>}
       {view.canQueue && view.model && view.stackPath && !queued && (
         <QueueJob
           label="Queue this step"
@@ -540,7 +540,7 @@ function FilterStacks({ targetId, plan, onQueued, queued }: { targetId: string; 
   return (
     <div className="space-y-2 border border-astro-border rounded p-2">
       <p className="text-xs text-astro-text">{plan.intro}</p>
-      {plan.notes.map(n => <p key={n} className="text-xs text-yellow-400">{n}</p>)}
+      {plan.notes.map(n => <p key={n} className="text-xs text-astro-warning">{n}</p>)}
       <table className="w-full text-xs">
         <tbody>
           {plan.stacks.map(stack => (
@@ -550,7 +550,7 @@ function FilterStacks({ targetId, plan, onQueued, queued }: { targetId: string; 
                 {stack.frames}
                 {stack.needed && <span>; needs {stack.needed}, </span>}
                 <span className={VERDICT_TONE[stack.verdict]}>{stack.verdictText}</span>
-                {stack.missing && <p className="text-yellow-400">{stack.missing}</p>}
+                {stack.missing && <p className="text-astro-warning">{stack.missing}</p>}
               </td>
               <td className="py-1 pr-3 text-astro-muted">{stack.master ? <span className="font-mono">{stack.master}</span> : 'Not stacked yet'}</td>
               <td className="py-1">
@@ -628,7 +628,7 @@ function CometPlan({ targetId, refreshKey }: { targetId: string; refreshKey: str
           </p>
           {view.observerNote && <p className="text-xs text-astro-muted">{view.observerNote}</p>}
           {view.motion && <p className="text-xs text-astro-text">{view.motion}</p>}
-          {view.undatedNote && <p className="text-xs text-yellow-400">{view.undatedNote}</p>}
+          {view.undatedNote && <p className="text-xs text-astro-warning">{view.undatedNote}</p>}
           {view.positions.length > 0 && (
             <table className="text-xs text-astro-muted">
               <tbody>
@@ -659,8 +659,8 @@ function CometPlan({ targetId, refreshKey }: { targetId: string; refreshKey: str
               Write the positions file
             </button>
           )}
-          {view.writtenNote && <p className="text-xs text-green-400">{view.writtenNote}</p>}
-          {view.writeError && <p className="text-xs text-red-400">{view.writeError}</p>}
+          {view.writtenNote && <p className="text-xs text-astro-success">{view.writtenNote}</p>}
+          {view.writeError && <p className="text-xs text-astro-danger">{view.writeError}</p>}
         </>
       ) : (
         <p className="text-xs text-astro-muted">
@@ -678,7 +678,7 @@ function CometPlan({ targetId, refreshKey }: { targetId: string; refreshKey: str
           {view.orbit ? 'Replace the orbit' : 'Save the orbit'}
         </button>
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-astro-danger">{error}</p>}
     </div>
   )
 }

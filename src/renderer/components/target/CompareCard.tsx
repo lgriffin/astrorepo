@@ -34,7 +34,7 @@ function Slider({ a, b }: { a: PreviewView; b: PreviewView }): React.ReactElemen
       <div className="relative select-none rounded border border-astro-border overflow-hidden">
         <ClippedLayer view={b} rgba={right} grid={grid} clip={`inset(0 0 0 ${at}%)`} className="relative" />
         <ClippedLayer view={a} rgba={left} grid={grid} clip={`inset(0 ${100 - at}% 0 0)`} className="absolute inset-0 overflow-hidden" />
-        <div className="absolute top-0 bottom-0 w-px bg-white/70" style={{ left: `${at}%` }} />
+        <div className="absolute top-0 bottom-0 w-px bg-astro-on-scrim/70" style={{ left: `${at}%` }} />
       </div>
       <div className="flex items-center gap-3 text-xs text-astro-muted">
         <input type="range" min={0} max={100} value={at} onChange={e => setAt(Number(e.target.value))} className="flex-1" aria-label="Slider position" />
@@ -123,7 +123,7 @@ export function CompareCard({ targetId }: { targetId: string }): React.ReactElem
             </select>
           ))}
         </div>
-        {previews.map(problem).filter(Boolean).map(m => <p key={m} className="text-xs text-yellow-400">{m}</p>)}
+        {previews.map(problem).filter(Boolean).map(m => <p key={m} className="text-xs text-astro-warning">{m}</p>)}
         {!ready && !previews.some(problem) && <p className="text-xs text-astro-muted">Reading the images…</p>}
         {ready && mode === 'side' && (
           <div className="grid grid-cols-2 gap-3">

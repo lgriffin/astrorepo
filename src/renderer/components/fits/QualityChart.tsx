@@ -1,5 +1,6 @@
 import React from 'react'
 import type { QualityMetrics } from '@shared/types'
+import { tokenColor } from '../../theme'
 
 interface QualityChartProps {
   files: QualityMetrics[]
@@ -7,10 +8,10 @@ interface QualityChartProps {
 
 function flagColor(flag: string | null): string {
   switch (flag) {
-    case 'good': return '#22c55e'
-    case 'warning': return '#f59e0b'
-    case 'reject': return '#ef4444'
-    default: return '#6b7280'
+    case 'good': return tokenColor('success')
+    case 'warning': return tokenColor('warning')
+    case 'reject': return tokenColor('danger')
+    default: return tokenColor('muted')
   }
 }
 

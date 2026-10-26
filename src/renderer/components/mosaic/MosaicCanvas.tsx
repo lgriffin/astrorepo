@@ -32,9 +32,9 @@ export function heatOpacity(value: number, max: number): number {
 
 /** Outline colour by review state: accepted green, to review amber, conflict red, left out grey. */
 const CAPTURE_STYLE: Record<WorkspaceCaptureView['state'], string> = {
-  accepted: 'stroke-emerald-400',
-  'needs-review': 'stroke-amber-400',
-  conflict: 'stroke-red-400',
+  accepted: 'stroke-astro-success',
+  'needs-review': 'stroke-astro-warning',
+  conflict: 'stroke-astro-danger',
   excluded: 'stroke-astro-muted'
 }
 

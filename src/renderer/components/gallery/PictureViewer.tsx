@@ -49,10 +49,10 @@ export function PictureViewer({
     return () => window.removeEventListener('keydown', onKey)
   }, [index, hasPrev, hasNext, onMove, onClose])
 
-  const navButton = 'w-10 h-10 rounded-full bg-black/50 text-white text-xl flex items-center justify-center hover:bg-black/80 disabled:opacity-20 disabled:cursor-default'
+  const navButton = 'w-10 h-10 rounded-full bg-astro-scrim/50 text-astro-on-scrim text-xl flex items-center justify-center hover:bg-astro-scrim/80 disabled:opacity-20 disabled:cursor-default'
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-black/90" role="dialog" aria-label={picture.name}>
+    <div className="fixed inset-0 z-50 flex bg-astro-scrim/90" role="dialog" aria-label={picture.name}>
       <div className="relative flex-1 min-w-0 flex items-center justify-center p-6" onClick={onClose}>
         {image.status === 'ready' ? (
           <img src={image.src} alt={picture.name} className="max-w-full max-h-full object-contain rounded" onClick={e => e.stopPropagation()} />
@@ -69,7 +69,7 @@ export function PictureViewer({
         <button aria-label="Next picture" className={`${navButton} absolute right-4 top-1/2 -translate-y-1/2`} disabled={!hasNext} onClick={e => { e.stopPropagation(); onMove(index + 1) }}>
           ›
         </button>
-        <p className="absolute bottom-3 left-0 right-0 text-center text-xs text-white/60">
+        <p className="absolute bottom-3 left-0 right-0 text-center text-xs text-astro-on-scrim/60">
           {index + 1} of {pictures.length}
         </p>
       </div>
@@ -91,7 +91,7 @@ export function PictureViewer({
         </button>
 
         {details.status === 'loading' && <p className="text-xs text-astro-muted">Reading what it shows…</p>}
-        {details.status === 'failed' && <p className="text-xs text-red-400">{details.error}</p>}
+        {details.status === 'failed' && <p className="text-xs text-astro-danger">{details.error}</p>}
         {details.status === 'ready' && <DetailsBody view={details.view} onLeave={onClose} />}
       </aside>
     </div>

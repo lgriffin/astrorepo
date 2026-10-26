@@ -53,9 +53,9 @@ export function WorkflowStepper({ targetId, currentStage, onStageChanged }: Work
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
                   isCurrent
-                    ? 'bg-astro-accent border-astro-accent text-white shadow-lg shadow-astro-accent/30'
+                    ? 'bg-astro-accent border-astro-accent text-astro-on-accent shadow-lg shadow-astro-accent/30'
                     : isComplete
-                      ? 'bg-astro-success border-astro-success text-white'
+                      ? 'bg-astro-success border-astro-success text-astro-on-accent'
                       : 'bg-astro-bg border-astro-border text-astro-muted group-hover:border-astro-accent/50'
                 }`}>
                   {isComplete ? (

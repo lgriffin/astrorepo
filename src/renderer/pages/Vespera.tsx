@@ -82,7 +82,7 @@ export function Vespera(): React.ReactElement {
             <div className="flex-1 bg-astro-bg border border-astro-border rounded px-3 py-2 text-sm text-astro-text truncate min-h-[38px] flex items-center">
               {settings?.landingRoot ?? <span className="text-astro-muted italic">Not set: choose a folder, or set the home folder in Settings</span>}
             </div>
-            <button onClick={() => void chooseLanding()} className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80">
+            <button onClick={() => void chooseLanding()} className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80">
               Browse
             </button>
             {settings && !settings.landingIsDefault && settings.landingRoot && (
@@ -104,7 +104,7 @@ export function Vespera(): React.ReactElement {
               </label>
             ))}
           </div>
-          {settings?.notes.map(n => <p key={n} className="text-xs text-yellow-400 mt-2">{n}</p>)}
+          {settings?.notes.map(n => <p key={n} className="text-xs text-astro-warning mt-2">{n}</p>)}
         </Card>
 
         <IngestPanel kinds={settings?.formats ?? []} />

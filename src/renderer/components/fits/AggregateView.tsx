@@ -45,7 +45,7 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
 
       {linkingStatus && (
         <div className="flex gap-4 text-sm">
-          <span className="text-green-400">Linked: {linkingStatus.linked}</span>
+          <span className="text-astro-success">Linked: {linkingStatus.linked}</span>
           <span className="text-astro-muted">Unlinked: {linkingStatus.unlinked}</span>
           {Object.keys(linkingStatus.byTarget).length > 0 && (
             <span className="text-astro-muted">

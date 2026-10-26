@@ -80,7 +80,7 @@ export function SkyGeometryCard({ targetId }: { targetId: string }): React.React
     <Card title="Where it points" action={action}>
       <div className="space-y-4 text-sm">
         <p className="text-astro-muted">{view.summary}</p>
-        {view.misfiled && <p className="text-amber-400">{view.misfiled}</p>}
+        {view.misfiled && <p className="text-astro-warning">{view.misfiled}</p>}
 
         {view.rotation.nights.length > 0 && (
           <div>
@@ -152,7 +152,7 @@ export function SkyGeometryCard({ targetId }: { targetId: string }): React.React
                         <td className="py-1 pr-3 text-astro-muted">{s.rotation}</td>
                       </>
                     ) : (
-                      <td colSpan={4} className="py-1 pr-3 text-red-400">
+                      <td colSpan={4} className="py-1 pr-3 text-astro-danger">
                         {s.error}
                       </td>
                     )}

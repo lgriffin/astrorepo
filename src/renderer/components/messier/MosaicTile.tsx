@@ -45,8 +45,8 @@ export function MosaicTile({ tile, dimmed, selected, onOpen }: { tile: MessierTi
       )}
       <span className={`absolute top-1 left-1 w-2 h-2 rounded-full ${STATE_DOT[tile.state]}`} />
       {shown && (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1 pt-3 pb-0.5">
-          <p className="text-[10px] font-semibold text-white truncate">{label}</p>
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-astro-scrim/80 to-transparent px-1 pt-3 pb-0.5">
+          <p className="text-[10px] font-semibold text-astro-on-scrim truncate">{label}</p>
           {tile.state !== 'imaged' && tile.outlook && <p className={`text-[9px] truncate ${OUTLOOK_TONE[tile.outlook.kind]}`}>{tile.outlook.short}</p>}
         </div>
       )}

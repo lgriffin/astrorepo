@@ -7,14 +7,14 @@ import { Card, EmptyState, LinkButton } from '../common/Card'
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
 const TONE: Record<NightSkyView['verdict'], string> = {
-  clear: 'border-green-500/40 bg-green-500/10 text-green-400',
-  'clear-spells': 'border-yellow-500/30 bg-yellow-500/5 text-yellow-300',
+  clear: 'border-astro-success/40 bg-astro-success/10 text-astro-success',
+  'clear-spells': 'border-astro-warning/30 bg-astro-warning/5 text-astro-warning',
   cloudy: 'border-astro-border bg-astro-bg text-astro-muted',
   'no-forecast': 'border-astro-border bg-astro-bg text-astro-muted',
   'no-darkness': 'border-astro-border bg-astro-bg text-astro-muted'
 }
 
-const WARNING_TONE = { yellow: 'text-yellow-300', orange: 'text-orange-400', red: 'text-red-400', unknown: 'text-astro-muted' } as const
+const WARNING_TONE = { yellow: 'text-astro-warning', orange: 'text-astro-cat-4', red: 'text-astro-danger', unknown: 'text-astro-muted' } as const
 
 function NightTile({ night }: { night: NightSkyView }): React.ReactElement {
   return (
@@ -69,7 +69,7 @@ export function ClearSkiesCard({ outlook }: { outlook: ClearSkiesView }): React.
         ))}
       </div>
       {failed.map(s => (
-        <p key={s.name} className="text-xs text-yellow-300 mt-2">
+        <p key={s.name} className="text-xs text-astro-warning mt-2">
           {s.name} could not be used: {s.problem}
         </p>
       ))}

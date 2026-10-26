@@ -239,7 +239,7 @@ function SubFrameTable({ data }: { data: StackedWithSubFrames }): React.ReactEle
       <div className="flex items-center gap-3 mb-2 text-xs">
         <span className="text-astro-muted">Matched {data.matchedCount} sub-frames</span>
         {mismatch && (
-          <span className="text-yellow-400">Expected {data.ncombine} (ncombine)</span>
+          <span className="text-astro-warning">Expected {data.ncombine} (ncombine)</span>
         )}
       </div>
       {data.subFrames.length === 0 ? (
@@ -268,9 +268,9 @@ function SubFrameTable({ data }: { data: StackedWithSubFrames }): React.ReactEle
 }
 
 function SubFrameRow({ sf }: { sf: SubFrameInfo }): React.ReactElement {
-  const qColor = sf.qualityFlag === 'good' ? 'text-green-400'
-    : sf.qualityFlag === 'warning' ? 'text-yellow-400'
-    : sf.qualityFlag === 'reject' ? 'text-red-400'
+  const qColor = sf.qualityFlag === 'good' ? 'text-astro-success'
+    : sf.qualityFlag === 'warning' ? 'text-astro-warning'
+    : sf.qualityFlag === 'reject' ? 'text-astro-danger'
     : 'text-astro-muted'
 
   return (
@@ -401,7 +401,7 @@ function FilterProgressRow({ fp, targetId, onGoalChanged }: {
             </div>
             <div className="w-full h-2 bg-astro-bg rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${(fp.percentComplete ?? 0) >= 100 ? 'bg-green-500' : 'bg-astro-accent'}`}
+                className={`h-full rounded-full transition-all ${(fp.percentComplete ?? 0) >= 100 ? 'bg-astro-success' : 'bg-astro-accent'}`}
                 style={{ width: `${Math.min(100, fp.percentComplete ?? 0)}%` }}
               />
             </div>
@@ -416,7 +416,7 @@ function FilterProgressRow({ fp, targetId, onGoalChanged }: {
 
       <div className="flex items-center gap-1 shrink-0">
         {fp.goalSec != null ? (
-          <button onClick={handleDeleteGoal} className="text-astro-muted hover:text-red-400 text-xs px-1" title="Clear goal">
+          <button onClick={handleDeleteGoal} className="text-astro-muted hover:text-astro-danger text-xs px-1" title="Clear goal">
             x
           </button>
         ) : (

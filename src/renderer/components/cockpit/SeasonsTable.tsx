@@ -10,7 +10,7 @@ function shade(hours: number): string {
   if (hours < 1) return 'bg-astro-bg text-astro-muted'
   if (hours < 3) return 'bg-astro-accent/20 text-astro-text'
   if (hours < 5) return 'bg-astro-accent/45 text-astro-text'
-  return 'bg-astro-accent/70 text-white'
+  return 'bg-astro-accent text-astro-on-accent'
 }
 
 /** The 12-month season of every target with work left, from the user's site (FWD-001). */
