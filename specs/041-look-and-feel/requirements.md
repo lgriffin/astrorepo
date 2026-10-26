@@ -120,3 +120,18 @@ behind a long stacking list. The Coming nights card keeps closing seasons and th
 | LF-017 | Ubiquitous | The system shall list tonight's captures under Shoot tonight and stacking under Ready to process, side by side, and mosaic tiles waiting for a coming night under Plan ahead, each suggestion's priority shown as a coloured mark that is also named in words for screen readers. |
 | LF-018 | Unwanted | If tonight is forecast cloudy or has no dark window, then the system shall list no targets to shoot on the Tonight panel and say why. |
 | LF-019 | State | While the site is not set, the system shall show the Tonight panel as a link to Settings > Your site instead of a night it cannot work out. |
+
+## V4: your targets first
+
+The catalogue holds thousands of objects, and the Targets page used to open on all of them in name
+order. It now opens on **Yours**: the targets that something of the user's points at (a file, a
+library folder, a night, a stage past "not observed", one added by hand, or a collection they made).
+**Whole catalogue** is one tab away. Choosing targets for a batch change is a mode with real
+checkboxes beside the cards rather than a box drawn over each card's title.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-020 | Ubiquitous | The system shall open Targets on Yours, listing only the targets that an indexed file, a library folder, a logged night, a stage past not observed, a hand entry or a collection the user made points at, with the whole catalogue on a second tab, and filters, sort and search applying to either. |
+| LF-021 | Unwanted | If none of the user's targets match a search, then the system shall offer to search the whole catalogue, and if the user has no targets at all, offer to scan the library or browse the catalogue. |
+| LF-022 | Event | When the user chooses to pick targets, the system shall show a labelled checkbox beside each card, named after its target and reachable by keyboard, without covering the card, and leave cards as plain links otherwise. |
+| LF-023 | State | While targets are chosen, the system shall show what can be done with them in a bar at the bottom of the page built from the shared controls, and ask before deleting them. |

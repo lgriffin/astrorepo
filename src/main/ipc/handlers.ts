@@ -90,6 +90,7 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
 
   handle('targets:search', validated('targets:search', (args) => {
     return searchTargets(args.query, args.limit, args.offset, {
+      scope: args.scope,
       objectType: args.object_type,
       workflowStage: args.workflow_stage,
       sortBy: args.sort_by,

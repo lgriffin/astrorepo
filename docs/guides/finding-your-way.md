@@ -43,6 +43,18 @@ A target, a collection, a project, a mosaic and the night form belong to a page.
 one, its place stays lit in the sidebar and a link above the title (for example **Targets**) takes
 you back.
 
+## Your targets
+
+**Targets** opens on **Yours**: the targets something of yours points at, whether a file in the
+library or FITS index, a library folder, a night you logged, a stage past "not observed", a target
+you added by hand, or a collection you made. The catalogue's own collections, such as Messier, do
+not count. **Whole catalogue** lists everything the app knows. Search, type, stage and sort work the
+same on both. If nothing of yours matches a search, a button searches the whole catalogue for it.
+
+To change several targets at once, press **Choose targets**. A checkbox appears beside each card,
+**Choose this page** ticks every card shown, and a bar at the bottom moves the chosen targets to a
+stage, adds them to a collection or deletes them (after asking). **Done** leaves choosing.
+
 ## The jobs line
 
 While a job runs or waits, a line under the sidebar says so on every page: the running job's name,
