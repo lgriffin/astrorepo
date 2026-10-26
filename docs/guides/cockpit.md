@@ -216,6 +216,9 @@ paths stay literal). A path holding characters Command Prompt acts on (`% ! ^ & 
 no command to copy, and the panel says which to rename; queueing it still works, because the app
 runs the script without Command Prompt. Working the recipe out runs nothing and writes nothing.
 
+To try several profiles or qualities on one stack and compare them, use the **Experiments** card
+on the same tab: each variant writes to its own folder ([experiments](experiments.md)).
+
 ## Jobs
 
 Stacking and post-processing can tie the PC up for an hour or more, so the app runs them like a

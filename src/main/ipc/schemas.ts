@@ -445,6 +445,18 @@ export const schemas = {
   'project:export': z.object({ project_id: id, format: z.enum(['csv', 'json']) }),
 
   'forecast:target': z.object({ target_id: id, minutes: z.number().int().min(1).max(6000).optional() }),
+  'experiment:list': z.object({ target_id: id }),
+  'experiment:create': z.object({
+    target_id: id,
+    name: z.string().max(120),
+    objective: z.string().max(1000).optional(),
+    stack_path: z.string().min(1).max(4096),
+    variants: z.array(z.object({ profile: z.enum(['galaxy', 'nebula', 'cluster', 'stellar', 'broadband', 'minimal']), quality: z.enum(['light', 'normal', 'strong']) })).min(1).max(6)
+  }),
+  'experiment:run': z.object({ experiment_id: id, timing: z.enum(['window', 'now']) }),
+  'experiment:compare': z.object({ experiment_id: id }),
+  'experiment:prefer': z.object({ experiment_id: id, variant_id: id.nullable() }),
+  'experiment:export': z.object({ experiment_id: id, format: z.enum(['json', 'md']) }),
   'forecast:mosaic': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
 
   'vespera:settings': z.object({}).optional(),

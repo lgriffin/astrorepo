@@ -4,7 +4,7 @@ import type { JobStore } from '../ports/jobs'
 import type { StackCatalogue } from '../ports/stack-catalogue'
 import type { ToolHub } from '../ports/tool-hub'
 import type { EstimateSirilRun } from './estimate-siril-run'
-import type { PlanPostProcessing, PostProcessingOptions } from './plan-post-processing'
+import type { PlanPostProcessing, PostProcessingOptions, PostProcessingPlan } from './plan-post-processing'
 import type { PlanSyqon, SyqonOptions } from './plan-syqon'
 
 /** A confirmed plan that no longer holds when the app works it out again, so nothing is queued. */
@@ -102,20 +102,32 @@ export interface QueuePostProcessDeps {
 
 export type QueuePostProcess = (targetId: string, options: PostProcessingOptions, timing: JobTiming) => Promise<Job>
 
+/**
+ * Why a worked-out post-processing plan cannot be queued, in the page's words; null when it can.
+ * The queue and the experiment lab share it (PE-004).
+ */
+export function postProcessRefusal(plan: PostProcessingPlan, options: Pick<PostProcessingOptions, 'stackPath'>): string | null {
+  const { recipe, stack, target } = plan
+  if (!recipe || !stack || !target) return 'This target has no stack to post-process.'
+  // The confirmed stack, or none: never another one the plan fell back to.
+  if (options.stackPath && stack.path !== options.stackPath) return `${options.stackPath} is no longer there to post-process.`
+  if (recipe.missing.length > 0 || !recipe.program) return `Siril_Scripts needs ${recipe.missing.join(', ')}, which the tool hub did not find.`
+  if (recipe.misplaced.length > 0) {
+    return `Siril_Scripts v2 only runs ${recipe.misplaced.map(id => toolSpec(id).label).join(' and ')} from its standard install folder, where it is not installed, so the run would fail.`
+  }
+  if (recipe.missingCatalogues) return recipe.missingCatalogues
+  if (recipe.inReadOnlyFolder) return 'The stack is in a folder the app only reads, and Siril_Scripts writes beside it. Stack it into the work area, or copy it there, first.'
+  return null
+}
+
 /** Queues Siril_Scripts v2 for a stack the user confirmed, with the recipe worked out again. */
 export function makeQueuePostProcess(deps: QueuePostProcessDeps): QueuePostProcess {
   return async (targetId, options, timing) => {
     const plan = await deps.plan(targetId, options)
     const { recipe, stack, target } = plan
-    if (!recipe || !stack || !target) throw new JobRefusedError('This target has no stack to post-process.')
-    // The confirmed stack, or none: never another one the plan fell back to.
-    if (options.stackPath && stack.path !== options.stackPath) throw new JobRefusedError(`${options.stackPath} is no longer there to post-process.`)
-    if (recipe.missing.length > 0 || !recipe.program) throw new JobRefusedError(`Siril_Scripts needs ${recipe.missing.join(', ')}, which the tool hub did not find.`)
-    if (recipe.misplaced.length > 0) {
-      throw new JobRefusedError(`Siril_Scripts v2 only runs ${recipe.misplaced.map(id => toolSpec(id).label).join(' and ')} from its standard install folder, where it is not installed, so the run would fail.`)
-    }
-    if (recipe.missingCatalogues) throw new JobRefusedError(recipe.missingCatalogues)
-    if (recipe.inReadOnlyFolder) throw new JobRefusedError('The stack is in a folder the app only reads, and Siril_Scripts writes beside it. Stack it into the work area, or copy it there, first.')
+    const refusal = postProcessRefusal(plan, options)
+    // Stryker disable next-line ConditionalExpression: the refusal already covers a missing recipe, stack, target or program
+    if (refusal || !recipe || !stack || !target || !recipe.program) throw new JobRefusedError(refusal ?? '')
     if (recipe.space.headroomBytes === null && recipe.space.shortBytes === null) throw new JobRefusedError("The stack's disk does not report its free space, so the run could fill it.")
     if (!recipe.space.fits) throw new JobRefusedError("The stack's disk is short of the space Siril_Scripts needs.")
     const bash = (await deps.tools.locate()).find(t => t.id === 'bash')?.path ?? null

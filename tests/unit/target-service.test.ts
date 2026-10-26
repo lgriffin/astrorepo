@@ -9,6 +9,29 @@ vi.mock('../../src/main/db/connection', () => ({
 }))
 
 const { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, addAlias, mergeTargets } = await import('../../src/main/services/target')
+const { batchDeleteTargets } = await import('../../src/main/services/batch')
+const { SqliteExperimentStore } = await import('../../src/main/adapters/sqlite-experiments')
+const { SqliteJobStore } = await import('../../src/main/adapters/sqlite-jobs')
+
+const newExperiment = (targetId: string, number: number) => ({
+  targetId,
+  number,
+  name: `Test ${number}`,
+  objective: '',
+  input: { path: `D:/${targetId}/result.fit`, sizeBytes: 1, modifiedAt: null, sha256: 'h' },
+  variants: [{ letter: 'A' as const, parameters: { profile: 'galaxy' as const, quality: 'normal' as const }, outputLabel: `X-exp${number}-A`, outputDir: `D:/x/processed/X-exp${number}-A` }],
+  createdAt: new Date('2026-10-26T09:00:00Z')
+})
+const newJob = (targetId: string) => ({
+  kind: 'post-process' as const,
+  targetId,
+  title: 'Experiment Test 1, variant A',
+  timing: 'window' as const,
+  command: { program: 'bash', args: [], cwd: 'D:/x' },
+  prepare: null,
+  spaceDir: 'D:/x',
+  neededBytes: 1
+})
 
 describe('TargetService', () => {
   beforeEach(() => {
@@ -227,10 +250,38 @@ describe('TargetService', () => {
       expect(aliases.some((a) => a.alias === 'Caldwell 20')).toBe(true)
     })
 
+    it('[PE-003] Given experiments and jobs on both targets, When merged, Then they follow the kept target, merged experiments numbered after its own', async () => {
+      const keep = createTarget({ canonicalName: 'NGC 7000', objectType: 'emission_nebula' })
+      const merge = createTarget({ canonicalName: 'Caldwell 20', objectType: 'emission_nebula' })
+      const store = new SqliteExperimentStore(sqlite)
+      await store.create(newExperiment(keep.id, 1))
+      await store.create(newExperiment(merge.id, 1))
+      await store.create(newExperiment(merge.id, 2))
+      const job = await new SqliteJobStore(sqlite).add(newJob(merge.id), new Date())
+      mergeTargets(keep.id, merge.id)
+      expect((await store.list(keep.id)).map(e => [e.name, e.number])).toEqual([['Test 2', 3], ['Test 1', 2], ['Test 1', 1]])
+      expect((await new SqliteJobStore(sqlite).get(job.id))?.targetId).toBe(keep.id)
+    })
+
     it('Given the same ID for both keep and merge, When merging, Then returns null', () => {
       const t = createTarget({ canonicalName: 'Self Merge', objectType: 'star' })
       const result = mergeTargets(t.id, t.id)
       expect(result).toBeNull()
+    })
+  })
+
+  describe('EARS: Target Delete', () => {
+    it('[PE-003] Given a target with queued and finished jobs, When deleted, Then its queued jobs are cancelled and its experiments go with it', async () => {
+      const t = createTarget({ canonicalName: 'M 31', objectType: 'galaxy' })
+      const jobs = new SqliteJobStore(sqlite)
+      const queued = await jobs.add(newJob(t.id), new Date())
+      const done = await jobs.add(newJob(t.id), new Date())
+      await jobs.update(done.id, { state: 'succeeded' })
+      await new SqliteExperimentStore(sqlite).create(newExperiment(t.id, 1))
+      expect(batchDeleteTargets([t.id])).toEqual({ succeeded: 1, failed: 0 })
+      expect(await jobs.get(queued.id)).toMatchObject({ state: 'cancelled', note: 'Its target was deleted.' })
+      expect((await jobs.get(done.id))?.state).toBe('succeeded')
+      expect(await new SqliteExperimentStore(sqlite).list(t.id)).toEqual([])
     })
   })
 })

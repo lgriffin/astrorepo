@@ -7,6 +7,7 @@ import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
 import { IntegrationForecast } from '../forecast/IntegrationForecast'
 import { ArchiveCard } from './ArchiveCard'
+import { ExperimentLab } from '../experiment/ExperimentLab'
 import { filterStackQueued, runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
 import type { CometPlanView, FilterPlanView, JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView, SyqonView } from '@shared/types'
 
@@ -76,6 +77,10 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
           {runs.syqon && <RunBanner job={runs.syqon} />}
           <SyqonSteps targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.syqon !== null || view === null} />
         </div>
+      </Card>
+
+      <Card title="Experiments">
+        <ExperimentLab targetId={targetId} rawPath={rawPath} onQueued={loadRuns} />
       </Card>
 
       <TargetRunsCard runs={runs} unreadable={unreadable && view === null} />

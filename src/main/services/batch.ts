@@ -32,8 +32,11 @@ export function batchDeleteTargets(targetIds: string[]): { succeeded: number; fa
   const sqlite = getSqlite()
   let succeeded = 0, failed = 0
   const del = sqlite.prepare('DELETE FROM targets WHERE id = ?')
+  // A deleted target's queued jobs would start with nothing to show for them (its experiments go with it).
+  const cancel = sqlite.prepare("UPDATE jobs SET state = 'cancelled', note = 'Its target was deleted.' WHERE target_id = ? AND state = 'queued'")
   for (const id of targetIds) {
     try {
+      cancel.run(id)
       del.run(id)
       succeeded++
     } catch {
