@@ -1006,7 +1006,11 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('experiment:list', validated('experiment:list', async (args) => (await experiments().list(args.target_id)).map(toExperimentView)))
   handle('experiment:create', validated('experiment:create', async (args) =>
     toExperimentChange(await experiments().create(args.target_id, { name: args.name, objective: args.objective, stackPath: args.stack_path, variants: args.variants }))))
-  handle('experiment:run', validated('experiment:run', async (args) => toRunView(await experiments().run(args.experiment_id, args.timing))))
+  handle('experiment:run', validated('experiment:run', async (args) => {
+    const result = await experiments().run(args.experiment_id, args.timing)
+    if (result.ok) kickJobs()
+    return toRunView(result)
+  }))
   handle('experiment:compare', validated('experiment:compare', async (args) => {
     const c = await experiments().compare(args.experiment_id)
     return c ? toComparisonView(c) : null

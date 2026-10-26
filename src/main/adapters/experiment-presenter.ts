@@ -46,11 +46,12 @@ export function toExperimentView(d: ExperimentDescription): ExperimentView {
       settings: settings(v.record.parameters),
       state: v.state,
       stateText: stateText(v.state, v.job?.exitCode ?? null),
-      outputDir: v.record.outputDir,
+      outputDir: v.record.run?.outputDir ?? v.record.outputDir,
       outputs: v.record.outputs ? `${v.record.outputs.length} ${v.record.outputs.length === 1 ? 'file' : 'files'}, ${formatBytes(v.outputBytes ?? 0)}` : null,
       outputsMissing: v.outputsMissing,
+      inputChanged: v.inputChanged,
       preferred: e.preferredVariantId === v.record.id,
-      canPrefer: v.state === 'succeeded'
+      canPrefer: v.state === 'succeeded' && !v.inputChanged
     })),
     canRun: d.variants.some(v => runnable(v.state)),
     canCompare: d.variants.filter(v => v.state === 'succeeded').length >= 2

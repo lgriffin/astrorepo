@@ -18,9 +18,11 @@ export function ExperimentCompare({ experimentId, version }: { experimentId: str
   useEffect(() => {
     let current = true
     setView(null)
+    setFailed(null)
     invoke<ExperimentComparisonView | null>('experiment:compare', { experiment_id: experimentId })
       .then(v => {
         if (!current) return
+        setFailed(null)
         setView(v)
         const shown = v?.variants.filter(x => x.preview) ?? []
         setPair([shown[0]?.letter ?? '', shown[1]?.letter ?? ''])

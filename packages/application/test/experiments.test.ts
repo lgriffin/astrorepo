@@ -123,6 +123,8 @@ describe('running an experiment', () => {
     const after = await r.store.get(e.id)
     expect(after?.variants[0].run).toEqual({
       jobId: jobs[0].id,
+      outputLabel: 'M31-exp1-A',
+      outputDir: 'D:/m31/processed/M31-exp1-A',
       program: 'C:/Program Files/Git/bin/bash.exe',
       args: jobs[0].command.args,
       cwd: 'D:/m31',
@@ -146,6 +148,57 @@ describe('running an experiment', () => {
     expect(await r.run(e.id, 'now')).toEqual({ ok: true, queued: ['B'] })
     await r.finish((await r.jobs.list())[2].id, 'succeeded', { 'final.fit': 'B image' })
     expect(await r.run(e.id, 'now')).toEqual({ ok: false, problems: ['Every variant has run or is running.'] })
+  })
+
+  it('[PE-003] Given a failed variant that left files, When run again, Then the retry writes to a folder of its own and only its files are recorded', async () => {
+    const r = rig()
+    const e = await r.make()
+    await r.run(e.id, 'now')
+    const [a, b] = await r.jobs.list()
+    await r.finish(a.id, 'succeeded', { 'final.fit': 'A image' })
+    await r.finish(b.id, 'failed', { 'final.fit': 'half an image' })
+    await r.run(e.id, 'now')
+    const retry = (await r.jobs.list())[2]
+    expect(retry.command.args).toContain('--target=M31-exp1-B-r2')
+    await r.finish(retry.id, 'succeeded')
+    expect((await r.describe(e.id))?.variants[1]).toMatchObject({ outputsMissing: true, record: { outputs: null, run: { outputDir: 'D:/m31/processed/M31-exp1-B-r2' } } })
+    r.folder.put('D:/m31/processed/M31-exp1-B-r2/final.fit', 'B image')
+    expect((await r.describe(e.id))?.variants[1].record.outputs?.map(f => f.sha256)).toEqual(['sha:B image'])
+  })
+
+  it('[PE-003] Given a folder an older experiment left under the same name, When run, Then the variant writes beside it, not into it', async () => {
+    const r = rig()
+    r.folder.put('D:/m31/processed/M31-exp1-A/final.fit', 'from before a reset')
+    const e = await r.make()
+    await r.run(e.id, 'now')
+    expect((await r.jobs.list()).map(j => j.command.args.find(x => x.startsWith('--target=')))).toEqual(['--target=M31-exp1-A-r2', '--target=M31-exp1-B'])
+  })
+
+  it('[PE-003] Given two run requests at once, When both are handled, Then each variant is queued once', async () => {
+    const r = rig()
+    const e = await r.make()
+    const results = await Promise.all([r.run(e.id, 'now'), r.run(e.id, 'now')])
+    expect(results).toEqual([{ ok: true, queued: ['A', 'B'] }, { ok: false, problems: ['Every variant has run or is running.'] }])
+    expect(await r.jobs.list()).toHaveLength(2)
+  })
+
+  it('[PE-001] Given two experiments made at once on one target, When made, Then they are numbered apart', async () => {
+    const r = rig()
+    const made = await Promise.all([r.create('m31', r.definition()), r.create('m31', r.definition({ name: 'Second' }))])
+    expect(made.map(m => (m.ok ? m.experiment.number : null))).toEqual([1, 2])
+  })
+
+  it('[PE-001] Given a variant that finished after the stack changed, When described, Then its files are not taken as the experiment\'s, and it cannot be compared or preferred', async () => {
+    const r = rig()
+    const e = await r.make()
+    await r.run(e.id, 'now')
+    const [a] = await r.jobs.list()
+    r.folder.put(STACK, 'the stack, re-stacked')
+    await r.finish(a.id, 'succeeded', { 'final.fit': 'A image' })
+    const v = (await r.describe(e.id))?.variants[0]
+    expect(v).toMatchObject({ state: 'succeeded', inputChanged: true, outputsMissing: false, record: { outputs: null } })
+    expect((await r.compare(e.id))?.variants[0].image).toEqual({ path: null, error: 'It finished after the stack changed.' })
+    expect(await r.prefer(e.id, v?.record.id ?? null)).toEqual({ ok: false, problems: ['That variant finished after the stack changed, so it is not part of this comparison.'] })
   })
 
   it('[PE-004] Given the stack changed or gone, When run, Then nothing is queued and it says why', async () => {

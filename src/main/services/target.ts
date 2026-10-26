@@ -300,6 +300,11 @@ export function mergeTargets(keepId: string, mergeId: string): Target | null {
     sqlite.prepare('DELETE FROM target_relationships WHERE source_target_id = related_target_id').run()
     sqlite.prepare('DELETE FROM target_relationships WHERE source_target_id = ? OR related_target_id = ?').run(mergeId, mergeId)
 
+    // Experiments and jobs follow the kept target; merged experiments are numbered after its own.
+    const { top } = sqlite.prepare('SELECT COALESCE(MAX(number), 0) AS top FROM experiments WHERE target_id = ?').get(keepId) as { top: number }
+    sqlite.prepare('UPDATE experiments SET target_id = ?, number = number + ? WHERE target_id = ?').run(keepId, top, mergeId)
+    sqlite.prepare('UPDATE jobs SET target_id = ? WHERE target_id = ?').run(keepId, mergeId)
+
     sqlite.prepare('DELETE FROM targets WHERE id = ?').run(mergeId)
   })
 

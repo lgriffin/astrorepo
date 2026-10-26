@@ -32,9 +32,11 @@ the app checks:
 - the disk holds what every variant keeps plus the last one's busiest moment.
 
 If any check fails, nothing is queued and the card says why. A variant that failed or was
-cancelled can be run again with the same buttons. A variant that finished never runs again, so its
-files are never overwritten. When a variant finishes, the card lists the files it left, recorded
-once by SHA-256.
+cancelled can be run again with the same buttons, into a folder of its own (`M31-exp2-B-r2`), so
+nothing a failed attempt left is mistaken for its result. A variant that finished never runs again,
+so its files are never overwritten. When a variant finishes, the card lists the files it left,
+recorded once by SHA-256, after checking the stack again: a variant that ran after the stack
+changed is shown as not counted. Deleting a target cancels its queued variants.
 
 ## Comparing and choosing
 

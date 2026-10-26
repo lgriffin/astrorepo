@@ -28,9 +28,9 @@ describe('experiment presenter', () => {
     const d: ExperimentDescription = {
       experiment: record,
       variants: [
-        { record: record.variants[0], state: 'succeeded', job: { exitCode: 0, startedAt: null, finishedAt: null, note: null }, outputBytes: 2048, outputsMissing: false },
-        { record: record.variants[1], state: 'failed', job: { exitCode: 3, startedAt: null, finishedAt: null, note: null }, outputBytes: null, outputsMissing: false },
-        { record: record.variants[2], state: 'succeeded', job: null, outputBytes: null, outputsMissing: true }
+        { record: record.variants[0], state: 'succeeded', job: { exitCode: 0, startedAt: null, finishedAt: null, note: null }, outputBytes: 2048, outputsMissing: false, inputChanged: false },
+        { record: record.variants[1], state: 'failed', job: { exitCode: 3, startedAt: null, finishedAt: null, note: null }, outputBytes: null, outputsMissing: false, inputChanged: false },
+        { record: record.variants[2], state: 'succeeded', job: null, outputBytes: null, outputsMissing: true, inputChanged: false }
       ],
       at: new Date()
     }

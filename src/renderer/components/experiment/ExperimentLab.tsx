@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { EmptyState } from '../common/Card'
@@ -38,13 +38,17 @@ export function ExperimentLab({ targetId, rawPath, onQueued }: { targetId: strin
   const [failed, setFailed] = useState<string | null>(null)
   const [drafting, setDrafting] = useState(false)
 
+  // Only the newest request's answer is shown, so a slow poll never puts back an older state.
+  const loading = useRef(0)
   const load = useCallback(() => {
+    const mine = ++loading.current
     invoke<ExperimentView[]>('experiment:list', { target_id: targetId })
       .then(list => {
+        if (mine !== loading.current) return
         setExperiments(list)
         setFailed(null)
       })
-      .catch(error => setFailed(error instanceof Error ? error.message : String(error)))
+      .catch(error => mine === loading.current && setFailed(error instanceof Error ? error.message : String(error)))
   }, [targetId])
 
   useEffect(() => {
@@ -237,7 +241,13 @@ function Experiment({ experiment: e, onChanged, onQueued }: { experiment: Experi
                 <Badge tone={TONE[v.state]}>{v.stateText}</Badge>
               </Td>
               <Td className="text-xs text-astro-muted break-all">
-                {v.outputs ? `${v.outputs} in ${v.outputDir}` : v.outputsMissing ? `Finished, but ${v.outputDir} is not there` : v.outputDir}
+                {v.outputs
+                  ? `${v.outputs} in ${v.outputDir}`
+                  : v.inputChanged
+                    ? `Finished after the stack changed, so ${v.outputDir} is not counted`
+                    : v.outputsMissing
+                      ? `Finished, but ${v.outputDir} is not there`
+                      : v.outputDir}
               </Td>
               <Td align="right">
                 {v.preferred ? (

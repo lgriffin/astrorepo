@@ -170,6 +170,8 @@ export function metricNotes(measured: { letter: VariantLetter; metrics: VariantM
     if (least === most) return notes.push(`${label}: the same in every variant.`)
     notes.push(`${label}: ${known.filter(v => of(v.metrics) === least).map(v => v.letter).join(' and ')}.`)
   }
+  lowest('Darkest background (median)', m => m.median)
+  lowest('Least noise', m => m.noise)
   lowest('Least grainy background (noise over median)', m => m.relativeNoise)
   lowest('Fewest clipped highlights', m => m.clippedHigh)
   lowest('Fewest crushed shadows', m => m.clippedLow)

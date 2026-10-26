@@ -104,11 +104,13 @@ describe('outputs and figures', () => {
     const m = (over: Partial<VariantMetrics>): VariantMetrics => ({ median: 0.2, noise: 0.02, relativeNoise: 0.1, clippedHigh: 0, clippedLow: 0, fwhm: 3, ...over })
     expect(
       metricNotes([
-        { letter: 'A', metrics: m({ relativeNoise: 0.05, clippedHigh: 0.02, fwhm: null }) },
-        { letter: 'B', metrics: m({ relativeNoise: 0.08, clippedHigh: 0.01, clippedLow: 0.1 }) },
+        { letter: 'A', metrics: m({ median: 0.1, relativeNoise: 0.05, clippedHigh: 0.02, fwhm: null }) },
+        { letter: 'B', metrics: m({ noise: 0.01, relativeNoise: 0.08, clippedHigh: 0.01, clippedLow: 0.1 }) },
         { letter: 'C', metrics: m({ relativeNoise: 0.05, clippedHigh: null, fwhm: 2 }) }
       ])
     ).toEqual([
+      'Darkest background (median): A.',
+      'Least noise: B.',
       'Least grainy background (noise over median): A and C.',
       'Fewest clipped highlights: B.',
       'Fewest crushed shadows: A and C.',
@@ -116,6 +118,8 @@ describe('outputs and figures', () => {
       'No one figure picks the best image: smoothing lowers noise and loses detail, and a strong stretch clips. Look at them.'
     ])
     expect(metricNotes([{ letter: 'A', metrics: m({}) }, { letter: 'B', metrics: m({}) }])).toEqual([
+      'Darkest background (median): the same in every variant.',
+      'Least noise: the same in every variant.',
       'Least grainy background (noise over median): the same in every variant.',
       'Fewest clipped highlights: the same in every variant.',
       'Fewest crushed shadows: the same in every variant.',

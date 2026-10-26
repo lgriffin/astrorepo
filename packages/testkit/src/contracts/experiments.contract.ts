@@ -38,7 +38,7 @@ export function experimentStoreContract(adapterName: string, make: () => Experim
       const store = make()
       const made = await store.create(experiment())
       const [a, b] = made.variants
-      const run = { jobId: 'j1', program: 'bash', args: ['postprocess.sh', 'D:/m31/result.fit', '--target=M31-exp1-A'], cwd: 'D:/m31', tools: [{ id: 'siril' as const, version: '1.4.0' }], queuedAt: at('2026-10-26T10:00:00Z') }
+      const run = { jobId: 'j1', outputLabel: 'M31-exp1-A', outputDir: 'D:/m31/processed/M31-exp1-A', program: 'bash', args: ['postprocess.sh', 'D:/m31/result.fit', '--target=M31-exp1-A'], cwd: 'D:/m31', tools: [{ id: 'siril' as const, version: '1.4.0' }], queuedAt: at('2026-10-26T10:00:00Z') }
       await store.recordRun(a.id, run)
       const outputs = [{ path: 'D:/m31/processed/M31-exp1-A/final.fit', name: 'final.fit', sizeBytes: 12, sha256: 'sha256:f' }]
       await store.recordOutputs(a.id, outputs, at('2026-10-26T11:00:00Z'))

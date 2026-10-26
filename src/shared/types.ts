@@ -2158,6 +2158,8 @@ export interface ExperimentVariantView {
   /** "3 files, 1.2 GB"; null until a successful run's files are recorded. */
   outputs: string | null
   outputsMissing: boolean
+  /** Finished after the stack changed, so its files are not taken as this experiment's. */
+  inputChanged: boolean
   preferred: boolean
   canPrefer: boolean
 }

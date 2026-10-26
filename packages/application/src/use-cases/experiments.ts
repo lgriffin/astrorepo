@@ -67,6 +67,23 @@ export interface ExperimentDefinition {
 
 export type ExperimentResult = { ok: true; experiment: ExperimentRecord } | { ok: false; problems: string[] }
 
+/**
+ * One change at a time per key (a target's numbering, an experiment's runs) within this process,
+ * so two quick requests never number two experiments alike or queue one variant twice.
+ */
+const busy = new Map<string, Promise<unknown>>()
+export async function exclusive<T>(key: string, work: () => Promise<T>): Promise<T> {
+  const before = busy.get(key) ?? Promise.resolve()
+  const mine = before.then(work, work)
+  const settled = mine.catch(() => undefined)
+  busy.set(key, settled)
+  try {
+    return await mine
+  } finally {
+    if (busy.get(key) === settled) busy.delete(key)
+  }
+}
+
 const missing: ExperimentResult = { ok: false, problems: ['There is no such experiment.'] }
 
 const NO_COORDINATES =
@@ -74,7 +91,8 @@ const NO_COORDINATES =
 
 /** Makes an experiment over one of the target's stacks, its every byte hashed so it is known to be the same later (PE-001). */
 export function makeCreateExperiment(deps: Pick<ExperimentDeps, 'store' | 'plan' | 'folder' | 'hasher' | 'clock'>) {
-  return async (targetId: string, definition: ExperimentDefinition): Promise<ExperimentResult> => {
+  return (targetId: string, definition: ExperimentDefinition): Promise<ExperimentResult> => exclusive(`target:${targetId}`, () => create(targetId, definition))
+  async function create(targetId: string, definition: ExperimentDefinition): Promise<ExperimentResult> {
     const name = definition.name.trim()
     const problems: string[] = name === '' ? ['The experiment needs a name.'] : []
     problems.push(...variantProblems(definition.variants))
@@ -113,6 +131,8 @@ export interface VariantDescription {
   outputBytes: number | null
   /** Succeeded, but its folder is not there to record. */
   outputsMissing: boolean
+  /** Succeeded, but the stack had changed by then, so what it left is not recorded as the experiment's (PE-001). */
+  inputChanged: boolean
 }
 
 export interface ExperimentDescription {
@@ -131,11 +151,20 @@ export function makeDescribeExperiment(deps: Pick<ExperimentDeps, 'store' | 'job
     if (!found) return null
     const jobs = new Map((jobList ?? (await deps.jobs.list())).map(j => [j.id, j]))
     let experiment = found
+    // Asked once, and only when a run has outputs to record: a variant that waited in the queue
+    // while the stack changed did not process the experiment's input.
+    let unchanged: Promise<boolean | null> | null = null
+    const changed = new Set<string>()
     for (const v of found.variants) {
       const job = v.run ? (jobs.get(v.run.jobId) ?? null) : null
-      if (variantState(v.run, job) !== 'succeeded' || v.outputs) continue
-      const files = await deps.folder.list(v.outputDir)
+      if (!v.run || variantState(v.run, job) !== 'succeeded' || v.outputs) continue
+      const files = await deps.folder.list(v.run.outputDir)
       if (!files) continue
+      unchanged ??= inputUnchanged(deps, found)
+      if ((await unchanged) !== true) {
+        changed.add(v.id)
+        continue
+      }
       const outputs: OutputFile[] = []
       for (const f of files) outputs.push({ ...f, sha256: await deps.hasher.fullHash(f.path) })
       await deps.store.recordOutputs(v.id, outputs, deps.clock.now())
@@ -149,7 +178,8 @@ export function makeDescribeExperiment(deps: Pick<ExperimentDeps, 'store' | 'job
         state,
         job: job ? { exitCode: job.exitCode, startedAt: job.startedAt, finishedAt: job.finishedAt, note: job.note } : null,
         outputBytes: record.outputs ? record.outputs.reduce((n, f) => n + f.sizeBytes, 0) : null,
-        outputsMissing: state === 'succeeded' && !record.outputs
+        outputsMissing: state === 'succeeded' && !record.outputs && !changed.has(record.id),
+        inputChanged: changed.has(record.id)
       }
     })
     return { experiment, variants, at: deps.clock.now() }
@@ -198,7 +228,8 @@ export type RunResult = { ok: true; queued: VariantLetter[] } | { ok: false; pro
  */
 export function makeRunExperiment(deps: ExperimentDeps) {
   const describe = makeDescribeExperiment(deps)
-  return async (experimentId: string, timing: JobTiming): Promise<RunResult> => {
+  return (experimentId: string, timing: JobTiming): Promise<RunResult> => exclusive(`experiment:${experimentId}`, () => run(experimentId, timing))
+  async function run(experimentId: string, timing: JobTiming): Promise<RunResult> {
     const d = await describe(experimentId)
     if (!d) return missing as RunResult
     const { experiment } = d
@@ -229,7 +260,8 @@ export function makeRunExperiment(deps: ExperimentDeps) {
     const [located, tools] = await Promise.all([deps.tools.locate(), toolVersions(deps)])
     const bash = located.find(t => t.id === 'bash')?.path ?? null
     for (const { v, recipe } of recipes) {
-      const command = postProcessCommand(recipe.program as string, variantArgs(recipe.args, v.outputLabel), bash, stackDir)
+      const attempt = await freshFolder(deps, experiment.input.path, v)
+      const command = postProcessCommand(recipe.program as string, variantArgs(recipe.args, attempt.outputLabel), bash, stackDir)
       const now = deps.clock.now()
       const job = await deps.jobs.add(
         {
@@ -244,9 +276,21 @@ export function makeRunExperiment(deps: ExperimentDeps) {
         },
         now
       )
-      await deps.store.recordRun(v.id, { jobId: job.id, ...command, tools, queuedAt: now })
+      await deps.store.recordRun(v.id, { jobId: job.id, ...attempt, ...command, tools, queuedAt: now })
     }
     return { ok: true, queued: toRun.map(v => v.letter) }
+  }
+}
+
+/**
+ * The first of the variant's folders not on disk: its own name, then -r2, -r3 for retries, so a run
+ * never shares a folder with an earlier attempt or with an older experiment that had its number.
+ */
+async function freshFolder(deps: Pick<ExperimentDeps, 'folder'>, stackPath: string, v: VariantRecord): Promise<{ outputLabel: string; outputDir: string }> {
+  for (let n = 1; ; n++) {
+    const outputLabel = n === 1 ? v.outputLabel : `${v.outputLabel}-r${n}`
+    const outputDir = n === 1 ? v.outputDir : variantOutputDir(stackPath, outputLabel)
+    if ((await deps.folder.list(outputDir)) === null) return { outputLabel, outputDir }
   }
 }
 
@@ -283,7 +327,8 @@ export function makeCompareExperiment(deps: Pick<ExperimentDeps, 'store' | 'jobs
       }
       const final = v.record.outputs ? finalOutput(v.record.outputs) : null
       if (!final) {
-        variants.push({ ...base, image: { path: null, error: v.record.outputs ? 'It left no FITS or PNG to compare.' : 'Its output folder is not there.' } })
+        const error = v.record.outputs ? 'It left no FITS or PNG to compare.' : v.inputChanged ? 'It finished after the stack changed.' : 'Its output folder is not there.'
+        variants.push({ ...base, image: { path: null, error } })
         continue
       }
       try {
@@ -308,6 +353,7 @@ export function makePreferVariant(deps: Pick<ExperimentDeps, 'store' | 'jobs' | 
       const v = d.variants.find(x => x.record.id === variantId)
       if (!v) return { ok: false, problems: ['That variant is not part of this experiment.'] }
       if (v.state !== 'succeeded') return { ok: false, problems: ['Only a variant that ran successfully can be preferred.'] }
+      if (v.inputChanged) return { ok: false, problems: ['That variant finished after the stack changed, so it is not part of this comparison.'] }
     }
     await deps.store.prefer(experimentId, variantId)
     return { ok: true, experiment: (await deps.store.get(experimentId)) as ExperimentRecord }
@@ -336,7 +382,7 @@ export function makeExportExperimentReport(deps: Pick<ExperimentDeps, 'store' | 
         exitCode: v.job?.exitCode ?? null,
         startedAt: v.job?.startedAt ?? null,
         finishedAt: v.job?.finishedAt ?? null,
-        outputDir: v.record.outputDir,
+        outputDir: v.record.run?.outputDir ?? v.record.outputDir,
         outputs: v.record.outputs
       })),
       createdAt: experiment.createdAt,

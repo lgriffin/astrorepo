@@ -3,6 +3,9 @@ import type { ExperimentInput, OutputFile, ToolId, VariantLetter, VariantParamet
 /** How a variant was run: what the job ran and the tools' versions when it was queued (PE-002). */
 export interface VariantRun {
   jobId: string
+  /** The TARGET this attempt was given and the folder it writes to: a retry gets a folder of its own (PE-003). */
+  outputLabel: string
+  outputDir: string
   program: string
   args: string[]
   cwd: string

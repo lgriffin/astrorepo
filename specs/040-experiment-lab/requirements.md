@@ -37,7 +37,12 @@ IDs PE-001 to PE-004 are the proposal's; PE-005 onwards are added here.
 - Variants need the target's coordinates: Siril_Scripts looks its TARGET up on SIMBAD when none are
   given, and a variant's TARGET is not a real name.
 - The lab never deletes a file. Outputs stay until the user removes them in the file manager; the
-  report says where each is (PE-003).
+  report says where each is (PE-003). A retry, or a variant whose folder an older experiment left,
+  writes to a new folder beside it (`-r2`, `-r3`), so no run shares a folder with another.
+- The input is checked again when a finished variant's files are recorded: a variant that ran after
+  the stack changed is not counted, compared or preferred (PE-001).
+- Deleting a target cancels its queued jobs and removes its experiments; merging targets moves both
+  to the kept target, merged experiments numbered after its own.
 - Experiments belong to a target. Linking one to a project waits for a use.
 
 ## Requirements
