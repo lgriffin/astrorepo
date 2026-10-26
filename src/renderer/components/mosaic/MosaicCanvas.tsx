@@ -138,7 +138,7 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [
                 y={-c.y - heat.cellDeg / 2}
                 width={heat.cellDeg}
                 height={heat.cellDeg}
-                className={c.value > 0 ? 'fill-astro-accent' : 'fill-amber-400'}
+                className={c.value > 0 ? 'fill-astro-accent' : 'fill-astro-warning'}
                 opacity={c.value > 0 ? heatOpacity(c.value, heat.max) : 0.3}
               />
             ))}

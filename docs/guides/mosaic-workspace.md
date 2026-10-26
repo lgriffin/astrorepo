@@ -89,7 +89,40 @@ Not yet checked against real files: the thumbnail's orientation on a mirrored or
 and the solver rotation sign on real ASTAP and Siril output. Spec 024's own overlap check on the
 target page still reads the rotation as a position angle; this page does not.
 
+## How much is covered
+
+**Coverage** works out what your captures add up to on this revision, from their solved footprints
+only: a capture that is not solved, or that you left out, adds nothing until it is.
+
+- **The heat map** shades the sky inside the panels by usable exposure, all filters together or one
+  you pick; sky inside a panel that no counted capture covers is marked in the warning colour.
+- **The panel table** gives each panel's covered share of its area, its shallowest and deepest
+  exposure, its gaps (each with its share and where it lies, such as "toward the north-east"), and
+  its exposure per filter against the target's goal for that filter. A panel is *covered* at 95% of
+  its area; meeting its goals is shown apart, so covered never means finished.
+- **What counts** lists each capture with the exposure it adds and why any of it does not count.
+
+Each frame counts once. Frames grading rejects and frames with no exposure time add nothing; a
+frame indexed twice (the same full content hash, for example a copy in a landing folder and in
+the target's home) counts from its first path only; and a master adds no exposure on a panel where
+lights of its filter are counted, since it is made of them. A capture's exposure counts toward the
+one panel it is on, so the panels add up to the mosaic's total; the heat map adds it wherever the
+capture covers, which is how deep each part of the sky really is.
+
+Coverage is sampled on the grid's tangent plane in square cells, a sixteenth of a panel's shorter
+side (bigger on a large grid), each weighted by its area on the sphere, so a share is good to about
+one cell along each edge of a panel.
+
+**Next session** lists the panels still to shoot, the least covered first, each with where to point
+(the middle of its largest gap when it is partly covered, else its centre) and what each filter
+still needs. **Export next session CSV** or **JSON** writes the same list with the aim as
+`hh:mm:ss ±dd:mm:ss` and degrees, the position angle and solver rotation, and seconds per filter
+had, wanted and still needed.
+
+Not yet checked against real files: whether Siril writes a master's EXPTIME as one sub or as the
+whole stack (a master's exposure counts only where no lights of its filter are counted).
+
 ## Coming next
 
-Slice X3 works out each panel's coverage, its usable exposure per filter (rejected frames out,
-nothing counted twice), and the gaps to shoot next.
+Projects (spec 038) build on this: a project's mosaic, its goals per panel, and "processed" and
+"published" as parts of finished.

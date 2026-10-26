@@ -157,7 +157,7 @@ export interface CoverageGap {
   areaSqDeg: number
   /** Its share of the panel. */
   fraction: number
-  /** Where it lies in the panel, in words: "the whole panel", "the middle", "toward the north-east". */
+  /** Where it lies in the panel, in words: "the whole panel", "most of the panel", "the middle", "toward the north-east". */
   where: string
 }
 
@@ -189,7 +189,7 @@ const compass = ['north', 'north-east', 'east', 'south-east', 'south', 'south-we
 function gapWhere(panel: PlannedPanel, centre: SkyPoint, fraction: number, sizeDeg: number): string {
   if (fraction >= 0.9) return 'the whole panel'
   const offset = projectPosition(panel.centre, centre)
-  if (!offset || Math.hypot(offset.xi, offset.eta) < 0.15 * sizeDeg) return 'the middle'
+  if (!offset || Math.hypot(offset.xi, offset.eta) < 0.15 * sizeDeg) return fraction >= 0.5 ? 'most of the panel' : 'the middle'
   const pa = (positionAngle(panel.centre, centre) + 360) % 360
   return `toward the ${compass[Math.round(pa / 45) % 8]}`
 }
@@ -379,7 +379,7 @@ export function nextSession(panels: PlannedPanel[], progress: PanelProgress[]): 
     const aim = p.state === 'partly covered' && gap ? gap.centre : panel.centre
     const parts: string[] = []
     if (p.state === 'not started') parts.push('not captured yet')
-    else if (!p.coverage.covered) parts.push(`${Math.round(p.coverage.fraction * 100)}% covered, gap ${gap?.where ?? 'at its edges'}`)
+    else if (!p.coverage.covered) parts.push(`${Math.round(p.coverage.fraction * 100)}% covered, uncovered: ${gap?.where ?? 'slivers at its edges'}`)
     for (const f of short) parts.push(`${f.filter} needs ${hours(f.needSec as number)} more`)
     rows.push({ panel, progress: p, aim, reason: parts.join('; ') })
   }
