@@ -161,24 +161,20 @@ export function EquipmentSettings(): React.ReactElement {
 
   const calculateFOV = async () => {
     if (!fovTelescope || !fovCamera) return
-    try {
-      const [fov, scale] = await Promise.all([
-        invoke<FOVResult>('equipment:calculate-fov', {
-          telescope_id: fovTelescope,
-          camera_id: fovCamera,
-          reducer_id: fovReducer || undefined
-        }),
-        invoke<ImageScaleResult>('equipment:calculate-image-scale', {
-          telescope_id: fovTelescope,
-          camera_id: fovCamera
-        })
-      ])
-      setFovResult(fov)
-      setImageScale(scale)
-    } catch {
-      setFovResult(null)
-      setImageScale(null)
-    }
+    // Each answer stands alone: a camera without a sensor size has no field but still an image scale.
+    const [fov, scale] = await Promise.allSettled([
+      invoke<FOVResult | null>('equipment:calculate-fov', {
+        telescope_id: fovTelescope,
+        camera_id: fovCamera,
+        reducer_id: fovReducer || undefined
+      }),
+      invoke<ImageScaleResult | null>('equipment:calculate-image-scale', {
+        telescope_id: fovTelescope,
+        camera_id: fovCamera
+      })
+    ])
+    setFovResult(fov.status === 'fulfilled' ? fov.value : null)
+    setImageScale(scale.status === 'fulfilled' ? scale.value : null)
   }
 
   const selected = items.find(eq => eq.id === selectedId)
@@ -342,11 +338,12 @@ export function EquipmentSettings(): React.ReactElement {
           </div>
           <Button className="mt-3" onClick={calculateFOV} disabled={!fovTelescope || !fovCamera}>Work it out</Button>
 
-          {fovResult && (
+          {/* A camera with a pixel size but no sensor size still has an image scale. */}
+          {(fovResult || imageScale) && (
             <dl className="mt-3 space-y-1 border-t border-astro-border pt-3 text-sm">
-              {fact('Field', `${fovResult.widthArcmin.toFixed(1)} × ${fovResult.heightArcmin.toFixed(1)} arcmin (${fovResult.widthDeg.toFixed(2)} × ${fovResult.heightDeg.toFixed(2)}°)`)}
-              {fact('Focal length in use', `${fovResult.effectiveFocalLength.toFixed(0)} mm`)}
-              {fovResult.focalRatio && fact('Focal ratio in use', `f/${fovResult.focalRatio.toFixed(1)}`)}
+              {fovResult && fact('Field', `${fovResult.widthArcmin.toFixed(1)} × ${fovResult.heightArcmin.toFixed(1)} arcmin (${fovResult.widthDeg.toFixed(2)} × ${fovResult.heightDeg.toFixed(2)}°)`)}
+              {fovResult && fact('Focal length in use', `${fovResult.effectiveFocalLength.toFixed(0)} mm`)}
+              {fovResult?.focalRatio && fact('Focal ratio in use', `f/${fovResult.focalRatio.toFixed(1)}`)}
               {imageScale && fact('Image scale', `${imageScale.arcsecondsPerPixel.toFixed(2)}″ per pixel`)}
             </dl>
           )}

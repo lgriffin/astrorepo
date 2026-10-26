@@ -78,7 +78,8 @@ export function Settings(): React.ReactElement {
   const { search } = useLocation()
   const navigate = useNavigate()
   const active = settingsSectionFrom(search) ?? SETTINGS_SECTIONS[0].id
-  const open = (id: SettingsSection): void => { void navigate(settingsLink(id), { replace: true }) }
+  // Each section is its own history entry, so Back returns to the one before.
+  const open = (id: SettingsSection): void => { void navigate(settingsLink(id)) }
   const current = SETTINGS_SECTIONS.find(s => s.id === active)!
   const View = SECTION_VIEWS[active]
 

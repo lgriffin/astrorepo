@@ -16,6 +16,9 @@ describe('Settings as pages (specs/041-look-and-feel V5)', () => {
     const page = read('pages/Settings.tsx')
     expect(page).toContain("aria-current={s.id === active ? 'page' : undefined}")
     expect(page).toContain('<View key={active} />')
+    // Moving between sections adds to the history, so Back returns to the section before.
+    expect(page).toContain('void navigate(settingsLink(id)) }')
+    expect(page).not.toContain('settingsLink(id), { replace: true }')
   })
 
   it('[LF-024] Given the Settings place, When the sidebar lists it, Then Settings is its only page', () => {
@@ -36,6 +39,9 @@ describe('Settings as pages (specs/041-look-and-feel V5)', () => {
     expect(eq).toContain('Delete {eq.name}?')
     // The card is no longer a clickable div with the actions inside it.
     expect(eq).not.toMatch(/<div[^>]*onClick/)
+    // A camera without a sensor size has no field, but its image scale is still shown.
+    expect(eq).toContain('Promise.allSettled')
+    expect(eq).toContain('(fovResult || imageScale) && (')
   })
 
   it('[LF-027] Given a word for a Settings section, When it is typed into Go to, Then that section is offered first', () => {
