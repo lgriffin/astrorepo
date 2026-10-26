@@ -14,7 +14,7 @@ are, sits on a smaller line below that.
 | Data | Library, FITS files, Nights, Vespera, Storage | Scan your folders, read the FITS headers, look back over every night, copy observations off the Vespera ([guide](vespera.md)) and watch disk use. |
 | Gallery | Pictures, Posters | Browse your finished pictures and what each shows ([guide](gallery.md)), and print a collection as a poster. |
 | Insights | Insights | See totals, catalogue progress, and seeing, filter and activity trends. |
-| Settings | Settings, Equipment | Set your site, folders, tools, run window and appearance, and record your scopes and cameras. |
+| Settings | Settings | Your site and equipment, folders, tools, run window and appearance, one section at a time (see [Settings](#settings)). |
 
 ## Go to (Ctrl+K)
 
@@ -64,15 +64,20 @@ queued the line is not shown.
 
 ## Settings
 
-Settings is one page in sections: **Your site**, **Weather**, **Folders**, **Tools**, **Run
-window**, **Frame grading**, **Appearance**, **Import and export**, **Companion screens** and
-**Start again**. The buttons at the top jump to each. Links elsewhere open the
-section they name: "Change the run window in Settings" on Jobs opens **Run window**, and "Set your
-site in Settings" on Home's Coming nights card opens **Your site**.
+Settings shows one section at a time. The sections are listed by group down the side (in a
+drop-down list when the window is narrow):
 
-**Appearance** picks the theme: match this computer (the default, following Windows' light or dark
-setting), dark, light, or night, which draws everything in red to keep your eyes dark-adapted. The
-choice is kept for the next start ([spec 041](../../specs/041-look-and-feel/requirements.md)).
+| Group | Sections |
+|-------|----------|
+| Your observatory | **Your site**, **Equipment** (scopes, cameras, filters and the field of view they give), **Weather** |
+| Files and tools | **Folders**, **Tools**, **Import and export** |
+| Processing | **Run window**, **Frame grading** |
+| This app | **Appearance**, **Companion screens**, **Start again** |
+
+Links elsewhere open the section they name: "Change the run window in Settings" on Jobs opens
+**Run window**, and "Set your site in Settings" on Home opens **Your site**. An old link to the
+Equipment page opens **Settings > Equipment**. Go to finds sections by their name or by words
+for what is in them, such as "telescope", "theme" or "latitude".
 
 ## Words
 

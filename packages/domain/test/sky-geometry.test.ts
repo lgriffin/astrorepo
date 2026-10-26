@@ -18,6 +18,7 @@ import {
   mosaicCsv,
   mosaicNights,
   normaliseAngle,
+  roundAngle,
   offsetPosition,
   overlapsAny,
   panelGroupKey,
@@ -467,5 +468,12 @@ describe('normalising an angle already in range', () => {
     expect(normaliseAngle(-188.4549097248835)).toBe(normaliseAngle(normaliseAngle(-188.4549097248835)))
     expect(normaliseAngle(-180)).toBe(180)
     expect(normaliseAngle(-0)).toBe(0)
+  })
+
+  it('[SKY-006, FUZ-006] Given an angle just above -180, When rounded for a solve or a plan, Then it fails to land on -180 and reads 180', () => {
+    expect(roundAngle(-179.999, 2)).toBe(180)
+    expect(roundAngle(-179.96, 1)).toBe(180)
+    expect(roundAngle(179.996, 2)).toBe(180)
+    expect(roundAngle(-12.3456, 2)).toBe(-12.35)
   })
 })

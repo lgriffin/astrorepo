@@ -35,8 +35,20 @@ const PAGE_WORDS: Record<string, string> = {
   storage: 'disk space',
   images: 'gallery pictures',
   posters: 'print',
-  insights: 'totals trends statistics',
-  equipment: 'scopes cameras filters field view'
+  insights: 'totals trends statistics'
+}
+
+/** The same for Settings sections; Equipment keeps its own icon now that it lives there. */
+const SECTION_WORDS: Record<string, string> = {
+  location: 'latitude longitude elevation observatory',
+  equipment: 'scopes telescopes cameras filters field view',
+  weather: 'forecast clouds',
+  folders: 'home archive',
+  tools: 'siril astap programs',
+  'run-window': 'jobs night schedule',
+  grading: 'frames rejection',
+  appearance: 'theme dark light night colours',
+  reset: 'clear database'
 }
 
 /** Every page, Settings section and action, in the order the palette lists them before any typing. */
@@ -58,7 +70,8 @@ export function paletteEntries(): PaletteEntry[] {
     where: 'Settings',
     to: settingsLink(s.id),
     kind: 'setting' as const,
-    icon: 'settings'
+    icon: s.id === 'equipment' ? 'equipment' : 'settings',
+    keywords: SECTION_WORDS[s.id]
   }))
   return [...pages, ...ACTIONS, ...settings]
 }

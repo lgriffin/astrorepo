@@ -20,7 +20,7 @@ page, copies its saved plan into a mosaic.
    refused, not guessed.
 3. Set rows and columns (up to 12 each), the overlap across and down (15% to start) and the
    position angle.
-4. The field of each panel comes from a scope and camera in Equipment, or is typed in arc minutes.
+4. The field of each panel comes from a scope and camera in **Settings > Equipment**, or is typed in arc minutes.
 5. Drag the drawing, or use **Move half a panel**, **Turn** and **Add a row** / **Remove a
    column**. Every change is laid out again from the numbers: moving the grid moves its centre.
 

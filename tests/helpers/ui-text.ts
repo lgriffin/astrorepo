@@ -13,7 +13,7 @@ export interface UiText {
 /** Names that keep their capitals: products, catalogues, acronyms, and the app's own places. */
 const PROPER = new Set([
   'Siril', 'Siril_Scripts', 'Seestar', 'Vespera', 'Git', 'Bash', 'RC', 'Astro', 'NINA', 'SIMBAD', 'NED', 'Wikipedia', 'Messier', 'NGC', 'Command', 'Prompt',
-  'SyQon', 'Studio', 'Windows', 'Linux', 'Bayer', 'Ha', 'OIII', 'SII', 'Dec', 'RA', 'I'
+  'SyQon', 'Studio', 'Windows', 'Linux', 'Bayer', 'Ha', 'OIII', 'SII', 'Dec', 'RA', 'I', 'Barlow'
 ])
 const PLACES = [...NAV_ITEMS.map(i => i.label), ...TARGET_TABS.map(t => t.label), ...SETTINGS_SECTIONS.map(s => s.label)].sort((a, b) => b.length - a.length)
 

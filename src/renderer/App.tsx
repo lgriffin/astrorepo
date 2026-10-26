@@ -7,7 +7,6 @@ import { TargetDetail } from './pages/TargetDetail'
 import { SessionForm } from './pages/SessionForm'
 import { Collections } from './pages/Collections'
 import { CollectionDetail } from './pages/CollectionDetail'
-import { Equipment } from './pages/Equipment'
 import { Images } from './pages/Images'
 import { Library } from './pages/Library'
 import { Poster } from './pages/Poster'
@@ -28,6 +27,7 @@ import { SkyPlanner } from './pages/SkyPlanner'
 import { SessionTimeline } from './pages/SessionTimeline'
 import { ToastProvider } from './contexts/ToastContext'
 import { CompanionLinks } from './components/companion/CompanionLinks'
+import { settingsLink } from '@shared/navigation'
 
 export function App(): React.ReactElement {
   return (
@@ -44,7 +44,7 @@ export function App(): React.ReactElement {
             <Route path="/sessions/:id/edit" element={<SessionForm />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/collections/:id" element={<CollectionDetail />} />
-            <Route path="/equipment" element={<Equipment />} />
+            <Route path="/equipment" element={<Navigate to={settingsLink('equipment')} replace />} />
             <Route path="/library" element={<Library />} />
             <Route path="/images" element={<Images />} />
             <Route path="/fits-analyzer" element={<FitsAnalyzer />} />

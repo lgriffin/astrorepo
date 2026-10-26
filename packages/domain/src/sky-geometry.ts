@@ -132,7 +132,7 @@ export function fieldFromWcs(cards: WcsCards, widthPx: number, heightPx: number)
   const field = {
     raDeg: round(((centre.raDeg % 360) + 360) % 360, 6) % 360,
     decDeg: centre.decDeg,
-    rotationDeg: round(normaliseAngle(rotation), 2),
+    rotationDeg: roundAngle(rotation, 2),
     scaleArcsec: round(scaleDeg * 3600, 4),
     widthPx,
     heightPx,
@@ -150,6 +150,9 @@ function isOnSky(f: SolvedField): boolean {
 }
 
 const round = (n: number, places: number) => Math.round(n * 10 ** places) / 10 ** places
+
+/** An angle rounded, then put back in (-180, 180]: -179.999 rounds to -180, which reads as 180. */
+export const roundAngle = (deg: number, places: number): number => normaliseAngle(round(normaliseAngle(deg), places))
 
 // ── ASTAP ───────────────────────────────────────────────────────────────
 
@@ -246,7 +249,7 @@ export function parseSirilSolve(log: string, widthPx: number, heightPx: number):
     const field: SolvedField = {
       raDeg: round(ra * 15, 6),
       decDeg: round(dec, 6),
-      rotationDeg: round(normaliseAngle(Number.isFinite(turned) ? turned : 0), 2),
+      rotationDeg: roundAngle(Number.isFinite(turned) ? turned : 0, 2),
       scaleArcsec: Number(resolution[1]),
       widthPx,
       heightPx,
@@ -548,7 +551,7 @@ export function planMosaic(req: MosaicRequest): MosaicPlan {
     columns,
     rows,
     overlap,
-    rotationDeg: round(normaliseAngle(req.rotationDeg), 1),
+    rotationDeg: roundAngle(req.rotationDeg, 1),
     field: req.field,
     fitsOneField: columns === 1 && rows === 1,
     coverWidthDeg: round(widthDeg + (columns - 1) * stepX, 3),

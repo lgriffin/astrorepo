@@ -74,7 +74,7 @@ The slices, each its own pull request:
 | UX-002 | Ubiquitous | The system shall title each place's page with its sidebar label and always say under the title what the page answers, with any live detail such as a count on a line of its own. |
 | UX-003 | State | While the user is on a page below a place, such as a target, a collection or the night form, the system shall keep that place lit in the sidebar and link back to it above the page title. |
 | UX-004 | State | While a job runs or waits in the queue, the system shall say so under the sidebar on every page, naming the running job, or saying how many wait and, in the job runner's own words, why the next one has not started. |
-| UX-005 | Event | When the user follows a link to Settings from another page, the system shall open Settings at the section the link names. |
+| UX-005 | Event | When the user follows a link to Settings from another page, the system shall open the Settings section the link names (since spec 041 V5, one section is shown at a time). |
 
 ## U2 · Home first
 
