@@ -3,6 +3,7 @@ import { invoke } from '../../hooks/useIPC'
 import { formatSize } from '../../utils/format'
 import { Inspector } from './Inspector'
 import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, QualityMetrics } from '@shared/types'
+import { Loading } from '../ui'
 
 interface FileDetailProps {
   fileId: string
@@ -52,7 +53,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
     }
   }
 
-  if (!file) return <div className="text-astro-muted p-4">Loading...</div>
+  if (!file) return <Loading label="Loading the file" className="p-4" rows={5} />
 
   const filteredHeaders = headerSearch
     ? headers.filter(h => h.keyword.toLowerCase().includes(headerSearch.toLowerCase()) || (h.value ?? '').toLowerCase().includes(headerSearch.toLowerCase()))

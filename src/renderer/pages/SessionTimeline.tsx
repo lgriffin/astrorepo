@@ -5,6 +5,7 @@ import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
 import type { CalendarDay, CalendarMonth, YearSummaryMonth } from '@shared/types'
 import { tokenColor } from '../theme'
+import { Loading } from '../components/ui'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -214,7 +215,7 @@ export function SessionTimeline(): React.ReactElement {
       }
     >
       {loading ? (
-        <p className="text-astro-muted text-sm">Loading timeline...</p>
+        <Loading label="Loading the timeline" rows={4} />
       ) : (
         <div className="space-y-6">
           {/* Year at a glance */}

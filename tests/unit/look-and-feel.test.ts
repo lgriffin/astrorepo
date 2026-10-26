@@ -143,9 +143,12 @@ describe('Themes on screen (specs/041-look-and-feel)', () => {
   })
 
   it('[LF-005] Given the renderer source, When it is searched for colours, Then none is fixed: no hex, no rgb() of its own and no Tailwind palette class', () => {
-    const palette = /(?<![\w-])(?:bg|text|border|from|to|via|ring|fill|stroke|divide|placeholder|outline|accent|shadow|decoration)-(?:white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})(?![\w-])/
+    const palette = /(?<![\w-])(?:bg|text|border(?:-[trblxyse])?|from|to|via|ring|fill|stroke|divide|placeholder|outline|accent|shadow|decoration)-(?:white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})(?![\w-])/
     const hex = /['"`\s:(]#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?(?:[0-9a-fA-F]{2})?(?![\w-])/
     const ownRgb = /\b(?:rgba?|hsla?)\((?!var\(--astro-)/
+    // One side's border counts too: the old toasts slipped through as border-l-green-500.
+    for (const cls of ['bg-red-500', 'border-l-green-500', 'border-t-slate-200', 'text-white']) expect(palette.test(` ${cls}`), cls).toBe(true)
+    expect(palette.test(' border-l-astro-accent')).toBe(false)
     const offenders: string[] = []
     for (const file of files(renderer, /\.(tsx?|css|html)$/)) {
       fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
+import { EmptyState } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
 import type { CollectionWithStats } from '@shared/types'
+import { Loading } from '../components/ui'
 
 export function Collections(): React.ReactElement {
   const [collections, setCollections] = useState<CollectionWithStats[]>([])
@@ -17,7 +19,7 @@ export function Collections(): React.ReactElement {
   if (loading) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading collections...</div>
+        <Loading label="Loading the collections" rows={4} />
       </PageContainer>
     )
   }
@@ -62,7 +64,9 @@ export function Collections(): React.ReactElement {
       </div>
 
       {collections.length === 0 && (
-        <div className="text-center py-12 text-astro-muted">No collections yet.</div>
+        <EmptyState action={<Link to="/targets" className="text-xs text-astro-accent hover:underline">Go to Targets</Link>}>
+          No collections yet. Catalogue lists such as Messier appear here once the catalogue is loaded.
+        </EmptyState>
       )}
     </PageContainer>
   )

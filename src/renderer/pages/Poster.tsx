@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { PageContainer } from '../components/common/PageContainer'
+import { EmptyState } from '../components/common/Card'
 import { useNavigate } from 'react-router-dom'
 import { invoke } from '../hooks/useIPC'
 import { messierLink } from '@shared/navigation'
 import type { CollectionWithStats, TargetSummary } from '@shared/types'
+import { Loading } from '../components/ui'
 
 export function Poster(): React.ReactElement {
   const [collections, setCollections] = useState<CollectionWithStats[]>([])
@@ -49,9 +51,9 @@ export function Poster(): React.ReactElement {
       </div>
 
       {loading ? (
-        <div className="text-astro-muted">Loading...</div>
+        <Loading label="Loading the collections" />
       ) : !selectedCollection ? (
-        <div className="text-center py-12 text-astro-muted">Select a collection to generate a poster preview.</div>
+        <EmptyState>Pick a collection above to see its poster.</EmptyState>
       ) : (
         <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1">
           {targets.map((t) => {

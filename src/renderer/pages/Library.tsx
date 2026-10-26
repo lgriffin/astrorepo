@@ -4,6 +4,7 @@ import { Card, EmptyState } from '../components/common/Card'
 import { settingsLink } from '@shared/navigation'
 import { invoke } from '../hooks/useIPC'
 import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress, ScanFileCounts } from '@shared/types'
+import { Loading } from '../components/ui'
 
 const PHASE_LABELS: Record<string, { title: string; description: string }> = {
   raw: { title: 'Raw', description: 'FITS files from capture sessions' },
@@ -121,7 +122,7 @@ export function Library(): React.ReactElement {
   if (homeFolderSet === null) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading...</div>
+        <Loading label="Loading the library" rows={5} />
       </PageContainer>
     )
   }

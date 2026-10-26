@@ -11,6 +11,7 @@ import { MosaicCoverage } from '../components/mosaic/MosaicCoverage'
 import { MosaicForecast } from '../components/forecast/MosaicForecast'
 import { GridWorkbench, PanelTable } from './MosaicWorkspaces'
 import type { FlushCentre } from '../components/mosaic/GridEditor'
+import { Loading } from '../components/ui'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const button = 'px-3 py-1.5 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -52,7 +53,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
 
   const latestPanels = useMemo(() => view?.drawing.panels.map(p => p.id) ?? [], [view])
 
-  if (view === undefined) return <PageContainer title="Mosaic">Loading…</PageContainer>
+  if (view === undefined) return <PageContainer title="Mosaic"><Loading label="Loading the mosaic" rows={4} /></PageContainer>
   if (view === null || !grid) {
     return (
       <PageContainer title="Mosaic">

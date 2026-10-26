@@ -1,30 +1,40 @@
 import React from 'react'
+import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
 import type { ToastItem } from '../../contexts/ToastContext'
 
-const borderColors: Record<ToastItem['type'], string> = {
-  success: 'border-l-green-500',
-  error: 'border-l-red-500',
-  info: 'border-l-astro-accent'
+/** Each kind's mark and colour; the icon says it too, so colour is never the only sign (LF-029). */
+const KIND: Record<ToastItem['type'], { icon: typeof Info; tone: string; word: string }> = {
+  success: { icon: CircleCheck, tone: 'text-astro-success', word: 'Done' },
+  error: { icon: CircleAlert, tone: 'text-astro-danger', word: 'Problem' },
+  info: { icon: Info, tone: 'text-astro-info', word: 'Note' }
 }
 
 export function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }): React.ReactElement {
+  const { icon: Icon, tone, word } = KIND[toast.type]
   return (
-    <div className={`flex items-start gap-3 px-4 py-3 bg-astro-surface border border-astro-border border-l-4 ${borderColors[toast.type]} rounded-lg shadow-lg min-w-[280px] max-w-[400px] animate-slide-in`}>
-      <span className="text-sm text-astro-text flex-1">{toast.message}</span>
-      <button
-        onClick={onDismiss}
-        className="text-astro-muted hover:text-astro-text text-sm leading-none mt-0.5"
-      >
-        ✕
+    <div
+      role={toast.type === 'error' ? 'alert' : undefined}
+      className="flex w-[22rem] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-lg border border-astro-border bg-astro-surface px-4 py-3 shadow-lg animate-slide-in"
+    >
+      <Icon aria-hidden className={`mt-0.5 h-4 w-4 shrink-0 ${tone}`} strokeWidth={2} />
+      <p className="flex-1 text-sm text-astro-text">
+        <span className="sr-only">{word}: </span>
+        {toast.message}
+      </p>
+      <button type="button" onClick={onDismiss} aria-label="Dismiss" className="-m-1 rounded p-1 text-astro-muted hover:text-astro-text">
+        <X aria-hidden className="h-4 w-4" strokeWidth={1.75} />
       </button>
     </div>
   )
 }
 
-export function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }): React.ReactElement | null {
-  if (toasts.length === 0) return null
+/**
+ * Where toasts appear, bottom right. The region is always there, even empty, so screen readers
+ * hear each new message as it arrives.
+ */
+export function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }): React.ReactElement {
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+    <div aria-live="polite" aria-label="Messages" className="fixed bottom-4 right-4 z-50 space-y-2">
       {toasts.map(t => (
         <Toast key={t.id} toast={t} onDismiss={() => onDismiss(t.id)} />
       ))}

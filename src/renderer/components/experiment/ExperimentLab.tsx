@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { EmptyState } from '../common/Card'
-import { Badge, Button, Field, Input, Select, Table, Td, Th, type BadgeTone } from '../ui'
+import { Badge, Button, Field, Input, Select, Table, Td, Th, type BadgeTone, Loading } from '../ui'
 import { ExperimentCompare } from './ExperimentCompare'
 import type { ExperimentChangeView, ExperimentRunView, ExperimentVariantView, ExperimentView, PostProcessView } from '@shared/types'
 
@@ -67,7 +67,7 @@ export function ExperimentLab({ targetId, rawPath, onQueued }: { targetId: strin
   }, [busy, load])
 
   if (failed && !experiments) return <p className="text-sm text-astro-danger">The experiments could not be read: {failed}</p>
-  if (!experiments || !stacks) return <p className="text-sm text-astro-muted">Loading…</p>
+  if (!experiments || !stacks) return <Loading label="Loading the experiments" />
 
   return (
     <div className="space-y-4 text-sm">

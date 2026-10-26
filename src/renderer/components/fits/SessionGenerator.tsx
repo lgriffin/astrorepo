@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { formatExposure } from '../../utils/format'
 import type { AutoSessionPreview, GeneratedSessionResult } from '@shared/types'
+import { Loading } from '../ui'
 
 interface SessionGeneratorProps {
   scanId: string
@@ -81,7 +82,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
   if (loading) {
     return (
       <div className="bg-astro-surface border border-astro-border rounded-lg p-6">
-        <p className="text-astro-muted text-sm">Loading session previews...</p>
+        <Loading label="Loading the night previews" />
       </div>
     )
   }

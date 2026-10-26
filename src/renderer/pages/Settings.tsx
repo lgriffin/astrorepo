@@ -239,7 +239,7 @@ function FoldersSection(): React.ReactElement {
             <p className="mb-2 text-xs text-astro-muted">{folder.description}</p>
             <div className="flex gap-2">
               <div className="flex min-h-9 min-w-0 flex-1 items-center truncate rounded-md border border-astro-border bg-astro-bg px-3 text-sm text-astro-text">
-                {folders === null ? <span className="text-astro-muted">Loading…</span> : folder.value || <span className="text-astro-muted">Not set</span>}
+                {folders === null ? <span className="text-astro-muted">Reading…</span> : folder.value || <span className="text-astro-muted">Not set</span>}
               </div>
               <Button onClick={() => void browse(folder.key)} busy={saving === folder.key} disabled={folders === null} aria-label={`Choose the ${folder.label.toLowerCase()}`}>
                 Choose

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
 import type { WorkflowStage } from '@shared/types'
+import { Loading } from '../ui'
 
 interface WorkflowStepperProps {
   targetId: string
@@ -33,7 +34,7 @@ export function WorkflowStepper({ targetId, currentStage, onStageChanged }: Work
     }
   }
 
-  if (stages.length === 0) return <div className="text-sm text-astro-muted">Loading stages...</div>
+  if (stages.length === 0) return <Loading label="Loading the stages" rows={1} />
 
   return (
     <div className="space-y-3">

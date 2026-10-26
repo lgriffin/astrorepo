@@ -9,6 +9,7 @@ import { SeasonsTable } from '../components/cockpit/SeasonsTable'
 import { MosaicPlanner } from '../components/sky/MosaicPlanner'
 import type { AltitudePoint, BestTargetTonight, ForwardPlanView, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
 import { tokenColor } from '../theme'
+import { Loading } from '../components/ui'
 
 function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement {
   if (data.length < 2) return <p className="text-astro-muted text-sm">No altitude data available</p>
@@ -203,7 +204,7 @@ export function SkyPlanner(): React.ReactElement {
   if (!locationLoaded) {
     return (
       <PageContainer>
-        <p className="text-astro-muted text-sm">Loading observer location...</p>
+        <Loading label="Loading your site" />
       </PageContainer>
     )
   }

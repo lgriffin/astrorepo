@@ -5,6 +5,7 @@ import { StatCard } from '../components/common/StatCard'
 import { useToast } from '../contexts/ToastContext'
 import { invoke } from '../hooks/useIPC'
 import { formatSize } from '../utils/format'
+import { Loading } from '../components/ui'
 import type {
   StackingSummary, StackingSummaryRow, StackedWithSubFrames, SubFrameInfo,
   TargetIntegrationProgress, FilterProgress
@@ -42,7 +43,7 @@ export function StackingAnalysis(): React.ReactElement {
   if (loading) {
     return (
       <PageContainer>
-        <div className="text-center py-12 text-astro-muted">Loading stacking data...</div>
+        <Loading label="Loading the stacks" rows={5} />
       </PageContainer>
     )
   }
@@ -215,7 +216,7 @@ function SubFrameBreakdownSection({ rows }: { rows: StackingSummaryRow[] }): Rea
               {isExpanded && (
                 <div className="px-4 pb-3 border-t border-astro-border/50">
                   {isLoading ? (
-                    <p className="py-3 text-astro-muted text-sm">Loading sub-frames...</p>
+                    <Loading label="Loading the frames" className="py-3" />
                   ) : data ? (
                     <SubFrameTable data={data} />
                   ) : (

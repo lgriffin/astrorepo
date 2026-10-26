@@ -7,6 +7,7 @@ import { PictureViewer } from '../components/gallery/PictureViewer'
 import { invoke } from '../hooks/useIPC'
 import { settingsLink } from '@shared/navigation'
 import type { GalleryPictureView, GalleryView } from '@shared/types'
+import { Loading } from '../components/ui'
 
 type Sort = 'newest' | 'name' | 'object'
 
@@ -77,7 +78,7 @@ export function Images(): React.ReactElement {
   if (!view) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading pictures…</div>
+        <Loading label="Loading the pictures" rows={4} />
       </PageContainer>
     )
   }

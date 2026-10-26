@@ -8,6 +8,7 @@ import { formatExposure } from '../utils/format'
 import type { InsightsSummary, MonthlyActivity, BestNight, QualityTrendPoint, FilterUsage, TargetProgress } from '@shared/types'
 import { tokenColor } from '../theme'
 import { CATEGORY_TOKENS } from '@shared/themes'
+import { Loading } from '../components/ui'
 
 function BarChart({ data, labelKey, valueKey, color = tokenColor('accent') }: {
   data: Array<Record<string, unknown>>
@@ -165,7 +166,7 @@ export function Insights(): React.ReactElement {
         <div className="space-y-6">
           <ObservatoryTotals />
           {loading ? (
-            <p className="text-astro-muted text-sm">Loading the trends…</p>
+            <Loading label="Loading the trends" />
           ) : (
             <Card title="Trends">
               <EmptyState action={<LinkButton onClick={() => void loadData()}>Try again</LinkButton>}>

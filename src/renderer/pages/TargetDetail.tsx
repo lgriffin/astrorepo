@@ -12,6 +12,7 @@ import { SkyGeometryCard } from '../components/target/SkyGeometryCard'
 import { invoke } from '../hooks/useIPC'
 import { TARGET_TABS, targetLink, targetTabFrom, type TargetTab } from '@shared/navigation'
 import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
+import { Loading } from '../components/ui'
 
 /**
  * A target's page (specs/017-unified-ux, UX-009): Overview, Stack and process, Files, and Notes and
@@ -66,8 +67,8 @@ export function TargetDetail(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="Loading…">
-        <EmptyState>Loading the target…</EmptyState>
+      <PageContainer title="Target">
+        <Loading label="Loading the target" rows={5} />
       </PageContainer>
     )
   }
