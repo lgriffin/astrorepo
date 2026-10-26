@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MosaicAssignmentStore, MosaicWorkspaceStore } from '@astro/application'
+import type { IntegrationGoalSource, MosaicAssignmentStore, MosaicWorkspaceStore } from '@astro/application'
 import { layoutGrid } from '@astro/domain'
 import { gridDefinition } from '../fake-mosaic-workspace'
 
@@ -94,6 +94,30 @@ export function mosaicAssignmentStoreContract(adapterName: string, make: () => M
       expect((await store.overrides('w1', 2)).map(o => [o.captureId, o.action, o.revision])).toEqual([['/a.fit', 'exclude', 2]])
       // A revision with no change of its own carries the last one forward.
       expect((await store.overrides('w1', 3)).map(o => o.captureId)).toEqual(['/a.fit'])
+    })
+  })
+}
+
+/**
+ * Every IntegrationGoalSource adapter must pass this suite. `make` returns a source holding these
+ * goals; targets 'm31' and 'm42' exist.
+ */
+export function integrationGoalSourceContract(adapterName: string, make: (goals: { targetId: string; filter: string; seconds: number }[]) => IntegrationGoalSource): void {
+  describe(`IntegrationGoalSource contract: ${adapterName}`, () => {
+    it('[MO-008] Given goals on two targets, When one target is asked for, Then only its goals come back by filter', async () => {
+      const source = make([
+        { targetId: 'm31', filter: 'OIII', seconds: 7200 },
+        { targetId: 'm31', filter: 'Ha', seconds: 10800 },
+        { targetId: 'm42', filter: 'Ha', seconds: 3600 }
+      ])
+      expect(await source.goalsOf('m31')).toEqual([{ filter: 'Ha', seconds: 10800 }, { filter: 'OIII', seconds: 7200 }])
+      expect(await source.goalsOf('m42')).toEqual([{ filter: 'Ha', seconds: 3600 }])
+    })
+
+    it('[MO-008] Given a target with no goal, When asked for, Then nothing comes back', async () => {
+      const source = make([{ targetId: 'm31', filter: 'Ha', seconds: 60 }])
+      expect(await source.goalsOf('m42')).toEqual([])
+      expect(await source.goalsOf('nope')).toEqual([])
     })
   })
 }

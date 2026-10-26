@@ -1,4 +1,4 @@
-import type { AssignmentOverride, GridDefinition, PlannedPanel } from '@astro/domain'
+import type { AssignmentOverride, FilterSeconds, GridDefinition, PlannedPanel } from '@astro/domain'
 
 export type WorkspaceStatus = 'active' | 'archived'
 
@@ -66,4 +66,13 @@ export interface MosaicAssignmentStore {
   set(workspaceId: string, override: AssignmentOverride): Promise<void>
   /** Clears it from that revision on, so the computed placement counts again there; earlier revisions keep theirs. */
   clear(workspaceId: string, captureId: string, revision: number, at: Date): Promise<void>
+}
+
+/**
+ * Driven port: a target's integration goals, one per filter, which each panel of its mosaic is
+ * measured against (MO-008). Adapters: SQLite (desktop), in-memory (testkit).
+ */
+export interface IntegrationGoalSource {
+  /** The target's goals by filter, in seconds, ordered by filter; empty when none is set. */
+  goalsOf(targetId: string): Promise<FilterSeconds[]>
 }

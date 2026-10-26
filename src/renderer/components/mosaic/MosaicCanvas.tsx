@@ -13,6 +13,21 @@ interface MosaicCanvasProps {
   thumbnails?: Record<string, string>
   selectedCapture?: string | null
   onSelectCapture?: (captureId: string) => void
+  /** An exposure heat map over the panels (X3): cells of one size, shaded by depth; uncovered cells marked. */
+  heat?: HeatMap
+}
+
+export interface HeatMap {
+  cellDeg: number
+  cells: { x: number; y: number; value: number }[]
+  /** The value drawn at full strength. */
+  max: number
+}
+
+/** A cell's opacity: uncovered cells faint, covered ones from light to strong by depth. */
+export function heatOpacity(value: number, max: number): number {
+  if (value <= 0 || max <= 0) return 0
+  return 0.15 + 0.6 * Math.min(1, value / max)
 }
 
 /** Outline colour by review state: accepted green, to review amber, conflict red, left out grey. */
@@ -38,7 +53,7 @@ export function imageMatrix(outline: { x: number; y: number }[]): string | null 
  * out on the grid's tangent plane, east on the left and north up. Dragging moves the whole grid;
  * the core works out where its centre lands and lays it out again.
  */
-export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [], thumbnails = {}, selectedCapture = null, onSelectCapture }: MosaicCanvasProps): React.ReactElement | null {
+export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [], thumbnails = {}, selectedCapture = null, onSelectCapture, heat }: MosaicCanvasProps): React.ReactElement | null {
   const svg = useRef<SVGSVGElement | null>(null)
   const [drag, setDrag] = useState<{ from: { x: number; y: number }; by: { x: number; y: number }; panel: string | null; capture: string | null } | null>(null)
   if (!drawing.ok || !drawing.bounds) return null
@@ -114,6 +129,21 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [
             </g>
           )
         })}
+        {heat && (
+          <g pointerEvents="none">
+            {heat.cells.map(c => (
+              <rect
+                key={`${c.x},${c.y}`}
+                x={c.x - heat.cellDeg / 2}
+                y={-c.y - heat.cellDeg / 2}
+                width={heat.cellDeg}
+                height={heat.cellDeg}
+                className={c.value > 0 ? 'fill-astro-accent' : 'fill-amber-400'}
+                opacity={c.value > 0 ? heatOpacity(c.value, heat.max) : 0.3}
+              />
+            ))}
+          </g>
+        )}
         {captures.map(c => {
           const thumbnail = c.fileId ? thumbnails[c.fileId] : undefined
           const matrix = imageMatrix(c.outline)

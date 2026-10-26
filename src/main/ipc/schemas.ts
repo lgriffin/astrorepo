@@ -409,6 +409,8 @@ export const schemas = {
     z.object({ action: z.literal('clear'), workspace_id: id, capture_id: z.string().min(1).max(1000) })
   ]),
   'workspace:preview-changes': z.object({ workspace_id: id, grid: workspaceGrid }),
+  'workspace:coverage': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
+  'workspace:export-next': z.object({ workspace_id: id, format: z.enum(['csv', 'json']), revision: z.number().int().min(1).optional() }),
 
   'vespera:settings': z.object({}).optional(),
 
