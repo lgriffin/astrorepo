@@ -1,5 +1,7 @@
 import React from 'react'
 import type { CalibrationGroup } from '@shared/types'
+import { Link } from 'react-router-dom'
+import { Card, EmptyState } from '../common/Card'
 
 interface CalibrationTableProps {
   groups: CalibrationGroup[]
@@ -33,9 +35,11 @@ function typeBadgeClass(type: string): string {
 export function CalibrationTable({ groups }: CalibrationTableProps): React.ReactElement {
   if (groups.length === 0) {
     return (
-      <div className="bg-astro-surface border border-astro-border rounded-lg p-6 text-center text-astro-muted">
-        No calibration frames found. Run a FITS scan to detect calibration files.
-      </div>
+      <Card title="Calibration frames">
+        <EmptyState action={<Link to="/library" className="text-xs text-astro-accent hover:underline">Scan your library</Link>}>
+          No darks, flats or biases yet. A library scan finds them and works out which lights they cover.
+        </EmptyState>
+      </Card>
     )
   }
 

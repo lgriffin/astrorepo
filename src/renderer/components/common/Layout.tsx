@@ -23,6 +23,13 @@ export function Layout({ children }: LayoutProps): React.ReactElement {
 
   return (
     <div className="flex h-screen bg-astro-bg text-astro-text overflow-hidden">
+      <a
+        href="#main"
+        onClick={e => { e.preventDefault(); document.getElementById('main')?.focus() }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-astro-accent focus:px-3 focus:py-2 focus:text-sm focus:text-astro-on-accent"
+      >
+        Skip to the page
+      </a>
       <Sidebar onSearch={() => setPalette(true)} />
       <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none focus-visible:outline-none">{children}</main>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Button } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { formatSize } from '../../utils/format'
 import type { FitsFileSummary } from '@shared/types'
@@ -94,13 +95,13 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
       <div className="px-4 py-3 border-b border-astro-border flex flex-wrap gap-2 items-center">
         <span className="text-sm text-astro-muted">{total} files</span>
         {showQuality && (
-          <button
+          <Button
+            variant="primary"
             onClick={handleAnalyzeAll}
-            disabled={analyzingAll}
-            className="text-sm px-3 py-1 rounded bg-astro-accent text-astro-on-accent hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+            busy={analyzingAll}
           >
-            {analyzingAll ? 'Analyzing...' : 'Analyze quality'}
-          </button>
+            {analyzingAll ? 'Measuring…' : 'Measure quality'}
+          </Button>
         )}
         <select value={filterFolder} onChange={e => { setFilterFolder(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
           <option value="">All folders</option>

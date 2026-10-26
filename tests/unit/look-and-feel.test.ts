@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { appIconDataUrl } from '../../src/shared/logo'
 import path from 'path'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -29,7 +30,13 @@ function files(dir: string, ext: RegExp): string[] {
 function fakeDocument() {
   const vars = new Map<string, string>()
   const root = { style: { setProperty: (k: string, v: string) => vars.set(k, v), colorScheme: '' }, dataset: {} as Record<string, string> }
-  return { doc: { documentElement: root } as unknown as Document, vars, root }
+  const links: Array<Record<string, string>> = []
+  const head = {
+    querySelector: () => links[0] ?? null,
+    appendChild: (link: Record<string, string>) => void links.push(link)
+  }
+  const doc = { documentElement: root, head, createElement: () => ({}) }
+  return { doc: doc as unknown as Document, vars, root, links }
 }
 
 function fakeWindow(storage: Partial<Storage> | 'blocked') {
@@ -49,8 +56,12 @@ const control = (c: { id: string; describedBy: string | undefined; invalid: bool
 describe('Themes on screen (specs/041-look-and-feel)', () => {
   it('[LF-001] Given each theme, When it is applied, Then every token becomes a CSS variable and the browser controls match', () => {
     for (const theme of THEMES) {
-      const { doc, vars, root } = fakeDocument()
+      const { doc, vars, root, links } = fakeDocument()
       applyTheme(doc, theme)
+      applyTheme(doc, theme)
+      // One favicon link, reused when the theme changes (LF-031).
+      expect(links).toHaveLength(1)
+      expect(links[0]).toMatchObject({ rel: 'icon', href: appIconDataUrl(PALETTES[theme]) })
       expect([...vars.keys()]).toEqual(TOKENS.map(t => `--astro-${t}`))
       expect(vars.get('--astro-bg')).toBe(hexChannels(PALETTES[theme].bg).join(' '))
       expect(root.dataset.theme).toBe(theme)

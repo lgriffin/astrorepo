@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { Button } from '../components/ui'
 import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { useToast } from '../contexts/ToastContext'
@@ -132,13 +133,13 @@ export function SessionForm(): React.ReactElement {
         </FormSection>
 
         <div className="flex gap-3 pt-2">
-          <button
+          <Button
+            variant="primary"
             type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-astro-accent text-astro-on-accent rounded-lg hover:bg-astro-accent/80 disabled:opacity-50"
+            busy={saving}
           >
-            {saving ? 'Saving...' : 'Save session'}
-          </button>
+            {saving ? 'Saving…' : 'Save session'}
+          </Button>
           <button
             type="button"
             onClick={() => navigate(-1)}

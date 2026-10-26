@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { locate, type NavPlace } from '@shared/navigation'
+import { windowTitle } from '@shared/layout'
 
 interface PageContainerProps {
   /** Only a detail page names itself (a target's name); a place takes its name from the sidebar. */
@@ -48,11 +49,14 @@ export function PlacePages({ place, current }: { place: NavPlace; current: strin
  */
 export function PageContainer({ title, subtitle, actions, children }: PageContainerProps): React.ReactElement {
   const here = locate(useLocation().pathname)
+  const heading = title ?? here?.item.label ?? ''
+
+  useEffect(() => { document.title = windowTitle(heading) }, [heading])
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {here && !here.detail && <PlacePages place={here.place} current={here.item.id} />}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           {here?.detail && (
             <Link to={here.item.to} className="inline-flex items-center gap-1 text-xs text-astro-muted hover:text-astro-accent">
@@ -60,7 +64,7 @@ export function PageContainer({ title, subtitle, actions, children }: PageContai
               {here.item.label}
             </Link>
           )}
-          <h1 className="text-2xl font-bold text-astro-text">{title ?? here?.item.label ?? ''}</h1>
+          <h1 className="text-2xl font-bold text-astro-text">{heading}</h1>
           {here && !here.detail && <p className="mt-1 text-sm text-astro-muted">{here.item.hint}</p>}
           {subtitle && <p className={`text-sm text-astro-muted ${here && !here.detail ? 'text-xs mt-0.5' : 'mt-1'}`}>{subtitle}</p>}
         </div>

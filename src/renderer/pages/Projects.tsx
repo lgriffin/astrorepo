@@ -223,7 +223,7 @@ export function Projects(): React.ReactElement {
                 ))}
               </ul>
             )}
-            <Button onClick={create}>Start the project</Button>
+            <Button variant="primary" onClick={create}>Start the project</Button>
           </div>
         </Card>
       </div>

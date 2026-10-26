@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { formatExposure } from '../../utils/format'
 import type { AutoSessionPreview, GeneratedSessionResult } from '@shared/types'
-import { Loading } from '../ui'
+import { Loading, Button } from '../ui'
 
 interface SessionGeneratorProps {
   scanId: string
@@ -113,12 +113,12 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
             </ul>
           </div>
         )}
-        <button
+        <Button
+          variant="primary"
           onClick={onComplete}
-          className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors"
         >
           Done
-        </button>
+        </Button>
       </div>
     )
   }
@@ -131,13 +131,13 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-astro-text">Generate sessions from FITS</h3>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="primary"
             onClick={handleGenerate}
             disabled={!hasSelection || generating}
-            className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
           >
-            {generating ? 'Generating...' : `Generate ${selected.size > 0 ? `(${selected.size})` : 'All'}`}
-          </button>
+            {generating ? 'Generating…' : `Generate ${selected.size > 0 ? `(${selected.size})` : 'All'}`}
+          </Button>
         </div>
       </div>
 

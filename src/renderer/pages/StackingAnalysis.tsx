@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext'
 import { invoke } from '../hooks/useIPC'
 import { formatSize } from '../utils/format'
 import { Loading } from '../components/ui'
+import { EmptyState } from '../components/common/Card'
 import type {
   StackingSummary, StackingSummaryRow, StackedWithSubFrames, SubFrameInfo,
   TargetIntegrationProgress, FilterProgress
@@ -68,7 +69,7 @@ function StackingSummarySection({ summary }: { summary: StackingSummary | null }
   if (!summary || summary.totalStacked === 0) {
     return (
       <Section title="Stacking summary">
-        <p className="text-astro-muted text-sm">No stacked files found. Run a FITS scan to detect stacked masters.</p>
+        <EmptyState action={<Link to="/library" className="text-xs text-astro-accent hover:underline">Scan your library</Link>}>No stacked files yet. A library scan finds your stacked masters.</EmptyState>
       </Section>
     )
   }
@@ -181,7 +182,7 @@ function SubFrameBreakdownSection({ rows }: { rows: StackingSummaryRow[] }): Rea
   if (rows.length === 0) {
     return (
       <Section title="Sub-frame breakdown">
-        <p className="text-astro-muted text-sm">No stacked files to analyze.</p>
+        <EmptyState>The frames inside each stack show here once there are stacked files.</EmptyState>
       </Section>
     )
   }
@@ -303,7 +304,7 @@ function IntegrationProgressSection({ targets, onGoalChanged }: {
   if (targets.length === 0) {
     return (
       <Section title="Integration progress">
-        <p className="text-astro-muted text-sm">No linked light frames found. Run a FITS scan and link files to targets.</p>
+        <EmptyState action={<Link to="/library" className="text-xs text-astro-accent hover:underline">Scan your library</Link>}>No light frames linked to targets yet. A library scan finds them and links them.</EmptyState>
       </Section>
     )
   }

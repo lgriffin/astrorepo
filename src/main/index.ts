@@ -28,6 +28,8 @@ function createWindow(): void {
     minWidth: 1024,
     minHeight: 700,
     title: 'AstroRepo — Observatory Manager',
+    // The mark on its tile (LF-031); Windows takes the taskbar icon from the packaged .ico.
+    icon: path.join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,

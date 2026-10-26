@@ -3,7 +3,7 @@ import { invoke } from '../../hooks/useIPC'
 import { formatSize } from '../../utils/format'
 import { Inspector } from './Inspector'
 import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, QualityMetrics } from '@shared/types'
-import { Loading } from '../ui'
+import { Loading, Button } from '../ui'
 
 interface FileDetailProps {
   fileId: string
@@ -252,13 +252,13 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               </div>
             </div>
           ) : (
-            <button
+            <Button
+              variant="primary"
               onClick={handleAnalyze}
-              disabled={analyzing}
-              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-astro-on-accent hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+              busy={analyzing}
             >
-              {analyzing ? 'Analyzing...' : 'Analyze quality'}
-            </button>
+              {analyzing ? 'Measuring…' : 'Measure quality'}
+            </Button>
           )}
         </div>
 

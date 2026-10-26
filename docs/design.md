@@ -59,6 +59,19 @@ pages build with these; older pages move onto them slice by slice. Place icons a
   so an empty page always leads somewhere. Loading text such as "Reading the pixels…" is a
   `Loading` label, never a plain line; the flows test catches both.
 
+## App icon
+
+The icon is the sidebar mark on a rounded tile, built from the shared geometry in
+`src/shared/logo.ts`. The favicon is drawn from the open theme each time it changes. For the
+desktop app, `npx tsx scripts/app-icon.ts` writes `resources/icon.svg` in the dark palette and
+wraps `resources/icon.png` (256×256, drawn from that SVG in any browser) as `resources/icon.ico`.
+A test fails when the committed SVG no longer matches the mark.
+
+## Small screens
+
+Below 1024 px wide (the 800×480 Pi kiosk) the sidebar starts as a rail of icons until it is
+opened on that screen, which is then remembered. Page headers wrap their actions under the title.
+
 ## The Star atlas world
 
 Leigh chose the **Star atlas** direction (25 October 2026): the app reads like a deep-sky atlas
