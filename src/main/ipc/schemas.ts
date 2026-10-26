@@ -67,6 +67,7 @@ export const schemas = {
     query: z.string(),
     limit: z.number().int().positive().optional(),
     offset: z.number().int().nonnegative().optional(),
+    scope: z.enum(['mine', 'all']).optional(),
     object_type: z.string().optional(),
     workflow_stage: z.string().optional(),
     sort_by: z.enum(['name', 'magnitude', 'constellation', 'workflow_stage']).optional(),

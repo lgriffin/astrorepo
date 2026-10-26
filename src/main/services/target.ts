@@ -10,6 +10,8 @@ interface SearchResult {
 }
 
 interface SearchOptions {
+  /** 'mine' keeps to the targets the user has worked on (LF-020); 'all' is the whole catalogue. */
+  scope?: 'mine' | 'all'
   objectType?: string
   workflowStage?: string
   sortBy?: string
@@ -30,9 +32,21 @@ function buildOrderClause(sortBy?: string, sortDir?: string): string {
   return `${col} ${dir}`
 }
 
+/**
+ * A target is the user's own once anything of theirs points at it: added by hand, moved past "not
+ * observed", given a folder, found in the library or the FITS index, logged on a night, or put in a
+ * collection they made (a catalogue's own collection does not count).
+ */
+const MINE = `(t.is_custom = 1 OR t.workflow_stage != 'not_observed' OR t.folder_path IS NOT NULL
+  OR EXISTS (SELECT 1 FROM fits_files f WHERE f.target_id = t.id)
+  OR EXISTS (SELECT 1 FROM target_home_folders h WHERE h.target_id = t.id)
+  OR EXISTS (SELECT 1 FROM session_targets st WHERE st.target_id = t.id)
+  OR EXISTS (SELECT 1 FROM collection_memberships cm JOIN collections c ON c.id = cm.collection_id WHERE cm.target_id = t.id AND c.is_auto = 0))`
+
 function buildFilterClauses(opts: SearchOptions): { where: string; params: unknown[] } {
   const clauses: string[] = []
   const params: unknown[] = []
+  if (opts.scope === 'mine') clauses.push(MINE)
   if (opts.objectType) {
     clauses.push('t.object_type = ?')
     params.push(opts.objectType)

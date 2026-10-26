@@ -113,6 +113,37 @@ describe('TargetService', () => {
       expect(result.targets).toHaveLength(2)
     })
 
+    it('[LF-020] Given catalogue targets, When searching only yours, Then a target counts once a file, folder, night, stage, hand entry or own collection points at it, and a catalogue collection does not', () => {
+      const now = '2026-10-26T00:00:00Z'
+      const add = (id: string, over = '') =>
+        sqlite.prepare(`INSERT INTO targets (id, canonical_name, object_type, created_at, updated_at${over ? ', ' + over.split('=')[0] : ''}) VALUES (?, ?, 'galaxy', ?, ?${over ? ', ?' : ''})`)
+          .run(...[id, `T ${id}`, now, now, ...(over ? [over.split('=')[1]] : [])])
+      for (const id of ['plain', 'filed', 'homed', 'logged', 'mine-col', 'cat-col']) add(id)
+      add('staged', "workflow_stage=stacked")
+      add('foldered', 'folder_path=D:/astro/x')
+      createTarget({ canonicalName: 'By hand', objectType: 'galaxy' })
+
+      sqlite.prepare(`INSERT INTO fits_scans (id, folder_path, started_at, created_at) VALUES ('s1', 'D:/', ?, ?)`).run(now, now)
+      sqlite.prepare(`INSERT INTO fits_files (id, scan_id, file_path, file_name, file_size_bytes, target_id, created_at) VALUES ('f1', 's1', 'D:/a.fit', 'a.fit', 1, 'filed', ?)`).run(now)
+      sqlite.prepare(`INSERT INTO target_home_folders (id, target_id, folder_type, subfolder_path, scanned_at) VALUES ('h1', 'homed', 'lights', 'D:/h', ?)`).run(now)
+      sqlite.prepare(`INSERT INTO observation_sessions (id, date, created_at, updated_at) VALUES ('n1', '2026-10-25', ?, ?)`).run(now, now)
+      sqlite.prepare(`INSERT INTO session_targets (session_id, target_id) VALUES ('n1', 'logged')`).run()
+      sqlite.prepare(`INSERT INTO collections (id, name, is_auto, created_at, updated_at) VALUES ('c1', 'Winter', 0, ?, ?), ('c2', 'Messier', 1, ?, ?)`).run(now, now, now, now)
+      sqlite.prepare(`INSERT INTO collection_memberships (collection_id, target_id, added_at) VALUES ('c1', 'mine-col', ?), ('c2', 'cat-col', ?)`).run(now, now)
+
+      const mine = searchTargets('', 50, 0, { scope: 'mine' })
+      expect(mine.targets.map(t => t.canonicalName).sort()).toEqual(['By hand', 'T filed', 'T foldered', 'T homed', 'T logged', 'T mine-col', 'T staged'])
+      expect(mine.total).toBe(7)
+      expect(searchTargets('', 50, 0, { scope: 'all' }).total).toBe(9)
+      // The scope holds for a typed search too, by name and by alias.
+      expect(searchTargets('T', 50, 0, { scope: 'mine' }).targets.every(t => t.canonicalName !== 'T plain')).toBe(true)
+      addAlias('plain', 'NGC 1', 'ngc')
+      expect(searchTargets('NGC 1', 50, 0, { scope: 'mine' }).total).toBe(0)
+      expect(searchTargets('NGC 1', 50, 0, { scope: 'all' }).total).toBe(1)
+      // Logged nights are looked up by target, so that lookup has its own index.
+      expect(sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_session_targets_target'").get()).toBeTruthy()
+    })
+
     it('Given a target has an alias, When searching by alias text, Then the target appears in results', () => {
       const t = createTarget({ canonicalName: 'Eagle Nebula', objectType: 'emission_nebula' })
       addAlias(t.id, 'M16', 'messier')

@@ -1,46 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
+import { EmptyState } from '../components/common/Card'
 import { SearchBar } from '../components/target/SearchBar'
 import { TargetCard } from '../components/target/TargetCard'
+import { Button, Select, Tabs } from '../components/ui'
 import { invoke } from '../hooks/useIPC'
+import { OBJECT_TYPE_FILTERS, TARGET_SCOPES, TARGET_SORTS, stageWords, targetCountLine, type TargetScope } from '@shared/target-list'
 import type { TargetSummary, WorkflowStage, CollectionWithStats } from '@shared/types'
 
 const PAGE_SIZE = 48
 
-const objectTypeFilters = [
-  { value: '', label: 'All Types' },
-  { value: 'galaxy', label: 'Galaxies' },
-  { value: 'emission_nebula', label: 'Emission Nebulae' },
-  { value: 'reflection_nebula', label: 'Reflection Nebulae' },
-  { value: 'planetary_nebula', label: 'Planetary Nebulae' },
-  { value: 'dark_nebula', label: 'Dark Nebulae' },
-  { value: 'open_cluster', label: 'Open Clusters' },
-  { value: 'globular_cluster', label: 'Globular Clusters' },
-  { value: 'supernova_remnant', label: 'Supernova Remnants' },
-  { value: 'galaxy_cluster', label: 'Galaxy Clusters' },
-  { value: 'star', label: 'Stars' },
-  { value: 'custom', label: 'Custom Targets' }
-]
-
-const sortOptions = [
-  { value: 'name:asc', label: 'Name A-Z' },
-  { value: 'name:desc', label: 'Name Z-A' },
-  { value: 'magnitude:asc', label: 'Magnitude (brightest)' },
-  { value: 'magnitude:desc', label: 'Magnitude (faintest)' },
-  { value: 'constellation:asc', label: 'Constellation' },
-  { value: 'workflow_stage:asc', label: 'Workflow Stage' }
-]
-
 export function TargetList(): React.ReactElement {
+  const navigate = useNavigate()
   const [targets, setTargets] = useState<TargetSummary[]>([])
   const [total, setTotal] = useState(0)
+  const [scope, setScope] = useState<TargetScope>('mine')
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [stageFilter, setStageFilter] = useState('')
   const [sort, setSort] = useState('name:asc')
   const [page, setPage] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [stages, setStages] = useState<WorkflowStage[]>([])
+  // Choosing is a mode: cards stay links until the user asks to pick some (LF-022).
+  const [choosing, setChoosing] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   // Batch action state
@@ -55,7 +39,11 @@ export function TargetList(): React.ReactElement {
     invoke<WorkflowStage[]>('workflow:stages').then(setStages)
   }, [])
 
+  // Only the newest search may fill the page: an older answer (another tab, an earlier query)
+  // that comes back late is dropped rather than shown under the wrong tab.
+  const latest = useRef(0)
   const fetchTargets = useCallback(async () => {
+    const asked = ++latest.current
     setLoading(true)
     try {
       const [sortBy, sortDir] = sort.split(':')
@@ -63,17 +51,19 @@ export function TargetList(): React.ReactElement {
         query,
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
+        scope,
         object_type: typeFilter || undefined,
         workflow_stage: stageFilter || undefined,
         sort_by: sortBy as 'name' | 'magnitude' | 'constellation' | 'workflow_stage',
         sort_dir: sortDir as 'asc' | 'desc'
       })
+      if (asked !== latest.current) return
       setTargets(result.targets)
       setTotal(result.total)
     } finally {
-      setLoading(false)
+      if (asked === latest.current) setLoading(false)
     }
-  }, [query, page, typeFilter, stageFilter, sort])
+  }, [query, page, scope, typeFilter, stageFilter, sort])
 
   useEffect(() => {
     fetchTargets()
@@ -93,16 +83,37 @@ export function TargetList(): React.ReactElement {
     })
   }, [])
 
-  const selectAll = useCallback(() => {
-    setSelected(new Set(targets.map(t => t.id)))
-  }, [targets])
-
   const clearSelection = useCallback(() => {
     setSelected(new Set())
     setShowBatchStage(false)
     setShowBatchCollection(false)
     setShowBatchDelete(false)
   }, [])
+
+  // What was chosen on one tab is not shown on the other, so a batch change never reaches
+  // targets the user cannot see.
+  const changeScope = (next: TargetScope) => {
+    clearSelection()
+    setScope(next)
+    setPage(0)
+  }
+
+  const stopChoosing = () => {
+    clearSelection()
+    setChoosing(false)
+  }
+
+  const allShownSelected = targets.length > 0 && targets.every(t => selected.has(t.id))
+  // Ticks or clears only the cards on this page; choices on other pages stay.
+  const toggleAllShown = () =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      for (const t of targets) {
+        if (allShownSelected) next.delete(t.id)
+        else next.add(t.id)
+      }
+      return next
+    })
 
   const handleBatchAdvance = async () => {
     if (!batchStage) return
@@ -131,172 +142,159 @@ export function TargetList(): React.ReactElement {
   }
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
+  const filtered = Boolean(query || typeFilter || stageFilter)
 
-  const selectClass = 'px-3 py-2.5 bg-astro-surface border border-astro-border rounded-lg text-astro-text text-sm focus:outline-none focus:border-astro-accent'
+  const empty = (): React.ReactNode => {
+    if (scope === 'mine' && filtered) {
+      return (
+        <EmptyState action={<Button size="sm" onClick={() => changeScope('all')}>Search the whole catalogue</Button>}>
+          None of your targets match. The whole catalogue may have it.
+        </EmptyState>
+      )
+    }
+    if (scope === 'mine') {
+      return (
+        <EmptyState
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="primary" onClick={() => navigate('/library')}>Scan your library</Button>
+              <Button size="sm" onClick={() => changeScope('all')}>Browse the whole catalogue</Button>
+            </div>
+          }
+        >
+          No targets of yours yet. A target becomes yours once your files, a night or a collection of yours mention it.
+        </EmptyState>
+      )
+    }
+    return <EmptyState>{filtered ? 'No targets match your filters.' : 'The catalogue is empty.'}</EmptyState>
+  }
 
   return (
-    <PageContainer subtitle={`${total} targets found`}>
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-3 items-start">
+    <PageContainer subtitle={loading ? undefined : targetCountLine(total, scope, filtered)}>
+      <div className={`space-y-4 ${selected.size > 0 ? 'pb-20' : ''}`}>
+        <Tabs tabs={TARGET_SCOPES} active={scope} onChange={changeScope} label="Which targets" />
+
+        <div className="flex flex-wrap gap-3 items-center">
           <div className="flex-1 min-w-[200px]">
             <SearchBar onSearch={handleSearch} />
           </div>
-          <select
-            value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value); setPage(0) }}
-            className={selectClass}
-          >
-            {objectTypeFilters.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
-          <select
-            value={stageFilter}
-            onChange={(e) => { setStageFilter(e.target.value); setPage(0) }}
-            className={selectClass}
-          >
-            <option value="">All Stages</option>
-            {stages.map((s) => (
-              <option key={s.id} value={s.name}>
-                {s.name.replace(/_/g, ' ')}
-              </option>
-            ))}
-          </select>
-          <select
-            value={sort}
-            onChange={(e) => { setSort(e.target.value); setPage(0) }}
-            className={selectClass}
-          >
-            {sortOptions.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-          <button
-            onClick={selected.size === targets.length ? clearSelection : selectAll}
-            className="px-3 py-2.5 bg-astro-surface border border-astro-border rounded-lg text-astro-muted text-sm hover:text-astro-text"
-          >
-            {selected.size > 0 ? 'Deselect all' : 'Select all'}
-          </button>
+          <div className="w-48 shrink-0">
+            <Select aria-label="Object type" value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(0) }}>
+              {OBJECT_TYPE_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-40 shrink-0">
+            <Select aria-label="Stage" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setPage(0) }}>
+              <option value="">All stages</option>
+              {stages.map((s) => (
+                <option key={s.id} value={s.name}>{stageWords(s.name)}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-44 shrink-0">
+            <Select aria-label="Sort by" value={sort} onChange={(e) => { setSort(e.target.value); setPage(0) }}>
+              {TARGET_SORTS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </Select>
+          </div>
+          {choosing ? (
+            <>
+              <Button onClick={toggleAllShown}>{allShownSelected ? 'Clear this page' : 'Choose this page'}</Button>
+              <Button variant="ghost" onClick={stopChoosing}>Done</Button>
+            </>
+          ) : (
+            <Button onClick={() => setChoosing(true)}>Choose targets</Button>
+          )}
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-astro-muted">Loading targets...</div>
+          <div role="status" aria-label="Loading targets" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }, (_, i) => <div key={i} aria-hidden className="h-28 animate-pulse rounded-lg bg-astro-raised" />)}
+          </div>
         ) : targets.length === 0 ? (
-          <div className="text-center py-12 text-astro-muted">
-            {query || typeFilter || stageFilter ? 'No targets match your filters.' : 'No targets loaded yet.'}
-          </div>
+          empty()
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {targets.map((target) => (
-              <div key={target.id} className="relative">
-                <div
-                  className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
-                    selected.has(target.id)
-                      ? 'bg-astro-accent border-astro-accent'
-                      : 'bg-astro-bg/80 border-astro-border hover:border-astro-accent/50'
-                  }`}
-                  onClick={(e) => { e.stopPropagation(); toggleSelect(target.id) }}
-                >
-                  {selected.has(target.id) && (
-                    <svg viewBox="0 0 12 12" className="w-3 h-3 text-astro-on-accent fill-current">
-                      <path d="M10 3L4.5 8.5 2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
+              <li key={target.id} className="flex items-stretch gap-2">
+                {choosing && (
+                  <label className="flex shrink-0 cursor-pointer items-start pt-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(target.id)}
+                      onChange={() => toggleSelect(target.id)}
+                      aria-label={`Choose ${target.canonicalName}`}
+                      className="h-4 w-4 accent-astro-accent"
+                    />
+                  </label>
+                )}
+                <div className="min-w-0 flex-1">
+                  <TargetCard target={target} stages={stages} />
                 </div>
-                <TargetCard target={target} stages={stages} />
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded
-                         text-sm text-astro-muted hover:text-astro-text disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-astro-muted">
-              Page {page + 1} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded
-                         text-sm text-astro-muted hover:text-astro-text disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
+          <nav aria-label="Pages" className="flex items-center justify-center gap-2 pt-4">
+            <Button size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>Previous</Button>
+            <span className="text-sm text-astro-muted">Page {page + 1} of {totalPages}</span>
+            <Button size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>Next</Button>
+          </nav>
         )}
 
-        {/* Batch Action Toolbar */}
+        {/* What to do with the chosen targets; it stays at the bottom of the page, whatever the sidebar's width. */}
         {selected.size > 0 && (
-          <div className="fixed bottom-0 left-56 right-0 bg-astro-surface border-t border-astro-border p-3 flex items-center gap-3 z-50">
-            <span className="text-sm text-astro-text font-medium">{selected.size} selected</span>
+          <div role="region" aria-label="Chosen targets" className="sticky bottom-0 z-20 -mx-1 flex flex-wrap items-center gap-3 rounded-lg border border-astro-border bg-astro-surface p-3 shadow-lg">
+            <span className="text-sm text-astro-text font-medium">{selected.size} chosen</span>
             <div className="h-4 w-px bg-astro-border" />
 
             {showBatchStage ? (
               <div className="flex items-center gap-2">
-                <select value={batchStage} onChange={e => setBatchStage(e.target.value)}
-                  className="px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text">
-                  <option value="">Pick stage...</option>
-                  {stages.map(s => <option key={s.id} value={s.name}>{s.name.replace(/_/g, ' ')}</option>)}
-                </select>
-                <button onClick={handleBatchAdvance} disabled={!batchStage}
-                  className="px-3 py-1 bg-astro-accent text-astro-on-accent text-sm rounded disabled:opacity-50">Apply</button>
-                <button onClick={() => setShowBatchStage(false)}
-                  className="text-xs text-astro-muted hover:text-astro-text">Cancel</button>
+                <div className="w-44">
+                  <Select aria-label="Stage to move to" value={batchStage} onChange={e => setBatchStage(e.target.value)}>
+                    <option value="">Pick a stage</option>
+                    {stages.map(s => <option key={s.id} value={s.name}>{stageWords(s.name)}</option>)}
+                  </Select>
+                </div>
+                <Button size="sm" variant="primary" onClick={handleBatchAdvance} disabled={!batchStage}>Apply</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowBatchStage(false)}>Cancel</Button>
               </div>
             ) : (
-              <button onClick={() => setShowBatchStage(true)}
-                className="px-3 py-1.5 bg-astro-bg border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text">
-                Advance stage
-              </button>
+              <Button size="sm" onClick={() => setShowBatchStage(true)}>Advance stage</Button>
             )}
 
             {showBatchCollection ? (
               <div className="flex items-center gap-2">
-                <select value={batchCollection} onChange={e => setBatchCollection(e.target.value)}
-                  className="px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text">
-                  <option value="">Pick collection...</option>
-                  {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <button onClick={handleBatchAddCollection} disabled={!batchCollection}
-                  className="px-3 py-1 bg-astro-accent text-astro-on-accent text-sm rounded disabled:opacity-50">Add</button>
-                <button onClick={() => setShowBatchCollection(false)}
-                  className="text-xs text-astro-muted hover:text-astro-text">Cancel</button>
+                <div className="w-44">
+                  <Select aria-label="Collection" value={batchCollection} onChange={e => setBatchCollection(e.target.value)}>
+                    <option value="">Pick a collection</option>
+                    {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </Select>
+                </div>
+                <Button size="sm" variant="primary" onClick={handleBatchAddCollection} disabled={!batchCollection}>Add</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowBatchCollection(false)}>Cancel</Button>
               </div>
             ) : (
-              <button onClick={openCollectionPicker}
-                className="px-3 py-1.5 bg-astro-bg border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text">
-                Add to collection
-              </button>
+              <Button size="sm" onClick={openCollectionPicker}>Add to collection</Button>
             )}
 
             {showBatchDelete ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-astro-danger">Delete {selected.size} targets?</span>
-                <button onClick={handleBatchDelete}
-                  className="px-3 py-1 bg-astro-danger text-astro-on-accent text-sm rounded">Yes, delete</button>
-                <button onClick={() => setShowBatchDelete(false)}
-                  className="text-xs text-astro-muted hover:text-astro-text">Cancel</button>
+                <Button size="sm" variant="danger" onClick={handleBatchDelete}>Yes, delete</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowBatchDelete(false)}>Cancel</Button>
               </div>
             ) : (
-              <button onClick={() => setShowBatchDelete(true)}
-                className="px-3 py-1.5 border border-astro-danger/50 text-astro-danger rounded text-sm hover:bg-astro-danger/10">
-                Delete
-              </button>
+              <Button size="sm" variant="danger" onClick={() => setShowBatchDelete(true)}>Delete</Button>
             )}
 
             <div className="flex-1" />
-            <button onClick={clearSelection}
-              className="px-3 py-1.5 text-sm text-astro-muted hover:text-astro-text">
-              Clear selection
-            </button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>Clear choice</Button>
           </div>
         )}
       </div>

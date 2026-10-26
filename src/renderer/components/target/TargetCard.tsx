@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
+import { stageWords } from '@shared/target-list'
 import type { TargetSummary, WorkflowStage } from '@shared/types'
 import { AtlasKind } from '../atlas/AtlasSymbol'
 
-/** A stage's name as a sentence: not_observed reads "Not observed". */
-const stageWords = (stage: string): string => {
-  const words = stage.replace(/_/g, ' ')
-  return words.charAt(0).toUpperCase() + words.slice(1)
-}
 
 interface TargetCardProps {
   target: TargetSummary
