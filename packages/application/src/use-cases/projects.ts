@@ -26,18 +26,32 @@ import {
   type ProjectWindow,
   type TargetEvidence,
   type TargetFrames,
-  type CampaignWindowState
+  type CampaignWindowState,
+  rankExposure,
+  sameGoalFilter,
+  summarise,
+  summariseByFilter,
+  type ForecastFrame,
+  type IntegrationSummary,
+  type RankedExposure
 } from '@astro/domain'
 import type { Clock } from '../ports/clock'
 import type { FrameCatalogue } from '../ports/frame-catalogue'
 import type { MosaicWorkspaceStore } from '../ports/mosaic-workspace'
 import type { ProjectRecord, ProjectSource, ProjectSources, ProjectStore } from '../ports/projects'
 import type { DescribeCoverage } from './mosaic-coverage'
+import type { FrameGrading } from './frame-grading'
+import { forecastFrame, panelSummaries } from './integration-forecast'
 
 export interface ProjectDeps {
   store: ProjectStore
   sources: ProjectSources
   frames: Pick<FrameCatalogue, 'listTargetFrames'>
+  /**
+   * Grading (spec 019): which lights it keeps, so usable light follows a changed keep or reject
+   * (AI-004). Without it, the quality analysis's reject flag decides, as on the Stacks page.
+   */
+  grading?: Pick<FrameGrading, 'grade'>
   workspaces: Pick<MosaicWorkspaceStore, 'get'>
   /** A mosaic's coverage (spec 037), which a mosaic campaign's panels are judged from. */
   coverage: DescribeCoverage
@@ -211,14 +225,23 @@ function byFilter(subs: TargetFrames['subs']): FilterSeconds[] {
   return [...seconds].map(([filter, s]) => ({ filter, seconds: s })).sort((a, b) => a.filter.localeCompare(b.filter))
 }
 
-/** What the index holds for a target now; a target with nothing indexed has nothing. */
-export function evidenceOf(targetId: string, name: string, frames: TargetFrames | undefined): TargetEvidence {
-  if (!frames) return { targetId, name, acquired: [], usable: [], stacks: 0, processed: 0, published: 0, goals: [] }
+const seconds = (list: IntegrationSummary[], pick: 'acquiredSec' | 'acceptedSec'): FilterSeconds[] =>
+  list.map(s => ({ filter: s.filter as string, seconds: s[pick] })).filter(f => f.seconds > 0)
+
+/**
+ * What the index holds for a target now; a target with nothing indexed has nothing. Given its
+ * graded lights, acquired and usable light come from them; otherwise from the indexed subs.
+ */
+export function evidenceOf(targetId: string, name: string, frames: TargetFrames | undefined, lights?: ForecastFrame[]): TargetEvidence {
+  const graded = lights ? summariseByFilter(lights).byFilter : null
+  const light = graded
+    ? { acquired: seconds(graded, 'acquiredSec'), usable: seconds(graded, 'acceptedSec') }
+    : { acquired: byFilter(frames?.subs ?? []), usable: byFilter((frames?.subs ?? []).filter(s => !s.rejected)) }
+  if (!frames) return { targetId, name, ...light, stacks: 0, processed: 0, published: 0, goals: [] }
   return {
     targetId,
     name,
-    acquired: byFilter(frames.subs),
-    usable: byFilter(frames.subs.filter(s => !s.rejected)),
+    ...light,
     stacks: frames.stacks.length,
     processed: frames.processedCount,
     published: frames.finalCount,
@@ -239,6 +262,11 @@ export interface ProjectDescription {
   mosaic: { id: string; name: string; revision: number } | null
   /** The catalogue or collection it was started from, by name, and its members not in the project. */
   source: { kind: 'catalogue' | 'collection'; id: string; name: string; notInProject: string[] } | null
+  /**
+   * Unfinished targets' and panels' filters short of their goals, by what the next hour of capture
+   * is expected to buy, most first (spec 039): the bottlenecks, not hidden by a project total.
+   */
+  bottlenecks: RankedExposure[]
   /** When this was worked out. */
   at: Date
 }
@@ -281,9 +309,18 @@ export function makeListProjects(deps: ProjectDeps) {
       coverages.set(id, asked)
       return asked
     }
+    // Each target graded once for the whole list, however many projects hold it.
+    const graded = new Map<string, ReturnType<Shared['lights']>>()
+    const lights = (id: string) => {
+      const known = graded.get(id)
+      if (known) return known
+      const asked = gradedLights(deps, id)
+      graded.set(id, asked)
+      return asked
+    }
     const out: ProjectSummary[] = []
     for (const project of projects) {
-      const d = await evaluate(project, frames, [], { names, coverage })
+      const d = await evaluate(project, frames, [], { names, coverage, lights })
       out.push({ project, done: d.progress.done, total: d.progress.total, complete: d.progress.complete, window: d.window })
     }
     return out
@@ -307,7 +344,17 @@ export function localDate(at: Date): string {
 interface Shared {
   names: Map<string, string>
   coverage: ProjectDeps['coverage']
+  lights: (targetId: string) => Promise<ForecastFrame[] | undefined>
 }
+
+/** A target's lights as grading judges them; none without grading. */
+async function gradedLights(deps: Pick<ProjectDeps, 'grading'>, targetId: string): Promise<ForecastFrame[] | undefined> {
+  return deps.grading ? (await deps.grading.grade(targetId)).grades.map(forecastFrame) : undefined
+}
+
+/** Without grading, the indexed subs as forecasts take them: quality-flagged ones rejected. */
+export const indexedLights = (frames: TargetFrames | undefined): ForecastFrame[] =>
+  (frames?.subs ?? []).map(s => ({ seconds: s.exposureSec, filter: s.filter, accepted: !s.rejected, snr: null }))
 
 function makeEvaluate(deps: ProjectDeps) {
   return async (project: ProjectRecord, frames: TargetFrames[], sourceList: ProjectSource[], shared?: Shared): Promise<ProjectDescription> => {
@@ -318,6 +365,13 @@ function makeEvaluate(deps: ProjectDeps) {
     const rule = project.rule
     const tasks: ProjectTask[] = []
     let mosaic: ProjectDescription['mosaic'] = null
+    // What each target and panel has per filter, for the bottleneck forecasts.
+    const summaries = new Map<string, IntegrationSummary[]>()
+    const graded = async (id: string) => {
+      const lights = await (shared?.lights ?? (t => gradedLights(deps, t)))(id)
+      summaries.set(id, summariseByFilter(lights ?? indexedLights(framesOf.get(id))).byFilter)
+      return lights
+    }
     if (project.kind === 'mosaic') {
       const coverage = project.workspaceId ? await (shared?.coverage ?? deps.coverage)(project.workspaceId) : null
       const panelsAsked = rule.coverage || rule.integration.kind !== 'none'
@@ -327,15 +381,29 @@ function makeEvaluate(deps: ProjectDeps) {
       } else if (panelsAsked) {
         const goals = goalsFor(rule, coverage.goals)
         const aims = new Map(coverage.next.map(n => [n.panel.id, `RA ${formatRaHms(n.aim.raDeg)}, Dec ${formatDecDms(n.aim.decDeg)}`]))
-        for (const p of panelProgress(coverage.map.panels, coverage.counted, goals ?? [])) tasks.push(panelTask(p, rule, goals, aims.get(p.panelId) ?? null))
+        for (const p of panelProgress(coverage.map.panels, coverage.counted, goals ?? [])) {
+          tasks.push(panelTask(p, rule, goals, aims.get(p.panelId) ?? null))
+          summaries.set(p.panelId, panelSummaries(coverage.counted.filter(c => c.panelId === p.panelId).flatMap(c => c.tally)).byFilter)
+        }
       }
       // The mosaic's stacks and images belong to its target, judged once for the whole mosaic.
       if (OUTPUT_PARTS(rule))
-        for (const id of project.targetIds) tasks.push(targetTask(evidenceOf(id, nameOf(id), framesOf.get(id)), rule, { integration: false }))
+        for (const id of project.targetIds) tasks.push(targetTask(evidenceOf(id, nameOf(id), framesOf.get(id), await graded(id)), rule, { integration: false }))
     } else {
-      for (const id of project.targetIds) tasks.push(targetTask(evidenceOf(id, nameOf(id), framesOf.get(id)), rule))
+      for (const id of project.targetIds) tasks.push(targetTask(evidenceOf(id, nameOf(id), framesOf.get(id), await graded(id)), rule))
     }
     const progress = projectProgress(tasks)
+    const short = tasks.flatMap(t =>
+      t.parts.integration && !t.parts.integration.met
+        ? t.filters
+            .filter(f => (f.needSec ?? 0) > 0)
+            .map(f => ({
+              id: `${t.id}|${f.filter}`,
+              label: `${t.label} ${f.filter}`,
+              summary: summaries.get(t.id)?.find(s => sameGoalFilter(s.filter as string, f.filter)) ?? summarise([], f.filter)
+            }))
+        : []
+    )
     let source: ProjectDescription['source'] = null
     const sourceId = project.catalogueId ?? project.collectionId
     const found = sourceList.find(s => s.id === sourceId)
@@ -352,6 +420,7 @@ function makeEvaluate(deps: ProjectDeps) {
       window: project.window ? campaignWindowState(project.window, localDate(at)) : null,
       mosaic,
       source,
+      bottlenecks: rankExposure(short),
       at
     }
   }

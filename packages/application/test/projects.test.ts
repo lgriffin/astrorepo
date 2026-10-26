@@ -10,6 +10,7 @@ import {
   makeExportProjectManifest,
   makeListProjects,
   localDate,
+  makeFrameGrading,
   makeListProjectSources,
   makeRemoveProjectTarget,
   makeSetCompletionRule,
@@ -18,10 +19,13 @@ import {
 } from '@astro/application'
 import { DEFAULT_RULES, layoutGrid, type CompletionRule, type LightSub, type TargetFrames } from '@astro/domain'
 import {
+  FakeFrameMeasurer,
   FixedClock,
+  FixedGradeLimits,
   gridDefinition,
   InMemoryFileHashStore,
   InMemoryFrameCatalogue,
+  InMemoryFrameGradeStore,
   InMemoryIntegrationGoalSource,
   InMemoryMosaicAssignmentStore,
   InMemoryMosaicStore,
@@ -427,5 +431,78 @@ describe('progress from the index', () => {
     expect(json?.fileName).toBe('Messier_marathon-manifest.json')
     expect(JSON.parse(json?.text ?? '{}')).toMatchObject({ project: 'Messier marathon', kind: 'catalogue', total: 3, worked_out_at: '2026-10-26T20:00:00.000Z' })
     expect(await r.exportManifest('nope', 'csv')).toBeNull()
+  })
+})
+
+describe('usable light from grading', () => {
+  it('[AI-004] Given grading, When a frame is rejected by hand, Then the project\'s usable light and its bottlenecks follow the next time it is asked', async () => {
+    const r = await rig()
+    const store = new InMemoryFrameGradeStore()
+    for (let i = 1; i <= 12; i++) store.add('m31', { fileId: `f${i}`, path: `D:/m31/L${i}.fit`, filter: 'L', exposureSec: 600, capturedAt: new Date('2026-10-01T22:00:00Z') })
+    const grading = makeFrameGrading({ store, measurer: new FakeFrameMeasurer(), limits: new FixedGradeLimits(), clock: r.clock })
+    const describe = makeDescribeProject({ ...r, grading })
+    const rule: CompletionRule = { integration: { kind: 'per filter', goals: [{ filter: 'L', seconds: 2 * H }] }, coverage: false, stacked: false, processed: false, published: false }
+    const p = await r.make({ name: 'Deep', kind: 'target-depth', targetIds: ['m31'], rule })
+    // Grading knows the lights even when the catalogue has not counted them.
+    expect((await describe(p.id))?.progress.tasks[0]).toMatchObject({ done: true, stage: 'acquired' })
+    await grading.setOverride('f1', 'reject')
+    const d = await describe(p.id)
+    expect(d?.progress.tasks[0].parts.integration).toEqual({ met: false, detail: 'L needs 0.2 h' })
+    expect(d?.bottlenecks.map(b => [b.id, b.label, b.forecast.kind])).toEqual([['m31|L', 'M 31 L', 'theoretical']])
+  })
+
+  it('[AI-006] Given a mosaic campaign short on a panel, When described, Then each short panel\'s filter is a bottleneck, the one with light to build on first', async () => {
+    const r = await rig()
+    const p = await r.make({ name: 'Veil', kind: 'mosaic', workspaceId: r.veil.id })
+    await r.shoot(1, 6)
+    const d = await r.describe(p.id)
+    expect(d?.bottlenecks.map(b => [b.id, b.forecast.kind])).toEqual([
+      ['R1C2|Ha', 'theoretical'],
+      ['R1C1|Ha', 'insufficient data']
+    ])
+    expect(d?.bottlenecks[0].forecast.inputs).toMatchObject({ frames: 6, acceptedSec: 1800 })
+  })
+
+  it('[AI-004] Given grading and a light the quality analysis flagged, When described, Then it is not usable until kept by hand', async () => {
+    const r = await rig()
+    const store = new InMemoryFrameGradeStore()
+    for (let i = 1; i <= 12; i++) store.add('m31', { fileId: `f${i}`, path: `D:/m31/L${i}.fit`, filter: 'L', exposureSec: 600, capturedAt: new Date('2026-10-01T22:00:00Z'), qualityRejected: i === 1 })
+    const grading = makeFrameGrading({ store, measurer: new FakeFrameMeasurer(), limits: new FixedGradeLimits(), clock: r.clock })
+    const describe = makeDescribeProject({ ...r, grading })
+    const rule: CompletionRule = { integration: { kind: 'per filter', goals: [{ filter: 'L', seconds: 2 * H }] }, coverage: false, stacked: false, processed: false, published: false }
+    const p = await r.make({ name: 'Deep', kind: 'target-depth', targetIds: ['m31'], rule })
+    expect((await describe(p.id))?.progress.tasks[0].parts.integration).toEqual({ met: false, detail: 'L needs 0.2 h' })
+    await grading.setOverride('f1', 'keep')
+    expect((await describe(p.id))?.progress.tasks[0].parts.integration).toMatchObject({ met: true })
+  })
+
+  it('[AI-001, AI-006] Given no grading, When a target is short, Then its bottleneck is forecast from the indexed subs, flagged ones rejected', async () => {
+    const r = await rig()
+    r.frames.add(target('m31', 'M 31', { subs: [...Array.from({ length: 6 }, () => sub('L', 600)), sub('L', 600, true), sub('L', 600, true)] }))
+    const p = await r.make({ name: 'Deep', kind: 'target-depth', targetIds: ['m31'], rule: { ...DEFAULT_RULES['target-depth'], integration: { kind: 'per filter', goals: [{ filter: 'L', seconds: 2 * H }] } } })
+    const [b] = (await r.describe(p.id))?.bottlenecks ?? []
+    expect(b.forecast.kind).toBe('theoretical')
+    expect(b.forecast.inputs).toMatchObject({ frames: 8, acceptedSec: H })
+  })
+
+  it('[AI-006] Given a target in two projects, When the projects are listed, Then it is graded once', async () => {
+    const r = await rig()
+    const store = new InMemoryFrameGradeStore()
+    store.add('m31', { fileId: 'f1', path: 'D:/m31/L1.fit', filter: 'L', exposureSec: 600, capturedAt: new Date('2026-10-01T22:00:00Z') })
+    const real = makeFrameGrading({ store, measurer: new FakeFrameMeasurer(), limits: new FixedGradeLimits(), clock: r.clock })
+    const asked: string[] = []
+    const grading = { ...real, grade: (id: string) => (asked.push(id), real.grade(id)) }
+    const rule = { ...DEFAULT_RULES['target-depth'], integration: { kind: 'per filter' as const, goals: [{ filter: 'L', seconds: 2 * H }] } }
+    await r.make({ name: 'One', kind: 'target-depth', targetIds: ['m31'], rule })
+    await r.make({ name: 'Two', kind: 'target-depth', targetIds: ['m31'], rule })
+    await r.make({ name: 'Three', kind: 'target-depth', targetIds: ['m42'], rule })
+    expect(await makeListProjects({ ...r, grading })()).toHaveLength(3)
+    expect(asked.sort()).toEqual(['m31', 'm42'])
+  })
+
+  it('[AI-003] Given a target short of a goal with nothing captured, When described, Then its bottleneck has no number', async () => {
+    const r = await rig()
+    const p = await r.make({ name: 'Deep', kind: 'target-depth', targetIds: ['m42'], rule: { ...DEFAULT_RULES['target-depth'], integration: { kind: 'per filter', goals: [{ filter: 'Ha', seconds: H }] } } })
+    expect((await r.describe(p.id))?.bottlenecks.map(b => [b.label, b.forecast.snrGain])).toEqual([['M 42 Ha', null]])
   })
 })

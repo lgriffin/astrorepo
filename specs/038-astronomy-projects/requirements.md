@@ -46,6 +46,11 @@ proposal's; AP-004 onwards are added here.
 - A mosaic without a target cannot ask for a stack, a processed file or a finished image, since
   they are found by target.
 
+## Changes since
+
+- Spec 039: usable light now follows grading (a keep or reject on the quality card counts), and
+  the project's page lists its bottlenecks by what the next hour buys.
+
 ## Requirements
 
 | ID | Pattern | Requirement |

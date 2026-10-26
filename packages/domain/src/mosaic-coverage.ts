@@ -71,6 +71,16 @@ export interface CountedCapture {
   noExposure: number
   /** Why some or all of it does not count, in a sentence; null when all of it counts. */
   note: string | null
+  /** Per filter, frames and seconds counted and rejected, for forecasts per panel (spec 039). */
+  tally: FilterTally[]
+}
+
+export interface FilterTally {
+  filter: string
+  counted: number
+  countedSec: number
+  rejected: number
+  rejectedSec: number
 }
 
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p
@@ -82,18 +92,33 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * panel only for filters with no counted lights there, since a master is made of lights.
  */
 export function countOnce(captures: CountInput[]): CountedCapture[] {
-  const firstOfHash = new Map<string, string>()
-  for (const f of captures.flatMap(c => c.frames).filter(f => !f.rejected && f.hash).sort((a, b) => a.path.localeCompare(b.path))) {
-    if (!firstOfHash.has(f.hash as string)) firstOfHash.set(f.hash as string, f.path)
+  // The first path of each content, among counted frames and, apart, among rejected ones.
+  const firstOf = (rejected: boolean) => {
+    const first = new Map<string, string>()
+    for (const f of captures.flatMap(c => c.frames).filter(f => f.rejected === rejected && f.hash).sort((a, b) => a.path.localeCompare(b.path))) {
+      if (!first.has(f.hash as string)) first.set(f.hash as string, f.path)
+    }
+    return first
   }
+  const firstOfHash = firstOf(false)
+  const firstRejected = firstOf(true)
   // One spelling per filter across the mosaic: the first one met.
   const spelled = new Map<string, string>()
   const counted = captures.map(c => {
     let [rejected, duplicates, noExposure] = [0, 0, 0]
     const sums = new Map<string, { seconds: number; frames: number }>()
     let dupOf = ''
+    const rejectedBy = new Map<string, { seconds: number; frames: number }>()
     for (const f of c.frames) {
-      if (f.rejected) rejected++
+      if (f.rejected) {
+        rejected++
+        // A copy of a rejected frame adds nothing more to the forecasts' tally.
+        if (f.hash && firstRejected.get(f.hash) !== f.path) continue
+        const key = filterKey(f.filter)
+        if (!spelled.has(key)) spelled.set(key, key ? (f.filter as string).trim() : NO_FILTER)
+        const sum = rejectedBy.get(key) ?? { seconds: 0, frames: 0 }
+        rejectedBy.set(key, { seconds: sum.seconds + (f.seconds !== null && f.seconds > 0 ? f.seconds : 0), frames: sum.frames + 1 })
+      }
       else if (f.hash && firstOfHash.get(f.hash) !== f.path) {
         duplicates++
         dupOf ||= firstOfHash.get(f.hash) as string
@@ -105,7 +130,7 @@ export function countOnce(captures: CountInput[]): CountedCapture[] {
         sums.set(key, { seconds: sum.seconds + f.seconds, frames: sum.frames + 1 })
       }
     }
-    return { c, sums, rejected, duplicates, noExposure, dupOf }
+    return { c, sums, rejected, duplicates, noExposure, dupOf, rejectedBy }
   })
   // Filters each panel has counted lights for, so a master there adds nothing for them.
   const lightsOn = new Map<string, Set<string>>()
@@ -113,7 +138,7 @@ export function countOnce(captures: CountInput[]): CountedCapture[] {
     if (c.kind !== 'lights' || !c.panelId) continue
     lightsOn.set(c.panelId, new Set([...(lightsOn.get(c.panelId) ?? []), ...sums.keys()]))
   }
-  return counted.map(({ c, sums, rejected, duplicates, noExposure, dupOf }) => {
+  return counted.map(({ c, sums, rejected, duplicates, noExposure, dupOf, rejectedBy }) => {
     const notes: string[] = []
     const shadowed = c.kind === 'master' && c.panelId ? [...sums.keys()].filter(key => lightsOn.get(c.panelId as string)?.has(key)) : []
     for (const key of shadowed) sums.delete(key)
@@ -123,12 +148,24 @@ export function countOnce(captures: CountInput[]): CountedCapture[] {
     if (noExposure > 0) notes.push(`${plural(noExposure, 'frame')} with no exposure time.`)
     const exposures = [...sums.entries()].map(([key, sum]) => ({ filter: spelled.get(key) as string, seconds: sum.seconds })).sort((a, b) => a.filter.localeCompare(b.filter))
     const frames = [...sums.values()].reduce((n, sum) => n + sum.frames, 0)
-    return { id: c.id, panelId: c.panelId, exposures, counted: frames, rejected, duplicates, noExposure, note: notes.length > 0 ? notes.join(' ') : null }
+    const tally = [...new Set([...sums.keys(), ...rejectedBy.keys()])]
+      .map(key => ({
+        filter: spelled.get(key) as string,
+        counted: sums.get(key)?.frames ?? 0,
+        countedSec: sums.get(key)?.seconds ?? 0,
+        rejected: rejectedBy.get(key)?.frames ?? 0,
+        rejectedSec: rejectedBy.get(key)?.seconds ?? 0
+      }))
+      .sort((a, b) => a.filter.localeCompare(b.filter))
+    return { id: c.id, panelId: c.panelId, exposures, counted: frames, rejected, duplicates, noExposure, note: notes.length > 0 ? notes.join(' ') : null, tally }
   })
 }
 
 /** The key of a filter as named in counted exposure or a goal: frames with no filter, and a goal for them ("No Filter"), share ''. */
 const keyOf = (name: string) => (filterKey(name) === filterKey(NO_FILTER) ? '' : filterKey(name))
+
+/** Two filter names for the same filter: case and spaces aside, and "No filter" for frames without one. */
+export const sameGoalFilter = (a: string, b: string) => keyOf(a) === keyOf(b)
 
 // ── Sampling the sky ────────────────────────────────────────────────────
 

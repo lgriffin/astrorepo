@@ -61,6 +61,16 @@ describe('SqliteFrameGradeStore', () => {
     expect((await store.lightsOf('m42'))[0]).toMatchObject({ measurement: null, measureError: null, override: 'keep' })
   })
 
+  it('[AI-004] Given a light the quality analysis flagged, When listed, Then it says so', async () => {
+    const db = setupTestDb()
+    const scan = seedFitsScan(db)
+    target(db, 'm42')
+    seedFitsFile(db, scan, { id: 'a', filePath: '/data/a.fit', targetId: 'm42', imageType: 'Light' })
+    seedFitsFile(db, scan, { id: 'b', filePath: '/data/b.fit', targetId: 'm42', imageType: 'Light' })
+    db.prepare("UPDATE fits_files SET quality_flag = 'reject' WHERE id = 'a'").run()
+    expect((await new SqliteFrameGradeStore(db).lightsOf('m42')).map(l => [l.fileId, l.qualityRejected])).toEqual([['a', true], ['b', false]])
+  })
+
   it('[GRD-007] Given more paths than one query may bind, When looked up, Then every known one comes back', async () => {
     const db = setupTestDb()
     const scan = seedFitsScan(db)

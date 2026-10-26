@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { Card, EmptyState, LinkButton } from '../common/Card'
 import { QueueJob, type QueueResult } from '../jobs/QueueJob'
 import { FrameGrades } from './FrameGrades'
+import { IntegrationForecast } from '../forecast/IntegrationForecast'
 import { ArchiveCard } from './ArchiveCard'
 import { filterStackQueued, runLine, runsForTarget, type TargetRuns } from '@shared/navigation'
 import type { CometPlanView, FilterPlanView, JobsView, JobView, PostProcessView, SirilPlanView, SirilScriptView, SirilWorkspaceView, StackAdviceView, SyqonView } from '@shared/types'
@@ -45,6 +46,10 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
     <div className="space-y-6">
       <Card title="1 · Grade the lights">
         <FrameGrades targetId={targetId} onChanged={() => setGradesKey(k => k + 1)} />
+      </Card>
+
+      <Card title="What another hour buys">
+        <IntegrationForecast targetId={targetId} version={gradesKey} />
       </Card>
 
       <Card title="2 · Stack">

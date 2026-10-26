@@ -56,6 +56,9 @@ import {
   makeAddNewSourceMembers,
   makeExportProjectManifest,
   type DescribeCoverage,
+  type FrameGrading,
+  makeDescribeIntegration,
+  makeDescribeMosaicIntegration,
   makeExportNextSession,
   makeWorkspaceFromTarget,
   type FrameSelection,
@@ -347,14 +350,19 @@ export function composeCore(db: Database.Database) {
     /** Mosaic workspaces: versioned grids on the sky (specs/037-mosaic-workspace). */
     workspaces,
     /** Astronomy projects judged from the index each time (specs/038-astronomy-projects). */
-    projects: composeProjects(db, { frames, workspaces: new SqliteMosaicWorkspaceStore(db), coverage: workspaces.coverage }),
+    projects: composeProjects(db, { frames, grading, workspaces: new SqliteMosaicWorkspaceStore(db), coverage: workspaces.coverage }),
+    /** What another hour buys, per target, filter and panel (specs/039-integration-forecasts). */
+    integration: {
+      target: makeDescribeIntegration({ grading, goals: new SqliteIntegrationGoalSource(db) }),
+      mosaic: makeDescribeMosaicIntegration({ coverage: workspaces.coverage })
+    },
     setCometOrbit: makeSetCometOrbit({ comets }),
     planComet: makePlanComet({ comets, workspace: new NodeSirilWorkspace(db), selection: grading, ephemeris, settings: planningSettings, targets: stacks })
   }
 }
 
 /** The astronomy projects' use cases over SQLite (specs/038-astronomy-projects). */
-function composeProjects(db: Database.Database, deps: { frames: SqliteFrameCatalogue; workspaces: SqliteMosaicWorkspaceStore; coverage: DescribeCoverage }) {
+function composeProjects(db: Database.Database, deps: { frames: SqliteFrameCatalogue; grading: FrameGrading; workspaces: SqliteMosaicWorkspaceStore; coverage: DescribeCoverage }) {
   const all = { ...deps, store: new SqliteProjectStore(db), sources: new SqliteProjectSources(db), clock: systemClock }
   return {
     list: makeListProjects(all),

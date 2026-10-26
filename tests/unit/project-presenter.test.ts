@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectDescription } from '@astro/application'
-import { DEFAULT_RULES, measureFilters, projectNextActions, projectProgress, targetTask, type CompletionRule } from '@astro/domain'
+import { DEFAULT_RULES, measureFilters, projectNextActions, projectProgress, rankExposure, summarise, targetTask, type CompletionRule } from '@astro/domain'
 import { fromRuleView, ruleText, toProjectChange, toProjectSummaries, toProjectView, toRuleView, windowText } from '../../src/main/adapters/project-presenter'
 
 const H = 3600
@@ -61,6 +61,10 @@ describe('project presenter', () => {
       window: { state: 'not begun', daysToStart: 6 },
       mosaic: null,
       source: { kind: 'collection', id: 'fav', name: 'Favourites', notInProject: ['m1', 'm2'] },
+      bottlenecks: rankExposure([
+        { id: 'm42|OIII', label: 'M 42 OIII', summary: summarise([]) },
+        { id: 'm42|Ha', label: 'M 42 Ha', summary: summarise(Array.from({ length: 12 }, () => ({ seconds: 600, filter: 'Ha', accepted: true, snr: null }))) }
+      ]),
       at: new Date(2026, 9, 26, 21, 4)
     }
     const v = toProjectView(d)
@@ -92,6 +96,10 @@ describe('project presenter', () => {
       next: 'Capture OIII on M 42: 1.5 h more'
     })
     expect(v.next).toEqual([{ taskId: 'm42', kind: 'capture', text: 'Capture OIII on M 42: 1.5 h more' }])
+    expect(v.bottlenecks).toEqual([
+      { label: 'M 42 Ha', gain: '+22%', range: expect.stringMatching(/^\+\d+% to \+\d+%$/), kind: 'theoretical' },
+      { label: 'M 42 OIII', gain: null, range: null, kind: 'insufficient data' }
+    ])
     expect(toProjectView({ ...d, window: null, source: null }).window).toBeNull()
     expect(toProjectView({ ...d, source: null }).source).toBeNull()
     expect(measureFilters([], [])).toEqual([])

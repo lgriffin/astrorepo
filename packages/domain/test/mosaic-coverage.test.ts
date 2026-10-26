@@ -50,8 +50,30 @@ describe('counting each frame once', () => {
       rejected: 0,
       duplicates: 0,
       noExposure: 0,
-      note: null
+      note: null,
+      tally: [
+        { filter: 'Ha', counted: 2, countedSec: 600, rejected: 0, rejectedSec: 0 },
+        { filter: 'OIII', counted: 1, countedSec: 600, rejected: 0, rejectedSec: 0 }
+      ]
     })
+  })
+
+  it('[AI-001] Given frames kept and rejected in two filters, When counted, Then each filter tallies counted and rejected frames and seconds apart', () => {
+    const [c] = countOnce([
+      lights('a', 'R1C1', [frame('/a/1.fit'), frame('/a/2.fit', { rejected: true }), frame('/a/3.fit', { filter: ' oiii ', rejected: true, seconds: null }), frame('/a/4.fit', { filter: null, rejected: true })])
+    ])
+    expect(c.tally).toEqual([
+      { filter: 'Ha', counted: 1, countedSec: 300, rejected: 1, rejectedSec: 300 },
+      { filter: 'No filter', counted: 0, countedSec: 0, rejected: 1, rejectedSec: 300 },
+      { filter: 'oiii', counted: 0, countedSec: 0, rejected: 1, rejectedSec: 0 }
+    ])
+  })
+
+  it('[AI-001] Given two rejected copies of one frame, When counted, Then the tally takes it once while the note still says both were rejected', () => {
+    const [a, b] = countOnce([lights('a', 'R1C1', [frame('/a/x.fit', { hash: 'h', rejected: true })]), lights('b', 'R1C1', [frame('/b/x.fit', { hash: 'h', rejected: true }), frame('/b/y.fit', { hash: 'k', rejected: true })])])
+    expect(a.tally).toEqual([{ filter: 'Ha', counted: 0, countedSec: 0, rejected: 1, rejectedSec: 300 }])
+    expect(b.tally).toEqual([{ filter: 'Ha', counted: 0, countedSec: 0, rejected: 1, rejectedSec: 300 }])
+    expect(b.rejected).toBe(2)
   })
 
   it('[MO-011, MO-020] Given frames grading rejected, When counted, Then they add nothing and the note says how many were rejected', () => {

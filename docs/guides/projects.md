@@ -28,7 +28,7 @@ The rule is a set of parts, each asked or not, each reported on its own:
 
 - **Usable light** per filter: each target's own integration goals (set on its Stacks line), or
   the same goals for every target or panel. Lights the quality analysis flags for rejection do not
-  count. With each target's own goals asked, a target without any is not finished; its next step
+  count, and a keep or reject on a target's quality card counts the next time the project is opened. With each target's own goals asked, a target without any is not finished; its next step
   is to set them. No goals are made up for you.
 - **Every panel covered** (mosaic campaigns): 95% of a panel's area under counted captures, as the
   mosaic's coverage card works it out, with each frame counted once.
@@ -62,7 +62,8 @@ it has closed.
 next step. **Export manifest JSON** adds the rule, the tallies and each task's light per filter, for
 other tools to read. Files are named from the project, such as `Messier_marathon-manifest.csv`.
 
-## Coming next
+## Bottlenecks
 
-Forecasts (spec 039) will say what another hour buys on each target, filter and panel, and rank the
-captures in Next steps by it.
+The project's page lists its bottlenecks: the filters of unfinished targets and panels still short
+of their goals, by what the next hour of capture is expected to buy, most first. See
+[forecasts](forecasts.md).

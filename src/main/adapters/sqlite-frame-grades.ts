@@ -9,6 +9,7 @@ interface LightRow {
   file_path: string
   date_obs: string | null
   filter: string | null
+  exposure_sec: number | null
   file_size_bytes: number
   file_modified_at: string | null
   g_size: number | null
@@ -22,11 +23,12 @@ interface LightRow {
   measure_error: string | null
   measured_at: string | null
   override: string | null
+  quality_flag: string | null
   override_by: string | null
 }
 
 const SELECT = `
-  SELECT f.id, f.file_path, f.target_id, f.date_obs, NULLIF(TRIM(f.filter), '') AS filter, f.file_size_bytes, f.file_modified_at,
+  SELECT f.id, f.file_path, f.target_id, f.date_obs, NULLIF(TRIM(f.filter), '') AS filter, f.exposure_sec, f.quality_flag, f.file_size_bytes, f.file_modified_at,
          g.size_bytes AS g_size, g.modified_at AS g_modified, g.fwhm, g.eccentricity, g.star_count, g.background,
          g.noise, g.snr, g.measure_error, g.measured_at, g.override, g.override_by
   FROM fits_files f
@@ -44,6 +46,8 @@ function toLight(r: LightRow): GradableLight {
     path: r.file_path,
     capturedAt: parseUtc(r.date_obs),
     filter: r.filter,
+    exposureSec: r.exposure_sec,
+    qualityRejected: r.quality_flag === 'reject',
     measurement,
     measureError: current ? r.measure_error : null,
     override: r.override === 'keep' || r.override === 'reject' ? r.override : null,
