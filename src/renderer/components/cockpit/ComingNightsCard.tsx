@@ -60,14 +60,14 @@ export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.Rea
 
       {closing.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold text-astro-muted uppercase tracking-wider mb-1">Season closing</h3>
+          <h3 className="text-xs font-semibold text-astro-muted mb-1 font-condensed">Season closing</h3>
           <TargetList items={closing.slice(0, 5)} />
         </section>
       )}
 
       {next && (
         <section>
-          <h3 className="text-xs font-semibold text-astro-muted uppercase tracking-wider mb-1">{next.label}</h3>
+          <h3 className="text-xs font-semibold text-astro-muted mb-1 font-condensed">{next.label}</h3>
           {next.targets.length > 0 ? (
             <TargetList items={next.targets} />
           ) : (

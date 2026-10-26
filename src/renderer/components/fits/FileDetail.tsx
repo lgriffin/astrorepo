@@ -13,7 +13,7 @@ function Field({ label, value }: { label: string; value: string | number | null 
   if (value == null) return null
   return (
     <div>
-      <dt className="text-xs text-astro-muted uppercase">{label}</dt>
+      <dt className="text-xs text-astro-muted font-condensed">{label}</dt>
       <dd className="text-sm text-astro-text mt-0.5">{value}</dd>
     </div>
   )
@@ -90,7 +90,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         )}
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Inspector</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Inspector</h4>
           <Inspector fileId={fileId} />
         </div>
 
@@ -103,11 +103,11 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Identity</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Identity</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="Object" value={file.objectName} />
             <div>
-              <dt className="text-xs text-astro-muted uppercase">Linked Target</dt>
+              <dt className="text-xs text-astro-muted font-condensed">Linked Target</dt>
               <dd className="text-sm mt-0.5">
                 {file.targetId
                   ? <span className="text-astro-success">{file.targetId}</span>
@@ -122,7 +122,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Exposure</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Exposure</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="Exposure" value={file.exposureSec != null ? `${file.exposureSec}s` : null} />
             <Field label="Date-Obs" value={file.dateObs} />
@@ -134,7 +134,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Camera</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Camera</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="CCD temp" value={file.ccdTemp != null ? `${file.ccdTemp}°C` : null} />
             <Field label="Pixel size X" value={file.xpixsz != null ? `${file.xpixsz}µm` : null} />
@@ -144,7 +144,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Coordinates</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Coordinates</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="RA" value={file.ra} />
             <Field label="Dec" value={file.dec} />
@@ -153,7 +153,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Image</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Image</h4>
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="BITPIX" value={file.bitpix} />
             <Field label="Dimensions" value={file.naxis1 != null ? `${file.naxis1} x ${file.naxis2}` : null} />
@@ -165,7 +165,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
 
         {file.isStacked && (
           <div>
-            <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Stacking</h4>
+            <h4 className="text-xs text-astro-muted mb-2 font-condensed">Stacking</h4>
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Field label="NCOMBINE" value={file.ncombine} />
               <Field label="Total exposure" value={file.totalExposure != null ? `${file.totalExposure}s` : null} />
@@ -175,7 +175,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         )}
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Image Statistics</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Image Statistics</h4>
           {file.pixelMin != null || file.pixelMax != null ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-astro-bg border border-astro-border rounded p-2">
@@ -217,7 +217,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
         </div>
 
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Quality Metrics</h4>
+          <h4 className="text-xs text-astro-muted mb-2 font-condensed">Quality Metrics</h4>
           {quality ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div className="bg-astro-bg border border-astro-border rounded p-2">
@@ -281,7 +281,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               <div className="max-h-96 overflow-y-auto border border-astro-border rounded">
                 <table className="w-full text-xs font-mono">
                   <thead>
-                    <tr className="text-left text-astro-muted uppercase border-b border-astro-border sticky top-0 bg-astro-surface">
+                    <tr className="text-left text-astro-muted border-b border-astro-border sticky top-0 bg-astro-surface font-condensed">
                       <th className="px-2 py-1 w-8">#</th>
                       <th className="px-2 py-1 w-24">Keyword</th>
                       <th className="px-2 py-1">Value</th>

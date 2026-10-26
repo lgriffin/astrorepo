@@ -243,7 +243,7 @@ function EquipmentCheckList({ equipment, selectedIds, onToggle }: {
     <div className="space-y-3">
       {Object.entries(grouped).map(([type, items]) => (
         <div key={type}>
-          <p className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">{type}</p>
+          <p className="text-xs text-astro-muted mb-1.5 font-condensed">{type}</p>
           <div className="flex flex-wrap gap-2">
             {items.map(eq => (
               <label key={eq.id} className="inline-flex items-center gap-1.5 cursor-pointer">
@@ -269,7 +269,7 @@ function EquipmentCheckList({ equipment, selectedIds, onToggle }: {
 function FormSection({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">{title}</h2>
+      <h2 className="text-base font-semibold text-astro-text mb-3">{title}</h2>
       <div>{children}</div>
     </div>
   )

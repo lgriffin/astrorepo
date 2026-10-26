@@ -59,7 +59,7 @@ function HomeFolderSection({ homeData }: { homeData: TargetHomeData }): React.Re
           {breakdowns.map((bd) => (
             <div key={bd.folderType}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-astro-muted font-semibold uppercase tracking-wider">
+                <span className="text-xs text-astro-muted font-semibold font-condensed">
                   {labelMap[bd.folderType] ?? bd.folderType} ({bd.totalFiles} files)
                 </span>
                 <OpenFolderButton folderPath={bd.folderPath} />
@@ -131,7 +131,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
       </div>
 
       <div className="mb-4">
-        <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Frame Breakdown</h4>
+        <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Frame Breakdown</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="flex justify-between text-sm px-2 py-1 bg-astro-bg border border-astro-border rounded">
             <span className="text-astro-text">Lights</span>
@@ -154,7 +154,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
 
       {Object.keys(folders).length > 0 && (
         <div className="mb-3">
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Folders</h4>
+          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Folders</h4>
           <div className="space-y-1">
             {Object.entries(folders)
               .sort(([, a], [, b]) => b - a)
@@ -177,7 +177,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
 
       {Object.keys(data.exposureByFilter).length > 0 && (
         <div className="mb-3">
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Exposure by Filter</h4>
+          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Exposure by Filter</h4>
           <div className="space-y-1">
             {Object.entries(data.exposureByFilter)
               .sort(([, a], [, b]) => b - a)
@@ -193,7 +193,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
 
       {data.stackedDetails && data.stackedDetails.length > 0 && (
         <div className="mb-3">
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">
+          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">
             Stacked / Processed ({data.stackedDetails.length})
           </h4>
           <div className="space-y-2">
@@ -216,7 +216,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
 
       {data.sessions.length > 0 && (
         <div>
-          <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Sessions</h4>
+          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Sessions</h4>
           <div className="space-y-1">
             {data.sessions.map((s) => (
               <div key={s} className="flex justify-between text-sm">

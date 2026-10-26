@@ -3,10 +3,21 @@
 @tailwind utilities;
 
 body {
-  @apply bg-astro-bg text-astro-text;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  @apply bg-astro-bg text-astro-text font-sans antialiased;
   margin: 0;
   padding: 0;
+}
+
+/* Figures line up in every table, as in an atlas index. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+@layer utilities {
+  /* Archivo's condensed width, for labels, table headings and dense figures. */
+  .font-condensed {
+    font-stretch: 82%;
+  }
 }
 
 ::-webkit-scrollbar {

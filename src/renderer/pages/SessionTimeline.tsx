@@ -219,7 +219,7 @@ export function SessionTimeline(): React.ReactElement {
         <div className="space-y-6">
           {/* Year at a glance */}
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">Year at a Glance</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-3">Year at a Glance</h2>
             <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <MiniMonthGrid
@@ -261,7 +261,7 @@ export function SessionTimeline(): React.ReactElement {
               </div>
 
               <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-                <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">
+                <h2 className="text-base font-semibold text-astro-text mb-3">
                   {selectedDay ? selectedDay.date : 'Select a Night'}
                 </h2>
                 {selectedDay ? (
@@ -305,7 +305,7 @@ export function SessionTimeline(): React.ReactElement {
           {/* Monthly summary table */}
           {yearSummary.length > 0 && (
             <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-              <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-3">Monthly Summary</h2>
+              <h2 className="text-base font-semibold text-astro-text mb-3">Monthly Summary</h2>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-astro-border text-left">

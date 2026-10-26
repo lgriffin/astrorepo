@@ -46,3 +46,26 @@ press), Field with Input, Select, Textarea and Checkbox (label, hint and error w
 readers), Table with Th, Td and Tr, Tabs (arrow keys, Home and End), Badge, Stat and Skeleton. New
 pages build with these; older pages move onto them slice by slice. Place icons are Lucide
 (`components/common/nav-icons.tsx`): add one there for every new place in the navigation map.
+
+## The Star atlas world
+
+Leigh chose the **Star atlas** direction (25 October 2026): the app reads like a deep-sky atlas
+you can work in. The contract is in `.impeccable/surfaces/src-renderer-app-tsx.md`; `DESIGN.md`
+is written from the built world when the overhaul's last slice (V7) lands.
+
+- **Palette.** Dark is Prussian ink (`bg` #0b1822) with the atlas deep-sky red as the accent;
+  light is cool chart-white with the red printed darker. `danger` is a rose, not the accent red,
+  and always comes with words.
+- **Type.** Archivo, bundled from `@fontsource-variable/archivo` (no network). `font-condensed`
+  gives its narrow width for labels, table headings and dense figures; tables use tabular figures.
+- **Atlas symbols.** `AtlasSymbol` and `AtlasKind` (`components/atlas/AtlasSymbol.tsx`) draw each
+  kind of object as an atlas does, from `src/shared/atlas.ts`: galaxies an ellipse in red, open
+  clusters a dotted circle and globulars a crossed circle in amber, planetaries a rayed disc in
+  teal, bright nebulae a square in green (reflection in blue), dark nebulae a dashed square.
+  Show a target's kind with `AtlasKind`, never a coloured pill.
+- **Headings** are sentence case at reading size (`text-base font-semibold`); no small uppercase
+  labels (a test fails on `uppercase` in the renderer).
+- **Corners** are near-square (Tailwind's `rounded-lg` is 4px here); no shadows on panels; no
+  coloured side stripes.
+- **The mark** (`components/atlas/Logo.tsx`): the galaxy symbol in red inside a ring of 24
+  right-ascension hour ticks, with the celestial equator across it.

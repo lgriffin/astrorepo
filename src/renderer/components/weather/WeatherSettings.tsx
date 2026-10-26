@@ -61,7 +61,7 @@ export function WeatherSettings(): React.ReactElement {
 
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-      <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-2">Weather</h2>
+      <h2 className="text-base font-semibold text-astro-text mb-2">Weather</h2>
       <p className="text-xs text-astro-muted mb-3">
         Home shows whether the next three nights look clear at your site. Only your site&apos;s latitude and longitude, rounded to
         about a kilometre, are sent to the forecast; your weather service is asked for its own station&apos;s forecast.
