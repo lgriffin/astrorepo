@@ -116,7 +116,7 @@ behind a long stacking list. The Coming nights card keeps closing seasons and th
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| LF-016 | Ubiquitous | The system shall open Home on a Tonight panel that says whether tonight looks clear, when it is dark and how dark, how lit the moon is (drawn and in words), any note on the darkness or the moon, and the three best targets to shoot, each linking to its page. |
-| LF-017 | Ubiquitous | The system shall list captures under Shoot tonight and stacking under Ready to process, side by side, each suggestion's priority shown as a coloured mark that is also named in words for screen readers. |
+| LF-016 | Ubiquitous | The system shall open Home on a Tonight panel that says whether tonight looks clear, when it is dark and how dark (once the plan has said; the forecast alone gives only the night), how lit the moon is (drawn and in words), any note on the darkness or the moon, and the three best targets to shoot, each linking to its page. |
+| LF-017 | Ubiquitous | The system shall list tonight's captures under Shoot tonight and stacking under Ready to process, side by side, and mosaic tiles waiting for a coming night under Plan ahead, each suggestion's priority shown as a coloured mark that is also named in words for screen readers. |
 | LF-018 | Unwanted | If tonight is forecast cloudy or has no dark window, then the system shall list no targets to shoot on the Tonight panel and say why. |
 | LF-019 | State | While the site is not set, the system shall show the Tonight panel as a link to Settings > Your site instead of a night it cannot work out. |

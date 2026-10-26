@@ -12,12 +12,14 @@ away; **Start again** in Settings brings it back.
 Below that, from the top, Home shows:
 1. **Tonight**: whether tonight looks clear, when it is dark, the moon (drawn as it is lit), and
    the three best targets to shoot, each opening its page. A cloudy night or one with no dark
-   window lists no targets.
+   window lists no targets. If the forecast and the plan disagree about which night is tonight
+   (just before dawn), the sky is only judged for the plan's night.
 2. **Shoot tonight** and **Ready to process**, side by side: what is worth doing next (see
    [Next actions](#next-actions)).
 3. **Clear skies**: whether tonight and the next two nights look clear (see
    [Planning ahead](planning.md#clear-skies)).
-4. **Coming nights** and **Hidden in your files**, side by side.
+4. **Coming nights** and **Hidden in your files**, side by side, with **Plan ahead** beside them
+   when a mosaic tile has no lights yet: it is up on a coming night, not necessarily tonight.
 5. **Where your targets are**: how many targets are at each stage.
 6. **Other checks**.
 

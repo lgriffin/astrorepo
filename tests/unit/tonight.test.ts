@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { moonPath, tonightSummary } from '../../src/shared/tonight'
-import type { ClearSkiesView, ForwardPlanView, NightSkyView, TonightView } from '../../src/shared/types'
+import { moonPath, splitHomeActions, tonightSummary } from '../../src/shared/tonight'
+import type { ClearSkiesView, ForwardPlanView, NightSkyView, Recommendation, TonightView } from '../../src/shared/types'
 
 const renderer = path.resolve(__dirname, '../../src/renderer')
 const read = (rel: string) => fs.readFileSync(path.join(renderer, rel), 'utf8')
@@ -66,8 +66,8 @@ describe('Tonight on Home (specs/041-look-and-feel V3)', () => {
       expect(s).toMatchObject({ state: 'ok', headline: 'Tonight', verdict: null, moonPercent: 22 })
       expect(s.picks).toHaveLength(3)
     }
-    // With only the forecast, its dark window stands in.
-    expect(tonightSummary(skies(), null).dark).toEqual({ start: '2026-10-26T19:10:00Z', end: '2026-10-27T05:20:00Z', darkness: 'astronomical' })
+    // With only the forecast, its dark window stands in, without claiming how dark it gets.
+    expect(tonightSummary(skies(), null).dark).toEqual({ start: '2026-10-26T19:10:00Z', end: '2026-10-27T05:20:00Z', darkness: null })
     expect(tonightSummary(null, null).state).toBe('unknown')
   })
 
@@ -111,6 +111,25 @@ describe('Tonight on Home (specs/041-look-and-feel V3)', () => {
     expect(moonPath(75, 20)).toBe('M 20 0 A 20 20 0 0 1 20 40 A 10 20 0 0 1 20 0 Z')
     expect(moonPath(140, 20)).toBe('M 20 0 A 20 20 0 0 1 20 40 A 20 20 0 0 1 20 0 Z')
     expect(read('components/cockpit/TonightHero.tsx')).toContain('aria-label={`Moon ${Math.round(percent)}% lit`}')
+  })
+
+  it('[LF-016] Given a forecast and a plan that name different nights near dawn, When tonight is summed up, Then it fails to read one night\'s sky with another night\'s moon and targets', () => {
+    const both: ClearSkiesView = { status: 'ok', nights: [night({ verdict: 'cloudy' }), night({ night: '2026-10-27', label: 'Tue 27 Oct' })], sources: [], credit: null }
+    // The plan has moved on to the 27th: the forecast for the 27th is read, not the 26th's cloud.
+    const s = tonightSummary(both, plan(tonight({ night: '2026-10-27' })))
+    expect(s).toMatchObject({ headline: 'Clear skies tonight', verdict: 'clear' })
+    expect(s.picks).toHaveLength(3)
+    // A plan night the forecast has no word on is not judged.
+    expect(tonightSummary(skies(), plan(tonight({ night: '2026-10-28' })))).toMatchObject({ headline: 'Tonight', verdict: null })
+  })
+
+  it('[LF-017] Given next actions, When Home splits them, Then tonight\'s captures go under Shoot tonight, mosaic tiles for a coming night under Plan ahead, and the rest under Ready to process', () => {
+    const rec = (id: string, category: Recommendation['category']): Recommendation =>
+      ({ id, category, priority: 'medium', title: id, description: '', targetId: null, targetName: null, actionLabel: null })
+    const split = splitHomeActions([rec('capture:t1', 'capture'), rec('mosaic-tile:t2:3', 'capture'), rec('messier-gap:t3:2026-10-26', 'capture'), rec('stack:t4', 'stacking')])
+    expect(split.shoot.map(r => r.id)).toEqual(['capture:t1', 'messier-gap:t3:2026-10-26'])
+    expect(split.ahead.map(r => r.id)).toEqual(['mosaic-tile:t2:3'])
+    expect(split.process.map(r => r.id)).toEqual(['stack:t4'])
   })
 
   it('[LF-017] Given a suggestion on Home, When its priority is shown, Then the mark is named in words', () => {

@@ -14,7 +14,7 @@ import { useToast } from '../contexts/ToastContext'
 import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
-import { tonightSummary } from '@shared/tonight'
+import { splitHomeActions, tonightSummary } from '@shared/tonight'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
@@ -138,8 +138,7 @@ export function Dashboard(): React.ReactElement {
     </Card>
   )
 
-  const shoot = nextActions.filter(r => r.category === 'capture')
-  const process = nextActions.filter(r => r.category !== 'capture')
+  const { shoot, ahead, process } = splitHomeActions(nextActions)
   const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
 
   return (
@@ -187,6 +186,11 @@ export function Dashboard(): React.ReactElement {
             </Card>
           ) : (
             <ComingNightsCard plan={plan} />
+          )}
+          {ahead.length > 0 && (
+            <Card title="Plan ahead">
+              <ul className="divide-y divide-astro-border -my-3">{ahead.slice(0, 6).map(recommendationRow)}</ul>
+            </Card>
           )}
           {cockpit === null ? (
             <Card title="Hidden in your files"><Skeleton className="h-16 w-full" label="Looking through your files" /></Card>

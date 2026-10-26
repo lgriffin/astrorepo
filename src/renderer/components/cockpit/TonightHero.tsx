@@ -17,6 +17,9 @@ const HEADLINE_TONE: Record<NightSkyView['verdict'], string> = {
   'no-darkness': 'text-astro-muted'
 }
 
+/** How the dark window is named; until the plan says how dark, the forecast's window is just the night. */
+const DARK_LABEL = { astronomical: 'Dark', nautical: 'Nautical dark only', unknown: 'Night' } as const
+
 /** The moon as it is tonight: night sky behind, its lit part light, the same in every theme (red at night). */
 export function MoonGlyph({ percent, size = 40 }: { percent: number; size?: number }): React.ReactElement {
   const r = size / 2
@@ -69,7 +72,7 @@ export function TonightHero({ summary, loading }: { summary: TonightSummary; loa
         <h2 className={`text-2xl font-semibold ${tone}`}>{summary.headline}</h2>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
           {summary.dark && (
-            <Fact label={summary.dark.darkness === 'astronomical' ? 'Dark' : 'Nautical dark only'}>
+            <Fact label={DARK_LABEL[summary.dark.darkness ?? 'unknown']}>
               {time(summary.dark.start)} to {time(summary.dark.end)}
             </Fact>
           )}
