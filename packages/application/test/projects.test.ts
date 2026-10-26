@@ -307,6 +307,7 @@ describe('progress from the index', () => {
     const r = await rig()
     const p = await r.make({ name: 'Veil', kind: 'mosaic', workspaceId: r.veil.id, rule: { integration: { kind: 'none' }, coverage: false, stacked: false, processed: false, published: true } })
     const d = await r.describe(p.id)
+    expect(d?.mosaic).toEqual({ id: r.veil.id, name: 'Veil', revision: 1 })
     expect(d?.progress.tasks.map(t => t.id)).toEqual(['ngc6960'])
     expect(d?.progress).toMatchObject({ done: 0, total: 1, complete: false })
   })

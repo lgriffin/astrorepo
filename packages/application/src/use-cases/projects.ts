@@ -321,10 +321,10 @@ function makeEvaluate(deps: ProjectDeps) {
     if (project.kind === 'mosaic') {
       const coverage = project.workspaceId ? await (shared?.coverage ?? deps.coverage)(project.workspaceId) : null
       const panelsAsked = rule.coverage || rule.integration.kind !== 'none'
+      if (coverage) mosaic = { id: coverage.workspace.id, name: coverage.workspace.name, revision: coverage.revision.revision }
       if (!coverage) {
         if (panelsAsked) tasks.push(missingMosaicTask(rule))
       } else if (panelsAsked) {
-        mosaic = { id: coverage.workspace.id, name: coverage.workspace.name, revision: coverage.revision.revision }
         const goals = goalsFor(rule, coverage.goals)
         const aims = new Map(coverage.next.map(n => [n.panel.id, `RA ${formatRaHms(n.aim.raDeg)}, Dec ${formatDecDms(n.aim.decDeg)}`]))
         for (const p of panelProgress(coverage.map.panels, coverage.counted, goals ?? [])) tasks.push(panelTask(p, rule, goals, aims.get(p.panelId) ?? null))
