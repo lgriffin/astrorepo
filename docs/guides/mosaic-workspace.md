@@ -127,5 +127,5 @@ whole stack (a master's exposure counts only where no lights of its filter are c
 
 ## Coming next
 
-Projects (spec 038) build on this: a project's mosaic, its goals per panel, and "processed" and
-"published" as parts of finished.
+A [mosaic campaign](projects.md) follows a mosaic panel by panel with its own rule for finished:
+coverage, goals per panel, and a stack, a processed file or a finished image of its target.

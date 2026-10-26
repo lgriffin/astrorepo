@@ -23,6 +23,18 @@ const id = z.string().min(1)
 /** A SyQon model id as `--list-models` prints it; never a flag or a path. */
 const syqonModel = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
 
+/** An astronomy project's kind, completion rule and window (specs/038-astronomy-projects); goals in hours. */
+const projectKind = z.enum(['catalogue', 'seasonal', 'target-depth', 'mosaic', 'custom'])
+const projectRule = z.object({
+  integration: z.enum(['none', 'target goals', 'per filter']),
+  goals: z.array(z.object({ filter: z.string().max(40), hours: z.number().min(0).max(10000) })).max(20),
+  coverage: z.boolean(),
+  stacked: z.boolean(),
+  processed: z.boolean(),
+  published: z.boolean()
+})
+const projectWindow = z.object({ start: z.string().max(10), end: z.string().max(10) })
+
 /**
  * A mosaic workspace's grid as the editor sends it (specs/037-mosaic-workspace). Bounds here only
  * keep the numbers sane; the core's gridProblems says what is wrong in words.
@@ -411,6 +423,26 @@ export const schemas = {
   'workspace:preview-changes': z.object({ workspace_id: id, grid: workspaceGrid }),
   'workspace:coverage': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
   'workspace:export-next': z.object({ workspace_id: id, format: z.enum(['csv', 'json']), revision: z.number().int().min(1).optional() }),
+
+  'project:list': z.object({}).optional(),
+  'project:sources': z.object({}).optional(),
+  'project:create': z.object({
+    name: z.string().max(120),
+    kind: projectKind,
+    rule: projectRule.optional(),
+    window: projectWindow.nullable().optional(),
+    target_ids: z.array(id).max(2000).optional(),
+    catalogue_id: id.nullable().optional(),
+    collection_id: id.nullable().optional(),
+    workspace_id: id.nullable().optional()
+  }),
+  'project:get': z.object({ project_id: id }),
+  'project:rule': z.object({ project_id: id, rule: projectRule }),
+  'project:update': z.object({ project_id: id, name: z.string().max(120).optional(), status: z.enum(['active', 'paused', 'archived']).optional(), window: projectWindow.optional() }),
+  'project:add-targets': z.object({ project_id: id, target_ids: z.array(id).min(1).max(2000) }),
+  'project:remove-target': z.object({ project_id: id, target_id: id }),
+  'project:add-new-members': z.object({ project_id: id }),
+  'project:export': z.object({ project_id: id, format: z.enum(['csv', 'json']) }),
 
   'vespera:settings': z.object({}).optional(),
 

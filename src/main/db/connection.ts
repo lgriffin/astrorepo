@@ -33,6 +33,8 @@ export function resetDatabase(): { cleared: boolean } {
   if (!sqlite) throw new Error('Database not initialized')
   sqlite.exec(`
     DELETE FROM jobs;
+    -- Their targets and removals go with them.
+    DELETE FROM projects;
     DELETE FROM plate_solves;
     -- Their revisions and panels go with them.
     DELETE FROM mosaic_workspaces;
