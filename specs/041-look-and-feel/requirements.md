@@ -171,7 +171,7 @@ window was called "AstroRepo — Observatory Manager", the 800×480 kiosk gave a
 to the sidebar, and ten pages still drew their main action as a hand-styled button. The mark now
 makes the app icon and a favicon in the open theme; a narrow screen starts with the sidebar as a
 rail; each page names the window; a skip link leads past the sidebar; main actions use the shared
-primary button, and the pages that said "Run a FITS scan" link to the library scan.
+primary button, and the pages that said "Run a FITS scan" link to the scan that finds their files.
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|

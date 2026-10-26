@@ -1,8 +1,9 @@
 /**
  * Writes the app icon from the mark (specs/041-look-and-feel LF-031): resources/icon.svg in the
  * dark palette, and resources/icon.ico wrapping resources/icon.png for Windows. The PNG is drawn
- * from the SVG once by a browser (any will do: open the SVG at 256×256 and save it) because the
- * repo carries no rasteriser; run `npx tsx scripts/app-icon.ts` after changing the mark.
+ * from the SVG by a browser (open the SVG at 256×256 and save it) because the repo carries no
+ * rasteriser. When the mark changes, the script deletes the stale PNG and ICO and stops, so they
+ * cannot be packaged with the old artwork; draw the PNG and run it again.
  */
 import fs from 'fs'
 import path from 'path'
@@ -29,7 +30,22 @@ export function icoFromPng(png: Buffer, size: number): Buffer {
 
 if (require.main === module) {
   fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, 'icon.svg'), appIconSvg(PALETTES.dark) + '\n')
+  const svgPath = path.join(dir, 'icon.svg')
   const png = path.join(dir, 'icon.png')
-  if (fs.existsSync(png)) fs.writeFileSync(path.join(dir, 'icon.ico'), icoFromPng(fs.readFileSync(png), 256))
+  const ico = path.join(dir, 'icon.ico')
+  const svg = appIconSvg(PALETTES.dark) + '\n'
+  const changed = !fs.existsSync(svgPath) || fs.readFileSync(svgPath, 'utf8') !== svg
+  fs.writeFileSync(svgPath, svg)
+  if (changed) {
+    // The rasters show the old mark: remove them so nothing packages stale artwork.
+    fs.rmSync(png, { force: true })
+    fs.rmSync(ico, { force: true })
+    console.error('The mark changed. Draw resources/icon.png (256×256) from resources/icon.svg, then run this again.')
+    process.exit(1)
+  }
+  if (!fs.existsSync(png)) {
+    console.error('resources/icon.png is missing. Draw it (256×256) from resources/icon.svg, then run this again.')
+    process.exit(1)
+  }
+  fs.writeFileSync(ico, icoFromPng(fs.readFileSync(png), 256))
 }

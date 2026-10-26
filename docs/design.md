@@ -65,7 +65,9 @@ The icon is the sidebar mark on a rounded tile, built from the shared geometry i
 `src/shared/logo.ts`. The favicon is drawn from the open theme each time it changes. For the
 desktop app, `npx tsx scripts/app-icon.ts` writes `resources/icon.svg` in the dark palette and
 wraps `resources/icon.png` (256×256, drawn from that SVG in any browser) as `resources/icon.ico`.
-A test fails when the committed SVG no longer matches the mark.
+When the mark changes, the script deletes the stale PNG and ICO and stops until the PNG is
+redrawn. A test fails when the committed SVG no longer matches the mark or the ICO does not hold
+the committed PNG.
 
 ## Small screens
 

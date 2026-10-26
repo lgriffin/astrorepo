@@ -36,8 +36,9 @@ export function CalibrationTable({ groups }: CalibrationTableProps): React.React
   if (groups.length === 0) {
     return (
       <Card title="Calibration frames">
-        <EmptyState action={<Link to="/library" className="text-xs text-astro-accent hover:underline">Scan your library</Link>}>
-          No darks, flats or biases yet. A library scan finds them and works out which lights they cover.
+        <EmptyState action={<Link to="/fits-analyzer" className="text-xs text-astro-accent hover:underline">Scan a folder in FITS files</Link>}>
+          No darks, flats or biases yet. Scan the folder that holds them on FITS files; the library scan
+          only reads the raw and stacked folders.
         </EmptyState>
       </Card>
     )

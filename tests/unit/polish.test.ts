@@ -26,7 +26,9 @@ describe('Polish (specs/041-look-and-feel V7)', () => {
     // Windows reads the .ico, which wraps the PNG.
     const ico = fs.readFileSync(path.join(ROOT, 'resources/icon.ico'))
     expect(ico.readUInt16LE(2)).toBe(1)
-    expect(ico.subarray(22, 26).toString('latin1')).toBe('\u0089PNG')
+    // The ICO is exactly the committed PNG, so the two can never disagree.
+    expect(ico.subarray(22).equals(fs.readFileSync(path.join(ROOT, 'resources/icon.png')))).toBe(true)
+    expect(ico.readUInt32LE(14)).toBe(ico.length - 22)
     expect(read('forge.config.ts')).toContain("icon: 'resources/icon'")
     expect(read('src/main/index.ts')).toContain("icon: path.join(__dirname, '../../resources/icon.png')")
     expect(read('src/renderer/components/atlas/Logo.tsx')).toContain('MARK_TICKS.map')
