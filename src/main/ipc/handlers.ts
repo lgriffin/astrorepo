@@ -32,6 +32,7 @@ import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
 import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
+import { fromRuleView, toProjectChange, toProjectSummaries, toProjectView } from '../adapters/project-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
@@ -949,6 +950,37 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('workspace:preview-changes', validated('workspace:preview-changes', async (args) => {
     const changes = await workspaces().previewChanges(args.workspace_id, toGridDefinition(args.grid))
     return changes ? toChangeViews(changes) : null
+  }))
+
+  // Astronomy projects, judged from the index each time they are asked (specs/038-astronomy-projects).
+  const projects = () => sky().projects
+  handle('project:list', async () => toProjectSummaries(await projects().list()))
+  handle('project:sources', async () => projects().sources())
+  handle('project:create', validated('project:create', async (args) =>
+    toProjectChange(await projects().create({
+      name: args.name,
+      kind: args.kind,
+      rule: args.rule ? fromRuleView(args.rule) : undefined,
+      window: args.window ?? null,
+      targetIds: args.target_ids ?? [],
+      catalogueId: args.catalogue_id ?? null,
+      collectionId: args.collection_id ?? null,
+      workspaceId: args.workspace_id ?? null
+    }))))
+  handle('project:get', validated('project:get', async (args) => {
+    const d = await projects().describe(args.project_id)
+    return d ? toProjectView(d) : null
+  }))
+  handle('project:rule', validated('project:rule', async (args) => toProjectChange(await projects().setRule(args.project_id, fromRuleView(args.rule)))))
+  handle('project:update', validated('project:update', async (args) =>
+    toProjectChange(await projects().update(args.project_id, { name: args.name, status: args.status, window: args.window }))))
+  handle('project:add-targets', validated('project:add-targets', async (args) => toProjectChange(await projects().addTargets(args.project_id, args.target_ids))))
+  handle('project:remove-target', validated('project:remove-target', async (args) => toProjectChange(await projects().removeTarget(args.project_id, args.target_id))))
+  handle('project:add-new-members', validated('project:add-new-members', async (args) => toProjectChange(await projects().addNewMembers(args.project_id))))
+  handle('project:export', validated('project:export', async (args) => {
+    const exported = await projects().exportManifest(args.project_id, args.format)
+    if (!exported) return { saved: false }
+    return desktop.saveText(exported.fileName, exported.text, args.format === 'csv' ? CSV : JSON_FILE)
   }))
 
   handle('discovery:target', validated('discovery:target', async (args) => {

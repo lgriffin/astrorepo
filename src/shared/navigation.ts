@@ -55,6 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Collections',
     items: [
       { id: 'collections', to: '/collections', label: 'Collections', icon: '▦', hint: 'Catalogues and lists of targets, and how far through each you are' },
+      { id: 'projects', to: '/projects', label: 'Projects', icon: '☷', hint: 'Campaigns over targets or a mosaic, with what finished means and the next step for each' },
       { id: 'mosaics', to: '/mosaics', label: 'Mosaics', icon: '⊡', hint: 'Mosaic plans drawn on the sky, revision by revision, with exact panel coordinates' },
       { id: 'messier', to: '/messier', label: 'Messier mosaic', icon: '▩', hint: 'All 110 Messier objects with your own images, the gaps, and when each gap is up' },
       { id: 'posters', to: '/poster', label: 'Posters', icon: '▣', hint: 'A printable grid of a collection' }
@@ -153,6 +154,11 @@ export function targetLink(targetId: string, tab: TargetTab = 'overview'): strin
 /** The Sky planner opened on a target's mosaic plan (specs/024-sky-geometry). */
 export function mosaicPlannerLink(targetId: string): string {
   return `/sky-planner?mosaic=${encodeURIComponent(targetId)}#mosaic`
+}
+
+/** An astronomy project's page (specs/038-astronomy-projects). */
+export function projectLink(projectId: string): string {
+  return `/projects/${encodeURIComponent(projectId)}`
 }
 
 /** A mosaic workspace's page (specs/037-mosaic-workspace), at a revision when one is named. */

@@ -70,7 +70,7 @@ describe('navigation', () => {
     expect(here?.item.hint).toMatch(/\w/)
     for (const item of NAV_ITEMS) expect(item.hint.length).toBeGreaterThan(10)
     // No place's page names itself: the title comes from the sidebar, so the two never drift.
-    const detailPages = new Set(['TargetDetail.tsx', 'CollectionDetail.tsx', 'SessionForm.tsx', 'MosaicWorkspace.tsx'])
+    const detailPages = new Set(['TargetDetail.tsx', 'CollectionDetail.tsx', 'SessionForm.tsx', 'MosaicWorkspace.tsx', 'Project.tsx'])
     for (const file of fs.readdirSync(path.join(renderer, 'pages')).filter(f => !detailPages.has(f))) {
       for (const props of pageContainerProps(read(`pages/${file}`))) {
         expect(props, file).not.toContain('title')

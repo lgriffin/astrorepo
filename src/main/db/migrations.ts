@@ -630,6 +630,34 @@ export function runMigrations(sqlite: Database.Database): void {
       PRIMARY KEY (workspace_id, capture_id, revision)
     );
   `)
+
+  // Migration: astronomy projects (specs/038-astronomy-projects). The completion rule is kept as
+  // JSON; progress is never stored, since it is worked out from the index each time (AP-002). A
+  // catalogue, collection or mosaic is linked by id, and its targets copied in, never merged
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      rule TEXT NOT NULL,
+      window_start TEXT,
+      window_end TEXT,
+      catalogue_id TEXT REFERENCES catalogues(id) ON DELETE SET NULL,
+      collection_id TEXT REFERENCES collections(id) ON DELETE SET NULL,
+      workspace_id TEXT REFERENCES mosaic_workspaces(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS project_targets (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL,
+      added_at TEXT NOT NULL,
+      PRIMARY KEY (project_id, target_id)
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {

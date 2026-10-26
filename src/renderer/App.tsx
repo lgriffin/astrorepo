@@ -13,6 +13,8 @@ import { Library } from './pages/Library'
 import { Poster } from './pages/Poster'
 import { MessierMosaic } from './pages/MessierMosaic'
 import { MosaicWorkspaces } from './pages/MosaicWorkspaces'
+import { Projects } from './pages/Projects'
+import { ProjectDetail } from './pages/Project'
 import { MosaicWorkspaceDetail } from './pages/MosaicWorkspace'
 import { Settings } from './pages/Settings'
 import { Jobs } from './pages/Jobs'
@@ -53,6 +55,8 @@ export function App(): React.ReactElement {
             <Route path="/calibration" element={<Calibration />} />
             <Route path="/timeline" element={<SessionTimeline />} />
             <Route path="/poster" element={<Poster />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/mosaics" element={<MosaicWorkspaces />} />
             <Route path="/mosaics/:id" element={<MosaicWorkspaceDetail />} />
             <Route path="/messier" element={<MessierMosaic />} />

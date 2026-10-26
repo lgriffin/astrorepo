@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  CalendarDays, Grid3x3, ChartLine, Crosshair, FileSearch, Frame, HardDrive, House, Images, LayoutGrid, LibraryBig,
+  CalendarDays, FolderKanban, Grid3x3, ChartLine, Crosshair, FileSearch, Frame, HardDrive, House, Images, LayoutGrid, LibraryBig,
   ListChecks, MoonStar, Settings, SquareStack, Telescope, Wifi, Wrench, Layers
 } from 'lucide-react'
 
@@ -23,6 +23,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   insights: ChartLine,
   storage: HardDrive,
   collections: LayoutGrid,
+  projects: FolderKanban,
   mosaics: Grid3x3,
   messier: Frame,
   posters: Telescope,

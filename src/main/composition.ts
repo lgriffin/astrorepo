@@ -45,6 +45,17 @@ import {
   makeAssignCapture,
   makePreviewRevisionChanges,
   makeDescribeCoverage,
+  makeListProjects,
+  makeListProjectSources,
+  makeCreateProject,
+  makeDescribeProject,
+  makeAddProjectTargets,
+  makeRemoveProjectTarget,
+  makeSetCompletionRule,
+  makeUpdateProject,
+  makeAddNewSourceMembers,
+  makeExportProjectManifest,
+  type DescribeCoverage,
   makeExportNextSession,
   makeWorkspaceFromTarget,
   type FrameSelection,
@@ -99,6 +110,7 @@ import { NodeToolProbe } from './adapters/node-tool-probe'
 import { WindowsAppPathsRegistry } from './adapters/windows-app-paths'
 import { SqliteMosaicStore, SqliteSolveStore } from './adapters/sqlite-sky-geometry'
 import { SqliteIntegrationGoalSource, SqliteMosaicAssignmentStore, SqliteMosaicWorkspaceStore } from './adapters/sqlite-mosaic-workspace'
+import { SqliteProjectSources, SqliteProjectStore } from './adapters/sqlite-projects'
 import { AstapPlateSolver, SirilPlateSolver } from './adapters/node-plate-solvers'
 import { NodeImagePixels } from './adapters/node-image-pixels'
 import { SqliteGalleryCatalogue, SqlitePaletteStore } from './adapters/sqlite-gallery'
@@ -260,6 +272,7 @@ export function composeCore(db: Database.Database) {
   const folders = composeFolders(db)
   const planMosaic = makePlanMosaic(sky)
   const comets = new SqliteCometStore(db, systemClock)
+  const workspaces = composeWorkspaces(db, { planMosaic, settings: planningSettings, ephemeris, solves, mosaics, selection: grading, hashes })
   return {
     listStackingSuggestions,
     listNextActions: makeListNextActions({
@@ -332,9 +345,28 @@ export function composeCore(db: Database.Database) {
     saveMosaicPlan: makeSaveMosaicPlan({ store: solves, mosaics, clock: systemClock }),
     exportMosaicCsv: makeExportMosaicCsv(planMosaic),
     /** Mosaic workspaces: versioned grids on the sky (specs/037-mosaic-workspace). */
-    workspaces: composeWorkspaces(db, { planMosaic, settings: planningSettings, ephemeris, solves, mosaics, selection: grading, hashes }),
+    workspaces,
+    /** Astronomy projects judged from the index each time (specs/038-astronomy-projects). */
+    projects: composeProjects(db, { frames, workspaces: new SqliteMosaicWorkspaceStore(db), coverage: workspaces.coverage }),
     setCometOrbit: makeSetCometOrbit({ comets }),
     planComet: makePlanComet({ comets, workspace: new NodeSirilWorkspace(db), selection: grading, ephemeris, settings: planningSettings, targets: stacks })
+  }
+}
+
+/** The astronomy projects' use cases over SQLite (specs/038-astronomy-projects). */
+function composeProjects(db: Database.Database, deps: { frames: SqliteFrameCatalogue; workspaces: SqliteMosaicWorkspaceStore; coverage: DescribeCoverage }) {
+  const all = { ...deps, store: new SqliteProjectStore(db), sources: new SqliteProjectSources(db), clock: systemClock }
+  return {
+    list: makeListProjects(all),
+    sources: makeListProjectSources(all),
+    create: makeCreateProject(all),
+    describe: makeDescribeProject(all),
+    addTargets: makeAddProjectTargets(all),
+    removeTarget: makeRemoveProjectTarget(all),
+    setRule: makeSetCompletionRule(all),
+    update: makeUpdateProject(all),
+    addNewMembers: makeAddNewSourceMembers(all),
+    exportManifest: makeExportProjectManifest(all)
   }
 }
 

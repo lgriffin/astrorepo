@@ -36,7 +36,9 @@ const NOT_PORTS: Record<string, string> = {
   CompanionDevice: 'what CompanionDeviceStore saves',
   WorkspaceRecord: 'what MosaicWorkspaceStore saves',
   RevisionSummary: 'what MosaicWorkspaceStore.history lists',
-  StoredRevision: 'what MosaicWorkspaceStore saves'
+  StoredRevision: 'what MosaicWorkspaceStore saves',
+  ProjectRecord: 'what ProjectStore saves',
+  ProjectSource: 'what ProjectSources lists'
 }
 
 const read = (dir: string, suffix: string) =>

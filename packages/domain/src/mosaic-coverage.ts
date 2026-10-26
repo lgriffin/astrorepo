@@ -339,25 +339,33 @@ export interface PanelProgress {
 export function panelProgress(coverage: PanelCoverage[], counted: CountedCapture[], goals: FilterSeconds[]): PanelProgress[] {
   return coverage.map(cov => {
     const mine = counted.filter(c => c.panelId === cov.panelId && c.exposures.length > 0)
-    const have = new Map<string, FilterProgress>()
-    // Goals whose names differ only in case or spaces are one filter's goal: the larger one stands.
-    for (const g of goals) {
-      const key = keyOf(g.filter)
-      const seconds = Math.max(g.seconds, have.get(key)?.goalSec ?? 0)
-      have.set(key, { filter: have.get(key)?.filter ?? g.filter.trim(), haveSec: 0, goalSec: seconds, needSec: seconds })
-    }
-    for (const e of mine.flatMap(c => c.exposures)) {
-      const key = keyOf(e.filter)
-      const entry = have.get(key) ?? { filter: e.filter, haveSec: 0, goalSec: null, needSec: null }
-      entry.haveSec += e.seconds
-      if (entry.goalSec !== null) entry.needSec = Math.max(0, entry.goalSec - entry.haveSec)
-      have.set(key, entry)
-    }
-    const filters = [...have.values()].sort((a, b) => a.filter.localeCompare(b.filter))
+    const filters = measureFilters(mine.flatMap(c => c.exposures), goals)
     const withGoal = filters.filter(f => f.goalSec !== null)
     const state: PanelState = cov.covered ? 'covered' : cov.fraction > 0 ? 'partly covered' : 'not started'
     return { panelId: cov.panelId, state, coverage: cov, filters, goalsMet: withGoal.length > 0 ? withGoal.every(f => f.needSec === 0) : null, captures: mine.length }
   })
+}
+
+/**
+ * Exposure per filter against per-filter goals, ordered by filter. Goals whose names differ only
+ * in case or spaces are one filter's goal and the larger one stands; frames with no filter meet a
+ * goal named "No filter". A filter with exposure and no goal is listed with a null goal.
+ */
+export function measureFilters(have: FilterSeconds[], goals: FilterSeconds[]): FilterProgress[] {
+  const byKey = new Map<string, FilterProgress>()
+  for (const g of goals) {
+    const key = keyOf(g.filter)
+    const seconds = Math.max(g.seconds, byKey.get(key)?.goalSec ?? 0)
+    byKey.set(key, { filter: byKey.get(key)?.filter ?? g.filter.trim(), haveSec: 0, goalSec: seconds, needSec: seconds })
+  }
+  for (const e of have) {
+    const key = keyOf(e.filter)
+    const entry = byKey.get(key) ?? { filter: e.filter, haveSec: 0, goalSec: null, needSec: null }
+    entry.haveSec += e.seconds
+    if (entry.goalSec !== null) entry.needSec = Math.max(0, entry.goalSec - entry.haveSec)
+    byKey.set(key, entry)
+  }
+  return [...byKey.values()].sort((a, b) => a.filter.localeCompare(b.filter))
 }
 
 export interface NextSessionRow {
