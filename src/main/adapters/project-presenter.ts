@@ -2,6 +2,7 @@ import type { ProjectDescription, ProjectResult, ProjectSummary } from '@astro/a
 import { KIND_LABELS, PART_NAMES, type CampaignWindowState, type CompletionRule, type FilterProgress, type PartName, type ProjectWindow } from '@astro/domain'
 import type { ProjectChangeView, ProjectPartView, ProjectRuleView, ProjectSummaryView, ProjectView } from '@shared/types'
 import { formatDuration } from './job-presenter'
+import { toForecastView } from './forecast-presenter'
 
 const PART_LABELS: Record<PartName, string> = { coverage: 'Covered', integration: 'Integrated', stacked: 'Stacked', processed: 'Processed', published: 'Published' }
 
@@ -100,6 +101,10 @@ export function toProjectView(d: ProjectDescription): ProjectView {
     next: d.next.map(a => ({ taskId: a.taskId, kind: a.kind, text: a.text })),
     mosaic: d.mosaic,
     source: d.source ? { kind: d.source.kind, name: d.source.name, newMembers: d.source.notInProject.length } : null,
+    bottlenecks: d.bottlenecks.map(b => {
+      const f = toForecastView(b.forecast)
+      return { label: b.label, gain: f.gain, range: f.range, kind: f.kind }
+    }),
     checked: `Worked out from the index at ${clock(d.at)}.`
   }
 }

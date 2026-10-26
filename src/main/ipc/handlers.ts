@@ -33,10 +33,11 @@ import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
 import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { fromRuleView, toProjectChange, toProjectSummaries, toProjectView } from '../adapters/project-presenter'
+import { toIntegrationView, toMosaicIntegrationView } from '../adapters/forecast-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
-import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError, MessierRefusedError, PictureRefusedError } from '@astro/application'
+import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError, MessierRefusedError, PictureRefusedError, FORECAST_MINUTES } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { ingestIdentify, ingestName, ingestPause, ingestPreview, ingestProgress, ingestResume, ingestScan, ingestTransfer } from '../vespera-ingest-host'
 import { toVesperaSettingsView } from '../adapters/vespera-presenter'
@@ -981,6 +982,16 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
     const exported = await projects().exportManifest(args.project_id, args.format)
     if (!exported) return { saved: false }
     return desktop.saveText(exported.fileName, exported.text, args.format === 'csv' ? CSV : JSON_FILE)
+  }))
+
+  // What another hour buys (specs/039-integration-forecasts): worked out from grading and coverage each time.
+  handle('forecast:target', validated('forecast:target', async (args) => {
+    const minutes = args.minutes && !FORECAST_MINUTES.includes(args.minutes) ? [...FORECAST_MINUTES, args.minutes].sort((a, b) => a - b) : FORECAST_MINUTES
+    return toIntegrationView(await sky().integration.target(args.target_id, minutes), minutes)
+  }))
+  handle('forecast:mosaic', validated('forecast:mosaic', async (args) => {
+    const m = await sky().integration.mosaic(args.workspace_id, args.revision)
+    return m ? toMosaicIntegrationView(m) : null
   }))
 
   handle('discovery:target', validated('discovery:target', async (args) => {

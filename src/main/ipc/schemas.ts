@@ -444,6 +444,9 @@ export const schemas = {
   'project:add-new-members': z.object({ project_id: id }),
   'project:export': z.object({ project_id: id, format: z.enum(['csv', 'json']) }),
 
+  'forecast:target': z.object({ target_id: id, minutes: z.number().int().min(1).max(6000).optional() }),
+  'forecast:mosaic': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
+
   'vespera:settings': z.object({}).optional(),
 
   'vespera-ingest:scan': z.object({}).optional(),

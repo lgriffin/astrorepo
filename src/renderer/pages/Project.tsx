@@ -5,6 +5,7 @@ import { Card, EmptyState } from '../components/common/Card'
 import { Badge, Button, Stat, Table, Td, Th, Tr } from '../components/ui'
 import { RuleEditor } from '../components/project/RuleEditor'
 import { TargetPicker } from '../components/project/TargetPicker'
+import { ForecastKind } from '../components/forecast/ForecastTable'
 import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { targetLink, workspaceLink } from '@shared/navigation'
@@ -139,6 +140,22 @@ export function ProjectDetail(): React.ReactElement {
             </ol>
           )}
         </Card>
+
+        {view.bottlenecks.length > 0 && (
+          <Card title="What another hour buys">
+            <div className="space-y-2 text-sm">
+              <p className="text-xs text-astro-muted">Filters still short of their goals, by the signal to noise an hour more of capture is expected to add, most first.</p>
+              <ol className="list-decimal pl-5 space-y-0.5">
+                {view.bottlenecks.map(b => (
+                  <li key={b.label} className="text-astro-text">
+                    {b.label}: {b.gain ?? 'nothing accepted yet'}
+                    {b.range ? <span className="text-astro-muted"> ({b.range})</span> : null} <ForecastKind kind={b.kind} />
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </Card>
+        )}
 
         <Card title={view.kind === 'mosaic' ? 'Panels and the target' : 'Targets'}>
           <div className="space-y-3">

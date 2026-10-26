@@ -53,3 +53,4 @@ export type { CompanionDevice, CompanionDeviceStore, CompanionSecrets } from './
 export * from './use-cases/companion'
 export type { NewProject, ProjectRecord, ProjectSource, ProjectSources, ProjectStore } from './ports/projects'
 export * from './use-cases/projects'
+export * from './use-cases/integration-forecast'

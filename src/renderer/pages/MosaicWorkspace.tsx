@@ -8,6 +8,7 @@ import { targetLink, workspaceLink, workspaceRevisionFrom } from '@shared/naviga
 import type { WorkspaceChangeView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceView } from '@shared/types'
 import { MosaicCaptures } from '../components/mosaic/MosaicCaptures'
 import { MosaicCoverage } from '../components/mosaic/MosaicCoverage'
+import { MosaicForecast } from '../components/forecast/MosaicForecast'
 import { GridWorkbench, PanelTable } from './MosaicWorkspaces'
 import type { FlushCentre } from '../components/mosaic/GridEditor'
 
@@ -156,6 +157,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
         <MosaicCaptures workspaceId={view.id} revision={view.revision} drawing={view.drawing} latestPanels={latestPanels} onChanged={() => setPlacements(n => n + 1)} />
 
         <MosaicCoverage workspaceId={view.id} revision={view.revision} drawing={view.drawing} version={placements} />
+        <MosaicForecast workspaceId={view.id} revision={view.revision} version={placements} />
 
         <Card title="Change the grid">
           <div className="space-y-4 text-sm">
