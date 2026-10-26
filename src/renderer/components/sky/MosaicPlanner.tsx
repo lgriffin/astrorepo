@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Card, EmptyState, LinkButton } from '../common/Card'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
-import { mosaicTargetFrom, targetLink, workspaceLink } from '@shared/navigation'
+import { mosaicTargetFrom, settingsLink, targetLink, workspaceLink } from '@shared/navigation'
 import type { Equipment, FOVResult, MosaicPlanView, TargetSummary, WorkspaceSaveView } from '@shared/types'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
@@ -214,7 +214,7 @@ export function MosaicPlanner(): React.ReactElement {
 
         {!targetId && <EmptyState>Search for a target to plan a mosaic for it. It uses the catalogue size and the field of the scope and camera you pick.</EmptyState>}
         {scopes.length === 0 && cameras.length === 0 && (
-          <EmptyState action={<LinkButton onClick={() => navigate('/equipment')}>Add your scope and camera</LinkButton>}>
+          <EmptyState action={<LinkButton onClick={() => navigate(settingsLink('equipment'))}>Add your scope and camera</LinkButton>}>
             Your scope and camera in Equipment give the field of view each panel covers.
           </EmptyState>
         )}

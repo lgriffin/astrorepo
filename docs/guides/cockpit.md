@@ -527,8 +527,8 @@ it. A file that could not be solved shows why. Two checks follow from the solves
 **Plan a mosaic**, at the foot of the Sky planner (or from a target's Where it points card),
 splits a target too big for one field into panels:
 1. Search for the target. Its size comes from the catalogue.
-2. Pick the scope and camera (and reducer) from Equipment; the field of view is the one the
-   Equipment page works out. With none picked, the field of the target's solved lights is used.
+2. Pick the scope and camera (and reducer) from Equipment; the field of view is the one
+   **Settings > Equipment** works out. With none picked, the field of the target's solved lights is used.
 3. Set the rotation (the camera angle, east of north) and the overlap. Panels always overlap by
    at least 15%; 20% is the default. A turned grid is sized for the target's extent along the
    turned panels, so a long target at 45° gets rows as well as columns.

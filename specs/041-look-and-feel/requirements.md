@@ -97,7 +97,7 @@ typing.
 | Data | Library, FITS files, Nights, Vespera, Storage |
 | Gallery | Pictures, Posters |
 | Insights | Insights |
-| Settings | Settings, Equipment |
+| Settings | Settings (Equipment became a section of it in V5) |
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
@@ -135,3 +135,17 @@ checkboxes beside the cards rather than a box drawn over each card's title.
 | LF-021 | Unwanted | If none of the user's targets match a search, then the system shall offer to search the whole catalogue, and if the user has no targets at all, offer to scan the library or browse the catalogue. |
 | LF-022 | Event | When the user chooses to pick targets, the system shall show a labelled checkbox beside each card, named after its target and reachable by keyboard, without covering the card, and leave cards as plain links otherwise. |
 | LF-023 | State | While targets are chosen, the system shall show what can be done with them in a bar at the bottom of the page built from the shared controls, and ask before deleting them. |
+
+## V5: Settings as pages
+
+Settings was one long page of eleven cards with a row of jump buttons, and links into it had to
+chase their section while the cards above it loaded. Each section is now a page of its own, listed
+by group down the side (Your observatory, Files and tools, Processing, This app). Equipment, which
+was a page of its own under Settings, is a section in Your observatory, beside Your site.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-024 | Ubiquitous | The system shall show Settings as one section at a time, the sections listed by group beside it with the open one marked, each section's address opening it, and an address naming no section opening the first. |
+| LF-025 | Event | When an old link to the Equipment page is opened, the system shall open Settings > Equipment. |
+| LF-026 | Ubiquitous | The system shall let the user open, change and delete each piece of equipment with buttons named after it, and ask before deleting it. |
+| LF-027 | Event | When the user types a word for a Settings section into Go to, such as "telescope" or "theme", the system shall offer that section. |

@@ -58,7 +58,7 @@ describe('navigation', () => {
       data: ['Library', 'FITS files', 'Nights', 'Vespera', 'Storage'],
       gallery: ['Pictures', 'Posters'],
       insights: ['Insights'],
-      settings: ['Settings', 'Equipment']
+      settings: ['Settings']
     })
     expect(new Set(NAV_PLACES.map(p => p.id)).size).toBe(NAV_PLACES.length)
     expect(new Set(NAV_ITEMS.map(i => i.to)).size).toBe(NAV_ITEMS.length)
@@ -137,12 +137,15 @@ describe('navigation', () => {
     expect(jobsStatus(null)).toBeNull()
   })
 
-  it('[UX-005] Given a link to a Settings section, When Settings reads it, Then it opens at that section, and an unknown section opens the top', () => {
+  it('[UX-005] [LF-024] Given a link to a Settings section, When Settings reads it, Then it opens that section, and an unknown section opens the first', () => {
+    const page = read('pages/Settings.tsx')
     for (const s of SETTINGS_SECTIONS) {
       const link = settingsLink(s.id)
       expect(settingsSectionFrom(link.slice(link.indexOf('?')))).toBe(s.id)
-      expect(read('pages/Settings.tsx') + read('components/jobs/RunWindowSettings.tsx')).toContain(`settings-${s.id}`)
+      // Every section has its own view on the page.
+      expect(page).toMatch(new RegExp(`\\n  '?${s.id}'?: \\(\\) => <`))
     }
+    expect(page).toContain('settingsSectionFrom(search) ?? SETTINGS_SECTIONS[0].id')
     expect(settingsSectionFrom('?section=nope')).toBeNull()
     expect(settingsSectionFrom('')).toBeNull()
     expect(read('pages/Jobs.tsx')).toContain("settingsLink('run-window')")

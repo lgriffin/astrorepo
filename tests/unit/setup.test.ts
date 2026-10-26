@@ -15,7 +15,7 @@ describe('Setting up', () => {
     expect(sky).not.toContain("'settings:set'")
     expect(sky).toContain("settingsLink('location')")
     expect(read('components/cockpit/ComingNightsCard.tsx')).toContain("settingsLink('location')")
-    expect(read('pages/Settings.tsx')).toContain('id="settings-location"')
+    expect(read('pages/Settings.tsx')).toContain('location: () => <LocationSection />')
   })
 
   it('[UX-014] Given a fresh install, When Home is drawn, Then the checklist shows four steps in order, each linking where it is done', () => {

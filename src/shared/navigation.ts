@@ -83,10 +83,8 @@ export const NAV_PLACES: NavPlace[] = [
   {
     id: 'settings',
     label: 'Settings',
-    pages: [
-      { id: 'settings', to: '/settings', label: 'Settings', hint: 'Your site, folders, tools and run window' },
-      { id: 'equipment', to: '/equipment', label: 'Equipment', hint: 'Your scopes, cameras and filters, and their field of view' }
-    ]
+    // Equipment is a Settings section (LF-024); its old address still opens it.
+    pages: [{ id: 'settings', to: '/settings', label: 'Settings', hint: 'Your site and equipment, folders, tools and how the app looks', also: ['/equipment'] }]
   }
 ]
 
@@ -113,19 +111,23 @@ export function locate(pathname: string): Location | null {
   return null
 }
 
-/** The sections of Settings, in page order; links elsewhere open Settings at one of them. */
+/** The groups Settings lists its sections under (LF-024), in order. */
+export const SETTINGS_GROUPS = ['Your observatory', 'Files and tools', 'Processing', 'This app'] as const
+
+/** The sections of Settings, each a page of its own, in the order the list shows them; links elsewhere open one. */
 export const SETTINGS_SECTIONS = [
-  { id: 'location', label: 'Your site' },
-  { id: 'weather', label: 'Weather' },
-  { id: 'folders', label: 'Folders' },
-  { id: 'tools', label: 'Tools' },
-  { id: 'run-window', label: 'Run window' },
-  { id: 'grading', label: 'Frame grading' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'import', label: 'Import and export' },
-  { id: 'companions', label: 'Companion screens' },
-  { id: 'reset', label: 'Start again' }
-] as const
+  { id: 'location', label: 'Your site', group: 'Your observatory', hint: 'Where you observe from, for the sky, the moon and the weather' },
+  { id: 'equipment', label: 'Equipment', group: 'Your observatory', hint: 'Your scopes, cameras and filters, and their field of view' },
+  { id: 'weather', label: 'Weather', group: 'Your observatory', hint: 'Where the forecast for clear skies comes from' },
+  { id: 'folders', label: 'Folders', group: 'Files and tools', hint: 'Where your data lives and where copies go' },
+  { id: 'tools', label: 'Tools', group: 'Files and tools', hint: 'Siril, scripts and the other programs the app runs' },
+  { id: 'import', label: 'Import and export', group: 'Files and tools', hint: 'CSV exports and NINA sequences' },
+  { id: 'run-window', label: 'Run window', group: 'Processing', hint: 'When queued jobs may run' },
+  { id: 'grading', label: 'Frame grading', group: 'Processing', hint: 'Which frames are kept for stacking' },
+  { id: 'appearance', label: 'Appearance', group: 'This app', hint: 'Dark, light or red night theme' },
+  { id: 'companions', label: 'Companion screens', group: 'This app', hint: 'Other screens that follow this one' },
+  { id: 'reset', label: 'Start again', group: 'This app', hint: 'Clear the database, or bring back the setup checklist' }
+] as const satisfies readonly { id: string; label: string; group: (typeof SETTINGS_GROUPS)[number]; hint: string }[]
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id']
 
