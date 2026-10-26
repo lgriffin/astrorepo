@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import type { WorkspaceDrawingView } from '@shared/types'
+import type { WorkspaceCaptureView, WorkspaceDrawingView } from '@shared/types'
 
 interface MosaicCanvasProps {
   drawing: WorkspaceDrawingView
@@ -7,6 +7,30 @@ interface MosaicCanvasProps {
   onSelect?: (panelId: string) => void
   /** Called when the grid is dropped after a drag, with how far it moved on the drawing (x west, y north, degrees). */
   onDrag?: (xDeg: number, yDeg: number) => void
+  /** Solved captures drawn at their footprints over the panels (X2). */
+  captures?: WorkspaceCaptureView[]
+  /** Thumbnails by file id, as data URLs, drawn inside their capture's footprint. */
+  thumbnails?: Record<string, string>
+  selectedCapture?: string | null
+  onSelectCapture?: (captureId: string) => void
+}
+
+/** Outline colour by review state: accepted green, to review amber, conflict red, left out grey. */
+const CAPTURE_STYLE: Record<WorkspaceCaptureView['state'], string> = {
+  accepted: 'stroke-emerald-400',
+  'needs-review': 'stroke-amber-400',
+  conflict: 'stroke-red-400',
+  excluded: 'stroke-astro-muted'
+}
+
+/**
+ * The SVG matrix that puts a unit image on a footprint: its top left at the first corner, its top
+ * right at the second and its bottom left at the fourth, so a thumbnail lies where it was solved.
+ */
+export function imageMatrix(outline: { x: number; y: number }[]): string | null {
+  if (outline.length !== 4) return null
+  const [tl, tr, , bl] = outline.map(v => ({ x: v.x, y: -v.y }))
+  return `matrix(${tr.x - tl.x} ${tr.y - tl.y} ${bl.x - tl.x} ${bl.y - tl.y} ${tl.x} ${tl.y})`
 }
 
 /**
@@ -14,9 +38,9 @@ interface MosaicCanvasProps {
  * out on the grid's tangent plane, east on the left and north up. Dragging moves the whole grid;
  * the core works out where its centre lands and lays it out again.
  */
-export function MosaicCanvas({ drawing, selected, onSelect, onDrag }: MosaicCanvasProps): React.ReactElement | null {
+export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [], thumbnails = {}, selectedCapture = null, onSelectCapture }: MosaicCanvasProps): React.ReactElement | null {
   const svg = useRef<SVGSVGElement | null>(null)
-  const [drag, setDrag] = useState<{ from: { x: number; y: number }; by: { x: number; y: number }; panel: string | null } | null>(null)
+  const [drag, setDrag] = useState<{ from: { x: number; y: number }; by: { x: number; y: number }; panel: string | null; capture: string | null } | null>(null)
   if (!drawing.ok || !drawing.bounds) return null
   const { x: hx, y: hy } = drawing.bounds
   const half = Math.max(hx, hy)
@@ -33,8 +57,9 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag }: MosaicCanv
     const at = toDegrees(e)
     if (!at) return
     const panel = (e.target as Element).closest('[data-panel]')?.getAttribute('data-panel') ?? null
+    const capture = (e.target as Element).closest('[data-capture]')?.getAttribute('data-capture') ?? null
     if (onDrag) e.currentTarget.setPointerCapture(e.pointerId)
-    setDrag({ from: at, by: { x: 0, y: 0 }, panel })
+    setDrag({ from: at, by: { x: 0, y: 0 }, panel, capture })
   }
   const move = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!drag || !onDrag) return
@@ -46,6 +71,7 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag }: MosaicCanv
     const moved = Math.hypot(drag.by.x, drag.by.y) > half / 200
     setDrag(null)
     if (moved) onDrag?.(drag.by.x, drag.by.y)
+    else if (drag.capture && onSelectCapture) onSelectCapture(drag.capture)
     else if (drag.panel) onSelect?.(drag.panel)
   }
 
@@ -85,6 +111,30 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag }: MosaicCanv
               <text x={cx} y={cy} fontSize={half / 22} textAnchor="middle" dominantBaseline="middle" className="fill-astro-text pointer-events-none">
                 {p.id}
               </text>
+            </g>
+          )
+        })}
+        {captures.map(c => {
+          const thumbnail = c.fileId ? thumbnails[c.fileId] : undefined
+          const matrix = imageMatrix(c.outline)
+          const isSelected = c.id === selectedCapture
+          return (
+            <g key={c.id} data-capture={c.id} className={onSelectCapture ? 'cursor-pointer' : undefined}>
+              {thumbnail && matrix && <image href={thumbnail} x={0} y={0} width={1} height={1} preserveAspectRatio="none" transform={matrix} opacity={0.75} pointerEvents="none" />}
+              {/* Only the outline picks the capture, so a click inside it still reaches the panel underneath. */}
+              <polygon
+                points={c.outline.map(v => `${v.x},${-v.y}`).join(' ')}
+                fill="none"
+                pointerEvents="stroke"
+                className={CAPTURE_STYLE[c.state]}
+                strokeWidth={isSelected ? stroke * 3 : stroke}
+                strokeDasharray={c.source === 'user-override' ? `${stroke * 4} ${stroke * 2}` : undefined}
+              >
+                <title>
+                  {c.label}
+                  {c.note ? `: ${c.note}` : ''}
+                </title>
+              </polygon>
             </g>
           )
         })}

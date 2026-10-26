@@ -1,5 +1,5 @@
-import type { MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
-import { DEFAULT_GRID_OVERLAP, type GridDefinition } from '@astro/domain'
+import type { MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
+import { DEFAULT_GRID_OVERLAP, type AssignmentOverride, type GridDefinition } from '@astro/domain'
 
 const copy = <T>(value: T): T => structuredClone(value)
 
@@ -64,5 +64,37 @@ export function gridDefinition(over: Partial<GridDefinition> = {}): GridDefiniti
     overlapY: DEFAULT_GRID_OVERLAP,
     field: { widthDeg: 0.72, heightDeg: 1.28, source: 'manual', label: null },
     ...over
+  }
+}
+
+/** Overrides in memory, one per capture per workspace. */
+export class InMemoryMosaicAssignmentStore implements MosaicAssignmentStore {
+  /** Per workspace, every change in the order made; null overrides are clears. */
+  readonly changes = new Map<string, { captureId: string; revision: number; override: AssignmentOverride | null }[]>()
+
+  async overrides(workspaceId: string, revision: number): Promise<AssignmentOverride[]> {
+    const latest = new Map<string, { revision: number; override: AssignmentOverride | null }>()
+    for (const c of this.changes.get(workspaceId) ?? []) {
+      const had = latest.get(c.captureId)
+      if (c.revision <= revision && (!had || c.revision >= had.revision)) latest.set(c.captureId, c)
+    }
+    return [...latest.values()]
+      .map(c => c.override)
+      .filter((o): o is AssignmentOverride => o !== null)
+      .map(copy)
+      .sort((a, b) => a.captureId.localeCompare(b.captureId))
+  }
+
+  async set(workspaceId: string, override: AssignmentOverride): Promise<void> {
+    this.record(workspaceId, override.captureId, override.revision, copy(override))
+  }
+
+  async clear(workspaceId: string, captureId: string, revision: number): Promise<void> {
+    this.record(workspaceId, captureId, revision, null)
+  }
+
+  private record(workspaceId: string, captureId: string, revision: number, override: AssignmentOverride | null) {
+    const all = (this.changes.get(workspaceId) ?? []).filter(c => !(c.captureId === captureId && c.revision === revision))
+    this.changes.set(workspaceId, [...all, { captureId, revision, override }])
   }
 }

@@ -31,7 +31,7 @@ import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
-import { toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
+import { toCapturesView, toChangeViews, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
@@ -931,6 +931,16 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
     return grid ? toGridInput(grid) : null
   }))
   handle('workspace:archive', validated('workspace:archive', (args) => workspaces().archive(args.workspace_id, args.archived)))
+  handle('workspace:captures', validated('workspace:captures', async (args) => {
+    const placed = await workspaces().captures(args.workspace_id, args.revision)
+    return placed ? toCapturesView(placed) : null
+  }))
+  handle('workspace:assign', validated('workspace:assign', (args) =>
+    workspaces().assign(args.workspace_id, args.capture_id, args.action === 'assign' ? { action: 'assign', panelId: args.panel_id, reason: args.reason ?? null } : args.action === 'exclude' ? { action: 'exclude', reason: args.reason ?? null } : { action: 'clear' })))
+  handle('workspace:preview-changes', validated('workspace:preview-changes', async (args) => {
+    const changes = await workspaces().previewChanges(args.workspace_id, toGridDefinition(args.grid))
+    return changes ? toChangeViews(changes) : null
+  }))
 
   handle('discovery:target', validated('discovery:target', async (args) => {
     const d = await composeCore(getSqlite()).discoverTarget(args.target_id)

@@ -1557,6 +1557,77 @@ export interface WorkspaceSaveView {
   problems: string[]
 }
 
+/** A capture placed on a mosaic revision (specs/037-mosaic-workspace, X2). */
+export interface WorkspaceCaptureView {
+  id: string
+  /** "48 lights, 2026-10-01, M31/panel2" or "master stack.fit". */
+  label: string
+  kind: 'lights' | 'master'
+  targetId: string
+  night: string | null
+  files: number
+  /** "4 h 10 min" of exposure, or null when no file says. */
+  exposure: string | null
+  filters: string[]
+  /** For its thumbnail (fits:get-thumbnail). */
+  fileId: string | null
+  /** Its solved footprint on the drawing, in the image's own corner order: top left, top right, bottom right, bottom left. */
+  outline: { x: number; y: number }[]
+  /** Every panel it meets: how much of the capture falls there and how much of the panel it covers. */
+  panels: { panelId: string; share: string; coverage: string }[]
+  primary: string | null
+  /** The panel it counts toward, computed or the user's. */
+  panelId: string | null
+  source: 'computed' | 'user-override'
+  state: 'accepted' | 'needs-review' | 'excluded' | 'conflict'
+  note: string | null
+  /** Why the user put it there or left it out. */
+  reason: string | null
+}
+
+export interface WorkspaceUnsolvedView {
+  id: string
+  label: string
+  targetId: string
+  /** Why the last solve failed; null when it was never tried. */
+  solveError: string | null
+}
+
+export interface WorkspaceMissingView {
+  captureId: string
+  label: string
+  /** "Put on R1C2" or "Left out". */
+  said: string
+  reason: string | null
+  /** Where it last pointed, or null. */
+  lastCentre: string | null
+}
+
+export interface WorkspaceCapturesView {
+  revision: number
+  latestRevision: number
+  placed: WorkspaceCaptureView[]
+  outside: WorkspaceCaptureView[]
+  unsolved: WorkspaceUnsolvedView[]
+  missing: WorkspaceMissingView[]
+  /** The targets whose unsolved files are listed, to plate solve. */
+  targetIds: string[]
+  /** "12 captures on 6 panels; 2 to review, 1 conflict." */
+  summary: string
+}
+
+/** A capture whose panel would change if the edited grid were saved. */
+export interface WorkspaceChangeView {
+  captureId: string
+  label: string
+  from: string | null
+  to: string | null
+  /** The user put it on a panel; that choice stays and is shown for review. */
+  overridden: boolean
+  /** The panel they put it on. */
+  overridePanel: string | null
+}
+
 // ── Gallery inspector (spec 025) ──────────────────────────────────────────
 
 export interface ChannelStatsView {
