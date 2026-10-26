@@ -309,9 +309,18 @@ export function makeListProjects(deps: ProjectDeps) {
       coverages.set(id, asked)
       return asked
     }
+    // Each target graded once for the whole list, however many projects hold it.
+    const graded = new Map<string, ReturnType<Shared['lights']>>()
+    const lights = (id: string) => {
+      const known = graded.get(id)
+      if (known) return known
+      const asked = gradedLights(deps, id)
+      graded.set(id, asked)
+      return asked
+    }
     const out: ProjectSummary[] = []
     for (const project of projects) {
-      const d = await evaluate(project, frames, [], { names, coverage })
+      const d = await evaluate(project, frames, [], { names, coverage, lights })
       out.push({ project, done: d.progress.done, total: d.progress.total, complete: d.progress.complete, window: d.window })
     }
     return out
@@ -335,7 +344,17 @@ export function localDate(at: Date): string {
 interface Shared {
   names: Map<string, string>
   coverage: ProjectDeps['coverage']
+  lights: (targetId: string) => Promise<ForecastFrame[] | undefined>
 }
+
+/** A target's lights as grading judges them; none without grading. */
+async function gradedLights(deps: Pick<ProjectDeps, 'grading'>, targetId: string): Promise<ForecastFrame[] | undefined> {
+  return deps.grading ? (await deps.grading.grade(targetId)).grades.map(forecastFrame) : undefined
+}
+
+/** Without grading, the indexed subs as forecasts take them: quality-flagged ones rejected. */
+export const indexedLights = (frames: TargetFrames | undefined): ForecastFrame[] =>
+  (frames?.subs ?? []).map(s => ({ seconds: s.exposureSec, filter: s.filter, accepted: !s.rejected, snr: null }))
 
 function makeEvaluate(deps: ProjectDeps) {
   return async (project: ProjectRecord, frames: TargetFrames[], sourceList: ProjectSource[], shared?: Shared): Promise<ProjectDescription> => {
@@ -349,9 +368,8 @@ function makeEvaluate(deps: ProjectDeps) {
     // What each target and panel has per filter, for the bottleneck forecasts.
     const summaries = new Map<string, IntegrationSummary[]>()
     const graded = async (id: string) => {
-      if (!deps.grading) return undefined
-      const lights = (await deps.grading.grade(id)).grades.map(forecastFrame)
-      summaries.set(id, summariseByFilter(lights).byFilter)
+      const lights = await (shared?.lights ?? (t => gradedLights(deps, t)))(id)
+      summaries.set(id, summariseByFilter(lights ?? indexedLights(framesOf.get(id))).byFilter)
       return lights
     }
     if (project.kind === 'mosaic') {

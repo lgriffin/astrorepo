@@ -14,9 +14,12 @@ export function IntegrationForecast({ targetId, version }: { targetId: string; v
   const [failed, setFailed] = useState<string | null>(null)
   const [minutes, setMinutes] = useState('')
   const loading = useRef(0)
+  // The length last asked for, kept when grading changes and the forecast is worked out again.
+  const asked = useRef<number | undefined>(undefined)
 
   const load = useCallback(
-    async (custom?: number) => {
+    async (custom = asked.current) => {
+      asked.current = custom
       const mine = ++loading.current
       try {
         const v = await invoke<IntegrationView>('forecast:target', { target_id: targetId, ...(custom ? { minutes: custom } : {}) })
@@ -29,6 +32,11 @@ export function IntegrationForecast({ targetId, version }: { targetId: string; v
     },
     [targetId]
   )
+
+  // Another target starts from the standard lengths.
+  useEffect(() => {
+    asked.current = undefined
+  }, [targetId])
 
   useEffect(() => {
     load()
@@ -70,6 +78,15 @@ export function IntegrationForecast({ targetId, version }: { targetId: string; v
           {view.assumptions.map(a => (
             <li key={a}>{a}</li>
           ))}
+        </ul>
+        <ul className="mt-2 space-y-0.5 text-astro-muted">
+          {view.filters
+            .filter(f => f.forecasts.length > 0)
+            .map(f => (
+              <li key={f.filter}>
+                <span className="font-medium text-astro-text">{f.filter}:</span> {f.forecasts[0].evidence}
+              </li>
+            ))}
         </ul>
         <p className="mt-1 text-astro-muted">{view.basis} Gains are in signal to noise; they say nothing about how the image will look.</p>
       </details>

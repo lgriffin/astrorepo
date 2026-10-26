@@ -13,10 +13,12 @@ Spec [039](../../specs/039-integration-forecasts/requirements.md); the proposal 
 - one line for all filters and one per filter: frames and how many were rejected, the time
   acquired and the time accepted, and the goal with the capture still needed to reach it;
 - the expected gain in signal to noise from 30 minutes, an hour and two hours more, each with its
-  range and its kind. Type a length to see that too;
+  range and its kind. Type a length to see that too; it stays after a keep or reject. Point at a
+  number to see the model, frames and assumptions behind that filter's forecast;
 - the filter the next hour helps most;
 - **What this rests on**: the assumptions in words, the model's name and how many frames (and how
-  many measured) it used.
+  many measured) it used, then each filter's own, since one filter can be measured while another
+  is not. A light the quality analysis flagged counts as rejected unless kept by hand.
 
 Keeping or rejecting a frame on the quality card changes the numbers the next time they are shown:
 nothing is stored, so nothing goes stale.
@@ -41,4 +43,7 @@ coverage counts frames capture by capture rather than measuring each.
 
 A [project](projects.md) lists its **bottlenecks**: the filters of unfinished targets and panels
 still short of their goals, most helped by the next hour first. A project's usable light follows
-the quality card too, so a reject there shows in its progress.
+the quality card too, so a reject there shows in its progress. Without grading, the bottlenecks are
+forecast from the indexed lights, flagged ones rejected. On a mosaic the rate quoted under **What
+this rests on** is every panel's together; each panel's forecast uses its own, and a rejected frame
+copied into two folders counts once.

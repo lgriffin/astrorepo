@@ -306,6 +306,8 @@ export interface GradableLight {
   filter: string | null
   /** EXPTIME, when the index has it; integration forecasts add it up (spec 039). */
   exposureSec?: number | null
+  /** The index's quality analysis flagged it for rejection; forecasts leave it out unless kept by hand. */
+  qualityRejected?: boolean
   measurement: FrameMeasurement | null
   /** Why the frame could not be measured, when it was tried and failed. */
   measureError: string | null
@@ -325,6 +327,8 @@ export interface FrameGrade {
   filter: string | null
   /** The light's exposure, null when the index has none. */
   exposureSec: number | null
+  /** The index's quality analysis flagged it for rejection. */
+  qualityRejected: boolean
   measurement: FrameMeasurement | null
   verdict: GradeVerdict
   /** Each limit the frame failed, in the user's words; or why it is unmeasured, or that the user chose. */
@@ -387,7 +391,7 @@ export function gradeFrames(lights: GradableLight[], limits: GradeLimits): Grade
   }
 
   const grades: FrameGrade[] = lights.map(l => {
-    const base = { fileId: l.fileId, path: l.path, capturedAt: l.capturedAt, night: night(l), filter: l.filter, exposureSec: l.exposureSec ?? null, measurement: l.measurement, override: l.override, overrideBy: l.override ? (l.overrideBy ?? 'frame') : null, weight: null }
+    const base = { fileId: l.fileId, path: l.path, capturedAt: l.capturedAt, night: night(l), filter: l.filter, exposureSec: l.exposureSec ?? null, qualityRejected: l.qualityRejected === true, measurement: l.measurement, override: l.override, overrideBy: l.override ? (l.overrideBy ?? 'frame') : null, weight: null }
     const m = l.measurement
     const failed: string[] = []
     if (m) {

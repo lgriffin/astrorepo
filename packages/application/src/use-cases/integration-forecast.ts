@@ -47,7 +47,8 @@ export interface TargetIntegration {
 export const forecastFrame = (g: FrameGrade): ForecastFrame => ({
   seconds: g.exposureSec,
   filter: g.filter,
-  accepted: g.verdict !== 'reject',
+  // Rejected by grading, or flagged by quality analysis and not kept by hand.
+  accepted: g.verdict !== 'reject' && (g.override === 'keep' || !g.qualityRejected),
   snr: g.verdict === 'keep' ? (g.measurement?.snr ?? null) : null
 })
 

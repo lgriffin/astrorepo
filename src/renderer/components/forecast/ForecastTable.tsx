@@ -41,7 +41,7 @@ export function ForecastTable({ rows, label = 'Filter' }: { rows: IntegrationFil
               {r.toGoal && <span className={`block ${r.toGoal === 'Goal met' ? 'text-astro-success' : ''}`}>{r.toGoal}</span>}
             </Td>
             {r.forecasts.map(f => (
-              <Td key={f.added} title={f.range ? `Range ${f.range}` : undefined}>
+              <Td key={f.added} title={f.evidence}>
                 {f.gain ?? '–'}
                 {f.range && <span className="block text-astro-muted">{f.range}</span>}
               </Td>

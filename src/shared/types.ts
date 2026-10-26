@@ -2098,6 +2098,8 @@ export interface ForecastView {
   /** "+5% to +10%" */
   range: string | null
   kind: ForecastKindView
+  /** Its model, the frames it rests on and its assumptions, in the user's words. */
+  evidence: string
 }
 
 export interface IntegrationFilterView {

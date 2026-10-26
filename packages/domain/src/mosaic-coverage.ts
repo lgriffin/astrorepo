@@ -92,10 +92,16 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * panel only for filters with no counted lights there, since a master is made of lights.
  */
 export function countOnce(captures: CountInput[]): CountedCapture[] {
-  const firstOfHash = new Map<string, string>()
-  for (const f of captures.flatMap(c => c.frames).filter(f => !f.rejected && f.hash).sort((a, b) => a.path.localeCompare(b.path))) {
-    if (!firstOfHash.has(f.hash as string)) firstOfHash.set(f.hash as string, f.path)
+  // The first path of each content, among counted frames and, apart, among rejected ones.
+  const firstOf = (rejected: boolean) => {
+    const first = new Map<string, string>()
+    for (const f of captures.flatMap(c => c.frames).filter(f => f.rejected === rejected && f.hash).sort((a, b) => a.path.localeCompare(b.path))) {
+      if (!first.has(f.hash as string)) first.set(f.hash as string, f.path)
+    }
+    return first
   }
+  const firstOfHash = firstOf(false)
+  const firstRejected = firstOf(true)
   // One spelling per filter across the mosaic: the first one met.
   const spelled = new Map<string, string>()
   const counted = captures.map(c => {
@@ -106,6 +112,8 @@ export function countOnce(captures: CountInput[]): CountedCapture[] {
     for (const f of c.frames) {
       if (f.rejected) {
         rejected++
+        // A copy of a rejected frame adds nothing more to the forecasts' tally.
+        if (f.hash && firstRejected.get(f.hash) !== f.path) continue
         const key = filterKey(f.filter)
         if (!spelled.has(key)) spelled.set(key, key ? (f.filter as string).trim() : NO_FILTER)
         const sum = rejectedBy.get(key) ?? { seconds: 0, frames: 0 }

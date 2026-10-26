@@ -69,6 +69,13 @@ describe('counting each frame once', () => {
     ])
   })
 
+  it('[AI-001] Given two rejected copies of one frame, When counted, Then the tally takes it once while the note still says both were rejected', () => {
+    const [a, b] = countOnce([lights('a', 'R1C1', [frame('/a/x.fit', { hash: 'h', rejected: true })]), lights('b', 'R1C1', [frame('/b/x.fit', { hash: 'h', rejected: true }), frame('/b/y.fit', { hash: 'k', rejected: true })])])
+    expect(a.tally).toEqual([{ filter: 'Ha', counted: 0, countedSec: 0, rejected: 1, rejectedSec: 300 }])
+    expect(b.tally).toEqual([{ filter: 'Ha', counted: 0, countedSec: 0, rejected: 1, rejectedSec: 300 }])
+    expect(b.rejected).toBe(2)
+  })
+
   it('[MO-011, MO-020] Given frames grading rejected, When counted, Then they add nothing and the note says how many were rejected', () => {
     const [one] = countOnce([lights('a', 'R1C1', [frame('/a/1.fit', { rejected: true }), frame('/a/2.fit')])])
     expect(one.exposures).toEqual([{ filter: 'Ha', seconds: 300 }])

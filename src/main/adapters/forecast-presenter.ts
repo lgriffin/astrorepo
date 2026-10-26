@@ -6,12 +6,19 @@ import { formatDuration } from './job-presenter'
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 const time = (sec: number) => (sec > 0 ? formatDuration(sec) : 'none')
 
+/** What one forecast rests on: its model, the frames it was worked out from, and its assumptions. */
+function evidence(f: GainForecast): string {
+  const { frames, acceptedFrames, measured } = f.inputs
+  return [`Model ${f.model}, from ${plural(frames, 'frame')} (${acceptedFrames} accepted${measured > 0 ? `, ${measured} measured` : ''}).`, ...f.assumptions].join(' ')
+}
+
 export function toForecastView(f: GainForecast): ForecastView {
   return {
     added: formatDuration(f.addedSec),
     gain: f.snrGain === null ? null : gainPercent(f.snrGain),
     range: f.range ? `${gainPercent(f.range.low)} to ${gainPercent(f.range.high)}` : null,
-    kind: f.kind
+    kind: f.kind,
+    evidence: evidence(f)
   }
 }
 
@@ -54,14 +61,32 @@ export function toIntegrationView(t: TargetIntegration, minutes: number[]): Inte
   }
 }
 
+/** Every panel's light together, so the mosaic's assumptions quote its overall acceptance. */
+function combined(list: IntegrationSummary[]): IntegrationSummary {
+  const sum = (pick: 'frames' | 'acceptedFrames' | 'acquiredSec' | 'acceptedSec' | 'measured') => list.reduce((n, s) => n + s[pick], 0)
+  const frames = sum('frames')
+  return {
+    filter: null,
+    frames,
+    acceptedFrames: sum('acceptedFrames'),
+    acquiredSec: sum('acquiredSec'),
+    acceptedSec: sum('acceptedSec'),
+    acceptance: frames > 0 ? sum('acceptedFrames') / frames : null,
+    measured: sum('measured'),
+    weightedSec: null,
+    weights: []
+  }
+}
+
 export function toMosaicIntegrationView(m: MosaicIntegration): MosaicIntegrationView {
-  const all = m.panels.map(p => p.all)
-  const frames = all.reduce((n, s) => n + s.frames, 0)
-  const sample = m.panels.find(p => p.all.acceptedSec > 0)?.all
+  const all = combined(m.panels.map(p => p.all))
   return {
     panels: m.panels.map(p => ({ panelId: p.panelId, filters: p.filters.map(f => filterView(f.summary, f)) })),
     best: bestView(m.best),
-    assumptions: sample ? forecastGain(sample, 3600).assumptions : ['Nothing counted on any panel yet, so there is nothing to improve on.'],
-    basis: `Model ${FORECAST_MODEL}, from ${plural(frames, 'frame')} counted on the panels.`
+    assumptions:
+      all.acceptedSec > 0
+        ? [...forecastGain(all, 3600).assumptions, 'That rate is the whole mosaic\'s; each panel\'s forecast uses its own.']
+        : ['Nothing counted on any panel yet, so there is nothing to improve on.'],
+    basis: `Model ${FORECAST_MODEL}, from ${plural(all.frames, 'frame')} counted on the panels.`
   }
 }
