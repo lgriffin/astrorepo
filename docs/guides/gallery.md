@@ -7,7 +7,7 @@ described in [Using the cockpit](cockpit.md#inspecting-an-image).
 
 ## Using it
 
-**Files → Gallery** shows every PNG and JPEG in the `images` folder of your home folder, and in
+**Gallery → Pictures** shows every PNG and JPEG in the `images` folder of your home folder, and in
 the folders inside it, as a grid of thumbnails, newest first. Search by file or object name, or
 sort by file name or by object. Hidden folders and links are left out (an `images` folder that is
 itself a link is not shown), and nothing in the folder is ever moved or renamed.

@@ -70,7 +70,7 @@ The slices, each its own pull request:
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| UX-001 | Ubiquitous | The system shall list each place once in the sidebar, the four daily places (Home, Targets, Sky planner, Jobs) first and the rest under Files, Review, Collections and Setup, with logging a night offered as an action on Home and Nights rather than as a place. |
+| UX-001 | Ubiquitous | The system shall list eight places once each in the sidebar (Home, Targets, Plan, Process, Data, Gallery, Insights and Settings, as reshaped by spec 041 V2), each holding its pages, with logging a night offered as an action on Home and Nights rather than as a page. |
 | UX-002 | Ubiquitous | The system shall title each place's page with its sidebar label and always say under the title what the page answers, with any live detail such as a count on a line of its own. |
 | UX-003 | State | While the user is on a page below a place, such as a target, a collection or the night form, the system shall keep that place lit in the sidebar and link back to it above the page title. |
 | UX-004 | State | While a job runs or waits in the queue, the system shall say so under the sidebar on every page, naming the running job, or saying how many wait and, in the job runner's own words, why the next one has not started. |

@@ -543,7 +543,7 @@ a target or trying out a plan links nothing.
 
 ## The gallery
 
-**Files → Gallery** shows the finished pictures in the `images` folder of your home folder, each
+**Gallery → Pictures** shows the finished pictures in the `images` folder of your home folder, each
 captioned with the object its name names, with a side panel on that object. It has its own guide:
 [The gallery](gallery.md).
 
@@ -690,6 +690,6 @@ usually a few arc seconds. For a comet seen months from that date, paste the lat
 
 ## Copying from the Vespera
 
-**Files → Vespera** reviews what each session on the Vespera holds and copies the ones you tick
+**Data → Vespera** reviews what each session on the Vespera holds and copies the ones you tick
 over its Wi-Fi, never changing anything on the scope. It has its own guide:
 [Copying from the Vespera](vespera.md).

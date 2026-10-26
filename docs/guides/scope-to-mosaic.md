@@ -6,10 +6,10 @@ has its own guide with the detail.
 
 | Capability | Where it is | What it does | Guide | Spec |
 |---|---|---|---|---|
-| Vespera control | Files → Vespera, **Connection** card | Reaches the scope over its Wi-Fi with a read-only FTP client; sets where copies land and what kinds are copied | [Copying from the Vespera](vespera.md) | [033](../../specs/033-vespera-ftp/requirements.md) |
-| Vespera ingest | Files → Vespera, **On the Vespera** card | Reviews each session from its listings, names its target, copies the ticked ones into tidy folders and indexes them | [Copying from the Vespera](vespera.md) | [034](../../specs/034-vespera-ingest/requirements.md) |
-| Gallery | Files → Gallery | Every finished picture in `<home>/images`, captioned with the object its name names, with a side panel on that object | [The gallery](gallery.md) | [031](../../specs/031-gallery/requirements.md) |
-| Messier mosaic | Collections → Messier mosaic | All 110 Messier objects with your own picture in each tile, and when each gap can be shot | [The Messier mosaic](messier-mosaic.md) | [032](../../specs/032-messier-mosaic/requirements.md) |
+| Vespera control | Data → Vespera, **Connection** card | Reaches the scope over its Wi-Fi with a read-only FTP client; sets where copies land and what kinds are copied | [Copying from the Vespera](vespera.md) | [033](../../specs/033-vespera-ftp/requirements.md) |
+| Vespera ingest | Data → Vespera, **On the Vespera** card | Reviews each session from its listings, names its target, copies the ticked ones into tidy folders and indexes them | [Copying from the Vespera](vespera.md) | [034](../../specs/034-vespera-ingest/requirements.md) |
+| Gallery | Gallery → Pictures | Every finished picture in `<home>/images`, captioned with the object its name names, with a side panel on that object | [The gallery](gallery.md) | [031](../../specs/031-gallery/requirements.md) |
+| Messier mosaic | Targets → Messier mosaic | All 110 Messier objects with your own picture in each tile, and when each gap can be shot | [The Messier mosaic](messier-mosaic.md) | [032](../../specs/032-messier-mosaic/requirements.md) |
 
 ## The loop
 
@@ -39,7 +39,7 @@ flowchart TB
 4. **Export.** Save your finished picture under `<home>/images`, in a folder named for the object
    or with the object in its file name: `images/M31/final.jpg`, `images/M31 Andromeda/v2.png` and
    `images/M31_final.jpg` all count.
-5. **Gallery.** The picture appears in Files → Gallery the next time it opens, captioned "M31 ·
+5. **Gallery.** The picture appears in Gallery → Pictures the next time it opens, captioned "M31 ·
    Andromeda Galaxy", with what the object is, when it is best placed from your site and what you
    have of it.
 6. **Mosaic.** M 31's tile turns green with your picture in it (press **Refresh** if the mosaic is

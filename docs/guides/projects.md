@@ -1,6 +1,6 @@
 # Projects: campaigns that keep track of themselves
 
-**Collections → Projects** keeps a campaign: a catalogue to work through, targets for a season, one
+**Plan → Projects** keeps a campaign: a catalogue to work through, targets for a season, one
 target taken deep, a mosaic panel by panel, or your own list. Each project has a rule for what
 finished means, and its progress is worked out from the index every time you open it, so new files
 count as soon as they are scanned, graded, solved or stacked. Nothing is imported twice and no file

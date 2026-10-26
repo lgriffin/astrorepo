@@ -1,31 +1,34 @@
 # Finding your way around
 
-The sidebar lists every place in the app once. The four you use most sit at the top; the rest are
-grouped by what you go there to do. A page's title is always its name in the sidebar, and the line
-under the title says what the page answers. Live detail, such as how many targets there are,
-sits on a smaller line below that.
+The sidebar lists eight places. Each one holds a few pages, shown as a row of links above the page
+title, and the place opens on its first page. A page's title is always its name in that row, and
+the line under the title says what the page answers. Live detail, such as how many targets there
+are, sits on a smaller line below that.
 
-## The daily places
-
-- **Home**: what is hiding in your files and what to do next. See [Using the cockpit](cockpit.md).
-- **Targets**: every object you have captured or plan to. A target's own page holds its files, its
-  stacking plan, its post-processing recipe and its notes.
-- **Sky planner**: tonight's sky, the moon and each target's season from your site. See
-  [Planning ahead](planning.md).
-- **Jobs**: stacking and post-processing runs waiting for the run window, the one running now and
-  the ones that finished, with their logs. See [Jobs](cockpit.md#jobs).
-
-## The groups
-
-| Group | Places | Go there to |
+| Place | Pages | Go there to |
 |---|---|---|
-| Files | Library, FITS files, Gallery, Calibration, Vespera | Scan your folders, read what the FITS headers say, browse your finished pictures and what each shows ([guide](gallery.md)), check darks, flats and biases, and copy observations off the Vespera ([guide](vespera.md)) |
-| Review | Nights, Stacks, Insights, Storage | Look back: every night you imaged, integration against goals, seeing and filter trends, and disk use |
-| Collections | Collections, Messier mosaic, Posters | Work through a catalogue, see all 110 Messier objects with your own pictures and when each gap is up ([guide](messier-mosaic.md)), and print a collection as a poster |
-| Setup | Equipment, Settings | Record your scopes and cameras, and set your site, folders, tools and run window |
+| Home | Home | See what is hiding in your files and what to do next. See [Using the cockpit](cockpit.md). |
+| Targets | Targets, Collections, Messier mosaic | Find every object you have captured or plan to, work through a catalogue, and see all 110 Messier objects with your own pictures ([guide](messier-mosaic.md)). A target's own page holds its files, its stacking plan, its post-processing recipe and its notes. |
+| Plan | Sky planner, Projects, Mosaics | Check tonight's sky, the moon and each target's season ([guide](planning.md)), run campaigns over several targets, and draw mosaics on the sky. |
+| Process | Jobs, Stacks, Calibration | Queue stacking and post-processing runs for the run window ([guide](cockpit.md#jobs)), compare integration with each goal, and check darks, flats and biases. |
+| Data | Library, FITS files, Nights, Vespera, Storage | Scan your folders, read the FITS headers, look back over every night, copy observations off the Vespera ([guide](vespera.md)) and watch disk use. |
+| Gallery | Pictures, Posters | Browse your finished pictures and what each shows ([guide](gallery.md)), and print a collection as a poster. |
+| Insights | Insights | See totals, catalogue progress, and seeing, filter and activity trends. |
+| Settings | Settings, Equipment | Set your site, folders, tools, run window and appearance, and record your scopes and cameras. |
+
+## Go to (Ctrl+K)
+
+Press **Ctrl+K** (Cmd+K on a Mac), or choose **Go to** at the top of the sidebar, then type part of
+a name. Every page, every Settings section and a few common actions (log a night, plan a mosaic)
+are listed. Type two letters or more and matching targets appear too, ranked with everything
+else. Use the arrow keys to move, Enter to open and Esc to close. Opening a page puts the
+keyboard on that page; closing without one puts it back where it was.
+
+To give your pages more room, choose **Fold** at the bottom of the sidebar. The sidebar then shows
+only icons, each named when you hover over it. AstroRepo remembers this choice on that screen.
 
 To record a night by hand, use **Log a night** on Home or on Nights. It is an action rather than a
-place, so it is not in the sidebar.
+place, so it is not in the sidebar (it is in Go to).
 
 ## Getting set up
 
@@ -36,8 +39,9 @@ that needs it links there.
 
 ## Pages below a place
 
-A target, a collection and the night form belong to a place. While you are on one, that place
-stays lit in the sidebar and a link above the title (for example **← Targets**) takes you back.
+A target, a collection, a project, a mosaic and the night form belong to a page. While you are on
+one, its place stays lit in the sidebar and a link above the title (for example **Targets**) takes
+you back.
 
 ## The jobs line
 

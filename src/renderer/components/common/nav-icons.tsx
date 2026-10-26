@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarDays, FolderKanban, Grid3x3, ChartLine, Crosshair, FileSearch, Frame, HardDrive, House, Images, LayoutGrid, LibraryBig,
-  ListChecks, MoonStar, Settings, SquareStack, Telescope, Wifi, Wrench, Layers
+  ListChecks, MoonStar, Settings, SquareStack, Telescope, Wifi, Wrench, Layers, Database, Workflow, Zap
 } from 'lucide-react'
 
 /**
@@ -30,3 +30,18 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   equipment: Wrench,
   settings: Settings
 }
+
+/** The drawn icon for each of the eight places in the sidebar (LF-011). */
+export const PLACE_ICONS: Record<string, LucideIcon> = {
+  home: House,
+  targets: Crosshair,
+  plan: MoonStar,
+  process: Workflow,
+  data: Database,
+  gallery: Images,
+  insights: ChartLine,
+  settings: Settings
+}
+
+/** The icon the command palette shows for an action. */
+export const ACTION_ICON: LucideIcon = Zap
