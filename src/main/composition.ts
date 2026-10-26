@@ -7,6 +7,8 @@ import {
   makeArchiveTarget,
   makeCompanion,
   type Companion,
+  type ExperimentDeps,
+  type PostProcessingOptions,
   makeTargetHolds,
   makeDiscoverTarget,
   makeDiscoverTargets,
@@ -20,6 +22,13 @@ import {
   makeListNextActions,
   makeListStackingSuggestions,
   makeCheckToolHealth,
+  makeCompareExperiment,
+  makeCreateExperiment,
+  makeDescribeExperiment,
+  makeExportExperimentReport,
+  makeListExperiments,
+  makePreferVariant,
+  makeRunExperiment,
   makeListSyqonModels,
   makeSyqonModelCache,
   makeListTools,
@@ -89,6 +98,8 @@ import { SqliteFrameCatalogue } from './adapters/sqlite-frame-catalogue'
 import { SqliteDismissalStore } from './adapters/sqlite-dismissal-store'
 import { SqliteFileHashStore, SqliteFileIndex } from './adapters/sqlite-file-hashing'
 import { NodeContentHasher } from './adapters/node-content-hasher'
+import { NodeOutputFolder } from './adapters/node-output-folder'
+import { SqliteExperimentStore } from './adapters/sqlite-experiments'
 import { FtpVesperaScope } from './adapters/ftp-vespera-scope'
 import { NodeIngestDisk } from './adapters/node-ingest-disk'
 import { NodeVesperaMetadata } from './adapters/vespera-metadata'
@@ -242,6 +253,30 @@ export function composeGrading(db: Database.Database) {
  * Composition root for the hexagonal core inside the desktop app. IPC handlers call these use
  * cases instead of services as each service is strangled out of src/main/services.
  */
+/** Experiments over one stack: kept in SQLite, run as post-process jobs, read back through the image pixels. */
+function composeExperiments(db: Database.Database, deps: Pick<ExperimentDeps, 'plan' | 'tools' | 'probe' | 'jobs'>) {
+  const folder = new NodeOutputFolder()
+  const all: ExperimentDeps = {
+    ...deps,
+    store: new SqliteExperimentStore(db),
+    folder,
+    hasher: new NodeContentHasher(),
+    space: new NodeSirilWorkspace(db),
+    pixels: imagePixels,
+    clock: systemClock
+  }
+  const targetName = async (id: string) => (await new SqliteStackCatalogue(db).describeTarget(id))?.name ?? null
+  return {
+    create: makeCreateExperiment(all),
+    list: makeListExperiments(all),
+    describe: makeDescribeExperiment(all),
+    run: makeRunExperiment(all),
+    compare: makeCompareExperiment(all),
+    prefer: makePreferVariant(all),
+    exportReport: makeExportExperimentReport({ ...all, targetName })
+  }
+}
+
 export function composeCore(db: Database.Database) {
   const frames = new SqliteFrameCatalogue(db)
   const dismissals = new SqliteDismissalStore(db)
@@ -324,6 +359,12 @@ export function composeCore(db: Database.Database) {
     windows: tools.windows,
     queueStack: makeQueueStack({ estimate: estimateSirilRun, tools, stacks, store: jobStore, clock: systemClock }),
     queuePostProcess: makeQueuePostProcess({ plan: planPostProcessing, tools, store: jobStore, clock: systemClock }),
+    /**
+     * The experiment lab (specs/040-experiment-lab): variants of one stack, run by the job runner.
+     * `context` gives a target's Siril work folder and the read-only folders, as the post-processing card has them.
+     */
+    experiments: (context: (targetId: string) => Pick<PostProcessingOptions, 'workDir' | 'readOnlyDirs'>) =>
+      composeExperiments(db, { plan: (id, options) => planPostProcessing(id, { ...context(id), ...options }), tools, probe, jobs: jobStore }),
     archive: makeArchiveTarget({
       holds: targetHolds,
       area: new NodeArchiveArea(),

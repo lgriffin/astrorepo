@@ -34,6 +34,7 @@ import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../ad
 import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { fromRuleView, toProjectChange, toProjectSummaries, toProjectView } from '../adapters/project-presenter'
 import { toIntegrationView, toMosaicIntegrationView } from '../adapters/forecast-presenter'
+import { toComparisonView, toExperimentChange, toExperimentView, toRunView } from '../adapters/experiment-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
@@ -69,6 +70,7 @@ function mosaicOptions(args: { target_id: string; field_width_deg?: number; fiel
 
 const CSV: FileKind[] = [{ name: 'CSV', extensions: ['csv'] }]
 const JSON_FILE: FileKind[] = [{ name: 'JSON', extensions: ['json'] }]
+const MARKDOWN: FileKind[] = [{ name: 'Markdown', extensions: ['md'] }]
 
 /** A handler that checks its arguments against the channel's schema before it runs (PI-001). */
 export function validated<C extends Channel>(channel: C, handler: (args: z.infer<SchemaMap[C]>) => unknown): ChannelHandler {
@@ -992,6 +994,28 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('forecast:mosaic', validated('forecast:mosaic', async (args) => {
     const m = await sky().integration.mosaic(args.workspace_id, args.revision)
     return m ? toMosaicIntegrationView(m) : null
+  }))
+
+  // The experiment lab (specs/040-experiment-lab): the work folder and read-only folders come from
+  // the target and Settings, as for the post-processing card, never from the page.
+  const experiments = () =>
+    sky().experiments(targetId => {
+      const rawPath = targetRawPath(targetId)
+      return { workDir: rawPath ? sirilWorkDir(rawPath) : undefined, readOnlyDirs: readOnlyDirs() }
+    })
+  handle('experiment:list', validated('experiment:list', async (args) => (await experiments().list(args.target_id)).map(toExperimentView)))
+  handle('experiment:create', validated('experiment:create', async (args) =>
+    toExperimentChange(await experiments().create(args.target_id, { name: args.name, objective: args.objective, stackPath: args.stack_path, variants: args.variants }))))
+  handle('experiment:run', validated('experiment:run', async (args) => toRunView(await experiments().run(args.experiment_id, args.timing))))
+  handle('experiment:compare', validated('experiment:compare', async (args) => {
+    const c = await experiments().compare(args.experiment_id)
+    return c ? toComparisonView(c) : null
+  }))
+  handle('experiment:prefer', validated('experiment:prefer', async (args) => toExperimentChange(await experiments().prefer(args.experiment_id, args.variant_id))))
+  handle('experiment:export', validated('experiment:export', async (args) => {
+    const exported = await experiments().exportReport(args.experiment_id, args.format)
+    if (!exported) return { saved: false }
+    return desktop.saveText(exported.fileName, exported.text, args.format === 'json' ? JSON_FILE : MARKDOWN)
   }))
 
   handle('discovery:target', validated('discovery:target', async (args) => {

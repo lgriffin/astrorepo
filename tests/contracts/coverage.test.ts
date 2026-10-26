@@ -15,6 +15,11 @@ const RUNS = path.join(root, 'tests/contracts')
  */
 const NOT_PORTS: Record<string, string> = {
   ArchiveRecord: 'what ArchiveStore saves',
+  ExperimentRecord: 'what ExperimentStore keeps',
+  NewExperiment: 'what ExperimentStore.create takes',
+  VariantRecord: 'a variant inside an ExperimentRecord',
+  VariantRun: 'what ExperimentStore.recordRun keeps',
+  FolderFile: 'what OutputFolder.list returns',
   GalleryImage: 'what GalleryCatalogue lists',
   RunningProcess: 'the handle ProcessRunner.run returns; covered by the ProcessRunner suite',
   FrameDetail: 'what SirilWorkspace.frameDetails returns',

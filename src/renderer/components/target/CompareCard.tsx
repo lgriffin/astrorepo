@@ -24,7 +24,7 @@ function ClippedLayer({ view, rgba, grid, clip, className }: { view: PreviewView
  * right. Each half carries its own image's grid and labels, placed by that image's own preview
  * size, so two differently framed or solved images never share one overlay.
  */
-function Slider({ a, b }: { a: PreviewView; b: PreviewView }): React.ReactElement {
+export function Slider({ a, b }: { a: PreviewView; b: PreviewView }): React.ReactElement {
   const [at, setAt] = useState(50)
   const [grid, setGrid] = useState(true)
   const left = useMemo(() => toRgba(decodePixels(a.pixelsBase64), a.width, a.height, a.channels), [a])

@@ -666,6 +666,40 @@ export function runMigrations(sqlite: Database.Database): void {
       PRIMARY KEY (project_id, target_id)
     );
   `)
+
+  // Migration: processing experiments (specs/040-experiment-lab). The input's SHA-256 and each
+  // variant's settings are written once; a variant's run and the files it left are added later.
+  // Deleting a record never deletes a file.
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS experiments (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      number INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      objective TEXT NOT NULL DEFAULT '',
+      input_path TEXT NOT NULL,
+      input_size INTEGER NOT NULL,
+      input_modified_at TEXT,
+      input_sha256 TEXT NOT NULL,
+      preferred_variant_id TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (target_id, number)
+    );
+
+    CREATE TABLE IF NOT EXISTS experiment_variants (
+      id TEXT PRIMARY KEY,
+      experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+      letter TEXT NOT NULL,
+      profile TEXT NOT NULL,
+      quality TEXT NOT NULL,
+      output_label TEXT NOT NULL,
+      output_dir TEXT NOT NULL,
+      run TEXT,
+      outputs TEXT,
+      outputs_recorded_at TEXT,
+      UNIQUE (experiment_id, letter)
+    );
+  `)
 }
 
 function getSchemaVersion(db: Database.Database): number {
