@@ -4,7 +4,7 @@ import { CalibrationTable } from '../components/calibration/CalibrationTable'
 import { CoverageView } from '../components/calibration/CoverageView'
 import { invoke } from '../hooks/useIPC'
 import type { CalibrationGroup, CalibrationCoverage } from '@shared/types'
-import { Loading } from '../components/ui'
+import { Loading, Button } from '../components/ui'
 
 interface CalibrationSummary {
   totalDarks: number
@@ -68,13 +68,13 @@ export function Calibration(): React.ReactElement {
   return (
     <PageContainer
       actions={
-        <button
+        <Button
+          variant="primary"
           onClick={handleAnalyzeCoverage}
-          disabled={analyzing}
-          className="px-4 py-2 bg-astro-accent text-astro-on-accent rounded-lg text-sm font-medium hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+          busy={analyzing}
         >
-          {analyzing ? 'Analyzing...' : 'Analyze coverage'}
-        </button>
+          {analyzing ? 'Checking…' : 'Check coverage'}
+        </Button>
       }
     >
       <div className="space-y-4">
@@ -84,7 +84,7 @@ export function Calibration(): React.ReactElement {
           <SummaryCard label="Biases" value={summary?.totalBiases ?? 0} color="text-astro-warning" />
           <SummaryCard
             label="Overall coverage"
-            value={totalCalib > 0 ? `${overallCoverage}%` : '--'}
+            value={totalCalib > 0 ? `${overallCoverage}%` : 'None yet'}
             color="text-astro-accent"
           />
         </div>

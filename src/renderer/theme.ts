@@ -1,5 +1,6 @@
 import { cssChannels, parseThemeChoice, resolveTheme, type ThemeChoice, type ThemeName } from '@shared/appearance'
-import { PALETTES, TOKENS, type Token } from '@shared/themes'
+import { appIconDataUrl } from '@shared/logo'
+import { PALETTES, TOKENS, type Palette, type Token } from '@shared/themes'
 
 /** Where the last choice is kept on this screen, so the first paint is already in the right theme. */
 const CACHE_KEY = 'astrorepo.theme'
@@ -16,6 +17,19 @@ export function applyTheme(doc: Document, theme: ThemeName): void {
   for (const token of TOKENS) root.style.setProperty(`--astro-${token}`, cssChannels(palette[token]))
   root.dataset.theme = theme
   root.style.colorScheme = theme === 'light' ? 'light' : 'dark'
+  setFavicon(doc, palette)
+}
+
+/** The tab's icon follows the theme, so a browser on the Pi or a companion screen shows the mark (LF-031). */
+function setFavicon(doc: Document, palette: Palette): void {
+  let link = doc.head.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (!link) {
+    link = doc.createElement('link')
+    link.rel = 'icon'
+    link.type = 'image/svg+xml'
+    doc.head.appendChild(link)
+  }
+  link.href = appIconDataUrl(palette)
 }
 
 export function systemPrefersDark(win: Window): boolean {

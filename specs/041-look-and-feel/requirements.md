@@ -163,3 +163,19 @@ icon, and a problem stays until it is dismissed; empty lists point at the page t
 | LF-028 | Ubiquitous | The system shall show a part of a page that is loading with the shared placeholder, announced to screen readers by what is being loaded, and never as bare "Loading..." text. |
 | LF-029 | Ubiquitous | The system shall show messages in theme colours with an icon and a word for their kind, in a region screen readers announce, removing successes and notes after five seconds and keeping a problem until it is dismissed. |
 | LF-030 | Unwanted | If a list the user fills has nothing in it yet, then the system shall say so in the shared empty state and offer the way to fill it, on the spot or by a link to the page where it is filled. |
+
+## V7: polish
+
+The app had no icon of its own (Electron's default in the taskbar, none in a browser tab), every
+window was called "AstroRepo — Observatory Manager", the 800×480 kiosk gave a quarter of its width
+to the sidebar, and ten pages still drew their main action as a hand-styled button. The mark now
+makes the app icon and a favicon in the open theme; a narrow screen starts with the sidebar as a
+rail; each page names the window; a skip link leads past the sidebar; main actions use the shared
+primary button, and the pages that said "Run a FITS scan" link to the scan that finds their files.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-031 | Ubiquitous | The system shall carry the mark as its app icon on Windows and other desktops, and as the favicon of a browser tab drawn in the open theme. |
+| LF-032 | State | While the screen is narrower than 1024 pixels and the sidebar has not been folded or opened on it, the system shall start the sidebar as a rail of icons. |
+| LF-033 | Ubiquitous | The system shall title the window after the open page and offer a skip link past the sidebar as the first thing a keyboard reaches. |
+| LF-034 | Ubiquitous | The system shall draw each page's main action with the shared primary button. |

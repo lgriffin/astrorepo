@@ -9,7 +9,7 @@ import { TargetSummaries } from '../components/fits/TargetSummaries'
 import { SessionGenerator } from '../components/fits/SessionGenerator'
 import { invoke } from '../hooks/useIPC'
 import type { FitsScanSummary, FitsScanAggregates, FitsLinkingStatus } from '@shared/types'
-import { Loading } from '../components/ui'
+import { Loading, Button } from '../components/ui'
 
 export function FitsAnalyzer(): React.ReactElement {
   const [scans, setScans] = useState<FitsScanSummary[]>([])
@@ -88,13 +88,13 @@ export function FitsAnalyzer(): React.ReactElement {
         {selectedScanId && aggregates && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <button
+              <Button
+                variant="primary"
                 onClick={handleLinkToTargets}
-                disabled={linking}
-                className="px-4 py-2 bg-astro-accent text-astro-on-accent rounded hover:bg-astro-accent/80 disabled:opacity-50 text-sm transition-colors"
+                busy={linking}
               >
-                {linking ? 'Linking...' : 'Link to Targets'}
-              </button>
+                {linking ? 'Linking…' : 'Link to targets'}
+              </Button>
               <button
                 onClick={() => setShowSessionGenerator(!showSessionGenerator)}
                 className="px-4 py-2 border border-astro-border text-astro-text text-sm rounded hover:bg-astro-bg transition-colors"

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Button } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
 import { Card } from '../common/Card'
@@ -85,13 +86,13 @@ function EditableTextSection({ title, value, fieldName, targetId, onSaved }: {
             autoFocus
           />
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="primary"
               onClick={handleSave}
-              disabled={saving}
-              className="px-3 py-1.5 text-xs bg-astro-accent text-astro-on-accent rounded hover:bg-astro-accent/80 disabled:opacity-50"
+              busy={saving}
             >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
             <button
               onClick={() => setEditing(false)}
               className="px-3 py-1.5 text-xs text-astro-muted hover:text-astro-text"

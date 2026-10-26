@@ -5,7 +5,7 @@ import { StorageBreakdownChart } from '../components/analytics/StorageBreakdownC
 import { GrowthTrendChart } from '../components/analytics/GrowthTrendChart'
 import { invoke } from '../hooks/useIPC'
 import type { StorageCurrentStats, StorageGrowthProjection, StorageSnapshot } from '@shared/types'
-import { Loading } from '../components/ui'
+import { Loading, Button } from '../components/ui'
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -62,13 +62,13 @@ export function StorageAnalytics(): React.ReactElement {
   return (
     <PageContainer
       actions={
-        <button
+        <Button
+          variant="primary"
           onClick={handleCaptureSnapshot}
-          disabled={capturing}
-          className="px-4 py-2 bg-astro-accent text-astro-bg rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          busy={capturing}
         >
-          {capturing ? 'Capturing...' : 'Capture snapshot'}
-        </button>
+          {capturing ? 'Capturing…' : 'Capture snapshot'}
+        </Button>
       }
     >
       {/* Summary cards */}

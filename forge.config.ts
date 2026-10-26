@@ -6,9 +6,11 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     name: 'astrorepo',
+    // The packager adds .ico on Windows and .png elsewhere (scripts/app-icon.ts writes both).
+    icon: 'resources/icon',
   },
   makers: [
-    new MakerSquirrel({ name: 'astrorepo' }),
+    new MakerSquirrel({ name: 'astrorepo', setupIcon: 'resources/icon.ico' }),
     new MakerZIP({}, ['darwin', 'linux']),
   ],
 }

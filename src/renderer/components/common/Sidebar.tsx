@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { ListChecks, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { NAV_PLACES, jobsStatus, locate } from '@shared/navigation'
+import { startsAsRail } from '@shared/layout'
 import type { JobsView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { PLACE_ICONS } from './nav-icons'
@@ -58,13 +59,14 @@ function JobsFooter({ rail }: { rail: boolean }): React.ReactElement | null {
 
 const RAIL_KEY = 'astrorepo.rail'
 
-/** Whether the sidebar was last left as a rail of icons on this screen. */
 function railCached(): boolean {
+  let saved: string | null = null
   try {
-    return window.localStorage.getItem(RAIL_KEY) === '1'
+    saved = window.localStorage.getItem(RAIL_KEY)
   } catch {
-    return false
+    // Blocked storage falls back to the screen's width.
   }
+  return startsAsRail(saved, window.innerWidth)
 }
 
 /**
