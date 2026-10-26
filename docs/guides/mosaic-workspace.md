@@ -104,8 +104,10 @@ only: a capture that is not solved, or that you left out, adds nothing until it 
 
 Each frame counts once. Frames grading rejects and frames with no exposure time add nothing; a
 frame indexed twice (the same full content hash, for example a copy in a landing folder and in
-the target's home) counts from its first path only; and a master adds no exposure on a panel where
-lights of its filter are counted, since it is made of them. A capture's exposure counts toward the
+the target's home) counts from its first path only, as long as the file has not changed since it
+was hashed; and a master adds no exposure on a panel where lights of its filter are counted, since
+it is made of them. Only what counts covers sky, so such a master, or one with no exposure time,
+covers nothing either. A capture's exposure counts toward the
 one panel it is on, so the panels add up to the mosaic's total; the heat map adds it wherever the
 capture covers, which is how deep each part of the sky really is.
 
@@ -114,7 +116,8 @@ side (bigger on a large grid), each weighted by its area on the sphere, so a sha
 one cell along each edge of a panel.
 
 **Next session** lists the panels still to shoot, the least covered first, each with where to point
-(the middle of its largest gap when it is partly covered, else its centre) and what each filter
+(a point inside its largest gap, nearest the gap's middle, when it is partly covered, else its
+centre) and what each filter
 still needs. **Export next session CSV** or **JSON** writes the same list with the aim as
 `hh:mm:ss ±dd:mm:ss` and degrees, the position angle and solver rotation, and seconds per filter
 had, wanted and still needed.

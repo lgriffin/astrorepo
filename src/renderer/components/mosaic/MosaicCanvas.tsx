@@ -19,7 +19,8 @@ interface MosaicCanvasProps {
 
 export interface HeatMap {
   cellDeg: number
-  cells: { x: number; y: number; value: number }[]
+  /** `covered` is false where no counted capture lies; a covered cell can still show 0 for one filter. */
+  cells: { x: number; y: number; value: number; covered: boolean }[]
   /** The value drawn at full strength. */
   max: number
 }
@@ -138,8 +139,8 @@ export function MosaicCanvas({ drawing, selected, onSelect, onDrag, captures = [
                 y={-c.y - heat.cellDeg / 2}
                 width={heat.cellDeg}
                 height={heat.cellDeg}
-                className={c.value > 0 ? 'fill-astro-accent' : 'fill-astro-warning'}
-                opacity={c.value > 0 ? heatOpacity(c.value, heat.max) : 0.3}
+                className={c.covered ? 'fill-astro-accent' : 'fill-astro-warning'}
+                opacity={c.covered ? Math.max(0.06, heatOpacity(c.value, heat.max)) : 0.3}
               />
             ))}
           </g>

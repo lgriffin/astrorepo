@@ -14,6 +14,7 @@ import {
   nextSessionExportName,
   nextSessionJson,
   panelProgress,
+  projectPosition,
   rectangleOnSky,
   type CountedFrame,
   type CountInput,
@@ -170,6 +171,9 @@ describe('coverage of the panels', () => {
     const ring = coverageMap(one.centre, [panel], [{ id: 'a', footprint: rectangleOnSky(panel.centre, 0.8, 0.8, 0), exposures: [] }])
     expect(ring.panels[0].gaps).toHaveLength(1)
     expect(ring.panels[0].gaps[0].where).toBe('the middle')
+    // Its centre is a point of the ring, outside the covered middle, so it is somewhere to point.
+    const aim = projectPosition(panel.centre, ring.panels[0].gaps[0].centre)
+    expect(Math.max(Math.abs(aim?.xi ?? 0), Math.abs(aim?.eta ?? 0))).toBeGreaterThan(0.4)
     expect(ring.panels[0].covered).toBe(false)
     // Sampled in 1/16° cells, so good to about a cell along each edge.
     expect(ring.panels[0].fraction).toBeCloseTo(0.6, 1)
@@ -267,6 +271,15 @@ describe('progress and the next session', () => {
       { filter: 'L', haveSec: 600, goalSec: null, needSec: null },
       { filter: 'OIII', haveSec: 0, goalSec: 3600, needSec: 3600 }
     ])
+  })
+
+  it('[MO-008] Given a goal for frames with no filter, and goals whose names differ only in case, When progress is worked out, Then each meets its own exposure and the larger goal stands', () => {
+    const none = countOnce([lights('n', 'R1C1', [frame('/n/1.fit', { filter: null, seconds: 3600 })])])
+    const [p] = panelProgress([cov('R1C1', 1)], none, [{ filter: 'No Filter', seconds: 3600 }])
+    expect(p.filters).toEqual([{ filter: 'No Filter', haveSec: 3600, goalSec: 3600, needSec: 0 }])
+    expect(p.goalsMet).toBe(true)
+    const [q] = panelProgress([cov('R1C1', 1)], counted, [{ filter: 'Ha', seconds: 3600 }, { filter: 'ha ', seconds: 10800 }, { filter: 'HA', seconds: 60 }])
+    expect(q.filters.find(f => f.filter === 'Ha')).toEqual({ filter: 'Ha', haveSec: 7200, goalSec: 10800, needSec: 3600 })
   })
 
   it('[MO-008] Given no goal set, When progress is worked out, Then goals are neither met nor missed, and an empty panel is not started', () => {

@@ -127,8 +127,8 @@ export function countOnce(captures: CountInput[]): CountedCapture[] {
   })
 }
 
-/** The key of a filter as named in counted exposure. */
-const keyOf = (name: string) => (name === NO_FILTER ? '' : filterKey(name))
+/** The key of a filter as named in counted exposure or a goal: frames with no filter, and a goal for them ("No Filter"), share ''. */
+const keyOf = (name: string) => (filterKey(name) === filterKey(NO_FILTER) ? '' : filterKey(name))
 
 // ── Sampling the sky ────────────────────────────────────────────────────
 
@@ -152,7 +152,7 @@ export interface CoverageCell {
 }
 
 export interface CoverageGap {
-  /** The middle of the uncovered patch. */
+  /** A point of the uncovered patch: its cell nearest the patch's middle, so it is never covered sky. */
   centre: SkyPoint
   areaSqDeg: number
   /** Its share of the panel. */
@@ -250,9 +250,12 @@ export function coverageMap(gridCentre: SkyPoint, panels: PlannedPanel[], source
     const gaps = gapsOf(mine, nx).map(patch => {
       const weight = patch.reduce((s, c) => s + c.weight, 0)
       const mid = { x: patch.reduce((s, c) => s + c.at.x * c.weight, 0) / weight, y: patch.reduce((s, c) => s + c.at.y * c.weight, 0) / weight }
-      const centre = deprojectPosition(gridCentre, mid.x, mid.y)
       const share = weight / area
-      return { centre: { raDeg: round(centre.raDeg, 6), decDeg: round(centre.decDeg, 6) }, areaSqDeg: round(weight, 6), fraction: round(share, 4), where: gapWhere(panel, centre, share, panelSize) }
+      // A ring's middle can be covered sky, so the gap's centre is its own cell nearest the middle.
+      const nearest = patch.reduce((best, c) => (Math.hypot(c.at.x - mid.x, c.at.y - mid.y) < Math.hypot(best.at.x - mid.x, best.at.y - mid.y) ? c : best))
+      const centre = deprojectPosition(gridCentre, nearest.at.x, nearest.at.y)
+      const where = gapWhere(panel, deprojectPosition(gridCentre, mid.x, mid.y), share, panelSize)
+      return { centre: { raDeg: round(centre.raDeg, 6), decDeg: round(centre.decDeg, 6) }, areaSqDeg: round(weight, 6), fraction: round(share, 4), where }
     })
     return {
       panelId: panel.id,
@@ -337,7 +340,12 @@ export function panelProgress(coverage: PanelCoverage[], counted: CountedCapture
   return coverage.map(cov => {
     const mine = counted.filter(c => c.panelId === cov.panelId && c.exposures.length > 0)
     const have = new Map<string, FilterProgress>()
-    for (const g of goals) have.set(filterKey(g.filter), { filter: g.filter.trim(), haveSec: 0, goalSec: g.seconds, needSec: g.seconds })
+    // Goals whose names differ only in case or spaces are one filter's goal: the larger one stands.
+    for (const g of goals) {
+      const key = keyOf(g.filter)
+      const seconds = Math.max(g.seconds, have.get(key)?.goalSec ?? 0)
+      have.set(key, { filter: have.get(key)?.filter ?? g.filter.trim(), haveSec: 0, goalSec: seconds, needSec: seconds })
+    }
     for (const e of mine.flatMap(c => c.exposures)) {
       const key = keyOf(e.filter)
       const entry = have.get(key) ?? { filter: e.filter, haveSec: 0, goalSec: null, needSec: null }

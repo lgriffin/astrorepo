@@ -44,14 +44,16 @@ This spec grows slice by slice: only the requirements a merged slice builds are 
   panel's covered share, depth, gaps and exposure per filter against the target's goals.
 - Coverage comes from solved footprints only, sampled on the grid's tangent plane in cells of a
   sixteenth of a panel (fewer for a large grid), each weighted by its area on the sphere; a panel
-  is covered at 95% of its area. A capture covers every panel it reaches.
+  is covered at 95% of its area. A capture covers every panel it reaches, but only when some of it
+  counts: a master whose lights are counted instead, or with no exposure time, covers nothing.
 - Each frame counts once: frames grading rejects, frames with no exposure time and copies of a
-  frame counted elsewhere (same full content hash) add nothing, and a master adds no exposure on a
+  frame counted elsewhere (same full content hash, while the file keeps the size and time it was hashed at) add nothing, and a master adds no exposure on a
   panel where its filter's lights are counted. Each capture says what of it does not count and why.
 - A capture's exposure counts toward the one panel it is on, so the panels add up to the mosaic's
-  total; the heat map adds it wherever it covers.
+  total (a capture on a panel this revision no longer has counts toward neither); the heat map adds
+  it wherever it covers.
 - **Next session** lists the panels still to shoot, least covered first, each with where to point
-  (the middle of its largest gap when partly covered), its turn and what each filter still needs;
+  (inside its largest gap, nearest the gap's middle, when partly covered), its turn and what each filter still needs;
   **Export next session CSV** and **JSON** write the same list.
 
 ## Changes to the proposal
@@ -64,7 +66,8 @@ This spec grows slice by slice: only the requirements a merged slice builds are 
 - **Each panel's own angle.** Panel centres are spaced on the grid's tangent plane, and each panel
   is drawn on its own tangent plane at the grid's up axis carried to its centre. Near a pole the
   angle differs from panel to panel, which is what the camera needs to be turned to there.
-- **Goals per panel.** A target's integration goals (one per filter) are each panel's goal; a
+- **Goals per panel.** A target's integration goals (one per filter, the larger where two names
+  differ only in case or spaces, "No Filter" for frames with none) are each panel's goal; a
   goal per panel, and "processed" and "published" as parts of finished, come with projects (spec 038).
 - **Covered, not finished.** A panel's state is only about area: not started, partly covered or
   covered. Meeting its goals is shown apart, so covered is never read as finished.

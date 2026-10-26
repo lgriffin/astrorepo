@@ -7,6 +7,7 @@ import {
   nextSessionJson,
   panelProgress,
   type CountedCapture,
+  type FileHash,
   type CoverageMap,
   type FilterSeconds,
   type NextSessionRow,
@@ -69,7 +70,13 @@ export function makeDescribeCoverage(deps: CoverageDeps): DescribeCoverage {
       deps.hashes.listHashes(),
       workspace.targetId ? deps.goals.goalsOf(workspace.targetId) : Promise.resolve([])
     ])
-    const hashOf = new Map(hashes.filter(h => h.fullHash).map(h => [h.path, h.fullHash as string]))
+    // A hash stands for a file only while the index still has it at the size and time it was hashed.
+    const stampOf = new Map(onGrid.flatMap(p => p.capture.paths.map((path, i) => [path, p.capture.pathStamps[i]] as const)))
+    const current = (h: FileHash) => {
+      const stamp = stampOf.get(h.path)
+      return !!stamp && h.sizeBytes === stamp.sizeBytes && (stamp.modifiedAt === null || h.modifiedAt === stamp.modifiedAt)
+    }
+    const hashOf = new Map(hashes.filter(h => h.fullHash && current(h)).map(h => [h.path, h.fullHash as string]))
     const counted = countOnce(
       onGrid.map(p => ({
         id: p.capture.id,
@@ -86,13 +93,15 @@ export function makeDescribeCoverage(deps: CoverageDeps): DescribeCoverage {
     )
     const byId = new Map(onGrid.map(p => [p.capture.id, p]))
     // A capture covers sky when something of it counts, or it is a master (its lights may be counted instead).
+    // Only what counts covers sky: a master whose lights are counted instead, or with no exposure, adds nothing.
     const sources = counted
-      .filter(c => c.counted > 0 || byId.get(c.id)?.capture.kind === 'master')
+      .filter(c => c.counted > 0)
       .map(c => ({ id: c.id, footprint: (byId.get(c.id) as (typeof onGrid)[number]).footprint, exposures: c.exposures }))
     const map = coverageMap(revision.grid.centre, revision.panels, sources)
     const progress = panelProgress(map.panels, counted, goals)
     const totals = new Map<string, FilterSeconds>()
-    for (const e of counted.flatMap(c => c.exposures)) {
+    // On no panel of this revision (put by hand on a panel it no longer has): it counts toward no total.
+    for (const e of counted.filter(c => c.panelId !== null).flatMap(c => c.exposures)) {
       const key = e.filter.toLowerCase()
       totals.set(key, { filter: totals.get(key)?.filter ?? e.filter, seconds: (totals.get(key)?.seconds ?? 0) + e.seconds })
     }

@@ -37,11 +37,16 @@ async function rig(options: { targetId?: string | null; goals?: { targetId: stri
   const panels = layoutGrid(grid)
   const deps = { workspaces, assignments, solves, mosaics, selection, hashes, goals }
   /** A night of lights in one folder, solved at a position. */
-  const night = async (folder: string, at: { raDeg: number; decDeg: number }, frames: { name: string; filter?: string; seconds?: number | null }[], targetId = 'ngc1') => {
-    solves.add(...frames.map(f => skyFile({ path: `${folder}/${f.name}`, targetId, filter: f.filter ?? 'Ha', exposureSec: f.seconds === undefined ? 300 : f.seconds })))
+  const night = async (folder: string, at: { raDeg: number; decDeg: number }, frames: { name: string; filter?: string; seconds?: number | null; modifiedAt?: string | null }[], targetId = 'ngc1') => {
+    solves.add(
+      ...frames.map(f =>
+        skyFile({ path: `${folder}/${f.name}`, targetId, filter: f.filter ?? 'Ha', exposureSec: f.seconds === undefined ? 300 : f.seconds, modifiedAt: f.modifiedAt === undefined ? '2026-10-01T23:00:00.000Z' : f.modifiedAt })
+      )
+    )
     await solves.save({ path: `${folder}/${frames[0].name}`, field: solvedField(at.raDeg, at.decDeg), source: 'astap', solvedAt: clock.now(), error: null })
   }
-  const hash = (path: string, fullHash: string | null) => hashes.saveHashes([{ path, sizeBytes: 1, modifiedAt: '2026-10-01', quickKey: 'q', fullHash }])
+  const hash = (path: string, fullHash: string | null, over: { sizeBytes?: number; modifiedAt?: string } = {}) =>
+    hashes.saveHashes([{ path, sizeBytes: over.sizeBytes ?? 4_000_000, modifiedAt: over.modifiedAt ?? '2026-10-01T23:00:00.000Z', quickKey: 'q', fullHash }])
   return { ...deps, clock, id: made.workspace.id, panels, night, hash, rejected, asked, describe: makeDescribeCoverage(deps), exportNext: makeExportNextSession(deps) }
 }
 
@@ -109,14 +114,51 @@ describe('coverage of a mosaic', () => {
     expect((await r.describe(r.id))?.totals).toEqual([{ filter: 'Ha', seconds: 600 }])
   })
 
-  it('[MO-011] Given a master over its lights on the same panel, When coverage is worked out, Then the master covers but adds no exposure there', async () => {
+  it('[MO-011] Given a master over its lights on the same panel, When coverage is worked out, Then it adds no exposure there and covers no sky its lights do not', async () => {
     const r = await rig()
     await r.night('D:/v/n1', r.panels[1].centre, [{ name: 'L1.fit' }])
     r.solves.add(skyFile({ path: 'D:/v/master.fit', targetId: 'ngc1', kind: 'master', capturedAt: null, filter: 'Ha', exposureSec: 3600 }))
-    await r.solves.save({ path: 'D:/v/master.fit', field: solvedField(r.panels[1].centre.raDeg, r.panels[1].centre.decDeg), source: 'astap', solvedAt: r.clock.now(), error: null })
+    // Solved a little east of its lights, still mostly on R1C2.
+    await r.solves.save({ path: 'D:/v/master.fit', field: solvedField(r.panels[1].centre.raDeg + 0.2, r.panels[1].centre.decDeg), source: 'astap', solvedAt: r.clock.now(), error: null })
+    const lightsOnly = await r.describe(r.id)
+    expect(lightsOnly?.totals).toEqual([{ filter: 'Ha', seconds: 300 }])
+    expect(lightsOnly?.counted.find(k => k.kind === 'master')).toMatchObject({ label: 'master master.fit', counted: 0, note: 'Its lights on R1C2 are counted instead, so it adds no exposure there.' })
+    const left = lightsOnly?.progress[0].coverage.fraction
+    r.rejected.add('D:/v/n1/L1.fit')
+    const masterOnly = await r.describe(r.id)
+    expect(masterOnly?.progress[0].coverage.fraction).toBeGreaterThan(left as number)
+  })
+
+  it('[MO-020, MO-022] Given a master with no exposure time, When coverage is worked out, Then it covers nothing and says why', async () => {
+    const r = await rig()
+    r.solves.add(skyFile({ path: 'D:/v/master.fit', targetId: 'ngc1', kind: 'master', capturedAt: null, filter: 'Ha', exposureSec: null }))
+    await r.solves.save({ path: 'D:/v/master.fit', field: solvedField(r.panels[0].centre.raDeg, r.panels[0].centre.decDeg), source: 'astap', solvedAt: r.clock.now(), error: null })
     const c = await r.describe(r.id)
-    expect(c?.totals).toEqual([{ filter: 'Ha', seconds: 300 }])
-    expect(c?.counted.find(k => k.kind === 'master')).toMatchObject({ label: 'master master.fit', counted: 0, note: 'Its lights on R1C2 are counted instead, so it adds no exposure there.' })
+    expect(c?.progress.every(p => p.state === 'not started')).toBe(true)
+    expect(c?.counted[0]).toMatchObject({ counted: 0, note: '1 frame with no exposure time.' })
+  })
+
+  it('[MO-011] Given a hash made before the file changed, When coverage is worked out, Then it is not taken for a copy', async () => {
+    const r = await rig()
+    await r.night('D:/a/n1', r.panels[1].centre, [{ name: 'L1.fit' }])
+    await r.night('E:/b/n1', r.panels[1].centre, [{ name: 'L1.fit', modifiedAt: '2026-10-20T10:00:00.000Z' }])
+    await r.night('F:/c/n1', r.panels[1].centre, [{ name: 'L1.fit', modifiedAt: null }])
+    await r.hash('D:/a/n1/L1.fit', 'same')
+    await r.hash('E:/b/n1/L1.fit', 'same')
+    await r.hash('F:/c/n1/L1.fit', 'same', { sizeBytes: 5 })
+    expect((await r.describe(r.id))?.totals).toEqual([{ filter: 'Ha', seconds: 900 }])
+    await r.hash('F:/c/n1/L1.fit', 'same')
+    expect((await r.describe(r.id))?.totals).toEqual([{ filter: 'Ha', seconds: 600 }])
+  })
+
+  it('[MO-011] Given lights put by hand on a panel this revision no longer has, When coverage is worked out, Then they count toward no panel and no total', async () => {
+    const r = await rig()
+    await r.night('D:/v/n1', r.panels[1].centre, [{ name: 'L1.fit' }])
+    await r.assignments.set(r.id, { captureId: 'lights:ngc1|2026-10-01|D:/v/n1', action: 'assign', panelId: 'R9C9', reason: null, revision: 1, at: r.clock.now() })
+    const c = await r.describe(r.id)
+    expect(c?.counted[0].panelId).toBeNull()
+    expect(c?.totals).toEqual([])
+    expect(c?.progress[1].state).toBe('covered')
   })
 
   it('[MO-011] Given only a master on a panel, When coverage is worked out, Then it covers the panel and its exposure counts', async () => {

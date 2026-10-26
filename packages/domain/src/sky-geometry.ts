@@ -333,6 +333,8 @@ export interface SkyFile {
   fileId?: string
   /** The FILTER header as written, or null; absent where a store does not say. */
   filter?: string | null
+  /** When the file was last modified, as the index read it; absent where a store does not say. */
+  modifiedAt?: string | null
 }
 
 /** Lights of one target from one folder on one night, which one solve stands for. */
