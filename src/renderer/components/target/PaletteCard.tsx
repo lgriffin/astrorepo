@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Loading } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { Card, EmptyState } from '../common/Card'
 import { decodePixels, PixelCanvas } from '../gallery/PreviewImage'
@@ -67,7 +68,7 @@ export function PaletteCard({ targetId }: { targetId: string }): React.ReactElem
     await load(forTarget)
   }
 
-  if (!view) return <Card title="Palettes"><EmptyState>{message ?? 'Looking at this target’s filters…'}</EmptyState></Card>
+  if (!view) return <Card title="Palettes">{message ? <EmptyState>{message}</EmptyState> : <Loading label="Looking at this target’s filters" />}</Card>
   const possible = view.options.filter(o => o.possible)
   const others = view.options.filter(o => !o.possible)
   return (
@@ -97,7 +98,7 @@ export function PaletteCard({ targetId }: { targetId: string }): React.ReactElem
           {shown && (
             <div className="space-y-1">
               <p className="text-xs text-astro-muted">{shown.id} preview, auto-stretched from the masters.</p>
-              {shown.error ? <p className="text-xs text-astro-warning">{shown.error}</p> : shown.preview ? <PaletteComposite view={shown.preview} /> : <p className="text-xs text-astro-muted">Reading the masters…</p>}
+              {shown.error ? <p className="text-xs text-astro-warning">{shown.error}</p> : shown.preview ? <PaletteComposite view={shown.preview} /> : <Loading label="Reading the masters" rows={2} />}
             </div>
           )}
           <p className="text-[10px] text-astro-muted">The chosen palette shows beside the post-processing command on Stack and process.</p>

@@ -162,4 +162,4 @@ icon, and a problem stays until it is dismissed; empty lists point at the page t
 |----|---------|-------------|
 | LF-028 | Ubiquitous | The system shall show a part of a page that is loading with the shared placeholder, announced to screen readers by what is being loaded, and never as bare "Loading..." text. |
 | LF-029 | Ubiquitous | The system shall show messages in theme colours with an icon and a word for their kind, in a region screen readers announce, removing successes and notes after five seconds and keeping a problem until it is dismissed. |
-| LF-030 | Unwanted | If a list the user fills has nothing in it yet, then the system shall say so in the shared empty state and link to the page where it is filled. |
+| LF-030 | Unwanted | If a list the user fills has nothing in it yet, then the system shall say so in the shared empty state and offer the way to fill it, on the spot or by a link to the page where it is filled. |

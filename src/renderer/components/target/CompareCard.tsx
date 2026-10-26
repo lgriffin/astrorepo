@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { Loading } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { Card, EmptyState } from '../common/Card'
 import { decodePixels, PixelCanvas, SkyOverlayLayer, toRgba } from '../gallery/PreviewImage'
@@ -89,7 +90,7 @@ export function CompareCard({ targetId }: { targetId: string }): React.ReactElem
     }
   }, [targetId, picked])
 
-  if (!images) return <Card title="Compare images"><EmptyState>Looking for masters and finished images…</EmptyState></Card>
+  if (!images) return <Card title="Compare images"><Loading label="Looking for masters and finished images" /></Card>
   if (images.length < 2) {
     return (
       <Card title="Compare images">
@@ -124,7 +125,7 @@ export function CompareCard({ targetId }: { targetId: string }): React.ReactElem
           ))}
         </div>
         {previews.map(problem).filter(Boolean).map(m => <p key={m} className="text-xs text-astro-warning">{m}</p>)}
-        {!ready && !previews.some(problem) && <p className="text-xs text-astro-muted">Reading the images…</p>}
+        {!ready && !previews.some(problem) && <Loading label="Reading the images" rows={2} />}
         {ready && mode === 'side' && (
           <div className="grid grid-cols-2 gap-3">
             <PreviewPanel view={previews[0] as PreviewView} label={label(picked[0])} />

@@ -9,7 +9,7 @@ import { WeatherSettings } from '../components/weather/WeatherSettings'
 import { CompanionSettings } from '../components/companion/CompanionSettings'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings'
 import { EquipmentSettings } from '../components/settings/EquipmentSettings'
-import { Button, Checkbox, Field, Input } from '../components/ui'
+import { Button, Checkbox, Field, Input, Loading } from '../components/ui'
 import { SETTINGS_GROUPS, SETTINGS_SECTIONS, settingsLink, settingsSectionFrom, type SettingsSection } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
 
@@ -239,7 +239,7 @@ function FoldersSection(): React.ReactElement {
             <p className="mb-2 text-xs text-astro-muted">{folder.description}</p>
             <div className="flex gap-2">
               <div className="flex min-h-9 min-w-0 flex-1 items-center truncate rounded-md border border-astro-border bg-astro-bg px-3 text-sm text-astro-text">
-                {folders === null ? <span className="text-astro-muted">Reading…</span> : folder.value || <span className="text-astro-muted">Not set</span>}
+                {folders === null ? <Loading label="Reading the folder setting" rows={1} className="w-48" /> : folder.value || <span className="text-astro-muted">Not set</span>}
               </div>
               <Button onClick={() => void browse(folder.key)} busy={saving === folder.key} disabled={folders === null} aria-label={`Choose the ${folder.label.toLowerCase()}`}>
                 Choose

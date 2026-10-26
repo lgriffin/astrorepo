@@ -14,17 +14,26 @@ function tsxFiles(dir: string): string[] {
   })
 }
 
+/**
+ * A loading line drawn as plain text: "Loading..." anywhere, or a muted line or empty state whose
+ * text starts with what is being fetched ("Reading the pixels…").
+ */
+const BARE_LOADING = /(>|['"`])\s*Loading(\.\.\.|…)|<(p|span|EmptyState)\b[^>]*>\s*\{?['"`]?(Loading|Reading|Looking|Measuring|Working out|Fetching)\b[^<]*…/
+
 /** Lines of the renderer that draw a bare loading line as text, outside comments. */
 function bareLoadingLines(): string[] {
   return tsxFiles(RENDERER).flatMap(file => fs.readFileSync(file, 'utf8').split('\n').flatMap((line, i) => {
     const code = line.trim()
     if (code.startsWith('*') || code.startsWith('//') || code.startsWith('/*')) return []
-    return /(>|['"`])\s*Loading(\.\.\.|…)/.test(line) ? [`${path.relative(RENDERER, file)}:${i + 1}`] : []
+    return BARE_LOADING.test(line) ? [`${path.relative(RENDERER, file)}:${i + 1}`] : []
   }))
 }
 
 describe('Flows (specs/041-look-and-feel V6)', () => {
   it('[LF-028] Given any page, When part of it loads, Then it uses the shared placeholder and the check fails on bare "Loading..." text', () => {
+    expect(BARE_LOADING.test('<p className="text-sm text-astro-muted">Reading the pixels…</p>')).toBe(true)
+    expect(BARE_LOADING.test("<EmptyState>Measuring the work folder…</EmptyState>")).toBe(true)
+    expect(BARE_LOADING.test('<p>{view.status}</p>')).toBe(false)
     expect(bareLoadingLines()).toEqual([])
     const loading = read('components/ui/Loading.tsx')
     expect(loading).toContain('role="status" aria-label={label}')
@@ -46,10 +55,14 @@ describe('Flows (specs/041-look-and-feel V6)', () => {
     expect(read('contexts/ToastContext.tsx')).toContain("if (type !== 'error') timers.current.set(")
   })
 
-  it('[LF-030] Given an empty collection list, When it is shown, Then it fails over to the shared empty state with a link to Targets', () => {
-    for (const page of ['pages/Collections.tsx', 'pages/CollectionDetail.tsx']) {
-      const src = read(page)
-      expect(src).toMatch(/<EmptyState action={<Link to="\/targets"/)
-    }
+  it('[LF-030] Given no collections, When the page is shown, Then it fails over to the shared empty state and offers to make one there', () => {
+    const page = read('pages/Collections.tsx')
+    expect(page).toContain('<EmptyState>No collections yet.')
+    expect(page).toContain("invoke<Collection>('collections:create', { name: name.trim() })")
+    expect(page).toContain('void navigate(`/collections/${made.id}`)')
+  })
+
+  it('[LF-030] Given an empty collection, When it is shown, Then the empty state links to Targets, where targets are added to it', () => {
+    expect(read('pages/CollectionDetail.tsx')).toMatch(/<EmptyState action={<Link to="\/targets"/)
   })
 })

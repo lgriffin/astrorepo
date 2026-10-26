@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Loading } from '../ui'
 import { GALLERY_VIEW_WIDTH } from '@shared/gallery'
 import type { GalleryDetailsView, GalleryPictureView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
@@ -90,7 +91,7 @@ export function PictureViewer({
           Open its folder
         </button>
 
-        {details.status === 'loading' && <p className="text-xs text-astro-muted">Reading what it shows…</p>}
+        {details.status === 'loading' && <Loading label="Reading what it shows" rows={2} />}
         {details.status === 'failed' && <p className="text-xs text-astro-danger">{details.error}</p>}
         {details.status === 'ready' && <DetailsBody view={details.view} onLeave={onClose} />}
       </aside>

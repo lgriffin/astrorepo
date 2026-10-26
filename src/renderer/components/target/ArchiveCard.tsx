@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { Loading } from '../ui'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { Card, EmptyState, LinkButton } from '../common/Card'
@@ -62,7 +63,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
   const settings = <Link to={settingsLink('folders')} className="text-astro-accent hover:underline">Settings → Folders</Link>
   const body = (): React.ReactNode => {
     if (failed) return <EmptyState action={<LinkButton onClick={load}>Try again</LinkButton>}>The work folder could not be read.</EmptyState>
-    if (!view) return <EmptyState>Measuring the work folder…</EmptyState>
+    if (!view) return <Loading label="Measuring the work folder" />
     const option = view.options.find(o => o.mode === mode) ?? null
     const chosen = view.folders.filter(f => remove.has(f.folder))
     // Each folder's own figure, plus files hard-linked across folders that are all chosen.

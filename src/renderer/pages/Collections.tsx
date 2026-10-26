@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { EmptyState } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
-import type { CollectionWithStats } from '@shared/types'
-import { Loading } from '../components/ui'
+import type { Collection, CollectionWithStats } from '@shared/types'
+import { Button, Field, Input, Loading } from '../components/ui'
+import { useToast } from '../contexts/ToastContext'
 
 export function Collections(): React.ReactElement {
   const [collections, setCollections] = useState<CollectionWithStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [name, setName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const navigate = useNavigate()
+  const { addToast } = useToast()
+
+  // A collection of the user's own, opened at once so targets can be added to it (LF-030).
+  const create = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    if (!name.trim()) return
+    setCreating(true)
+    try {
+      const made = await invoke<Collection>('collections:create', { name: name.trim() })
+      void navigate(`/collections/${made.id}`)
+    } catch (err) {
+      addToast(`The collection could not be made: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      setCreating(false)
+    }
+  }
 
   useEffect(() => {
     invoke<{ collections: CollectionWithStats[] }>('collections:list')
@@ -64,10 +83,15 @@ export function Collections(): React.ReactElement {
       </div>
 
       {collections.length === 0 && (
-        <EmptyState action={<Link to="/targets" className="text-xs text-astro-accent hover:underline">Go to Targets</Link>}>
-          No collections yet. Catalogue lists such as Messier appear here once the catalogue is loaded.
-        </EmptyState>
+        <EmptyState>No collections yet. Make one below, then add targets to it from Targets.</EmptyState>
       )}
+
+      <form onSubmit={e => void create(e)} className="mt-6 flex max-w-lg items-end gap-2">
+        <Field label="New collection" className="flex-1">
+          {f => <Input id={f.id} aria-describedby={f.describedBy} value={name} onChange={e => setName(e.target.value)} placeholder="For example, winter galaxies" />}
+        </Field>
+        <Button type="submit" variant="primary" busy={creating} disabled={!name.trim()}>Make it</Button>
+      </form>
     </PageContainer>
   )
 }

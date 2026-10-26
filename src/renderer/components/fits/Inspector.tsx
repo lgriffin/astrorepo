@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { Loading } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { decodePixels, PixelCanvas, SkyOverlayLayer, toRgba } from '../gallery/PreviewImage'
 import type { ChannelStatsView, InspectionView, OpenedFileView, PreviewView } from '@shared/types'
@@ -95,7 +96,7 @@ export function Inspector({ fileId }: { fileId: string }): React.ReactElement {
   }, [fileId])
 
   if (failed) return <p className="text-sm text-astro-muted">The inspector stopped before it finished. Close the file and open it again.</p>
-  if (!view) return <p className="text-sm text-astro-muted">Reading the pixels…</p>
+  if (!view) return <Loading label="Reading the pixels" />
   if (view.error) return <p className="text-sm text-astro-warning">{view.error}</p>
 
   return (
