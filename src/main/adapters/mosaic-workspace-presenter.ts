@@ -1,6 +1,7 @@
-import type { CreateWorkspaceResult, GridPreview, ListWorkspaces, SaveRevisionResult, WorkspaceView as CoreWorkspaceView } from '@astro/application'
+import { captureLabel, type CapturePlacements, type CreateWorkspaceResult, type GridPreview, type ListWorkspaces, type PlacedCapture, type RevisionChange, type SaveRevisionResult, type WorkspaceView as CoreWorkspaceView } from '@astro/application'
 import { formatDecDms, formatRaHms, type FieldSource, type GridDefinition } from '@astro/domain'
-import type { WorkspaceDrawingView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceSummaryView, WorkspaceView } from '@shared/types'
+import type { WorkspaceCaptureView, WorkspaceCapturesView, WorkspaceChangeView, WorkspaceDrawingView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceSummaryView, WorkspaceView } from '@shared/types'
+import { formatDuration } from './job-presenter'
 import { fieldSize } from './sky-geometry-presenter'
 
 /** The editor's grid as the core's definition. */
@@ -137,4 +138,71 @@ export function toRevisionSavedView(workspaceId: string, result: SaveRevisionRes
     case 'stale':
       return { ok: false, workspaceId, revision: result.revision, message: `Revision ${result.revision} was saved meanwhile, so this grid was not saved. Open the latest revision and try again.`, problems: [] }
   }
+}
+
+// ── Captures on a revision (X2) ─────────────────────────────────────────
+
+const percent = (fraction: number) => `${Math.round(fraction * 100)}%`
+const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+
+function toCaptureView(p: PlacedCapture): WorkspaceCaptureView {
+  const known = p.capture.exposures.filter((e): e is number => e !== null)
+  return {
+    id: p.capture.id,
+    label: captureLabel(p.capture),
+    kind: p.capture.kind,
+    targetId: p.capture.targetId,
+    night: p.capture.night,
+    files: p.capture.paths.length,
+    exposure: known.length > 0 ? formatDuration(known.reduce((a, b) => a + b, 0)) : null,
+    filters: p.capture.filters,
+    fileId: p.capture.fileId,
+    outline: p.outline,
+    panels: p.placement.intersections.map(i => ({ panelId: i.panelId, share: percent(i.captureFraction), coverage: percent(i.panelCoverage) })),
+    primary: p.placement.primary,
+    panelId: p.assignment.panelId,
+    source: p.assignment.source,
+    state: p.assignment.state,
+    note: p.assignment.note,
+    reason: p.override?.reason ?? null
+  }
+}
+
+/** Where a revision's captures land, for the canvas and its trays. */
+export function toCapturesView(c: CapturePlacements): WorkspaceCapturesView {
+  const placed = c.placed.map(toCaptureView)
+  const panels = new Set(placed.map(p => p.panelId).filter(Boolean)).size
+  const review = placed.filter(p => p.state === 'needs-review').length
+  const conflicts = placed.filter(p => p.state === 'conflict').length
+  const extras = [
+    review > 0 ? `${review} to review` : null,
+    conflicts > 0 ? count(conflicts, 'conflict') : null,
+    c.unsolved.length > 0 ? `${c.unsolved.length} not solved yet` : null,
+    c.outside.length > 0 ? `${c.outside.length} outside the grid` : null,
+    c.missing.length > 0 ? `${c.missing.length} no longer in the index` : null
+  ].filter(Boolean)
+  const summary =
+    placed.length === 0 && extras.length === 0
+      ? 'No solved capture falls on this grid yet.'
+      : `${count(placed.length, 'capture')} on ${count(panels, 'panel')}${extras.length ? `; ${extras.join(', ')}` : ''}.`
+  return {
+    revision: c.revision.revision,
+    latestRevision: c.workspace.latestRevision,
+    placed,
+    outside: c.outside.map(toCaptureView),
+    unsolved: c.unsolved.map(u => ({ id: u.id, label: captureLabel(u), targetId: u.targetId, solveError: u.solveError })),
+    missing: c.missing.map(m => ({
+      captureId: m.captureId,
+      label: m.label,
+      said: m.override.action === 'assign' ? `Put on ${m.override.panelId}` : 'Left out',
+      reason: m.override.reason,
+      lastCentre: m.lastField ? `${formatRaHms(m.lastField.raDeg)} ${formatDecDms(m.lastField.decDeg)}` : null
+    })),
+    targetIds: c.targetIds,
+    summary
+  }
+}
+
+export function toChangeViews(changes: RevisionChange[]): WorkspaceChangeView[] {
+  return changes.map(c => ({ captureId: c.captureId, label: c.label, from: c.from, to: c.to, overridden: c.overridden, overridePanel: c.overridePanel }))
 }

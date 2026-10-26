@@ -329,6 +329,10 @@ export interface SkyFile {
   optics: SolveOptics | null
   /** WCS cards already in its headers, or null. */
   wcs: WcsCards | null
+  /** The index's id for the file, for its thumbnail; absent where a store does not say. */
+  fileId?: string
+  /** The FILTER header as written, or null; absent where a store does not say. */
+  filter?: string | null
 }
 
 /** Lights of one target from one folder on one night, which one solve stands for. */

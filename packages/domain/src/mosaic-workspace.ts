@@ -126,9 +126,15 @@ export function positionAngle(from: SkyPoint, to: SkyPoint): number {
   return Math.atan2(Math.sin(dra) * Math.cos(d2), Math.cos(d1) * Math.sin(d2) - Math.sin(d1) * Math.cos(d2) * Math.cos(dra)) / RAD
 }
 
-/** A rectangle of the given size centred on a point, turned to a position angle, on that point's own tangent plane. */
-export function rectangleOnSky(centre: SkyPoint, widthDeg: number, heightDeg: number, positionAngleDeg: number): SkyPolygon {
-  const { up, right } = panelAxes(positionAngleDeg)
+/**
+ * A rectangle of the given size centred on a point, turned to a position angle, on that point's
+ * own tangent plane, corners from the top left. `mirrored` puts its right edge to the east, as in
+ * a mirrored image, so the corners follow that image's own top left, top right and so on.
+ */
+export function rectangleOnSky(centre: SkyPoint, widthDeg: number, heightDeg: number, positionAngleDeg: number, mirrored = false): SkyPolygon {
+  const axes = panelAxes(positionAngleDeg)
+  const up = axes.up
+  const right = mirrored ? { xi: -axes.right.xi, eta: -axes.right.eta } : axes.right
   const corner = (r: number, u: number) => {
     const at = deprojectPosition(centre, r * right.xi + u * up.xi, r * right.eta + u * up.eta)
     return { raDeg: round(at.raDeg, 6) % 360, decDeg: round(at.decDeg, 6) }
