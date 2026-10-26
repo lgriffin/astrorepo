@@ -18,9 +18,9 @@ const STATE_TEXT: Record<WorkspaceCaptureView['state'], string> = {
 }
 
 const STATE_CLASS: Record<WorkspaceCaptureView['state'], string> = {
-  accepted: 'text-emerald-400',
-  'needs-review': 'text-amber-400',
-  conflict: 'text-red-400',
+  accepted: 'text-astro-success',
+  'needs-review': 'text-astro-warning',
+  conflict: 'text-astro-danger',
   excluded: 'text-astro-muted'
 }
 
@@ -193,7 +193,7 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
               {view.unsolved.slice(0, 30).map(u => (
                 <li key={u.id} className="text-astro-text">
                   {u.label}
-                  {u.solveError && <span className="text-amber-400">: {u.solveError}</span>}
+                  {u.solveError && <span className="text-astro-warning">: {u.solveError}</span>}
                   {' '}
                   <Link to={targetLink(u.targetId)} className="text-astro-accent hover:underline">
                     target

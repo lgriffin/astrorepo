@@ -9,16 +9,16 @@ interface TargetCardProps {
 }
 
 const typeColors: Record<string, string> = {
-  galaxy: 'bg-purple-500/20 text-purple-300',
-  emission_nebula: 'bg-red-500/20 text-red-300',
-  reflection_nebula: 'bg-blue-500/20 text-blue-300',
-  planetary_nebula: 'bg-cyan-500/20 text-cyan-300',
-  dark_nebula: 'bg-gray-500/20 text-gray-300',
-  open_cluster: 'bg-yellow-500/20 text-yellow-300',
-  globular_cluster: 'bg-orange-500/20 text-orange-300',
-  supernova_remnant: 'bg-pink-500/20 text-pink-300',
-  galaxy_cluster: 'bg-violet-500/20 text-violet-300',
-  star: 'bg-amber-500/20 text-amber-300',
+  galaxy: 'bg-astro-cat-1/20 text-astro-cat-1',
+  emission_nebula: 'bg-astro-danger/20 text-astro-danger',
+  reflection_nebula: 'bg-astro-cat-2/20 text-astro-cat-2',
+  planetary_nebula: 'bg-astro-cat-3/20 text-astro-cat-3',
+  dark_nebula: 'bg-astro-muted/20 text-astro-muted',
+  open_cluster: 'bg-astro-warning/20 text-astro-warning',
+  globular_cluster: 'bg-astro-cat-4/20 text-astro-cat-4',
+  supernova_remnant: 'bg-astro-cat-5/20 text-astro-cat-5',
+  galaxy_cluster: 'bg-astro-cat-6/20 text-astro-cat-6',
+  star: 'bg-astro-warning/20 text-astro-warning',
   custom: 'bg-astro-accent/20 text-astro-accent'
 }
 

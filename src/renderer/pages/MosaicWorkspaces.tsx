@@ -98,7 +98,7 @@ export function GridWorkbench({ grid, setGrid, flushRef }: { grid: WorkspaceGrid
     <div className="space-y-4">
       <GridEditor grid={grid} onChange={setGrid} onShift={(right, up) => apply({ shift: { right_deg: right, up_deg: up } })} flushRef={flushRef} />
       {drawing && !drawing.ok && (
-        <ul className="text-sm text-amber-400 list-disc pl-5">
+        <ul className="text-sm text-astro-warning list-disc pl-5">
           {drawing.problems.map(p => (
             <li key={p}>{p}</li>
           ))}
@@ -261,7 +261,7 @@ export function MosaicWorkspaces(): React.ReactElement {
             <GridWorkbench grid={grid} setGrid={setGrid} flushRef={flushRef} />
 
             {problems.length > 0 && (
-              <ul className="text-sm text-amber-400 list-disc pl-5">
+              <ul className="text-sm text-astro-warning list-disc pl-5">
                 {problems.map(p => (
                   <li key={p}>{p}</li>
                 ))}

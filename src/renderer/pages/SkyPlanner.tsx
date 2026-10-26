@@ -8,6 +8,7 @@ import { invoke } from '../hooks/useIPC'
 import { SeasonsTable } from '../components/cockpit/SeasonsTable'
 import { MosaicPlanner } from '../components/sky/MosaicPlanner'
 import type { AltitudePoint, BestTargetTonight, ForwardPlanView, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
+import { tokenColor } from '../theme'
 
 function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement {
   if (data.length < 2) return <p className="text-astro-muted text-sm">No altitude data available</p>
@@ -44,22 +45,22 @@ function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement 
         const y = padT + chartH - ((a - minAlt) / range) * chartH
         return (
           <g key={a}>
-            <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="#374151" strokeWidth={0.5} />
+            <line x1={padL} y1={y} x2={w - padR} y2={y} stroke={tokenColor('border')} strokeWidth={0.5} />
             <text x={padL - 4} y={y + 3} textAnchor="end" className="text-[8px] fill-astro-muted">{a}°</text>
           </g>
         )
       })}
 
-      <rect x={padL} y={horizonY} width={chartW} height={padT + chartH - horizonY} fill="#ef4444" opacity={0.05} />
-      <line x1={padL} y1={horizonY} x2={w - padR} y2={horizonY} stroke="#ef4444" strokeWidth={1} strokeDasharray="4,4" opacity={0.5} />
-      <line x1={padL} y1={alt30Y} x2={w - padR} y2={alt30Y} stroke="#22c55e" strokeWidth={0.5} strokeDasharray="4,4" opacity={0.3} />
+      <rect x={padL} y={horizonY} width={chartW} height={padT + chartH - horizonY} fill={tokenColor('danger')} opacity={0.05} />
+      <line x1={padL} y1={horizonY} x2={w - padR} y2={horizonY} stroke={tokenColor('danger')} strokeWidth={1} strokeDasharray="4,4" opacity={0.5} />
+      <line x1={padL} y1={alt30Y} x2={w - padR} y2={alt30Y} stroke={tokenColor('success')} strokeWidth={0.5} strokeDasharray="4,4" opacity={0.3} />
 
-      <polyline points={points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#6366f1" strokeWidth={2} />
+      <polyline points={points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={tokenColor('accent')} strokeWidth={2} />
 
       {/* Fill area above horizon */}
       <path
         d={`${pathD} L${points[points.length - 1].x},${horizonY} L${points[0].x},${horizonY} Z`}
-        fill="#6366f1"
+        fill={tokenColor('accent')}
         opacity={0.1}
       />
 
@@ -83,8 +84,8 @@ function VisibilityCalendar({ data }: { data: MonthlyVisibility[] }): React.Reac
       {data.map(d => {
         const intensity = Math.max(0, d.maxAltitude / maxAlt)
         const bg = d.isVisible
-          ? `rgba(99, 102, 241, ${0.2 + intensity * 0.6})`
-          : 'rgba(239, 68, 68, 0.1)'
+          ? tokenColor('accent', 0.2 + intensity * 0.6)
+          : tokenColor('danger', 0.1)
 
         return (
           <div
@@ -346,7 +347,7 @@ export function SkyPlanner(): React.ReactElement {
                         </td>
                         <td className="py-2 pr-3 text-astro-muted text-xs capitalize">{t.objectType.replace(/_/g, ' ')}</td>
                         <td className="py-2 pr-3 text-right">
-                          <span className={t.maxAltitude >= 30 ? 'text-green-400' : t.maxAltitude >= 15 ? 'text-yellow-400' : 'text-red-400'}>
+                          <span className={t.maxAltitude >= 30 ? 'text-astro-success' : t.maxAltitude >= 15 ? 'text-astro-warning' : 'text-astro-danger'}>
                             {t.maxAltitude.toFixed(1)}°
                           </span>
                         </td>

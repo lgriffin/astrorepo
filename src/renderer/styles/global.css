@@ -20,3 +20,33 @@ body {
 ::-webkit-scrollbar-thumb {
   @apply bg-astro-border rounded;
 }
+
+/* Browser surfaces in the theme's colours (specs/041-look-and-feel). */
+::selection {
+  background: rgb(var(--astro-accent) / 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--astro-accent));
+  outline-offset: 2px;
+}
+
+::placeholder {
+  color: rgb(var(--astro-muted) / 0.8);
+}
+
+/* Night keeps every picture red so eyes stay dark-adapted (LF-004). */
+[data-theme='night'] img,
+[data-theme='night'] canvas,
+[data-theme='night'] video {
+  filter: grayscale(1) sepia(1) saturate(5) hue-rotate(-50deg) brightness(0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

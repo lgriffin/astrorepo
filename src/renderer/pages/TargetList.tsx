@@ -198,7 +198,7 @@ export function TargetList(): React.ReactElement {
                   onClick={(e) => { e.stopPropagation(); toggleSelect(target.id) }}
                 >
                   {selected.has(target.id) && (
-                    <svg viewBox="0 0 12 12" className="w-3 h-3 text-white fill-current">
+                    <svg viewBox="0 0 12 12" className="w-3 h-3 text-astro-on-accent fill-current">
                       <path d="M10 3L4.5 8.5 2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
@@ -247,7 +247,7 @@ export function TargetList(): React.ReactElement {
                   {stages.map(s => <option key={s.id} value={s.name}>{s.name.replace(/_/g, ' ')}</option>)}
                 </select>
                 <button onClick={handleBatchAdvance} disabled={!batchStage}
-                  className="px-3 py-1 bg-astro-accent text-white text-sm rounded disabled:opacity-50">Apply</button>
+                  className="px-3 py-1 bg-astro-accent text-astro-on-accent text-sm rounded disabled:opacity-50">Apply</button>
                 <button onClick={() => setShowBatchStage(false)}
                   className="text-xs text-astro-muted hover:text-astro-text">Cancel</button>
               </div>
@@ -266,7 +266,7 @@ export function TargetList(): React.ReactElement {
                   {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <button onClick={handleBatchAddCollection} disabled={!batchCollection}
-                  className="px-3 py-1 bg-astro-accent text-white text-sm rounded disabled:opacity-50">Add</button>
+                  className="px-3 py-1 bg-astro-accent text-astro-on-accent text-sm rounded disabled:opacity-50">Add</button>
                 <button onClick={() => setShowBatchCollection(false)}
                   className="text-xs text-astro-muted hover:text-astro-text">Cancel</button>
               </div>
@@ -279,15 +279,15 @@ export function TargetList(): React.ReactElement {
 
             {showBatchDelete ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-400">Delete {selected.size} targets?</span>
+                <span className="text-xs text-astro-danger">Delete {selected.size} targets?</span>
                 <button onClick={handleBatchDelete}
-                  className="px-3 py-1 bg-red-500 text-white text-sm rounded">Yes, delete</button>
+                  className="px-3 py-1 bg-astro-danger text-astro-on-accent text-sm rounded">Yes, delete</button>
                 <button onClick={() => setShowBatchDelete(false)}
                   className="text-xs text-astro-muted hover:text-astro-text">Cancel</button>
               </div>
             ) : (
               <button onClick={() => setShowBatchDelete(true)}
-                className="px-3 py-1.5 border border-red-500/50 text-red-400 rounded text-sm hover:bg-red-500/10">
+                className="px-3 py-1.5 border border-astro-danger/50 text-astro-danger rounded text-sm hover:bg-astro-danger/10">
                 Delete
               </button>
             )}

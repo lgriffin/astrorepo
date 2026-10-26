@@ -6,8 +6,8 @@ interface CoverageViewProps {
 }
 
 function CoverageBar({ label, percent }: { label: string; percent: number }): React.ReactElement {
-  const barColor = percent >= 80 ? 'bg-green-500' : percent >= 40 ? 'bg-amber-500' : 'bg-red-500'
-  const textColor = percent >= 80 ? 'text-green-400' : percent >= 40 ? 'text-amber-400' : 'text-red-400'
+  const barColor = percent >= 80 ? 'bg-astro-success' : percent >= 40 ? 'bg-astro-warning' : 'bg-astro-danger'
+  const textColor = percent >= 80 ? 'text-astro-success' : percent >= 40 ? 'text-astro-warning' : 'text-astro-danger'
 
   return (
     <div className="space-y-1">
@@ -46,15 +46,15 @@ export function CoverageView({ coverage }: CoverageViewProps): React.ReactElemen
             <div className="text-xs text-astro-muted mt-1">Total Lights</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-400">{coverage.fullyCalibrated}</div>
+            <div className="text-2xl font-bold text-astro-success">{coverage.fullyCalibrated}</div>
             <div className="text-xs text-astro-muted mt-1">Fully Calibrated</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-amber-400">{coverage.partiallyCalibrated}</div>
+            <div className="text-2xl font-bold text-astro-warning">{coverage.partiallyCalibrated}</div>
             <div className="text-xs text-astro-muted mt-1">Partially Calibrated</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-red-400">{coverage.uncalibrated}</div>
+            <div className="text-2xl font-bold text-astro-danger">{coverage.uncalibrated}</div>
             <div className="text-xs text-astro-muted mt-1">Uncalibrated</div>
           </div>
         </div>

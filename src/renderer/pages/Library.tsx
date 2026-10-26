@@ -147,7 +147,7 @@ export function Library(): React.ReactElement {
             <button
               onClick={startScan}
               disabled={isScanning}
-              className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
             >
               {isScanning ? 'Scanning...' : 'Scan Library'}
             </button>
@@ -211,7 +211,7 @@ export function Library(): React.ReactElement {
         )}
 
         {scanProgress?.status === 'error' && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded text-sm text-red-300">
+          <div className="p-3 bg-astro-danger/10 border border-astro-danger/30 rounded text-sm text-astro-danger">
             Scan failed: {scanProgress.error}
           </div>
         )}
@@ -219,7 +219,7 @@ export function Library(): React.ReactElement {
         {scanResult && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4 space-y-3">
             <div className="flex items-center gap-3 text-sm">
-              <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-5 h-5 text-astro-success flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-astro-text font-medium">Scan Complete</span>
@@ -324,7 +324,7 @@ function PhaseRow({ phase, files = null }: { phase: HomeScanPhaseProgress; files
     <div className="flex items-center gap-3 text-xs">
       <div className="w-5 flex justify-center">
         {phase.status === 'complete' ? (
-          <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-4 h-4 text-astro-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         ) : isActive ? (

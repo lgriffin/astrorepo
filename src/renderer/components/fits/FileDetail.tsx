@@ -110,7 +110,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               <dt className="text-xs text-astro-muted uppercase">Linked Target</dt>
               <dd className="text-sm mt-0.5">
                 {file.targetId
-                  ? <span className="text-green-400">{file.targetId}</span>
+                  ? <span className="text-astro-success">{file.targetId}</span>
                   : <span className="text-astro-muted">Not linked</span>
                 }
               </dd>
@@ -209,7 +209,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
                 }
               }}
               disabled={computingStats}
-              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-astro-on-accent hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
             >
               {computingStats ? 'Computing...' : 'Compute stats'}
             </button>
@@ -243,9 +243,9 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               <div className="bg-astro-bg border border-astro-border rounded p-2">
                 <p className="text-xs text-astro-muted">Flag</p>
                 <p className={`text-sm font-mono font-semibold ${
-                  quality.qualityFlag === 'good' ? 'text-green-400' :
-                  quality.qualityFlag === 'warning' ? 'text-amber-400' :
-                  quality.qualityFlag === 'reject' ? 'text-red-400' :
+                  quality.qualityFlag === 'good' ? 'text-astro-success' :
+                  quality.qualityFlag === 'warning' ? 'text-astro-warning' :
+                  quality.qualityFlag === 'reject' ? 'text-astro-danger' :
                   'text-astro-muted'
                 }`}>{quality.qualityFlag ?? 'N/A'}</p>
               </div>
@@ -254,7 +254,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
             <button
               onClick={handleAnalyze}
               disabled={analyzing}
-              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+              className="text-sm px-3 py-1.5 rounded bg-astro-accent text-astro-on-accent hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
             >
               {analyzing ? 'Analyzing...' : 'Analyze quality'}
             </button>

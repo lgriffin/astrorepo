@@ -1,5 +1,9 @@
 import { mosaicLayout } from '@shared/messier-layout'
 import type { MessierTileView } from '@shared/types'
+import { PALETTES } from '@shared/themes'
+
+/** A saved mosaic is a picture to keep, so it is always drawn in the dark theme, whatever the screen shows. */
+const EXPORT = PALETTES.dark
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
@@ -20,7 +24,7 @@ export async function mosaicPng(tiles: MessierTileView[], pictures: Map<number, 
   canvas.height = layout.height
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('This window cannot draw images.')
-  ctx.fillStyle = '#0f1729'
+  ctx.fillStyle = EXPORT.bg
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   const side = layout.tile - 4
   for (const [i, cell] of layout.cells.entries()) {
@@ -31,15 +35,15 @@ export async function mosaicPng(tiles: MessierTileView[], pictures: Map<number, 
       const crop = Math.min(img.width, img.height)
       ctx.drawImage(img, (img.width - crop) / 2, (img.height - crop) / 2, crop, crop, cell.x + 2, cell.y + 2, side, side)
     } else {
-      ctx.fillStyle = t.state === 'gap' ? '#141d2e' : '#1a2332'
+      ctx.fillStyle = t.state === 'gap' ? EXPORT.raised : EXPORT.surface
       ctx.fillRect(cell.x + 2, cell.y + 2, side, side)
-      ctx.fillStyle = t.state === 'gap' ? '#475569' : '#94a3b8'
+      ctx.fillStyle = EXPORT.muted
       ctx.font = 'bold 40px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText(t.designation, cell.x + layout.tile / 2, cell.y + layout.tile / 2 + 14)
     }
     ctx.textAlign = 'center'
-    ctx.fillStyle = '#e2e8f0'
+    ctx.fillStyle = EXPORT.text
     ctx.font = 'bold 14px sans-serif'
     ctx.fillText(cell.label, cell.x + layout.tile / 2, cell.y + layout.tile + 21, layout.tile - 8)
   }

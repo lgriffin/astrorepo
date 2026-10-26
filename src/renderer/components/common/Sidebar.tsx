@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { NAV_GROUPS, jobsStatus, locate } from '@shared/navigation'
 import type { JobsView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
+import { NAV_ICONS } from './nav-icons'
 
 /** The job runner's state, kept in view on every page so a queued run is never out of sight. */
 function JobsFooter(): React.ReactElement | null {
@@ -40,6 +41,13 @@ function JobsFooter(): React.ReactElement | null {
   )
 }
 
+/** A place's drawn icon, or its text glyph while it has none yet. */
+function NavIcon({ id, glyph }: { id: string; glyph: string }): React.ReactElement {
+  const Icon = NAV_ICONS[id]
+  if (!Icon) return <span aria-hidden className="text-base w-4 text-center">{glyph}</span>
+  return <Icon aria-hidden className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+}
+
 export function Sidebar(): React.ReactElement {
   const here = locate(useLocation().pathname)
 
@@ -67,7 +75,7 @@ export function Sidebar(): React.ReactElement {
                       : 'text-astro-muted hover:text-astro-text hover:bg-astro-bg/50'
                   }`}
                 >
-                  <span className="text-base w-5 text-center">{item.icon}</span>
+                  <NavIcon id={item.id} glyph={item.icon} />
                   <span>{item.label}</span>
                 </NavLink>
               )

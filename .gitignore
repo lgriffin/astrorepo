@@ -16,3 +16,6 @@ coverage/
 # Mutation testing (Stryker)
 reports/
 .stryker-tmp/
+
+# Impeccable machine-local choices
+.impeccable/config.local.json

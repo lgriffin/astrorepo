@@ -123,7 +123,7 @@ export function GridEditor({ grid, onChange, onShift, flushRef }: GridEditorProp
           <input type="number" min={0} max={60} step={1} value={fmt(grid.overlap_y * 100, 1)} onChange={e => num('overlap_y', e.target.value, 0.01)} className={`${input} w-20`} />
         </label>
       </div>
-      {centreProblem && <p className="text-xs text-amber-400">{centreProblem}</p>}
+      {centreProblem && <p className="text-xs text-astro-warning">{centreProblem}</p>}
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">

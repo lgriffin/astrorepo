@@ -82,13 +82,13 @@ function ThumbnailSection({ targetId, targetName }: { targetId: string; targetNa
           <>
             <button
               onClick={() => setCurrent((current - 1 + images.length) % images.length)}
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 text-sm"
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-astro-scrim/60 text-astro-on-scrim rounded-full flex items-center justify-center hover:bg-astro-scrim/80 text-sm"
             >
               &lsaquo;
             </button>
             <button
               onClick={() => setCurrent((current + 1) % images.length)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 text-sm"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-astro-scrim/60 text-astro-on-scrim rounded-full flex items-center justify-center hover:bg-astro-scrim/80 text-sm"
             >
               &rsaquo;
             </button>

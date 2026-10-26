@@ -97,7 +97,7 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
           <button
             onClick={handleAnalyzeAll}
             disabled={analyzingAll}
-            className="text-sm px-3 py-1 rounded bg-astro-accent text-white hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
+            className="text-sm px-3 py-1 rounded bg-astro-accent text-astro-on-accent hover:bg-astro-accent/80 disabled:opacity-50 transition-colors"
           >
             {analyzingAll ? 'Analyzing...' : 'Analyze quality'}
           </button>
@@ -149,7 +149,7 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
                 <td className="px-4 py-2 text-astro-text">{f.objectName ?? '-'}</td>
                 <td className="px-4 py-2">
                   {f.targetName
-                    ? <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/30 text-green-400">{f.targetName}</span>
+                    ? <span className="text-xs px-1.5 py-0.5 rounded bg-astro-success/10 text-astro-success">{f.targetName}</span>
                     : <span className="text-xs px-1.5 py-0.5 rounded bg-astro-bg text-astro-muted">Unlinked</span>
                   }
                 </td>

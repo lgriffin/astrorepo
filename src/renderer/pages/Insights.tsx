@@ -6,8 +6,10 @@ import { StatCard } from '../components/common/StatCard'
 import { invoke } from '../hooks/useIPC'
 import { formatExposure } from '../utils/format'
 import type { InsightsSummary, MonthlyActivity, BestNight, QualityTrendPoint, FilterUsage, TargetProgress } from '@shared/types'
+import { tokenColor } from '../theme'
+import { CATEGORY_TOKENS } from '@shared/themes'
 
-function BarChart({ data, labelKey, valueKey, color = '#6366f1' }: {
+function BarChart({ data, labelKey, valueKey, color = tokenColor('accent') }: {
   data: Array<Record<string, unknown>>
   labelKey: string
   valueKey: string
@@ -35,7 +37,7 @@ function BarChart({ data, labelKey, valueKey, color = '#6366f1' }: {
   )
 }
 
-function LineChart({ data, xKey, yKey, color = '#22c55e' }: {
+function LineChart({ data, xKey, yKey, color = tokenColor('success') }: {
   data: Array<Record<string, unknown>>
   xKey: string
   yKey: string
@@ -74,7 +76,7 @@ function LineChart({ data, xKey, yKey, color = '#22c55e' }: {
 
 function FilterPieChart({ data }: { data: FilterUsage[] }): React.ReactElement {
   const total = data.reduce((sum, d) => sum + d.totalExposureSec, 0) || 1
-  const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
+  const colors = CATEGORY_TOKENS.map(t => tokenColor(t))
 
   const arcs = data.reduce<Array<{ startAngle: number; endAngle: number; color: string }>>((acc, d, i) => {
     const prev = acc.length > 0 ? acc[acc.length - 1].endAngle : 0
@@ -205,7 +207,7 @@ export function Insights(): React.ReactElement {
               data={monthly as unknown as Array<Record<string, unknown>>}
               labelKey="month"
               valueKey="totalExposureSec"
-              color="#6366f1"
+              color={tokenColor('accent')}
             />
             <div className="flex gap-4 mt-2 text-xs text-astro-muted">
               <span>Bars show total exposure time per month</span>
@@ -230,7 +232,7 @@ export function Insights(): React.ReactElement {
                 data={qualityTrends as unknown as Array<Record<string, unknown>>}
                 xKey="month"
                 yKey="medianFwhm"
-                color="#22c55e"
+                color={tokenColor('success')}
               />
             </div>
           )}

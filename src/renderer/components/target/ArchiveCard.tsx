@@ -18,7 +18,7 @@ function formatBytes(bytes: number): string {
   return `${i === 0 ? v : v.toFixed(1)} ${units[i]}`
 }
 
-const VERDICT_TONE = { fits: 'text-green-400', short: 'text-red-400', unknown: 'text-yellow-400' } as const
+const VERDICT_TONE = { fits: 'text-astro-success', short: 'text-astro-danger', unknown: 'text-astro-warning' } as const
 
 /**
  * 5 · Archive (specs/022-archive): keep a finished target's stacks, manifests, masters and finished
@@ -76,7 +76,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
       })
     return (
       <div className="space-y-3 text-xs">
-        {view.blocked && <p className="text-yellow-400">{view.blocked}</p>}
+        {view.blocked && <p className="text-astro-warning">{view.blocked}</p>}
         {view.folders.length > 0 && (
           <>
             <p className="text-astro-muted">{view.manifests}</p>
@@ -99,7 +99,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
                     </td>
                     <td className="pr-3 text-right tabular-nums">{f.size}</td>
                     <td className="pr-3 text-right tabular-nums">{f.frees}</td>
-                    <td className={`pr-3 ${f.rebuildable ? 'text-green-400' : ''}`}>{f.rebuild}</td>
+                    <td className={`pr-3 ${f.rebuildable ? 'text-astro-success' : ''}`}>{f.rebuild}</td>
                     <td className="text-right">
                       {f.removable && (
                         <input type="checkbox" aria-label={`Remove ${f.folder}`} checked={remove.has(f.folder)} onChange={() => toggle(f.folder)} disabled={running} />
@@ -121,7 +121,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
                     <span className="text-astro-text">{o.label}</span>
                     <span className="text-astro-muted">: {o.text} </span>
                     <span className={VERDICT_TONE[o.verdict]}>{o.verdictText}.</span>
-                    {o.missing && <span className="block text-yellow-400">{o.missing}</span>}
+                    {o.missing && <span className="block text-astro-warning">{o.missing}</span>}
                   </span>
                 </label>
               ))}
@@ -133,7 +133,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
               <button
                 onClick={() => setConfirming(true)}
                 disabled={running || option?.verdict === 'short'}
-                className="px-3 py-1 bg-astro-accent text-white rounded disabled:opacity-50"
+                className="px-3 py-1 bg-astro-accent text-astro-on-accent rounded disabled:opacity-50"
               >
                 Archive this target
               </button>
@@ -152,7 +152,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
                   <li>If any copy fails, no archive is left behind and nothing is removed.</li>
                 </ul>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <button disabled={running} onClick={() => void archive()} className="px-3 py-1 bg-astro-accent text-white rounded disabled:opacity-50">
+                  <button disabled={running} onClick={() => void archive()} className="px-3 py-1 bg-astro-accent text-astro-on-accent rounded disabled:opacity-50">
                     {running ? 'Archiving…' : chosen.length > 0 ? 'Archive and remove' : 'Archive'}
                   </button>
                   <button disabled={running} onClick={() => setConfirming(false)} className="px-3 py-1 text-astro-muted">
@@ -163,7 +163,7 @@ export function ArchiveCard({ targetId, busy }: { targetId: string; busy: boolea
             )}
           </>
         )}
-        {result && <p className={result.ok ? 'text-green-400' : 'text-red-400'}>{result.ok ? result.message : result.error}</p>}
+        {result && <p className={result.ok ? 'text-astro-success' : 'text-astro-danger'}>{result.ok ? result.message : result.error}</p>}
       </div>
     )
   }

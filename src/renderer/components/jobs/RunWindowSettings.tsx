@@ -55,7 +55,7 @@ export function RunWindowSettings(): React.ReactElement {
           </label>
         ))}
       </div>
-      <button onClick={() => void save()} className="mt-3 px-3 py-1 text-xs bg-astro-accent text-white rounded">
+      <button onClick={() => void save()} className="mt-3 px-3 py-1 text-xs bg-astro-accent text-astro-on-accent rounded">
         {saved ? 'Saved' : 'Save'}
       </button>
     </div>

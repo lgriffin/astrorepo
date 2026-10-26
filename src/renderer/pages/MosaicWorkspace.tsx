@@ -131,7 +131,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
             </p>
             {view.note && <p className="text-xs text-astro-muted">{view.note}</p>}
             {view.revision !== view.latestRevision && (
-              <p className="text-xs text-amber-400">This is an earlier revision, kept as it was saved. Saving changes here makes revision {view.latestRevision + 1}.</p>
+              <p className="text-xs text-astro-warning">This is an earlier revision, kept as it was saved. Saving changes here makes revision {view.latestRevision + 1}.</p>
             )}
             {view.outlookNote && <p className="text-xs text-astro-muted">{view.outlookNote}</p>}
             <PanelTable drawing={view.drawing} />
@@ -156,7 +156,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
           <div className="space-y-4 text-sm">
             <GridWorkbench grid={grid} setGrid={setGrid} flushRef={flushRef} />
             {problems.length > 0 && (
-              <ul className="text-sm text-amber-400 list-disc pl-5">
+              <ul className="text-sm text-astro-warning list-disc pl-5">
                 {problems.map(p => (
                   <li key={p}>{p}</li>
                 ))}
@@ -175,13 +175,13 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
               </button>
             </div>
             {changes && (
-              <div className="space-y-2 rounded border border-amber-400/40 p-3">
+              <div className="space-y-2 rounded border border-astro-warning/40 p-3">
                 <p className="text-astro-text">Saving this grid would move {changes.list.length === 1 ? 'one capture' : `${changes.list.length} captures`} to another panel:</p>
                 <ul className="text-xs list-disc pl-5 space-y-0.5">
                   {changes.list.map(c => (
                     <li key={c.captureId} className="text-astro-text">
                       {c.label}: {c.from ?? 'no panel'} to {c.to ?? 'no panel'}
-                      {c.overridden && <span className="text-amber-400"> (you put it on {c.overridePanel} by hand; that stays, marked for review)</span>}
+                      {c.overridden && <span className="text-astro-warning"> (you put it on {c.overridePanel} by hand; that stays, marked for review)</span>}
                     </li>
                   ))}
                 </ul>

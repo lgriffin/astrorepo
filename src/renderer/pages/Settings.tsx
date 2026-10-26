@@ -6,6 +6,7 @@ import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 import { GradingSettings } from '../components/target/GradingSettings'
 import { WeatherSettings } from '../components/weather/WeatherSettings'
 import { CompanionSettings } from '../components/companion/CompanionSettings'
+import { AppearanceSettings } from '../components/settings/AppearanceSettings'
 import { useLocation } from 'react-router-dom'
 import { SETTINGS_SECTIONS, settingsSectionFrom } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
@@ -172,7 +173,7 @@ export function Settings(): React.ReactElement {
               setObserverSaving(false)
             }}
             disabled={observerSaving}
-            className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50"
+            className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 disabled:opacity-50"
           >
             {observerSaving ? 'Saving...' : 'Save location'}
           </button>
@@ -214,7 +215,7 @@ export function Settings(): React.ReactElement {
                   <button
                     onClick={() => handleBrowse(folder.key)}
                     disabled={saving === folder.key}
-                    className="px-4 py-2 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors disabled:opacity-50"
                   >
                     Browse
                   </button>
@@ -243,6 +244,10 @@ export function Settings(): React.ReactElement {
           <GradingSettings />
         </div>
 
+        <div id="settings-appearance" className="scroll-mt-6">
+          <AppearanceSettings />
+        </div>
+
         <div id="settings-import" className="scroll-mt-6 bg-astro-surface border border-astro-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Import and export</h2>
           <div className="space-y-4">
@@ -251,19 +256,19 @@ export function Settings(): React.ReactElement {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => invoke('export:targets-csv')}
-                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                  className="px-3 py-1.5 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors"
                 >
                   Export Targets CSV
                 </button>
                 <button
                   onClick={() => invoke('export:sessions-csv')}
-                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                  className="px-3 py-1.5 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors"
                 >
                   Export sessions CSV
                 </button>
                 <button
                   onClick={() => invoke('export:fits-csv')}
-                  className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                  className="px-3 py-1.5 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors"
                 >
                   Export FITS data CSV
                 </button>
@@ -278,7 +283,7 @@ export function Settings(): React.ReactElement {
                   const result = await invoke<{ created: unknown[]; skipped: string[] }>('import:nina-sequence', { file_path: pick.path })
                   setImportResult(`Imported ${result.created.length} targets.${result.skipped.length > 0 ? ` Skipped: ${result.skipped.join(', ')}` : ''}`)
                 }}
-                className="px-3 py-1.5 bg-astro-accent text-white text-sm rounded hover:bg-astro-accent/80 transition-colors"
+                className="px-3 py-1.5 bg-astro-accent text-astro-on-accent text-sm rounded hover:bg-astro-accent/80 transition-colors"
               >
                 Import NINA sequence
               </button>
@@ -291,8 +296,8 @@ export function Settings(): React.ReactElement {
           <CompanionSettings />
         </div>
 
-        <div id="settings-reset" className="scroll-mt-6 bg-astro-surface border border-red-500/30 rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-2">Start again</h2>
+        <div id="settings-reset" className="scroll-mt-6 bg-astro-surface border border-astro-danger/30 rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-astro-danger uppercase tracking-wider mb-2">Start again</h2>
           <p className="text-xs text-astro-muted mb-3">
             Hid the Get set up checklist on Home?{' '}
             <button onClick={() => void invoke('settings:set', { key: SETUP_HIDDEN_KEY, value: '' })} className="text-astro-accent hover:underline">
@@ -307,13 +312,13 @@ export function Settings(): React.ReactElement {
           {!showResetConfirm ? (
             <button
               onClick={() => setShowResetConfirm(true)}
-              className="px-4 py-2 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-500/10 transition-colors"
+              className="px-4 py-2 border border-astro-danger/50 text-astro-danger text-sm rounded hover:bg-astro-danger/10 transition-colors"
             >
               Clear database
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-red-400">Are you sure? This cannot be undone.</span>
+              <span className="text-sm text-astro-danger">Are you sure? This cannot be undone.</span>
               <button
                 onClick={async () => {
                   try {
@@ -324,7 +329,7 @@ export function Settings(): React.ReactElement {
                   }
                   setShowResetConfirm(false)
                 }}
-                className="px-4 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
+                className="px-4 py-2 bg-astro-danger text-astro-on-accent text-sm rounded hover:bg-astro-danger/80 transition-colors"
               >
                 Yes, clear everything
               </button>
@@ -382,7 +387,7 @@ function ToolsSection(): React.ReactElement {
       <button
         onClick={() => void save(key, editing[key] ?? '')}
         disabled={editing[key] === undefined}
-        className="px-3 py-1 text-xs bg-astro-accent text-white rounded disabled:opacity-50"
+        className="px-3 py-1 text-xs bg-astro-accent text-astro-on-accent rounded disabled:opacity-50"
       >
         {editing[key]?.trim() ? 'Save' : 'Use default'}
       </button>
@@ -408,15 +413,15 @@ function ToolsSection(): React.ReactElement {
           <div key={t.id}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-medium text-astro-text">{t.label}</span>
-              <span className={`text-xs ${t.found ? 'text-green-400' : t.optional ? 'text-astro-muted' : 'text-yellow-400'}`}>
+              <span className={`text-xs ${t.found ? 'text-astro-success' : t.optional ? 'text-astro-muted' : 'text-astro-warning'}`}>
                 {t.found ? t.how : t.optional ? 'Not installed (optional)' : 'Not found'}
               </span>
             </div>
             <p className="text-xs text-astro-muted">{t.purpose}</p>
             {t.path && <p className="text-xs font-mono text-astro-text break-all">{t.path}</p>}
             {version(t.id, t.found) && <p className="text-xs text-astro-muted">{version(t.id, t.found)}</p>}
-            {t.settingNote && <p className="text-xs text-yellow-400">{t.settingNote}</p>}
-            {t.warning && <p className="text-xs text-yellow-400">{t.warning}</p>}
+            {t.settingNote && <p className="text-xs text-astro-warning">{t.settingNote}</p>}
+            {t.warning && <p className="text-xs text-astro-warning">{t.warning}</p>}
             {!t.found && t.looked.length > 0 && (
               <details className="text-xs text-astro-muted">
                 <summary className="cursor-pointer">Where it looked</summary>
@@ -439,11 +444,11 @@ function CatalogueRow({ catalogue: c, input }: { catalogue: CatalogueView; input
     <div className="mt-2 pl-3 border-l border-astro-border">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-xs text-astro-text">{c.label}</span>
-        <span className={`text-xs ${c.state === 'present' ? 'text-green-400' : c.state === 'missing' ? 'text-yellow-400' : 'text-astro-muted'}`}>
+        <span className={`text-xs ${c.state === 'present' ? 'text-astro-success' : c.state === 'missing' ? 'text-astro-warning' : 'text-astro-muted'}`}>
           {c.state === 'present' ? 'Installed' : c.state === 'missing' ? 'Not installed' : 'Not checked'}
         </span>
       </div>
-      <p className={`text-xs ${c.state === 'missing' ? 'text-yellow-400' : 'text-astro-muted'} break-all`}>{c.text}</p>
+      <p className={`text-xs ${c.state === 'missing' ? 'text-astro-warning' : 'text-astro-muted'} break-all`}>{c.text}</p>
       {c.looked.length > 0 && (
         <details className="text-xs text-astro-muted">
           <summary className="cursor-pointer">Where it looked</summary>
@@ -458,7 +463,7 @@ function CatalogueRow({ catalogue: c, input }: { catalogue: CatalogueView; input
 /** The models the SyQon CLI listed, and which the account may use (HUB-007). */
 function SyqonModels({ health }: { health: ToolHealthView | null }): React.ReactElement | null {
   if (!health) return null
-  if (health.modelsNote) return <p className="text-xs text-yellow-400 mt-1">{health.modelsNote}</p>
+  if (health.modelsNote) return <p className="text-xs text-astro-warning mt-1">{health.modelsNote}</p>
   if (!health.models) return null
   if (health.models.length === 0) return <p className="text-xs text-astro-muted mt-1">The SyQon CLI listed no models.</p>
   return (
@@ -468,7 +473,7 @@ function SyqonModels({ health }: { health: ToolHealthView | null }): React.React
           <tr key={m.id}>
             <td className="font-mono text-astro-text pr-2">{m.id}</td>
             <td className="text-astro-muted pr-2">{m.step}</td>
-            <td className={m.available ? 'text-green-400' : 'text-astro-muted'}>{m.available ? 'Available' : `Not available (${m.status})`}</td>
+            <td className={m.available ? 'text-astro-success' : 'text-astro-muted'}>{m.available ? 'Available' : `Not available (${m.status})`}</td>
           </tr>
         ))}
       </tbody>
