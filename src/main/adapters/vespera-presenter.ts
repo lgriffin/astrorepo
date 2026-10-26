@@ -26,7 +26,7 @@ export function indexingText(i: IndexingFacts): string | null {
   if (i.kind === 'none') return null
   if (i.kind === 'home-scan') {
     if (i.status === 'scanning' || i.status === 'cancelling') return 'Scanning the home folder so the copies show on their targets…'
-    if (i.status === 'done') return 'The home folder was scanned: the copies show on their targets and in Next actions.'
+    if (i.status === 'done') return 'The home folder was scanned: the copies show on their targets and on Home.'
     if (i.status === 'error') return `The home folder scan failed: ${i.error ?? 'no reason given'}. Scan again from Library.`
     if (i.status === 'cancelled') return 'The home folder scan was cancelled. Scan again from Library to see the copies.'
     return null

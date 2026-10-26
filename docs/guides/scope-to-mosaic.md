@@ -32,7 +32,7 @@ flowchart TB
    `<where copies land>/<target>/<target>_<date>_FIT=<n>_TIF=<n>`.
 2. **Indexed.** When the copies are in, the app runs the home scan (copies land in the home
    folder's `raw` folder unless you set **Settings → Folders → Vespera copies** elsewhere). The
-   frames show on their target's page, in **Hidden in your files** and in Next actions' "ready to
+   frames show on their target's page, in **Hidden in your files** and in Home's "ready to
    stack" suggestions.
 3. **Stack and process.** The target's **Stack and process** tab plans the Siril stack and
    queues it in Jobs, as before ([Using the cockpit](cockpit.md#on-a-targets-page)).
@@ -44,7 +44,7 @@ flowchart TB
    have of it.
 6. **Mosaic.** M 31's tile turns green with your picture in it (press **Refresh** if the mosaic is
    open).
-7. **What next.** The mosaic says when each remaining gap is up, and Home's Next actions names the
+7. **What next.** The mosaic says when each remaining gap is up, and Home's Shoot tonight list names the
    three best Messier gaps up tonight.
 
 ## Where files live

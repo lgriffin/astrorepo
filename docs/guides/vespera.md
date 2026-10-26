@@ -43,7 +43,7 @@ tick without an FTP client (specs 033 and 034, after Leigh's ingest design).
 
 Copies land in **Settings → Folders → Vespera copies**, or in the home folder's `raw` folder
 when that is not set. When a copy ends, the app runs the home scan, so the frames show on their
-target, in Next actions and in the stacking plan (after any home scan already running); a
+target, in Home's Ready to process list and in the stacking plan (after any home scan already running); a
 landing folder anywhere else is scanned on its own and shows under FITS files.
 
 If the Wi-Fi drops, the copy pauses and keeps its `.part` file; open the session and press

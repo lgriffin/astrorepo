@@ -50,7 +50,7 @@ Subs rejected by quality checks do not count toward a goal.
 - **Next new moon**: the dark window three nights either side of it, and the three targets that
   are up longest on the new-moon night.
 
-The same captures also lead Home's **Next actions** list, ranked with closing seasons
+The same captures also lead Home's **Shoot tonight** list, ranked with closing seasons
 first (see [Using the cockpit](cockpit.md#next-actions)).
 
 ## Clear skies
@@ -102,5 +102,5 @@ earlier in the month too.
 ## Limits for now
 
 - One site. Several sites come with the sky geometry slice.
-- Weather is shown beside the plan, not used to rank it: a cloudy tonight does not yet move tonight's captures down Next actions.
+- Weather is shown beside the plan, not used to rank it: a cloudy tonight does not yet move tonight's captures down Shoot tonight.
 - Positions are J2000 and refraction is ignored; both matter far less than the 30° cut-off.

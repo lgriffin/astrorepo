@@ -8,20 +8,26 @@ import { HiddenDataCard } from '../components/cockpit/HiddenDataCard'
 import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
 import { ClearSkiesCard } from '../components/cockpit/ClearSkiesCard'
 import { SetupCard } from '../components/cockpit/SetupCard'
+import { TonightHero } from '../components/cockpit/TonightHero'
+import { Button, Skeleton } from '../components/ui'
 import { useToast } from '../contexts/ToastContext'
 import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
+import { splitHomeActions, tonightSummary } from '@shared/tonight'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
+const PRIORITY_WORDS: Record<Recommendation['priority'], string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' }
+const PRIORITY_DOT: Record<Recommendation['priority'], string> = { high: 'bg-astro-danger', medium: 'bg-astro-warning', low: 'bg-astro-success' }
 /** How often Home re-reads its suggestions, so a queued stack's line follows the job. */
 const REFRESH_MS = 15_000
 
 /**
- * Home (specs/017-unified-ux, UX-006): the next three nights' skies at a glance (specs/036-clear-skies),
- * what to do next, then the coming nights and what is hiding in the files, then how far the
- * targets have got. Totals live on Insights.
+ * Home (specs/017-unified-ux, UX-006; led by Tonight since specs/041-look-and-feel V3): tonight's
+ * sky, dark window, moon and best targets; what to shoot tonight and what is ready to process; the
+ * next three nights' skies (specs/036-clear-skies); the coming nights and what is hiding in the
+ * files; then how far the targets have got. Totals live on Insights.
  */
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
@@ -88,50 +94,81 @@ export function Dashboard(): React.ReactElement {
   const { nextActions, otherChecks } = splitRecommendations(Array.isArray(recommendations) ? recommendations : [])
 
   const recommendationRow = (rec: Recommendation) => {
-    const priorityColor = rec.priority === 'high' ? 'bg-astro-danger/20 text-astro-danger' : rec.priority === 'medium' ? 'bg-astro-warning/20 text-astro-warning' : 'bg-astro-success/20 text-astro-success'
     const to = rec.actionTo ?? (rec.targetId ? `/targets/${rec.targetId}` : null)
     return (
-      <div key={rec.id} className="flex items-start gap-3 p-3 bg-astro-bg rounded-lg">
-        <div className="flex flex-col gap-1 shrink-0 pt-0.5">
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${priorityColor}`}>{rec.priority}</span>
-          <span className="text-[10px] text-astro-muted capitalize">{rec.category}</span>
-        </div>
+      <li key={rec.id} className="flex items-start gap-3 py-3">
+        <span
+          role="img"
+          aria-label={PRIORITY_WORDS[rec.priority]}
+          title={PRIORITY_WORDS[rec.priority]}
+          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[rec.priority]}`}
+        />
         <div className="flex-1 min-w-0">
           <p className="text-sm text-astro-text font-medium">{rec.title}</p>
-          <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>
+          {rec.description && <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>}
           {rec.queued && <p className="text-xs text-astro-accent mt-0.5">{rec.queued}</p>}
         </div>
-        {rec.actionLabel && to && (
-          <button onClick={() => navigate(to)} className="shrink-0 text-xs text-astro-accent hover:underline">
-            {rec.actionLabel}
-          </button>
-        )}
-        {rec.dismissible && !rec.queued && (
-          <button
-            onClick={() => dismiss(rec)}
-            className="shrink-0 text-xs text-astro-muted hover:text-astro-text"
-            title="Hide until this target gets new data"
-          >
-            Dismiss
-          </button>
-        )}
-      </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {rec.actionLabel && to && (
+            <Button size="sm" onClick={() => navigate(to)}>
+              {rec.actionLabel}
+            </Button>
+          )}
+          {rec.dismissible && !rec.queued && (
+            <Button size="sm" variant="ghost" onClick={() => dismiss(rec)} title="Hide until this target gets new data">
+              Dismiss
+            </Button>
+          )}
+        </div>
+      </li>
     )
   }
+
+  const actionsCard = (title: string, items: Recommendation[], empty: React.ReactNode) => (
+    <Card title={title}>
+      {recommendations === null ? (
+        <div className="space-y-3"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-2/3" /></div>
+      ) : recommendations === FAILED ? (
+        <EmptyState action={<LinkButton onClick={() => { setRecommendations(null); void loadRecommendations() }}>Try again</LinkButton>}>Could not work out the next actions.</EmptyState>
+      ) : items.length === 0 ? (
+        empty
+      ) : (
+        <ul className="divide-y divide-astro-border -my-3">{items.slice(0, 6).map(recommendationRow)}</ul>
+      )}
+    </Card>
+  )
+
+  const { shoot, ahead, process } = splitHomeActions(nextActions)
+  const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
 
   return (
     <PageContainer
       actions={
-        <button onClick={() => navigate('/sessions/new')} className="px-3 py-1.5 bg-astro-surface border border-astro-border rounded text-sm text-astro-muted hover:text-astro-text">
-          Log a night
-        </button>
+        <Button onClick={() => navigate('/sessions/new')}>Log a night</Button>
       }
     >
       <div className="space-y-4">
         <SetupCard />
 
+        <TonightHero summary={summary} loading={skies === null || plan === null} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          {actionsCard(
+            'Shoot tonight',
+            shoot,
+            <EmptyState>Nothing of yours is waiting on tonight's sky. Targets with work left appear here when they are up.</EmptyState>
+          )}
+          {actionsCard(
+            'Ready to process',
+            process,
+            <EmptyState action={<LinkButton onClick={() => navigate('/library')}>Scan your library</LinkButton>}>
+              Nothing to stack right now. Data ready to stack appears here as you capture.
+            </EmptyState>
+          )}
+        </div>
+
         {skies === null ? (
-          <Card title="Clear skies"><EmptyState>Looking at the forecast for the next three nights…</EmptyState></Card>
+          <Card title="Clear skies"><Skeleton className="h-24 w-full" label="Looking at the forecast for the next three nights" /></Card>
         ) : skies === FAILED ? (
           <Card title="Clear skies">
             <EmptyState action={<LinkButton onClick={() => { setSkies(null); void loadSkies() }}>Try again</LinkButton>}>Could not read the forecast.</EmptyState>
@@ -140,23 +177,9 @@ export function Dashboard(): React.ReactElement {
           <ClearSkiesCard outlook={skies} />
         )}
 
-        <Card title="Next actions">
-          {recommendations === null ? (
-            <EmptyState>Working out tonight's sky and what your data is ready for…</EmptyState>
-          ) : recommendations === FAILED ? (
-            <EmptyState action={<LinkButton onClick={() => { setRecommendations(null); void loadRecommendations() }}>Try again</LinkButton>}>Could not work out the next actions.</EmptyState>
-          ) : nextActions.length === 0 ? (
-            <EmptyState action={<LinkButton onClick={() => navigate('/library')}>Scan your library</LinkButton>}>
-              Nothing to do right now. Targets to shoot tonight and data ready to stack appear here as you capture.
-            </EmptyState>
-          ) : (
-            <div className="space-y-3">{nextActions.slice(0, 8).map(recommendationRow)}</div>
-          )}
-        </Card>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {plan === null ? (
-            <Card title="Coming nights"><EmptyState>Working out the coming nights…</EmptyState></Card>
+            <Card title="Coming nights"><Skeleton className="h-16 w-full" label="Working out the coming nights" /></Card>
           ) : plan === FAILED ? (
             <Card title="Coming nights">
               <EmptyState action={<LinkButton onClick={() => { setPlan(null); void loadPlan() }}>Try again</LinkButton>}>Could not work out the coming nights.</EmptyState>
@@ -164,8 +187,13 @@ export function Dashboard(): React.ReactElement {
           ) : (
             <ComingNightsCard plan={plan} />
           )}
+          {ahead.length > 0 && (
+            <Card title="Plan ahead">
+              <ul className="divide-y divide-astro-border -my-3">{ahead.slice(0, 6).map(recommendationRow)}</ul>
+            </Card>
+          )}
           {cockpit === null ? (
-            <Card title="Hidden in your files"><EmptyState>Looking through your files…</EmptyState></Card>
+            <Card title="Hidden in your files"><Skeleton className="h-16 w-full" label="Looking through your files" /></Card>
           ) : cockpit === FAILED ? (
             <Card title="Hidden in your files">
               <EmptyState action={<LinkButton onClick={() => { setCockpit(null); void loadCockpit() }}>Try again</LinkButton>}>Could not look through your files.</EmptyState>
@@ -191,7 +219,7 @@ export function Dashboard(): React.ReactElement {
 
         {otherChecks.length > 0 && (
           <Card title="Other checks">
-            <div className="space-y-3">{otherChecks.slice(0, 6).map(recommendationRow)}</div>
+            <ul className="divide-y divide-astro-border -my-3">{otherChecks.slice(0, 6).map(recommendationRow)}</ul>
           </Card>
         )}
 
