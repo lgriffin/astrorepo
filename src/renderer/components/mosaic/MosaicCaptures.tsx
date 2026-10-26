@@ -33,6 +33,8 @@ interface MosaicCapturesProps {
   drawing: WorkspaceDrawingView
   /** Panel ids of the latest revision, the only ones a capture can be put on. */
   latestPanels: string[]
+  /** Called after a capture is placed by hand, left out or cleared, or a reload finds new solves. */
+  onChanged?: () => void
 }
 
 /**
@@ -41,7 +43,7 @@ interface MosaicCapturesProps {
  * A capture can be put on a panel by hand or left out; that is kept apart and shown as dashed.
  * Captures not solved yet, outside the grid or gone from the index have their own trays.
  */
-export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }: MosaicCapturesProps): React.ReactElement {
+export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels, onChanged }: MosaicCapturesProps): React.ReactElement {
   const { addToast } = useToast()
   const [view, setView] = useState<WorkspaceCapturesView | null | undefined>(undefined)
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({})
@@ -87,6 +89,7 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
       const result = await invoke<{ ok: boolean; reason?: string }>('workspace:assign', { workspace_id: workspaceId, capture_id: captureId, ...body })
       if (!result.ok) addToast(result.reason ?? 'That could not be changed.', 'error')
       await load()
+      onChanged?.()
     } catch (error) {
       addToast(`That could not be changed: ${error instanceof Error ? error.message : String(error)}`, 'error')
     } finally {
@@ -180,7 +183,7 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels }:
               These have no position, so they are not placed on any panel. Plate solve them to place them; solving runs in Jobs, so check again when it has finished.
             </p>
             <div className="flex flex-wrap gap-2">
-              <button className={small} onClick={() => load()}>
+              <button className={small} onClick={() => (load(), onChanged?.())}>
                 Check again
               </button>
               {unsolvedTargets.map(t => (

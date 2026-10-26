@@ -1,5 +1,5 @@
-import type { MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
-import { DEFAULT_GRID_OVERLAP, type AssignmentOverride, type GridDefinition } from '@astro/domain'
+import type { IntegrationGoalSource, MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord } from '@astro/application'
+import { DEFAULT_GRID_OVERLAP, type AssignmentOverride, type FilterSeconds, type GridDefinition } from '@astro/domain'
 
 const copy = <T>(value: T): T => structuredClone(value)
 
@@ -96,5 +96,17 @@ export class InMemoryMosaicAssignmentStore implements MosaicAssignmentStore {
   private record(workspaceId: string, captureId: string, revision: number, override: AssignmentOverride | null) {
     const all = (this.changes.get(workspaceId) ?? []).filter(c => !(c.captureId === captureId && c.revision === revision))
     this.changes.set(workspaceId, [...all, { captureId, revision, override }])
+  }
+}
+
+/** A target's integration goals held in memory. */
+export class InMemoryIntegrationGoalSource implements IntegrationGoalSource {
+  constructor(private readonly goals: { targetId: string; filter: string; seconds: number }[] = []) {}
+
+  async goalsOf(targetId: string): Promise<FilterSeconds[]> {
+    return this.goals
+      .filter(g => g.targetId === targetId)
+      .map(g => ({ filter: g.filter, seconds: g.seconds }))
+      .sort((a, b) => a.filter.localeCompare(b.filter))
   }
 }

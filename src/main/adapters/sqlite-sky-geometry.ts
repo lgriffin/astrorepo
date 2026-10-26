@@ -13,6 +13,7 @@ interface FileRow {
   date_obs: string | null
   exposure_sec: number | null
   file_size_bytes: number
+  file_modified_at: string | null
   naxis1: number | null
   naxis2: number | null
   xpixsz: number | null
@@ -50,7 +51,7 @@ export class SqliteSolveStore implements SolveStore {
   async files(targetId?: string): Promise<SkyFile[]> {
     const rows = this.db
       .prepare(
-        `SELECT f.id, f.file_path, f.target_id, f.date_obs, f.exposure_sec, f.file_size_bytes, f.naxis1, f.naxis2, f.xpixsz, f.filter,
+        `SELECT f.id, f.file_path, f.target_id, f.date_obs, f.exposure_sec, f.file_size_bytes, f.file_modified_at, f.naxis1, f.naxis2, f.xpixsz, f.filter,
                 CASE WHEN f.is_stacked = 1 THEN 1 ELSE 0 END AS is_master, ${HEADER_NUMBER('FOCALLEN')} AS focal
          FROM fits_files f
          WHERE f.target_id IS NOT NULL ${targetId ? 'AND f.target_id = @targetId' : ''}
@@ -83,7 +84,8 @@ export class SqliteSolveStore implements SolveStore {
         optics: r.focal && r.focal > 0 && r.xpixsz && r.xpixsz > 0 ? { focalMm: r.focal, pixelUm: r.xpixsz } : null,
         wcs: wcs && wcs.CRVAL1 !== undefined && wcs.CRVAL2 !== undefined ? wcs : null,
         fileId: r.id,
-        filter: r.filter
+        filter: r.filter,
+        modifiedAt: r.file_modified_at
       }
     })
   }

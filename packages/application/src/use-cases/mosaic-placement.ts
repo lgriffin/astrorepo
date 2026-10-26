@@ -39,6 +39,10 @@ export interface Capture {
   paths: string[]
   /** Exposure of each file, in the order of `paths`; null where the header has none. */
   exposures: (number | null)[]
+  /** The FILTER header of each file, in the order of `paths`. */
+  pathFilters: (string | null)[]
+  /** Each file's size and modified time as the index has them, in the order of `paths`. */
+  pathStamps: { sizeBytes: number; modifiedAt: string | null }[]
   filters: string[]
   /** The file whose thumbnail shows it. */
   fileId: string | null
@@ -81,6 +85,8 @@ export function capturesFrom(files: SkyFile[], solves: StoredSolve[]): Capture[]
       folder: anchor.folder,
       paths: members.map(m => m.path),
       exposures: members.map(m => m.exposureSec),
+      pathFilters: members.map(m => m.filter ?? null),
+      pathStamps: members.map(m => ({ sizeBytes: m.sizeBytes, modifiedAt: m.modifiedAt ?? null })),
       filters: [...new Set(members.map(m => m.filter?.trim()).filter((f): f is string => !!f))].sort(),
       fileId: anchor.fileId ?? null,
       field: solve?.field ?? null,

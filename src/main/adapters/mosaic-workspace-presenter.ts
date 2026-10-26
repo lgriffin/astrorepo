@@ -1,6 +1,6 @@
-import { captureLabel, type CapturePlacements, type CreateWorkspaceResult, type GridPreview, type ListWorkspaces, type PlacedCapture, type RevisionChange, type SaveRevisionResult, type WorkspaceView as CoreWorkspaceView } from '@astro/application'
+import { captureLabel, type CapturePlacements, type WorkspaceCoverage, type CreateWorkspaceResult, type GridPreview, type ListWorkspaces, type PlacedCapture, type RevisionChange, type SaveRevisionResult, type WorkspaceView as CoreWorkspaceView } from '@astro/application'
 import { formatDecDms, formatRaHms, type FieldSource, type GridDefinition } from '@astro/domain'
-import type { WorkspaceCaptureView, WorkspaceCapturesView, WorkspaceChangeView, WorkspaceDrawingView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceSummaryView, WorkspaceView } from '@shared/types'
+import type { WorkspaceCaptureView, WorkspaceCapturesView, WorkspaceChangeView, WorkspaceCoverageView, WorkspaceDrawingView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceSummaryView, WorkspaceView } from '@shared/types'
 import { formatDuration } from './job-presenter'
 import { fieldSize } from './sky-geometry-presenter'
 
@@ -205,4 +205,50 @@ export function toCapturesView(c: CapturePlacements): WorkspaceCapturesView {
 
 export function toChangeViews(changes: RevisionChange[]): WorkspaceChangeView[] {
   return changes.map(c => ({ captureId: c.captureId, label: c.label, from: c.from, to: c.to, overridden: c.overridden, overridePanel: c.overridePanel }))
+}
+
+// ── Coverage (X3) ───────────────────────────────────────────────────────
+
+const exposureText = (exposures: { filter: string; seconds: number }[]) =>
+  exposures.length > 0 ? exposures.map(e => `${e.filter} ${formatDuration(e.seconds)}`).join(', ') : null
+const depthText = (low: number, high: number) =>
+  high <= 0 ? 'none' : low === high ? formatDuration(high) : `${low <= 0 ? 'none' : formatDuration(low)} to ${formatDuration(high)}`
+
+/** How a revision is covered, for the heat map, the panel table and the next-session list. */
+export function toCoverageView(c: WorkspaceCoverage): WorkspaceCoverageView {
+  const panels = c.progress.map(p => ({
+    panelId: p.panelId,
+    state: p.state,
+    coverage: percent(p.coverage.fraction),
+    fraction: p.coverage.fraction,
+    covered: p.coverage.covered,
+    depth: depthText(p.coverage.shallowestSec, p.coverage.deepestSec),
+    gaps: p.coverage.gaps.map(g => ({ where: g.where, share: percent(g.fraction), centre: `${formatRaHms(g.centre.raDeg)} ${formatDecDms(g.centre.decDeg)}` })),
+    filters: p.filters.map(f => ({
+      filter: f.filter,
+      have: f.haveSec > 0 ? formatDuration(f.haveSec) : 'none',
+      goal: f.goalSec === null ? null : formatDuration(f.goalSec),
+      need: f.needSec === null ? null : f.needSec === 0 ? 'met' : formatDuration(f.needSec),
+      met: f.needSec === null ? null : f.needSec === 0
+    })),
+    goalsMet: p.goalsMet,
+    captures: p.captures
+  }))
+  const covered = panels.filter(p => p.covered).length
+  const met = panels.filter(p => p.goalsMet).length
+  const withGoals = c.goals.length > 0
+  const summary = `${covered} of ${count(panels.length, 'panel')} covered${withGoals ? `; ${met} ${met === 1 ? 'meets' : 'meet'} the goals` : ''}${c.unsolved > 0 ? `; ${c.unsolved} not solved yet, so not counted` : ''}.`
+  return {
+    revision: c.revision.revision,
+    cellDeg: c.map.cellDeg,
+    filters: c.map.filters,
+    cells: c.map.cells,
+    maxSeconds: c.map.cells.reduce((m, cell) => Math.max(m, cell.seconds), 0),
+    panels,
+    totals: c.totals.map(t => ({ filter: t.filter, exposure: formatDuration(t.seconds) })),
+    captures: c.counted.map(k => ({ id: k.id, label: k.label, kind: k.kind, panelId: k.panelId, exposure: exposureText(k.exposures), counted: k.counted, note: k.note })),
+    next: c.next.map(n => ({ panelId: n.panel.id, aim: `${formatRaHms(n.aim.raDeg)} ${formatDecDms(n.aim.decDeg)}`, reason: n.reason })),
+    summary,
+    unsolved: c.unsolved
+  }
 }

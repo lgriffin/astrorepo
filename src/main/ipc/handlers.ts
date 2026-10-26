@@ -31,7 +31,7 @@ import { toJobsView } from '../adapters/job-presenter'
 import { toGradesView } from '../adapters/grades-presenter'
 import { archiveResultMessage, toArchivePreviewView } from '../adapters/archive-presenter'
 import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../adapters/sky-geometry-presenter'
-import { toCapturesView, toChangeViews, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
+import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
@@ -931,6 +931,15 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
     return grid ? toGridInput(grid) : null
   }))
   handle('workspace:archive', validated('workspace:archive', (args) => workspaces().archive(args.workspace_id, args.archived)))
+  handle('workspace:coverage', validated('workspace:coverage', async (args) => {
+    const coverage = await workspaces().coverage(args.workspace_id, args.revision)
+    return coverage ? toCoverageView(coverage) : null
+  }))
+  handle('workspace:export-next', validated('workspace:export-next', async (args) => {
+    const exported = await workspaces().exportNext(args.workspace_id, args.format, args.revision)
+    if (!exported) return { saved: false }
+    return desktop.saveText(exported.fileName, exported.text, args.format === 'csv' ? CSV : JSON_FILE)
+  }))
   handle('workspace:captures', validated('workspace:captures', async (args) => {
     const placed = await workspaces().captures(args.workspace_id, args.revision)
     return placed ? toCapturesView(placed) : null

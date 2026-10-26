@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3'
 import { ulid } from 'ulid'
-import type { MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord, WorkspaceStatus } from '@astro/application'
-import type { AssignmentOverride, FieldSource, PlannedPanel, SkyPoint } from '@astro/domain'
+import type { IntegrationGoalSource, MosaicAssignmentStore, MosaicWorkspaceStore, RevisionSummary, StoredRevision, WorkspaceRecord, WorkspaceStatus } from '@astro/application'
+import type { AssignmentOverride, FieldSource, FilterSeconds, PlannedPanel, SkyPoint } from '@astro/domain'
 
 interface WorkspaceRow {
   id: string
@@ -196,5 +196,15 @@ export class SqliteMosaicAssignmentStore implements MosaicAssignmentStore {
     this.db
       .prepare("INSERT OR REPLACE INTO mosaic_overrides (workspace_id, capture_id, action, panel_id, reason, revision, at) VALUES (?, ?, 'clear', NULL, NULL, ?, ?)")
       .run(workspaceId, captureId, revision, at.toISOString())
+  }
+}
+
+/** A target's integration goals from the integration_goals table, one per filter. */
+export class SqliteIntegrationGoalSource implements IntegrationGoalSource {
+  constructor(private readonly db: Database.Database) {}
+
+  async goalsOf(targetId: string): Promise<FilterSeconds[]> {
+    const rows = this.db.prepare('SELECT filter, goal_seconds FROM integration_goals WHERE target_id = ? ORDER BY filter').all(targetId) as { filter: string; goal_seconds: number }[]
+    return rows.map(r => ({ filter: r.filter, seconds: r.goal_seconds }))
   }
 }

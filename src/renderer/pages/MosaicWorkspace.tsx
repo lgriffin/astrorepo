@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext'
 import { targetLink, workspaceLink, workspaceRevisionFrom } from '@shared/navigation'
 import type { WorkspaceChangeView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceView } from '@shared/types'
 import { MosaicCaptures } from '../components/mosaic/MosaicCaptures'
+import { MosaicCoverage } from '../components/mosaic/MosaicCoverage'
 import { GridWorkbench, PanelTable } from './MosaicWorkspaces'
 import type { FlushCentre } from '../components/mosaic/GridEditor'
 
@@ -25,6 +26,8 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
   const [problems, setProblems] = useState<string[]>([])
   const flushRef = useRef<FlushCentre | null>(null)
   // Captures that would change panel if this grid were saved, shown before it is (MO-010).
+  // Bumped when captures are placed by hand, so coverage is worked out again.
+  const [placements, setPlacements] = useState(0)
   const [changes, setChanges] = useState<{ grid: WorkspaceGridInput; list: WorkspaceChangeView[] } | null>(null)
   const loading = useRef(0)
 
@@ -150,7 +153,9 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
           </div>
         </Card>
 
-        <MosaicCaptures workspaceId={view.id} revision={view.revision} drawing={view.drawing} latestPanels={latestPanels} />
+        <MosaicCaptures workspaceId={view.id} revision={view.revision} drawing={view.drawing} latestPanels={latestPanels} onChanged={() => setPlacements(n => n + 1)} />
+
+        <MosaicCoverage workspaceId={view.id} revision={view.revision} drawing={view.drawing} version={placements} />
 
         <Card title="Change the grid">
           <div className="space-y-4 text-sm">

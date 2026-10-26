@@ -1628,6 +1628,73 @@ export interface WorkspaceChangeView {
   overridePanel: string | null
 }
 
+/** One patch of sky on a mosaic's heat map (X3): its middle on the drawing and the exposure over it. */
+export interface WorkspaceCoverageCellView {
+  x: number
+  y: number
+  seconds: number
+  /** Per filter, in the order of the coverage view's `filters`. */
+  byFilter: number[]
+  captures: number
+}
+
+export interface WorkspaceFilterProgressView {
+  filter: string
+  /** "3 h 20 min" */
+  have: string
+  goal: string | null
+  need: string | null
+  /** Its goal met; null with no goal. */
+  met: boolean | null
+}
+
+export interface WorkspacePanelCoverageView {
+  panelId: string
+  state: 'not started' | 'partly covered' | 'covered'
+  /** "87%" */
+  coverage: string
+  fraction: number
+  covered: boolean
+  /** "1 h to 4 h 30 min" over the panel; "none" when nothing covers it. */
+  depth: string
+  gaps: { where: string; share: string; centre: string }[]
+  filters: WorkspaceFilterProgressView[]
+  goalsMet: boolean | null
+  captures: number
+}
+
+export interface WorkspaceCountedCaptureView {
+  id: string
+  label: string
+  kind: 'lights' | 'master'
+  panelId: string | null
+  /** "Ha 2 h, OIII 1 h 30 min", or null when it adds none. */
+  exposure: string | null
+  counted: number
+  note: string | null
+}
+
+/** How a mosaic revision is covered (specs/037-mosaic-workspace, X3). */
+export interface WorkspaceCoverageView {
+  revision: number
+  /** A heat map cell's side on the drawing, in degrees. */
+  cellDeg: number
+  filters: string[]
+  cells: WorkspaceCoverageCellView[]
+  /** The deepest cell's exposure, all filters, to scale the heat map. */
+  maxSeconds: number
+  panels: WorkspacePanelCoverageView[]
+  /** Usable exposure per filter over the mosaic, each frame once. */
+  totals: { filter: string; exposure: string }[]
+  captures: WorkspaceCountedCaptureView[]
+  /** The panels to shoot next, most needed first. */
+  next: { panelId: string; aim: string; reason: string }[]
+  /** "3 of 4 panels covered; 1 meets its goals." */
+  summary: string
+  /** Captures not solved yet, which add no coverage. */
+  unsolved: number
+}
+
 // ── Gallery inspector (spec 025) ──────────────────────────────────────────
 
 export interface ChannelStatsView {
