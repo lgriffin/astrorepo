@@ -9,6 +9,7 @@ import {
   makeDescribeProject,
   makeExportProjectManifest,
   makeListProjects,
+  localDate,
   makeListProjectSources,
   makeRemoveProjectTarget,
   makeSetCompletionRule,
@@ -125,6 +126,13 @@ describe('creating projects', () => {
     const p = await r.make({ name: 'Mine', kind: 'custom', collectionId: 'fav', targetIds: ['m1', 'm31'] })
     expect(p).toMatchObject({ collectionId: 'fav', targetIds: ['m31', 'm45', 'm1'] })
     expect((await r.make({ name: 'Hand picked', kind: 'custom', targetIds: ['m42'] })).targetIds).toEqual(['m42'])
+  })
+
+  it('[AP-004] Given a collection that no longer exists, When a project is made from it, Then it is refused in words; an empty one is fine', async () => {
+    const r = await rig()
+    expect(await r.create({ name: 'Mine', kind: 'custom', collectionId: 'gone' })).toEqual({ ok: false, problems: ['That collection no longer exists.'] })
+    r.collection.targetIds.length = 0
+    expect(await r.create({ name: 'Mine', kind: 'custom', collectionId: 'fav' })).toMatchObject({ ok: true, project: { collectionId: 'fav', targetIds: [] } })
   })
 
   it('[AP-004, AP-009] Given a window, When a seasonal campaign is made, Then it keeps the window; other kinds keep none', async () => {
@@ -280,6 +288,29 @@ describe('progress from the index', () => {
     expect((await r.describe(p.id))?.progress.tasks[1].done).toBe(true)
   })
 
+  it('[AP-003] Given a mosaic campaign whose mosaic was deleted, When described, Then it shows the mosaic as gone and can never look complete', async () => {
+    const r = await rig()
+    const p = await r.make({ name: 'Veil', kind: 'mosaic', workspaceId: r.veil.id })
+    await r.shoot(0, 12)
+    await r.shoot(1, 12)
+    expect((await r.describe(p.id))?.progress.complete).toBe(true)
+    const kept = r.store.projects.get(p.id)
+    if (kept) kept.workspaceId = null
+    const d = await r.describe(p.id)
+    expect(d?.mosaic).toBeNull()
+    expect(d?.progress.tasks.map(t => [t.id, t.stage, t.done])).toEqual([['mosaic', 'missing', false]])
+    expect(d?.progress.complete).toBe(false)
+    expect(d?.next[0].text).toMatch(/^The mosaic this project followed was deleted/)
+  })
+
+  it('[AP-003] Given a mosaic campaign that asks only for a finished image, When judged, Then its panels are not tasks and only the target counts', async () => {
+    const r = await rig()
+    const p = await r.make({ name: 'Veil', kind: 'mosaic', workspaceId: r.veil.id, rule: { integration: { kind: 'none' }, coverage: false, stacked: false, processed: false, published: true } })
+    const d = await r.describe(p.id)
+    expect(d?.progress.tasks.map(t => t.id)).toEqual(['ngc6960'])
+    expect(d?.progress).toMatchObject({ done: 0, total: 1, complete: false })
+  })
+
   it('[AP-001] Given a mosaic campaign with its own per-filter goals, When judged, Then the rule\'s goals replace the target\'s', async () => {
     const r = await rig()
     const p = await r.make({ name: 'Veil', kind: 'mosaic', workspaceId: r.veil.id, rule: { ...DEFAULT_RULES.mosaic, integration: { kind: 'per filter', goals: [{ filter: 'Ha', seconds: 1800 }] } } })
@@ -302,6 +333,11 @@ describe('progress from the index', () => {
     expect(d?.progress.total).toBe(1)
   })
 
+  it('[AP-009] Given an evening west of Greenwich, When today is worked out, Then it is the local date, not the UTC one', () => {
+    expect(localDate(new Date(2026, 9, 26, 23, 30))).toBe('2026-10-26')
+    expect(localDate(new Date(2026, 0, 5, 0, 5))).toBe('2026-01-05')
+  })
+
   it('[AP-009] Given a seasonal campaign, When described, Then its window is judged against today', async () => {
     const r = await rig()
     const p = await r.make({ name: 'Winter', kind: 'seasonal', window: { start: '2026-10-20', end: '2026-10-31' }, targetIds: ['m42'] })
@@ -319,7 +355,18 @@ describe('progress from the index', () => {
     expect(await r.addNew(p.id)).toMatchObject({ ok: true, project: { targetIds: ['m31', 'm45', 'm1'] } })
     const cat = await r.make({ name: 'Messier', kind: 'catalogue', catalogueId: 'messier' })
     await r.remove(cat.id, 'm42')
-    expect((await r.describe(cat.id))?.source).toEqual({ kind: 'catalogue', id: 'messier', name: 'Messier', notInProject: ['m42'] })
+    expect((await r.describe(cat.id))?.source).toEqual({ kind: 'catalogue', id: 'messier', name: 'Messier', notInProject: [] })
+  })
+
+  it('[AP-011] Given a target taken out by hand, When the source gains a member, Then only the new member is offered and the removed one stays out until added back', async () => {
+    const r = await rig()
+    const p = await r.make({ name: 'Mine', kind: 'custom', collectionId: 'fav' })
+    await r.remove(p.id, 'm45')
+    r.collection.targetIds.push('m1')
+    expect((await r.describe(p.id))?.source?.notInProject).toEqual(['m1'])
+    expect(await r.addNew(p.id)).toMatchObject({ ok: true, project: { targetIds: ['m31', 'm1'] } })
+    await r.add(p.id, ['m45'])
+    expect((await r.store.get(p.id))?.removedTargetIds).toEqual([])
   })
 
   it('[AP-011] Given a project from no catalogue or collection, When new members are asked for, Then it is refused', async () => {
@@ -328,6 +375,29 @@ describe('progress from the index', () => {
     expect((await r.describe(p.id))?.source).toBeNull()
     expect(await r.addNew(p.id)).toEqual({ ok: false, problems: ['This project was not started from a catalogue or collection.'] })
     expect(await r.addNew('nope')).toEqual({ ok: false, problems: ['There is no such project.'] })
+  })
+
+  it('[AP-001] Given two campaigns on one mosaic, When listed, Then names are read once and the mosaic\'s coverage worked out once', async () => {
+    const r = await rig()
+    let coverageCalls = 0
+    let nameCalls = 0
+    const coverage = r.coverage
+    const sources = r.sources
+    const deps = {
+      ...r,
+      coverage: (id: string, revision?: number) => (coverageCalls++, coverage(id, revision)),
+      sources: Object.assign(Object.create(sources) as typeof sources, { targetNames: (ids: string[]) => (nameCalls++, sources.targetNames(ids)) })
+    }
+    await r.make({ name: 'A', kind: 'mosaic', workspaceId: r.veil.id })
+    await r.make({ name: 'B', kind: 'mosaic', workspaceId: r.veil.id })
+    await r.make({ name: 'C', kind: 'custom', targetIds: ['m1'] })
+    const list = await makeListProjects(deps)()
+    expect(list.map(x => [x.project.name, x.total])).toEqual([
+      ['C', 1],
+      ['B', 2],
+      ['A', 2]
+    ])
+    expect([coverageCalls, nameCalls]).toEqual([1, 1])
   })
 
   it('[AP-001] Given several projects, When listed, Then each comes newest first with how many tasks are done', async () => {
@@ -342,6 +412,7 @@ describe('progress from the index', () => {
       ['Old', 1, 2, false]
     ])
     expect(list[0].window).toEqual({ state: 'not begun', daysToStart: 5 })
+    expect(list.map(x => x.project.removedTargetIds)).toEqual([[], []])
     expect(await r.listSources()).toEqual({ catalogues: [{ id: 'messier', name: 'Messier', size: 3 }], collections: [{ id: 'fav', name: 'Favourites', size: 2 }] })
   })
 

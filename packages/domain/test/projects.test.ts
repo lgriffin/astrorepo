@@ -8,6 +8,7 @@ import {
   goalsFor,
   measureFilters,
   panelTask,
+  missingMosaicTask,
   projectManifestCsv,
   projectManifestJson,
   projectManifestName,
@@ -163,9 +164,15 @@ describe('target tasks', () => {
     expect(targetTask(evidence({ stacks: 1 }), processed).next).toEqual({ kind: 'process', text: 'Process the stack of M 31', needSec: null })
     const stacked = rule({ stacked: true, processed: true })
     expect(targetTask(evidence({ usable: [{ filter: 'L', seconds: H }] }), stacked).next).toEqual({ kind: 'stack', text: 'Stack M 31: 1.0 h usable', needSec: null })
-    expect(targetTask(evidence({ processed: 1 }), stacked).next?.kind).toBe('stack')
+    expect(targetTask(evidence({ processed: 1, usable: [{ filter: 'L', seconds: H }] }), stacked).next?.kind).toBe('stack')
     // A stack and a processed file already there: only the image is missing.
     expect(targetTask(evidence({ stacks: 1, processed: 1 }), rule({ stacked: true, processed: true, published: true })).next?.kind).toBe('publish')
+  })
+
+  it('[AP-005] Given a processed file but no usable light and no stack, When a stack is asked, Then the step is to capture lights, never to stack nothing', () => {
+    const stacked = rule({ stacked: true })
+    expect(targetTask(evidence({ processed: 1 }), stacked).next).toEqual({ kind: 'capture', text: 'Capture lights of M 31', needSec: null })
+    expect(targetTask(evidence({ processed: 1 }), rule({ processed: true, published: true })).next?.kind).toBe('publish')
   })
 
   it('[AP-005] Given integration and outputs both unmet, When the step is chosen, Then capturing comes before stacking', () => {
@@ -205,6 +212,21 @@ describe('panel tasks', () => {
     const t = panelTask(panel({ fraction: 1 }), rule({ coverage: true, integration: { kind: 'target goals' } }), [], null)
     expect(t.parts.integration).toEqual({ met: false, detail: 'No goals set' })
     expect(t.next).toEqual({ kind: 'set goals', text: 'Set integration goals for the mosaic', needSec: null })
+  })
+
+  it('[AP-010] Given an uncovered panel with no goals set, When integration is asked, Then setting goals comes before covering it', () => {
+    const t = panelTask(panel({ fraction: 0.2 }), rule({ coverage: true, integration: { kind: 'target goals' } }), [], 'RA 10:00:00, Dec +20:00:00')
+    expect(t.parts).toEqual({ coverage: { met: false, detail: '20% covered' }, integration: { met: false, detail: 'No goals set' } })
+    expect(t.next).toEqual({ kind: 'set goals', text: 'Set integration goals for the mosaic', needSec: null })
+  })
+
+  it('[AP-003] Given a mosaic that is gone, When its panels are judged, Then one task stands for them that is never done', () => {
+    const t = missingMosaicTask(rule({ coverage: true, integration: { kind: 'target goals' } }))
+    expect(t).toMatchObject({ id: 'mosaic', kind: 'panel', stage: 'missing', done: false, filters: [] })
+    expect(t.parts).toEqual({ coverage: { met: false, detail: 'The mosaic is gone' }, integration: { met: false, detail: 'The mosaic is gone' } })
+    expect(t.next).toEqual({ kind: 'cover', text: 'The mosaic this project followed was deleted: start a new mosaic project to judge its panels', needSec: null })
+    expect(missingMosaicTask(rule({ coverage: true })).parts).toEqual({ coverage: { met: false, detail: 'The mosaic is gone' } })
+    expect(missingMosaicTask(rule({ integration: { kind: 'per filter', goals: [] } })).parts).toEqual({ integration: { met: false, detail: 'The mosaic is gone' } })
   })
 
   it('[AP-003] Given a covered panel and integration not asked, When judged, Then it is done and lists no filters', () => {

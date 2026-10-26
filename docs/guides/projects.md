@@ -20,7 +20,7 @@ Pick the kind, name it, and give what the kind needs:
 | Personal collection | nothing, or one of your collections | the collection's and those you add |
 
 A catalogue or collection is linked, not merged: the project copies its targets in and never
-changes it. When it gains targets later, the project says how many and **Add them** brings them in.
+changes it. When it gains targets later, the project says how many and **Add them** brings them in. A target you take out stays out: it is not offered back unless you add it again by hand. If the mosaic a mosaic campaign follows is deleted, the campaign shows one task, "The mosaic is gone", and can never look complete.
 
 ## What finished means
 

@@ -33,6 +33,17 @@ export function projectStoreContract(adapterName: string, make: () => ProjectSto
       expect((await store.get(made.id))?.targetIds).toEqual(['m31', 'm42'])
     })
 
+    it('[AP-011] Given a target taken out, When read back, Then the removal is remembered until the target is added again', async () => {
+      const store = make()
+      const made = await store.create({ ...base, name: 'Mine', targetIds: ['m31', 'm42'], createdAt: at('2026-10-26T09:00:00Z') })
+      expect(made.removedTargetIds).toEqual([])
+      await store.removeTarget(made.id, 'm42', at('2026-10-26T10:00:00Z'))
+      await store.removeTarget(made.id, 'm81', at('2026-10-26T10:30:00Z'))
+      expect(await store.get(made.id)).toMatchObject({ targetIds: ['m31'], removedTargetIds: ['m42'], updatedAt: at('2026-10-26T10:00:00Z') })
+      await store.addTargets(made.id, ['m42'], at('2026-10-26T11:00:00Z'))
+      expect(await store.get(made.id)).toMatchObject({ targetIds: ['m31', 'm42'], removedTargetIds: [] })
+    })
+
     it('[AP-001] Given several projects, When renamed, paused and given a new rule, Then they list newest first with the change kept', async () => {
       const store = make()
       const older = await store.create({ ...base, name: 'A', targetIds: [], createdAt: at('2026-10-20T09:00:00Z') })
@@ -59,15 +70,16 @@ export function projectSourcesContract(adapterName: string, make: (fixture: Sour
     const fixture: SourcesFixture = {
       names: { m1: 'M 1', m2: 'M 2', m10: 'M 10', m31: 'M 31' },
       catalogues: [{ id: 'messier', name: 'Messier', entries: [{ targetId: 'm10', designation: 'M10' }, { targetId: 'm2', designation: 'M2' }, { targetId: 'm1', designation: 'M1' }] }],
-      collections: [{ id: 'fav', name: 'Favourites', targetIds: ['m31', 'm1'] }]
+      // Added in this order, not id order, and possibly in one batch at one time.
+      collections: [{ id: 'fav', name: 'Favourites', targetIds: ['m31', 'm1', 'm10'] }]
     }
 
     it('[AP-001] Given catalogues and collections, When listed, Then each comes with its size and its targets in order', async () => {
       const sources = make(fixture)
       expect(await sources.catalogues()).toEqual([{ id: 'messier', name: 'Messier', size: 3 }])
       expect(await sources.catalogueTargets('messier')).toEqual(['m1', 'm2', 'm10'])
-      expect(await sources.collections()).toEqual([{ id: 'fav', name: 'Favourites', size: 2 }])
-      expect(await sources.collectionTargets('fav')).toEqual(['m31', 'm1'])
+      expect(await sources.collections()).toEqual([{ id: 'fav', name: 'Favourites', size: 3 }])
+      expect(await sources.collectionTargets('fav')).toEqual(['m31', 'm1', 'm10'])
     })
 
     it('[AP-001] Given unknown ids, When asked, Then nothing is found rather than an error', async () => {

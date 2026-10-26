@@ -60,5 +60,5 @@ proposal's; AP-004 onwards are added here.
 | AP-008 | State | While a project is paused or archived, the system shall keep working out its progress and shall suggest no next steps for it. |
 | AP-009 | State | While a seasonal campaign is before, inside or after its window, the system shall show how many days until it starts, how many days are left counting today, or that it has closed. |
 | AP-010 | Unwanted | If a rule asks for each target's own goals and a target (or a mosaic's target) has none, then the system shall not count its integration as met and shall ask for goals as its next step. |
-| AP-011 | Event | When a project's catalogue or collection gains targets the project does not have, the system shall say how many and add them when the user asks. |
+| AP-011 | Event | When a project's catalogue or collection gains targets the project does not have, the system shall say how many and add them when the user asks; targets the user took out of the project are not offered back. |
 | AP-012 | Unwanted | If the user adds a target to or takes one out of a target depth project or a mosaic campaign, then the system shall refuse it and keep the targets it has. |

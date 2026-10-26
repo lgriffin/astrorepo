@@ -35,6 +35,7 @@ export class SqliteProjectStore implements ProjectStore {
       collectionId: r.collection_id,
       workspaceId: r.workspace_id,
       targetIds: targets.map(t => t.target_id),
+      removedTargetIds: (this.db.prepare('SELECT target_id FROM project_removed_targets WHERE project_id = ? ORDER BY removed_at, rowid').all(r.id) as { target_id: string }[]).map(t => t.target_id),
       createdAt: new Date(r.created_at),
       updatedAt: new Date(r.updated_at)
     }
@@ -67,7 +68,11 @@ export class SqliteProjectStore implements ProjectStore {
   private insertTargets(id: string, targetIds: string[], at: string) {
     const last = (this.db.prepare('SELECT COALESCE(MAX(position), -1) AS p FROM project_targets WHERE project_id = ?').get(id) as { p: number }).p
     const insert = this.db.prepare('INSERT OR IGNORE INTO project_targets (project_id, target_id, position, added_at) VALUES (?, ?, ?, ?)')
-    targetIds.forEach((t, i) => insert.run(id, t, last + 1 + i, at))
+    const unremove = this.db.prepare('DELETE FROM project_removed_targets WHERE project_id = ? AND target_id = ?')
+    targetIds.forEach((t, i) => {
+      insert.run(id, t, last + 1 + i, at)
+      unremove.run(id, t)
+    })
   }
 
   async update(id: string, change: Partial<Pick<ProjectRecord, 'name' | 'status' | 'rule' | 'window'>>, at: Date): Promise<void> {
@@ -95,7 +100,9 @@ export class SqliteProjectStore implements ProjectStore {
 
   async removeTarget(id: string, targetId: string, at: Date): Promise<void> {
     this.db.transaction(() => {
-      this.db.prepare('DELETE FROM project_targets WHERE project_id = ? AND target_id = ?').run(id, targetId)
+      const removed = this.db.prepare('DELETE FROM project_targets WHERE project_id = ? AND target_id = ?').run(id, targetId).changes
+      if (removed === 0) return
+      this.db.prepare('INSERT OR IGNORE INTO project_removed_targets (project_id, target_id, removed_at) VALUES (?, ?, ?)').run(id, targetId, at.toISOString())
       this.db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(at.toISOString(), id)
     })()
   }
@@ -124,7 +131,7 @@ export class SqliteProjectSources implements ProjectSources {
   }
 
   async collectionTargets(collectionId: string): Promise<string[]> {
-    const rows = this.db.prepare('SELECT target_id FROM collection_memberships WHERE collection_id = ? ORDER BY added_at, target_id').all(collectionId) as { target_id: string }[]
+    const rows = this.db.prepare('SELECT target_id FROM collection_memberships WHERE collection_id = ? ORDER BY added_at, rowid').all(collectionId) as { target_id: string }[]
     return rows.map(r => r.target_id)
   }
 

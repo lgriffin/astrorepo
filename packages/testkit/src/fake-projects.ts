@@ -18,7 +18,7 @@ export class InMemoryProjectStore implements ProjectStore {
 
   async create(project: NewProject): Promise<ProjectRecord> {
     const id = `p${this.next++}`
-    const record: ProjectRecord = { ...copy(project), id, status: 'active', targetIds: [...new Set(project.targetIds)], updatedAt: project.createdAt }
+    const record: ProjectRecord = { ...copy(project), id, status: 'active', targetIds: [...new Set(project.targetIds)], removedTargetIds: [], updatedAt: project.createdAt }
     this.projects.set(id, record)
     return copy(record)
   }
@@ -33,13 +33,16 @@ export class InMemoryProjectStore implements ProjectStore {
     const p = this.projects.get(id)
     if (!p) return
     p.targetIds = [...new Set([...p.targetIds, ...targetIds])]
+    p.removedTargetIds = p.removedTargetIds.filter(t => !targetIds.includes(t))
     p.updatedAt = at
   }
 
   async removeTarget(id: string, targetId: string, at: Date): Promise<void> {
     const p = this.projects.get(id)
     if (!p) return
+    if (!p.targetIds.includes(targetId)) return
     p.targetIds = p.targetIds.filter(t => t !== targetId)
+    p.removedTargetIds = [...p.removedTargetIds, targetId]
     p.updatedAt = at
   }
 }

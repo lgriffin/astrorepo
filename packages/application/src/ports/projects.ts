@@ -16,11 +16,13 @@ export interface ProjectRecord {
   workspaceId: string | null
   /** Its targets, in the order they were added. */
   targetIds: string[]
+  /** Targets taken out by hand, so a catalogue or collection does not offer them back (AP-011). */
+  removedTargetIds: string[]
   createdAt: Date
   updatedAt: Date
 }
 
-export type NewProject = Omit<ProjectRecord, 'id' | 'status' | 'updatedAt'>
+export type NewProject = Omit<ProjectRecord, 'id' | 'status' | 'updatedAt' | 'removedTargetIds'>
 
 /**
  * Driven port: astronomy projects and their targets. Progress is never kept here; it is worked
@@ -33,8 +35,9 @@ export interface ProjectStore {
   /** Creates an active project; the store gives it its id. */
   create(project: NewProject): Promise<ProjectRecord>
   update(id: string, change: Partial<Pick<ProjectRecord, 'name' | 'status' | 'rule' | 'window'>>, at: Date): Promise<void>
-  /** Adds targets after those it has, each once; ones it has already are left where they are. */
+  /** Adds targets after those it has, each once; ones it has already are left where they are. Adding one back clears its removal. */
   addTargets(id: string, targetIds: string[], at: Date): Promise<void>
+  /** Takes a target out and remembers that it was taken out. */
   removeTarget(id: string, targetId: string, at: Date): Promise<void>
 }
 
@@ -55,7 +58,7 @@ export interface ProjectSources {
   /** The catalogue's targets in designation order; empty when there is no such catalogue. */
   catalogueTargets(catalogueId: string): Promise<string[]>
   collections(): Promise<ProjectSource[]>
-  /** The collection's targets in the order they were added; empty when there is no such collection. */
+  /** The collection's targets in the order they were added, ties in insertion order; empty when there is no such collection. */
   collectionTargets(collectionId: string): Promise<string[]>
   /** The names of those targets that exist; unknown ids are left out. */
   targetNames(targetIds: string[]): Promise<Map<string, string>>

@@ -136,8 +136,8 @@ export interface ProjectTask {
   id: string
   kind: 'target' | 'panel'
   label: string
-  /** The target's furthest stage, or the panel's coverage state. */
-  stage: TaskStage | PanelProgress['state']
+  /** The target's furthest stage, the panel's coverage state, or 'missing' when its mosaic is gone. */
+  stage: TaskStage | PanelProgress['state'] | 'missing'
   /** The parts that apply to this task, in rule order. */
   parts: Partial<Record<PartName, PartState>>
   /** Per-filter light against the goals, when integration is asked. */
@@ -198,15 +198,12 @@ function targetStep(e: TargetEvidence, parts: ProjectTask['parts'], filters: Fil
     if (parts.integration.detail === 'No goals set') return { kind: 'set goals', text: `Set integration goals for ${e.name}`, needSec: null }
     return captureStep(e.name, filters)
   }
-  const wantsOutput = [parts.stacked, parts.processed, parts.published].some(p => p && !p.met)
-  // Stryker disable next-line ConditionalExpression: a task reaches here only with an output part unmet
-  if (wantsOutput && usableSec === 0 && e.stacks === 0 && e.processed === 0) return { kind: 'capture', text: `Capture lights of ${e.name}`, needSec: null }
-  if (parts.stacked && !parts.stacked.met) return { kind: 'stack', text: `Stack ${e.name}: ${hours(usableSec)} usable`, needSec: null }
-  if (parts.processed && !parts.processed.met) {
-    if (e.stacks === 0) return { kind: 'stack', text: `Stack ${e.name}: ${hours(usableSec)} usable`, needSec: null }
-    return { kind: 'process', text: `Process the stack of ${e.name}`, needSec: null }
-  }
-  if (e.stacks === 0 && e.processed === 0) return { kind: 'stack', text: `Stack ${e.name}: ${hours(usableSec)} usable`, needSec: null }
+  // A stack needs usable light, whatever else is already there.
+  const stack = (): ProjectStep =>
+    usableSec === 0 ? { kind: 'capture', text: `Capture lights of ${e.name}`, needSec: null } : { kind: 'stack', text: `Stack ${e.name}: ${hours(usableSec)} usable`, needSec: null }
+  if (parts.stacked && !parts.stacked.met) return stack()
+  if (parts.processed && !parts.processed.met) return e.stacks === 0 ? stack() : { kind: 'process', text: `Process the stack of ${e.name}`, needSec: null }
+  if (e.stacks === 0 && e.processed === 0) return stack()
   return { kind: 'publish', text: `Finish an image of ${e.name} and save it in its images folder`, needSec: null }
 }
 
@@ -223,13 +220,35 @@ export function panelTask(progress: PanelProgress, rule: CompletionRule, goals: 
   const filters = goals ? progress.filters : []
   let next: ProjectStep | null = null
   if (!done) {
-    if (parts.coverage && !parts.coverage.met) {
+    // Goals come first: without them neither coverage nor light can say what is enough.
+    if (parts.integration?.detail === 'No goals set') next = { kind: 'set goals', text: 'Set integration goals for the mosaic', needSec: null }
+    else if (parts.coverage && !parts.coverage.met) {
       const needSec = filters.reduce((n, f) => n + (f.needSec ?? 0), 0)
       next = { kind: 'cover', text: `Cover ${progress.panelId} (${percent})${aim ? `, aiming at ${aim}` : ''}`, needSec: needSec > 0 ? needSec : null }
-    } else if (parts.integration?.detail === 'No goals set') next = { kind: 'set goals', text: 'Set integration goals for the mosaic', needSec: null }
-    else next = captureStep(progress.panelId, filters)
+    } else next = captureStep(progress.panelId, filters)
   }
   return { id: progress.panelId, kind: 'panel', label: progress.panelId, stage: progress.state, parts, filters, done, next }
+}
+
+/**
+ * The one task a mosaic campaign has in place of its panels when its mosaic or revision is gone:
+ * never done, so the campaign cannot look complete with nothing judged.
+ */
+export function missingMosaicTask(rule: CompletionRule): ProjectTask {
+  const parts: ProjectTask['parts'] = {}
+  const detail = 'The mosaic is gone'
+  if (rule.coverage) parts.coverage = { met: false, detail }
+  if (rule.integration.kind !== 'none') parts.integration = { met: false, detail }
+  return {
+    id: 'mosaic',
+    kind: 'panel',
+    label: 'Mosaic',
+    stage: 'missing',
+    parts,
+    filters: [],
+    done: false,
+    next: { kind: 'cover', text: 'The mosaic this project followed was deleted: start a new mosaic project to judge its panels', needSec: null }
+  }
 }
 
 // ── Progress ────────────────────────────────────────────────────────────

@@ -32,7 +32,8 @@ projectSourcesContract('SQLite', f => {
   }
   for (const c of f.collections) {
     db.prepare("INSERT INTO collections (id, name, created_at, updated_at) VALUES (?, ?, '2026-10-26', '2026-10-26')").run(c.id, c.name)
-    c.targetIds.forEach((t, i) => db.prepare('INSERT INTO collection_memberships (collection_id, target_id, added_at) VALUES (?, ?, ?)').run(c.id, t, `2026-10-26T00:00:0${i}Z`))
+    // One timestamp for the batch, as auto collections insert it: the order comes from insertion.
+    for (const t of c.targetIds) db.prepare("INSERT INTO collection_memberships (collection_id, target_id, added_at) VALUES (?, ?, '2026-10-26T00:00:00Z')").run(c.id, t)
   }
   return new SqliteProjectSources(db)
 })

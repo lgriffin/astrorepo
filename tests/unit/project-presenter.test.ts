@@ -15,6 +15,7 @@ const project = {
   catalogueId: null,
   collectionId: 'fav',
   workspaceId: null,
+  removedTargetIds: [],
   targetIds: ['m42'],
   createdAt: new Date('2026-10-26T20:00:00Z'),
   updatedAt: new Date('2026-10-26T20:00:00Z')

@@ -4,6 +4,7 @@ import {
   formatDecDms,
   formatRaHms,
   goalsFor,
+  missingMosaicTask,
   panelProgress,
   panelTask,
   projectManifestCsv,
@@ -100,8 +101,12 @@ export function makeCreateProject(deps: Pick<ProjectDeps, 'store' | 'sources' | 
         targetIds = unique([...members, ...targetIds])
       }
     } else if (kind === 'custom' && definition.collectionId) {
-      collectionId = definition.collectionId
-      targetIds = unique([...(await deps.sources.collectionTargets(collectionId)), ...targetIds])
+      // An empty collection is fine; one that no longer exists is not.
+      if (!(await deps.sources.collections()).some(c => c.id === definition.collectionId)) problems.push('That collection no longer exists.')
+      else {
+        collectionId = definition.collectionId
+        targetIds = unique([...(await deps.sources.collectionTargets(collectionId)), ...targetIds])
+      }
     } else if (kind === 'seasonal') {
       if (!definition.window) problems.push('A seasonal campaign needs the dates it runs between.')
       else {
@@ -266,9 +271,19 @@ export function makeListProjects(deps: ProjectDeps) {
   const evaluate = makeEvaluate(deps)
   return async (): Promise<ProjectSummary[]> => {
     const [projects, frames] = await Promise.all([deps.store.list(), deps.frames.listTargetFrames()])
+    // One read of the names and one coverage per mosaic for the whole list, fresh on the next.
+    const names = await deps.sources.targetNames([...new Set(projects.flatMap(p => p.targetIds))])
+    const coverages = new Map<string, ReturnType<ProjectDeps['coverage']>>()
+    const coverage = (id: string) => {
+      const known = coverages.get(id)
+      if (known) return known
+      const asked = deps.coverage(id)
+      coverages.set(id, asked)
+      return asked
+    }
     const out: ProjectSummary[] = []
     for (const project of projects) {
-      const d = await evaluate(project, frames, [])
+      const d = await evaluate(project, frames, [], { names, coverage })
       out.push({ project, done: d.progress.done, total: d.progress.total, complete: d.progress.complete, window: d.window })
     }
     return out
@@ -282,18 +297,33 @@ async function sourcesOf(deps: Pick<ProjectDeps, 'sources'>, project: ProjectRec
   return []
 }
 
+/** The local calendar date, as a date input gives it: a window's dates are the observer's. */
+export function localDate(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
+}
+
+/** What a listing reads once and shares between its projects. */
+interface Shared {
+  names: Map<string, string>
+  coverage: ProjectDeps['coverage']
+}
+
 function makeEvaluate(deps: ProjectDeps) {
-  return async (project: ProjectRecord, frames: TargetFrames[], sourceList: ProjectSource[]): Promise<ProjectDescription> => {
+  return async (project: ProjectRecord, frames: TargetFrames[], sourceList: ProjectSource[], shared?: Shared): Promise<ProjectDescription> => {
     const at = deps.clock.now()
     const framesOf = new Map(frames.map(f => [f.targetId, f]))
-    const names = await deps.sources.targetNames(project.targetIds)
+    const names = shared?.names ?? (await deps.sources.targetNames(project.targetIds))
     const nameOf = (id: string) => names.get(id) ?? framesOf.get(id)?.targetName ?? id
     const rule = project.rule
     const tasks: ProjectTask[] = []
     let mosaic: ProjectDescription['mosaic'] = null
-    if (project.kind === 'mosaic' && project.workspaceId) {
-      const coverage = await deps.coverage(project.workspaceId)
-      if (coverage) {
+    if (project.kind === 'mosaic') {
+      const coverage = project.workspaceId ? await (shared?.coverage ?? deps.coverage)(project.workspaceId) : null
+      const panelsAsked = rule.coverage || rule.integration.kind !== 'none'
+      if (!coverage) {
+        if (panelsAsked) tasks.push(missingMosaicTask(rule))
+      } else if (panelsAsked) {
         mosaic = { id: coverage.workspace.id, name: coverage.workspace.name, revision: coverage.revision.revision }
         const goals = goalsFor(rule, coverage.goals)
         const aims = new Map(coverage.next.map(n => [n.panel.id, `RA ${formatRaHms(n.aim.raDeg)}, Dec ${formatDecDms(n.aim.decDeg)}`]))
@@ -311,14 +341,15 @@ function makeEvaluate(deps: ProjectDeps) {
     const found = sourceList.find(s => s.id === sourceId)
     if (sourceId && found) {
       const members = project.catalogueId ? await deps.sources.catalogueTargets(sourceId) : await deps.sources.collectionTargets(sourceId)
-      const have = new Set(project.targetIds)
+      // Ones taken out by hand stay out; only members the source gained are offered (AP-011).
+      const have = new Set([...project.targetIds, ...project.removedTargetIds])
       source = { kind: project.catalogueId ? 'catalogue' : 'collection', id: sourceId, name: found.name, notInProject: members.filter(m => !have.has(m)) }
     }
     return {
       project,
       progress,
       next: project.status === 'active' ? projectNextActions(tasks) : [],
-      window: project.window ? campaignWindowState(project.window, at.toISOString().slice(0, 10)) : null,
+      window: project.window ? campaignWindowState(project.window, localDate(at)) : null,
       mosaic,
       source,
       at

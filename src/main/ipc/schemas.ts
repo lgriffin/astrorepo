@@ -23,10 +23,6 @@ const id = z.string().min(1)
 /** A SyQon model id as `--list-models` prints it; never a flag or a path. */
 const syqonModel = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)
 
-/**
- * A mosaic workspace's grid as the editor sends it (specs/037-mosaic-workspace). Bounds here only
- * keep the numbers sane; the core's gridProblems says what is wrong in words.
- */
 /** An astronomy project's kind, completion rule and window (specs/038-astronomy-projects); goals in hours. */
 const projectKind = z.enum(['catalogue', 'seasonal', 'target-depth', 'mosaic', 'custom'])
 const projectRule = z.object({
@@ -39,6 +35,10 @@ const projectRule = z.object({
 })
 const projectWindow = z.object({ start: z.string().max(10), end: z.string().max(10) })
 
+/**
+ * A mosaic workspace's grid as the editor sends it (specs/037-mosaic-workspace). Bounds here only
+ * keep the numbers sane; the core's gridProblems says what is wrong in words.
+ */
 const workspaceGrid = z.object({
   ra_deg: z.number().min(-720).max(720),
   dec_deg: z.number().min(-90).max(90),

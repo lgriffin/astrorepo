@@ -657,6 +657,14 @@ export function runMigrations(sqlite: Database.Database): void {
       added_at TEXT NOT NULL,
       PRIMARY KEY (project_id, target_id)
     );
+
+    -- Targets taken out by hand, so the project's catalogue or collection does not offer them back.
+    CREATE TABLE IF NOT EXISTS project_removed_targets (
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      target_id TEXT NOT NULL REFERENCES targets(id) ON DELETE CASCADE,
+      removed_at TEXT NOT NULL,
+      PRIMARY KEY (project_id, target_id)
+    );
   `)
 }
 
