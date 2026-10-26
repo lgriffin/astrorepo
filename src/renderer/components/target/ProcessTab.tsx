@@ -67,7 +67,7 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         {runs.postProcess && <RunBanner job={runs.postProcess} />}
         <PostProcessing targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.postProcess !== null || view === null} />
         <div className="mt-4 pt-3 border-t border-astro-border">
-          <h3 className="text-xs font-semibold text-astro-muted uppercase tracking-wider mb-2">SyQon Studio</h3>
+          <h3 className="text-xs font-semibold text-astro-muted mb-2 font-condensed">SyQon Studio</h3>
           {runs.syqon && <RunBanner job={runs.syqon} />}
           <SyqonSteps targetId={targetId} rawPath={rawPath} onQueued={loadRuns} queued={runs.syqon !== null || view === null} />
         </div>

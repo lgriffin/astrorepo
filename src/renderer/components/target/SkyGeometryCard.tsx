@@ -84,7 +84,7 @@ export function SkyGeometryCard({ targetId }: { targetId: string }): React.React
 
         {view.rotation.nights.length > 0 && (
           <div>
-            <h3 className="text-xs text-astro-muted uppercase tracking-wider mb-1">Rotation by night</h3>
+            <h3 className="text-xs text-astro-muted mb-1 font-condensed">Rotation by night</h3>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               {view.rotation.nights.map(n => (
                 <span key={n.night} className="text-astro-text">
@@ -98,7 +98,7 @@ export function SkyGeometryCard({ targetId }: { targetId: string }): React.React
 
         {view.mosaic && (
           <div>
-            <h3 className="text-xs text-astro-muted uppercase tracking-wider mb-1">Panels</h3>
+            <h3 className="text-xs text-astro-muted mb-1 font-condensed">Panels</h3>
             <p className="text-astro-text mb-1">{view.mosaic}</p>
             <ul className="space-y-0.5">
               {view.panels

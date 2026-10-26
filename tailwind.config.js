@@ -30,6 +30,18 @@ export default {
           'cat-8': 'rgb(var(--astro-cat-8) / <alpha-value>)'
         }
       },
+      // Star atlas (specs/041-look-and-feel): Archivo throughout, its condensed widths for labels and figures.
+      fontFamily: {
+        sans: ['"Archivo Variable"', 'Archivo', '"Segoe UI"', 'system-ui', 'sans-serif']
+      },
+      // Atlas panels are near-square; corners only soften the edge.
+      borderRadius: {
+        sm: '0.125rem',
+        DEFAULT: '0.1875rem',
+        md: '0.25rem',
+        lg: '0.25rem',
+        xl: '0.375rem'
+      },
       keyframes: {
         'slide-in': {
           from: { opacity: '0', transform: 'translateX(1rem)' },

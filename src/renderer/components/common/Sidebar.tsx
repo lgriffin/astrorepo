@@ -4,6 +4,7 @@ import { NAV_GROUPS, jobsStatus, locate } from '@shared/navigation'
 import type { JobsView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { NAV_ICONS } from './nav-icons'
+import { Logo } from '../atlas/Logo'
 
 /** The job runner's state, kept in view on every page so a queued run is never out of sight. */
 function JobsFooter(): React.ReactElement | null {
@@ -54,13 +55,13 @@ export function Sidebar(): React.ReactElement {
   return (
     <aside className="w-56 bg-astro-surface border-r border-astro-border flex flex-col shrink-0">
       <div className="p-4 border-b border-astro-border">
-        <h1 className="text-lg font-bold text-astro-accent tracking-wide">AstroRepo</h1>
+        <h1 aria-label="AstroRepo"><Logo /></h1>
       </div>
       <nav className="flex-1 py-2 overflow-y-auto">
         {NAV_GROUPS.map((group, i) => (
           <div key={group.label ?? i} className={i > 0 ? 'mt-3' : ''}>
             {group.label && (
-              <p className="px-4 pt-2 pb-1 text-[10px] font-semibold text-astro-muted/70 uppercase tracking-wider">{group.label}</p>
+              <p className="px-4 pt-2 pb-1 text-xs font-medium text-astro-muted font-condensed">{group.label}</p>
             )}
             {group.items.map(item => {
               // A detail page (a target, a collection, the night form) keeps its place lit.
@@ -69,10 +70,10 @@ export function Sidebar(): React.ReactElement {
                 <NavLink
                   key={item.id}
                   to={item.to}
-                  className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                  className={`mx-2 flex items-center gap-3 rounded px-3 py-1.5 text-sm transition-colors ${
                     active
-                      ? 'bg-astro-accent/10 text-astro-accent border-r-2 border-astro-accent'
-                      : 'text-astro-muted hover:text-astro-text hover:bg-astro-bg/50'
+                      ? 'bg-astro-raised text-astro-text font-medium [&>svg]:text-astro-accent'
+                      : 'text-astro-muted hover:text-astro-text hover:bg-astro-raised/60'
                   }`}
                 >
                   <NavIcon id={item.id} glyph={item.icon} />

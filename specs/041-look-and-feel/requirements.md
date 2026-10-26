@@ -60,3 +60,24 @@ Taken from `npm run serve` on a fresh data folder, every page at 1440×900, 1280
 | LF-006 | Ubiquitous | The system shall provide one shared button (primary, secondary, quiet and danger, which cannot be pressed again while busy), one labelled field whose hint and error are announced with the control, one table, one badge, one figure and one loading placeholder for every page to build with. |
 | LF-007 | Event | When a row of tabs has focus and the user presses the left or right arrow, Home or End, the system shall select the previous, next, first or last tab, wrapping at the ends, and keep only the selected tab in the tab order. |
 | LF-008 | Ubiquitous | The system shall mark each place in the navigation with a drawn icon in one stroke weight rather than a text character. |
+
+## V1b: the Star atlas world
+
+Leigh chose the **Star atlas** direction in the Impeccable round (25 October 2026): the app reads
+like a deep-sky atlas you can work in. The direction contract is in
+`.impeccable/surfaces/src-renderer-app-tsx.md`.
+
+- **Palette.** Prussian-ink grounds by night, cool chart-white by day, the atlas deep-sky red as
+  the accent; object kinds in the colours printed atlases use (galaxies red, reflection nebulae
+  blue, planetaries teal, clusters amber, emission nebulae green). Danger moves to a rose so it
+  is not the accent.
+- **Type.** Archivo (SIL Open Font Licence, bundled, no network), its condensed width for labels
+  and dense figures, tabular figures in every table.
+- **Atlas symbols** for every kind of object, from `src/shared/atlas.ts`.
+- **Headings** in sentence case at reading size; the small uppercase labels are gone.
+- **The mark**: an atlas galaxy symbol inside a ring of right-ascension hour ticks.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-009 | Ubiquitous | The system shall mark each kind of object with the symbol a deep-sky atlas uses for it (an ellipse for a galaxy, a dotted circle for an open cluster, a circle with a cross for a globular cluster, a disc with four rays for a planetary nebula, a square for a bright nebula, a dashed square for a dark nebula), in the atlas colour for that kind, with the kind's name in sentence case. |
+| LF-010 | Ubiquitous | The system shall title every section in sentence case at reading size, with no small uppercase labels above or in place of a heading. |

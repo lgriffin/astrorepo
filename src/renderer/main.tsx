@@ -4,6 +4,7 @@ import { App } from './App'
 import { installBridge, storedCompanionKey } from './bridge'
 import { PairScreen } from './components/companion/PairScreen'
 import { ThemeProvider } from './contexts/ThemeContext'
+import '@fontsource-variable/archivo/wdth.css'
 import './styles/global.css'
 import { applyCachedTheme } from './theme'
 

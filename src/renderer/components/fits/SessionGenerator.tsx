@@ -89,7 +89,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
   if (result) {
     return (
       <div className="bg-astro-surface border border-astro-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-astro-text mb-4">Session Generation Complete</h3>
+        <h3 className="text-lg font-semibold text-astro-text mb-4">Session generation complete</h3>
         <div className="space-y-2 mb-4">
           <p className="text-sm text-astro-text">
             <span className="font-medium text-astro-success">{result.created}</span> session{result.created !== 1 ? 's' : ''} created
@@ -102,7 +102,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
         </div>
         {result.sessions.length > 0 && (
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-astro-muted mb-2">Created Sessions</h4>
+            <h4 className="text-sm font-medium text-astro-muted mb-2">Created sessions</h4>
             <ul className="space-y-1">
               {result.sessions.map((s) => (
                 <li key={s.id} className="text-sm text-astro-text">
@@ -128,7 +128,7 @@ export function SessionGenerator({ scanId, onComplete }: SessionGeneratorProps):
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-astro-text">Generate Sessions from FITS</h3>
+        <h3 className="text-lg font-semibold text-astro-text">Generate sessions from FITS</h3>
         <div className="flex gap-2">
           <button
             onClick={handleGenerate}

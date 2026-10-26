@@ -25,7 +25,7 @@ function actionLabels(): { file: string; text: string }[] {
 }
 
 describe('Consistent wording (specs/017-unified-ux, U5)', () => {
-  it('[UX-016] Given every button, labelled figure and card title in the renderer, When their words are read, Then none is in title case', () => {
+  it('[UX-016] Given every button, section heading, labelled figure and card title in the renderer, When their words are read, Then none is in title case', () => {
     const texts = uiTexts(path.join(root, 'src/renderer'))
     expect(texts.length).toBeGreaterThan(200)
     const offenders = texts.filter(t => titleCaseWords(t.text).length > 0).map(t => `${t.file}:${t.line} ${t.text}`)

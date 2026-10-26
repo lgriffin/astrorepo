@@ -450,7 +450,7 @@ function FilterProgressRow({ fp, targetId, onGoalChanged }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg p-5">
-      <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">{title}</h2>
+      <h2 className="text-base font-semibold text-astro-text mb-4">{title}</h2>
       {children}
     </div>
   )

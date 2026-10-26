@@ -14,7 +14,7 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
 
   return (
     <div className="bg-astro-bg border border-astro-border rounded-lg p-3">
-      <h3 className="text-xs text-astro-muted uppercase tracking-wider mb-2">{title}</h3>
+      <h3 className="text-xs text-astro-muted mb-2 font-condensed">{title}</h3>
       <div className="space-y-1.5">
         {entries.map(([name, count]) => (
           <div key={name} className="flex justify-between text-sm">
@@ -75,7 +75,7 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
         )} />
         {Object.keys(a.nightsPerObject).length > 0 && (
           <div className="bg-astro-bg border border-astro-border rounded-lg p-3">
-            <h3 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Sessions per Target</h3>
+            <h3 className="text-xs text-astro-muted mb-2 font-condensed">Sessions per target</h3>
             <div className="space-y-2">
               {Object.entries(a.nightsPerObject)
                 .sort(([, a], [, b]) => b.length - a.length)
@@ -97,7 +97,7 @@ export function AggregateView({ aggregates, linkingStatus }: AggregateViewProps)
         )}
         {(a.uniqueTelescopes.length > 0 || a.uniqueInstruments.length > 0) && (
           <div className="bg-astro-bg border border-astro-border rounded-lg p-3">
-            <h3 className="text-xs text-astro-muted uppercase tracking-wider mb-2">Equipment</h3>
+            <h3 className="text-xs text-astro-muted mb-2 font-condensed">Equipment</h3>
             <div className="space-y-1.5 text-sm">
               {a.uniqueTelescopes.map((t) => (
                 <div key={t} className="text-astro-text">{t}</div>

@@ -16,7 +16,7 @@ export function StatCard({ label, value, accent, compact }: StatCardProps): Reac
 
   return (
     <div className={`${bg} border ${border} rounded-lg ${padding}`}>
-      <p className="text-xs text-astro-muted uppercase tracking-wider">{label}</p>
+      <p className="text-xs text-astro-muted font-condensed">{label}</p>
       <p className={`${textSize} font-bold mt-1 ${color}`}>{value}</p>
     </div>
   )

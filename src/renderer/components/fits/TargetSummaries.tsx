@@ -24,7 +24,7 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
   return (
     <div className="bg-astro-surface border border-astro-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-astro-border">
-        <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider">Targets ({targets.length})</h2>
+        <h2 className="text-base font-semibold text-astro-text">Targets ({targets.length})</h2>
       </div>
       <div className="divide-y divide-astro-border">
         {targets.map((t) => (
@@ -80,7 +80,7 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
 
                 {t.sessions.length > 0 && (
                   <div className="mb-3">
-                    <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Sessions / Nights</h4>
+                    <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Sessions / Nights</h4>
                     <div className="space-y-1">
                       {t.sessions.map((s) => (
                         <div key={s} className="flex justify-between text-sm">
@@ -94,7 +94,7 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
 
                 {Object.keys(t.exposureByFilter).length > 0 && (
                   <div className="mb-3">
-                    <h4 className="text-xs text-astro-muted uppercase tracking-wider mb-1.5">Exposure by Filter</h4>
+                    <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Exposure by filter</h4>
                     <div className="space-y-1">
                       {Object.entries(t.exposureByFilter)
                         .sort(([, a], [, b]) => b - a)

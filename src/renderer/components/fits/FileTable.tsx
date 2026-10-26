@@ -123,7 +123,7 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-astro-muted uppercase tracking-wider border-b border-astro-border">
+            <tr className="text-left text-xs text-astro-muted border-b border-astro-border font-condensed">
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('file_name')}>File{sortIndicator('file_name')}</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('folder_name')}>Folder{sortIndicator('folder_name')}</th>
               <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('object_name')}>Object{sortIndicator('object_name')}</th>

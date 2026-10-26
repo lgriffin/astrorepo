@@ -12,15 +12,16 @@ interface CardProps {
 
 /**
  * The one card every page draws its sections with (specs/017-unified-ux, UX-008): a surface, a
- * small uppercase title, an optional action on the right, then the content.
+ * sentence-case title (spec 041 drops the small all-caps label), an optional action on the right,
+ * then the content.
  */
 export function Card({ title, action, tone = 'normal', id, className = '', children }: CardProps): React.ReactElement {
   const border = tone === 'danger' ? 'border-astro-danger/30' : 'border-astro-border'
-  const heading = tone === 'danger' ? 'text-astro-danger' : 'text-astro-muted'
+  const heading = tone === 'danger' ? 'text-astro-danger' : 'text-astro-text'
   return (
     <section id={id} className={`scroll-mt-6 bg-astro-surface border ${border} rounded-lg p-4 ${className}`}>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className={`text-sm font-semibold ${heading} uppercase tracking-wider`}>{title}</h2>
+        <h2 className={`text-base font-semibold ${heading}`}>{title}</h2>
         {action}
       </div>
       <div>{children}</div>

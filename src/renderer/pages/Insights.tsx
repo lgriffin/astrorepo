@@ -202,7 +202,7 @@ export function Insights(): React.ReactElement {
         {/* Monthly Activity */}
         {monthly.length > 0 && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Monthly Imaging Activity</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-4">Monthly imaging activity</h2>
             <BarChart
               data={monthly as unknown as Array<Record<string, unknown>>}
               labelKey="month"
@@ -219,7 +219,7 @@ export function Insights(): React.ReactElement {
           {/* Filter Usage */}
           {filterUsage.length > 0 && (
             <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-              <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Filter Usage</h2>
+              <h2 className="text-base font-semibold text-astro-text mb-4">Filter usage</h2>
               <FilterPieChart data={filterUsage} />
             </div>
           )}
@@ -227,7 +227,7 @@ export function Insights(): React.ReactElement {
           {/* Quality Trends */}
           {qualityTrends.length > 1 && (
             <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-              <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Quality Trends (FWHM)</h2>
+              <h2 className="text-base font-semibold text-astro-text mb-4">Quality trends (FWHM)</h2>
               <LineChart
                 data={qualityTrends as unknown as Array<Record<string, unknown>>}
                 xKey="month"
@@ -241,7 +241,7 @@ export function Insights(): React.ReactElement {
         {/* Best Nights */}
         {bestNights.length > 0 && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Best Imaging Nights</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-4">Best imaging nights</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -280,7 +280,7 @@ export function Insights(): React.ReactElement {
         {/* Target Progress */}
         {targetProgress.length > 0 && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-astro-muted uppercase tracking-wider mb-4">Target Progress</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-4">Target progress</h2>
             <div className="space-y-3">
               {targetProgress.map(t => {
                 const maxExp = Math.max(...targetProgress.map(tp => tp.totalExposureSec), 1)
