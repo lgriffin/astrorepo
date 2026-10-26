@@ -10,12 +10,16 @@ Each step links to where it is done and is ticked off once it is. **Hide** puts 
 away; **Start again** in Settings brings it back.
 
 Below that, from the top, Home shows:
-1. **Clear skies**: whether tonight and the next two nights look clear (see
+1. **Tonight**: whether tonight looks clear, when it is dark, the moon (drawn as it is lit), and
+   the three best targets to shoot, each opening its page. A cloudy night or one with no dark
+   window lists no targets.
+2. **Shoot tonight** and **Ready to process**, side by side: what is worth doing next (see
+   [Next actions](#next-actions)).
+3. **Clear skies**: whether tonight and the next two nights look clear (see
    [Planning ahead](planning.md#clear-skies)).
-2. **Next actions**: what is worth doing next.
-3. **Coming nights** and **Hidden in your files**, side by side.
-4. **Where your targets are**: how many targets are at each stage.
-5. **Other checks**.
+4. **Coming nights** and **Hidden in your files**, side by side.
+5. **Where your targets are**: how many targets are at each stage.
+6. **Other checks**.
 
 Apart from the weather, everything on it is worked out from the files the app has indexed (the Library and FITS files
 scans), so it changes as you capture, stack and process. Totals, catalogue progress and
@@ -23,8 +27,9 @@ breakdowns by object type and equipment are on **Insights**, under **Your observ
 
 ## Coming nights
 
-Next to the hidden-data card, the **Coming nights** card plans ahead from your site: tonight's
-targets given the moon, targets whose season is closing, and the next new-moon window. See
+Next to the hidden-data card, the **Coming nights** card plans ahead from your site: targets whose
+season is closing and the next new-moon window. Tonight's targets are in the **Tonight** panel at
+the top. See
 [Planning ahead](planning.md) for what each part means.
 
 ## Progress strip
@@ -71,7 +76,9 @@ button that opens the page where you can act on it.
 
 ## Next actions
 
-One ranked list of what to do, captures first because a night does not wait:
+Home splits what to do into two lists. **Shoot tonight** holds the captures and **Ready to
+process** holds the stacking, each in this ranked order (a coloured dot marks priority, and screen
+readers announce it in words):
 
 1. **Shoot tonight, season closing**: targets up tonight whose season ends within 30 days,
    soonest first. These are marked high priority.

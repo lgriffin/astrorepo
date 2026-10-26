@@ -7,7 +7,7 @@ missing and when each gap can be shot from your site. Requirements: [spec 032](.
 
 - **Messier mosaic** under Collections in the sidebar.
 - **View the Messier mosaic** on Home's "Where your targets are" card, and on Posters.
-- A Messier gap in Home's **Next actions** opens the mosaic on that object's tile.
+- A Messier gap in Home's **Shoot tonight** list opens the mosaic on that object's tile.
 
 ## What a tile shows
 
@@ -54,7 +54,7 @@ and the Sky planner.
 
 ## Next actions
 
-Home's Next actions names the three Messier objects with nothing captured that are up tonight,
+Home's Shoot tonight list names the three Messier objects with nothing captured that are up tonight,
 closing seasons first and then the most hours. They come after tonight's captures and planned
 mosaic tiles and before stacking. If tonight's plan cannot be worked out, they are left out with
 it. The night skies are kept between Home's refreshes, so listing them again costs little.

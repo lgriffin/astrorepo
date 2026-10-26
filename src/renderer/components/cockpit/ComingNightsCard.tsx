@@ -4,7 +4,6 @@ import type { ForwardPlanView, PlanTargetView } from '@shared/types'
 import { settingsLink } from '@shared/navigation'
 import { Card, EmptyState, LinkButton } from '../common/Card'
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
 function TargetList({ items }: { items: PlanTargetView[] }): React.ReactElement {
   const navigate = useNavigate()
@@ -22,7 +21,10 @@ function TargetList({ items }: { items: PlanTargetView[] }): React.ReactElement 
   )
 }
 
-/** "Coming nights": tonight's choices, closing seasons and the next new-moon window (FWD-002, 004, 005). */
+/**
+ * "Coming nights": closing seasons and the next new-moon window (FWD-004, 005). Tonight's choices
+ * (FWD-002) lead Home in the Tonight panel instead.
+ */
 export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.ReactElement {
   const navigate = useNavigate()
   if (plan.status === 'no-site') {
@@ -33,36 +35,21 @@ export function ComingNightsCard({ plan }: { plan: ForwardPlanView }): React.Rea
     )
   }
 
-  const { tonight, closing, windows } = plan
+  const { closing, windows } = plan
   const next = windows[0]
   return (
     <Card title="Coming nights" action={<LinkButton onClick={() => navigate('/sky-planner')}>Open the Sky planner</LinkButton>}>
       <div className="space-y-4">
-
-      <section>
-        {tonight ? (
-          <>
-            <p className="text-sm text-astro-text mb-1">
-              Tonight: {tonight.darkness} dark {time(tonight.darkStart)} to {time(tonight.darkEnd)}, {tonight.moonSummary}
-            </p>
-            {tonight.darknessNote && <p className="text-xs text-astro-muted mb-1">{tonight.darknessNote}</p>}
-            {tonight.moonNote && <p className="text-xs text-astro-muted mb-1">{tonight.moonNote}</p>}
-            {tonight.choices.length > 0 ? (
-              <TargetList items={tonight.choices.slice(0, 5)} />
-            ) : (
-              !tonight.moonNote && <p className="text-xs text-astro-muted">None of your targets with work left is up for an hour tonight.</p>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-astro-muted">The sun does not get 12° below the horizon tonight, so there is no dark window.</p>
-        )}
-      </section>
 
       {closing.length > 0 && (
         <section>
           <h3 className="text-xs font-semibold text-astro-muted mb-1 font-condensed">Season closing</h3>
           <TargetList items={closing.slice(0, 5)} />
         </section>
+      )}
+
+      {closing.length === 0 && !next && (
+        <EmptyState>No season is closing and no new-moon window is coming up for your targets with work left.</EmptyState>
       )}
 
       {next && (

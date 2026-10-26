@@ -104,7 +104,7 @@ export function MosaicPlanner(): React.ReactElement {
       overlap: view.overlap
     })
     setView(saved)
-    addToast('Plan saved. Next actions will say which tiles still have no lights.', 'success')
+    addToast('Plan saved. Home will say which tiles still have no lights.', 'success')
   }
 
   const exportCsv = async () => {

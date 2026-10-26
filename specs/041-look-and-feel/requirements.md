@@ -106,3 +106,17 @@ typing.
 | LF-013 | Event | When the user presses Ctrl+K (Cmd+K on a Mac) or chooses Go to, the system shall open a palette that lists every page, Settings section and common action, narrows as the user types to entries with a word starting with each typed word, adds targets by name once two letters are typed, and opens the highlighted entry on Enter, moving with the arrow keys and closing on Escape with focus back where it was. |
 | LF-014 | Event | When the user folds the sidebar, the system shall show only the places' icons, each still named for screen readers and on hover, and remember the choice on that screen. |
 | LF-015 | Unwanted | If the palette finds nothing for what was typed, then the system shall say that nothing matches rather than show an empty list. |
+
+## V3: Home leads with tonight
+
+Home opens on one panel that answers "is it worth setting up tonight?": the forecast's verdict for
+tonight, the dark window, the moon drawn as it is lit, and the three best targets. Next actions
+become two lists side by side, **Shoot tonight** and **Ready to process**, so a capture never hides
+behind a long stacking list. The Coming nights card keeps closing seasons and the new-moon window.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-016 | Ubiquitous | The system shall open Home on a Tonight panel that says whether tonight looks clear, when it is dark and how dark, how lit the moon is (drawn and in words), any note on the darkness or the moon, and the three best targets to shoot, each linking to its page. |
+| LF-017 | Ubiquitous | The system shall list captures under Shoot tonight and stacking under Ready to process, side by side, each suggestion's priority shown as a coloured mark that is also named in words for screen readers. |
+| LF-018 | Unwanted | If tonight is forecast cloudy or has no dark window, then the system shall list no targets to shoot on the Tonight panel and say why. |
+| LF-019 | State | While the site is not set, the system shall show the Tonight panel as a link to Settings > Your site instead of a night it cannot work out. |
