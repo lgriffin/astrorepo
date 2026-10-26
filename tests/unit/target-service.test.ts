@@ -140,6 +140,8 @@ describe('TargetService', () => {
       addAlias('plain', 'NGC 1', 'ngc')
       expect(searchTargets('NGC 1', 50, 0, { scope: 'mine' }).total).toBe(0)
       expect(searchTargets('NGC 1', 50, 0, { scope: 'all' }).total).toBe(1)
+      // Logged nights are looked up by target, so that lookup has its own index.
+      expect(sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_session_targets_target'").get()).toBeTruthy()
     })
 
     it('Given a target has an alias, When searching by alias text, Then the target appears in results', () => {

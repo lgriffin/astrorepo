@@ -30,6 +30,16 @@ describe('Targets page (specs/041-look-and-feel V4)', () => {
     expect(stageWords('not_observed')).toBe('Not observed')
   })
 
+  it('[LF-020] Given a slow search for one tab and a newer one for the other, When the old answer comes back last, Then it fails to replace the newer list', () => {
+    expect(page).toContain('const asked = ++latest.current')
+    expect(page).toContain('if (asked !== latest.current) return')
+  })
+
+  it('[LF-022] Given targets chosen on one tab or page, When the tab changes or a page is ticked or cleared, Then hidden targets are never left chosen and other pages keep their choices', () => {
+    expect(page).toMatch(/const changeScope = \(next: TargetScope\) => \{\s*clearSelection\(\)/)
+    expect(page).toMatch(/setSelected\(prev => \{\s*const next = new Set\(prev\)/)
+  })
+
   it('[LF-021] Given a search none of your targets match, When the list is empty, Then it fails over to an offer to search the whole catalogue, and with no targets at all to scan the library', () => {
     expect(page).toContain('Search the whole catalogue')
     expect(page).toContain('Scan your library')

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { EmptyState } from '../components/common/Card'
@@ -39,7 +39,11 @@ export function TargetList(): React.ReactElement {
     invoke<WorkflowStage[]>('workflow:stages').then(setStages)
   }, [])
 
+  // Only the newest search may fill the page: an older answer (another tab, an earlier query)
+  // that comes back late is dropped rather than shown under the wrong tab.
+  const latest = useRef(0)
   const fetchTargets = useCallback(async () => {
+    const asked = ++latest.current
     setLoading(true)
     try {
       const [sortBy, sortDir] = sort.split(':')
@@ -53,10 +57,11 @@ export function TargetList(): React.ReactElement {
         sort_by: sortBy as 'name' | 'magnitude' | 'constellation' | 'workflow_stage',
         sort_dir: sortDir as 'asc' | 'desc'
       })
+      if (asked !== latest.current) return
       setTargets(result.targets)
       setTotal(result.total)
     } finally {
-      setLoading(false)
+      if (asked === latest.current) setLoading(false)
     }
   }, [query, page, scope, typeFilter, stageFilter, sort])
 
@@ -68,11 +73,6 @@ export function TargetList(): React.ReactElement {
     setQuery(q)
     setPage(0)
   }, [])
-
-  const changeScope = (next: TargetScope) => {
-    setScope(next)
-    setPage(0)
-  }
 
   const toggleSelect = useCallback((id: string) => {
     setSelected(prev => {
@@ -90,13 +90,30 @@ export function TargetList(): React.ReactElement {
     setShowBatchDelete(false)
   }, [])
 
+  // What was chosen on one tab is not shown on the other, so a batch change never reaches
+  // targets the user cannot see.
+  const changeScope = (next: TargetScope) => {
+    clearSelection()
+    setScope(next)
+    setPage(0)
+  }
+
   const stopChoosing = () => {
     clearSelection()
     setChoosing(false)
   }
 
   const allShownSelected = targets.length > 0 && targets.every(t => selected.has(t.id))
-  const toggleAllShown = () => setSelected(allShownSelected ? new Set() : new Set(targets.map(t => t.id)))
+  // Ticks or clears only the cards on this page; choices on other pages stay.
+  const toggleAllShown = () =>
+    setSelected(prev => {
+      const next = new Set(prev)
+      for (const t of targets) {
+        if (allShownSelected) next.delete(t.id)
+        else next.add(t.id)
+      }
+      return next
+    })
 
   const handleBatchAdvance = async () => {
     if (!batchStage) return

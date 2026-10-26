@@ -667,6 +667,10 @@ export function runMigrations(sqlite: Database.Database): void {
     );
   `)
 
+  // Migration: the Targets page's Yours tab asks, per target, whether a night was logged for it
+  // (specs/041-look-and-feel LF-020); session_targets is keyed by session first, so look up by target too
+  sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_session_targets_target ON session_targets(target_id);`)
+
   // Migration: processing experiments (specs/040-experiment-lab). The input's SHA-256 and each
   // variant's settings are written once; a variant's run and the files it left are added later.
   // Deleting a record never deletes a file.
