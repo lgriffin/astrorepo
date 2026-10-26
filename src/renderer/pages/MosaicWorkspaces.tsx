@@ -8,6 +8,7 @@ import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
 import { workspaceLink } from '@shared/navigation'
 import type { TargetSummary, TargetGeometryView, WorkspaceDrawingView, WorkspaceGridInput, WorkspaceSaveView, WorkspaceSummaryView } from '@shared/types'
+import { Loading } from '../components/ui'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const button = 'px-3 py-1.5 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -199,7 +200,7 @@ export function MosaicWorkspaces(): React.ReactElement {
       <div className="space-y-6">
         <Card title="Your mosaics">
           {list === null ? (
-            <p className="text-sm text-astro-muted">Loading…</p>
+            <Loading label="Loading your mosaics" />
           ) : list.length === 0 ? (
             <EmptyState>No mosaic saved yet. Draw one below: its panels keep their coordinates as you revise it.</EmptyState>
           ) : (

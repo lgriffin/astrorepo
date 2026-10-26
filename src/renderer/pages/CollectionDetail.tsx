@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
+import { EmptyState } from '../components/common/Card'
 import { TargetCard } from '../components/target/TargetCard'
 import { invoke } from '../hooks/useIPC'
 import type { Collection, TargetSummary, WorkflowStage } from '@shared/types'
+import { Loading } from '../components/ui'
 
 export function CollectionDetail(): React.ReactElement {
   const { id } = useParams<{ id: string }>()
@@ -37,8 +39,8 @@ export function CollectionDetail(): React.ReactElement {
 
   if (loading) {
     return (
-      <PageContainer title="Loading...">
-        <div className="text-astro-muted">Loading collection...</div>
+      <PageContainer title="Collection">
+        <Loading label="Loading the collection" rows={4} />
       </PageContainer>
     )
   }
@@ -80,7 +82,7 @@ export function CollectionDetail(): React.ReactElement {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 text-astro-muted">No targets in this collection.</div>
+        <EmptyState action={<Link to="/targets" className="text-xs text-astro-accent hover:underline">Choose targets to add</Link>}>No targets in this collection yet. On Targets, choose some and add them to it.</EmptyState>
       )}
     </PageContainer>
   )

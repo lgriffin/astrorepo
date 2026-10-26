@@ -15,6 +15,9 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 
 let nextId = 0
 
+/** How long a success or a note stays up. */
+export const TOAST_MS = 5000
+
 export function ToastProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
@@ -28,7 +31,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
   const addToast = useCallback((message: string, type: ToastItem['type'] = 'info') => {
     const id = nextId++
     setToasts(prev => [...prev, { id, message, type }])
-    timers.current.set(id, setTimeout(() => { timers.current.delete(id); dismiss(id) }, 4000))
+    // A problem stays until it is dismissed, so it is never missed (LF-029); the rest go after 5 s.
+    if (type !== 'error') timers.current.set(id, setTimeout(() => { timers.current.delete(id); dismiss(id) }, TOAST_MS))
   }, [dismiss])
 
   return (

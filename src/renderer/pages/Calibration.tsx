@@ -4,6 +4,7 @@ import { CalibrationTable } from '../components/calibration/CalibrationTable'
 import { CoverageView } from '../components/calibration/CoverageView'
 import { invoke } from '../hooks/useIPC'
 import type { CalibrationGroup, CalibrationCoverage } from '@shared/types'
+import { Loading } from '../components/ui'
 
 interface CalibrationSummary {
   totalDarks: number
@@ -53,7 +54,7 @@ export function Calibration(): React.ReactElement {
   if (loading) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading...</div>
+        <Loading label="Loading the calibration frames" rows={4} />
       </PageContainer>
     )
   }

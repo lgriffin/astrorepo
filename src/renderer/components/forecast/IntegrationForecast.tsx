@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Input } from '../ui'
+import { Button, Input, Loading } from '../ui'
 import { ForecastKind, ForecastTable } from './ForecastTable'
 import { invoke } from '../../hooks/useIPC'
 import type { IntegrationView } from '@shared/types'
@@ -51,7 +51,7 @@ export function IntegrationForecast({ targetId, version }: { targetId: string; v
         </Button>
       </div>
     )
-  if (!view) return <p className="text-sm text-astro-muted">Loading…</p>
+  if (!view) return <Loading label="Working out the forecast" />
   if (view.filters.length === 0) return <p className="text-sm text-astro-muted">No lights and no goals yet, so there is nothing to forecast.</p>
 
   const custom = Number(minutes)

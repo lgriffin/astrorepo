@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { formatExposure } from '../../utils/format'
 import type { SessionSummary } from '@shared/types'
+import { Loading } from '../ui'
 
 interface SessionListProps {
   targetId?: string
@@ -29,7 +30,7 @@ export function SessionList({ targetId }: SessionListProps): React.ReactElement 
   }, [fetchSessions])
 
   if (loading) {
-    return <p className="text-sm text-astro-muted">Loading sessions...</p>
+    return <Loading label="Loading the nights" />
   }
 
   if (sessions.length === 0) {

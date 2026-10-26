@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Loading } from '../ui'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
@@ -86,7 +87,7 @@ export function FrameGrades({ targetId, onChanged }: { targetId: string; onChang
   }
 
   if (failed && !view) return <EmptyState>Could not read this target&apos;s frame grades. Open the page again to retry.</EmptyState>
-  if (!view) return <p className="text-sm text-astro-muted">Reading frame grades…</p>
+  if (!view) return <Loading label="Reading frame grades" />
   if (view.total === 0) {
     return (
       <EmptyState>

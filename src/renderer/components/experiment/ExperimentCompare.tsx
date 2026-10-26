@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { invoke } from '../../hooks/useIPC'
 import { PreviewPanel } from '../fits/Inspector'
 import { Slider } from '../target/CompareCard'
-import { Badge, Button, Select, Table, Td, Th } from '../ui'
+import { Badge, Button, Select, Table, Td, Th, Loading } from '../ui'
 import type { ExperimentComparisonView, PreviewView } from '@shared/types'
 
 /**
@@ -34,7 +34,7 @@ export function ExperimentCompare({ experimentId, version }: { experimentId: str
   }, [experimentId, version])
 
   if (failed) return <p className="text-sm text-astro-danger">The variants could not be compared: {failed}</p>
-  if (!view) return <p className="text-sm text-astro-muted">Reading each variant’s final image…</p>
+  if (!view) return <Loading label="Reading each variant’s final image" />
 
   const shown = view.variants.filter(v => v.preview)
   const preview = (letter: string) => view.variants.find(v => v.letter === letter)?.preview as PreviewView

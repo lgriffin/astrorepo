@@ -6,6 +6,7 @@ import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
 import { targetLink } from '@shared/navigation'
 import type { SolveQueuedView, WorkspaceCaptureView, WorkspaceCapturesView, WorkspaceDrawingView } from '@shared/types'
+import { Loading } from '../ui'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const small = 'px-2 py-1 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -107,7 +108,7 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels, o
     }
   }
 
-  if (view === undefined) return <Card title="Captures on this revision">Loading…</Card>
+  if (view === undefined) return <Card title="Captures on this revision"><Loading label="Placing the captures" /></Card>
   if (view === null) return <Card title="Captures on this revision">This revision no longer exists.</Card>
 
   const all = [...view.placed, ...view.outside]

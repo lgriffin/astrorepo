@@ -47,6 +47,18 @@ readers), Table with Th, Td and Tr, Tabs (arrow keys, Home and End), Badge, Stat
 pages build with these; older pages move onto them slice by slice. Place icons are Lucide
 (`components/common/nav-icons.tsx`): add one there for every new place in the navigation map.
 
+## Loading, messages and empty lists
+
+- **Loading.** Use `<Loading label="Loading the targets" />` from `components/ui`: placeholder lines
+  with `role="status"`, named for what is coming. A test fails on bare "Loading..." text.
+- **Messages.** `useToast().addToast(text, kind)` with kind `success`, `info` or `error`. Each shows
+  its icon and, for screen readers, its kind in words. Successes and notes go after `TOAST_MS`
+  (5 s); a problem stays until it is dismissed.
+- **Empty lists.** Use `EmptyState` from `components/common/Card` and offer the way to fill the
+  list: a form on the spot (Collections makes a collection) or a link to the page that fills it,
+  so an empty page always leads somewhere. Loading text such as "Reading the pixels…" is a
+  `Loading` label, never a plain line; the flows test catches both.
+
 ## The Star atlas world
 
 Leigh chose the **Star atlas** direction (25 October 2026): the app reads like a deep-sky atlas

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
-import { Badge, Button, Field, Input, Select } from '../components/ui'
+import { Badge, Button, Field, Input, Select, Loading } from '../components/ui'
 import { RuleEditor, STARTING_RULES } from '../components/project/RuleEditor'
 import { TargetPicker } from '../components/project/TargetPicker'
 import { invoke } from '../hooks/useIPC'
@@ -84,7 +84,7 @@ export function Projects(): React.ReactElement {
       <div className="space-y-6">
         <Card title="Your projects">
           {list === null ? (
-            <p className="text-sm text-astro-muted">Loading…</p>
+            <Loading label="Loading your projects" />
           ) : failed ? (
             <p className="text-sm text-astro-danger">Your projects could not be read. Try opening this page again.</p>
           ) : list.length === 0 ? (

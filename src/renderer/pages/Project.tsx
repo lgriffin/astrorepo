@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
-import { Badge, Button, Stat, Table, Td, Th, Tr } from '../components/ui'
+import { Badge, Button, Stat, Table, Td, Th, Tr, Loading } from '../components/ui'
 import { RuleEditor } from '../components/project/RuleEditor'
 import { TargetPicker } from '../components/project/TargetPicker'
 import { ForecastKind } from '../components/forecast/ForecastTable'
@@ -71,7 +71,7 @@ export function ProjectDetail(): React.ReactElement {
         </div>
       </PageContainer>
     )
-  if (view === undefined) return <PageContainer title="Project">Loading…</PageContainer>
+  if (view === undefined) return <PageContainer title="Project"><Loading label="Loading the project" rows={4} /></PageContainer>
   if (view === null)
     return (
       <PageContainer title="Project">

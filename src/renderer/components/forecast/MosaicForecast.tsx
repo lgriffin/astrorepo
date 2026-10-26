@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Card } from '../common/Card'
-import { Button } from '../ui'
+import { Button, Loading } from '../ui'
 import { ForecastKind, ForecastTable } from './ForecastTable'
 import { invoke } from '../../hooks/useIPC'
 import type { MosaicIntegrationView } from '@shared/types'
@@ -38,7 +38,7 @@ export function MosaicForecast({ workspaceId, revision, version }: { workspaceId
           </Button>
         </div>
       ) : !view ? (
-        <p className="text-sm text-astro-muted">Loading…</p>
+        <Loading label="Working out the forecast" />
       ) : (
         <div className="space-y-3 text-sm">
           {view.best.length > 0 && view.best[0].gain ? (

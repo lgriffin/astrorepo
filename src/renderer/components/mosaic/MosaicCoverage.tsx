@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Card, EmptyState } from '../common/Card'
 import { MosaicCanvas, type HeatMap } from './MosaicCanvas'
-import { Button, Select, Table, Td, Th, Tr } from '../ui'
+import { Button, Select, Table, Td, Th, Tr, Loading } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
 import type { WorkspaceCoverageView, WorkspaceDrawingView, WorkspacePanelCoverageView } from '@shared/types'
@@ -78,7 +78,7 @@ export function MosaicCoverage({ workspaceId, revision, drawing, version }: Mosa
         </div>
       </Card>
     )
-  if (view === undefined) return <Card title="Coverage">Loading…</Card>
+  if (view === undefined) return <Card title="Coverage"><Loading label="Working out the coverage" /></Card>
   if (view === null) return <Card title="Coverage">This revision no longer exists.</Card>
 
   const chosen = view.panels.find(p => p.panelId === panel) ?? null

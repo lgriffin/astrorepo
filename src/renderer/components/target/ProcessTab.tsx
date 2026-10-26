@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Loading } from '../ui'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
@@ -283,7 +284,7 @@ function StackingPlan({ targetId, rawPath, refreshKey, onQueued, queued, filterQ
   }, [rawPath, refreshKey, reload])
 
   if (failed) return <EmptyState>The stacking plan could not be worked out for this folder.</EmptyState>
-  if (!plan) return <EmptyState>Working out which Siril script fits and the space it needs…</EmptyState>
+  if (!plan) return <Loading label="Working out which Siril script fits and the space it needs" />
   const chosen = plan.scripts.find(s => s.recommended)
 
   return (
@@ -389,7 +390,7 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
   }, [targetId, rawPath, choice])
 
   if (failed) return <p className="text-xs text-astro-muted">The post-processing recipe could not be worked out.</p>
-  if (!view) return <p className="text-xs text-astro-muted">Looking for a stack and the tools…</p>
+  if (!view) return <Loading label="Looking for a stack and the tools" rows={2} />
   if (view.message) return <p className="text-sm text-astro-muted">{view.message}</p>
 
   const select = 'bg-astro-bg border border-astro-border rounded px-2 py-1 text-xs text-astro-text'

@@ -149,3 +149,17 @@ was a page of its own under Settings, is a section in Your observatory, beside Y
 | LF-025 | Event | When an old link to the Equipment page is opened, the system shall open Settings > Equipment. |
 | LF-026 | Ubiquitous | The system shall let the user open, change and delete each piece of equipment with buttons named after it, and ask before deleting it. |
 | LF-027 | Event | When the user types a word for a Settings section into Go to, such as "telescope" or "theme", the system shall offer that section. |
+
+## V6: flows
+
+Pages loaded behind a bare "Loading..." line in a dozen spellings, messages flashed by in the
+corner in fixed greens and reds and were gone in five seconds whether or not they reported a
+problem, and empty lists said "nothing here" without saying what to do next. Loading now has one
+look, named for what is coming; messages take the theme, say what kind they are in words and an
+icon, and a problem stays until it is dismissed; empty lists point at the page that fills them.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LF-028 | Ubiquitous | The system shall show a part of a page that is loading with the shared placeholder, announced to screen readers by what is being loaded, and never as bare "Loading..." text. |
+| LF-029 | Ubiquitous | The system shall show messages in theme colours with an icon and a word for their kind, in a region screen readers announce, removing successes and notes after five seconds and keeping a problem until it is dismissed. |
+| LF-030 | Unwanted | If a list the user fills has nothing in it yet, then the system shall say so in the shared empty state and offer the way to fill it, on the spot or by a link to the page where it is filled. |

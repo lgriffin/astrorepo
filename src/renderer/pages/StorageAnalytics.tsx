@@ -5,6 +5,7 @@ import { StorageBreakdownChart } from '../components/analytics/StorageBreakdownC
 import { GrowthTrendChart } from '../components/analytics/GrowthTrendChart'
 import { invoke } from '../hooks/useIPC'
 import type { StorageCurrentStats, StorageGrowthProjection, StorageSnapshot } from '@shared/types'
+import { Loading } from '../components/ui'
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -53,7 +54,7 @@ export function StorageAnalytics(): React.ReactElement {
   if (loading || !stats) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading storage analytics...</div>
+        <Loading label="Working out your storage" rows={4} />
       </PageContainer>
     )
   }

@@ -9,6 +9,7 @@ import { TargetSummaries } from '../components/fits/TargetSummaries'
 import { SessionGenerator } from '../components/fits/SessionGenerator'
 import { invoke } from '../hooks/useIPC'
 import type { FitsScanSummary, FitsScanAggregates, FitsLinkingStatus } from '@shared/types'
+import { Loading } from '../components/ui'
 
 export function FitsAnalyzer(): React.ReactElement {
   const [scans, setScans] = useState<FitsScanSummary[]>([])
@@ -61,7 +62,7 @@ export function FitsAnalyzer(): React.ReactElement {
   if (loading) {
     return (
       <PageContainer>
-        <div className="text-astro-muted">Loading...</div>
+        <Loading label="Loading the FITS files" rows={5} />
       </PageContainer>
     )
   }
