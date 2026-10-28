@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CATALOGUE_KINDS,
   CONCEPTS,
   LEARNING_SOURCES,
   OBJECT_KINDS,
@@ -75,13 +76,14 @@ describe('The knowledge base', () => {
 
   it('[LRN-003] Given a kind with no primer or one filed under another kind, When it is checked, Then the gap is named', () => {
     expect(check({ kinds: ['galaxy', 'comet'] })).toEqual(['The comet kind has no primer.'])
+    expect(libraryProblems(CONCEPTS, { ...PRIMERS, nebula: undefined as unknown as ObjectPrimer })).toEqual(['The nebula kind has no primer.'])
     expect(check({ primers: { galaxy: primer({ kind: 'comet' }) } })).toEqual(['Primer galaxy is filed as comet.'])
   })
 })
 
 describe('Primers', () => {
   it('[LRN-003] Given every kind a target can be, When its primer is asked for, Then it has one, filled in', () => {
-    for (const kind of OBJECT_KINDS) {
+    for (const kind of [...OBJECT_KINDS, ...CATALOGUE_KINDS]) {
       const p = primerFor(kind)
       expect(p.kind).toBe(kind)
       for (const part of [p.summary, p.shines, p.life, p.inPicture, p.imaging]) expect(part.length).toBeGreaterThan(0)

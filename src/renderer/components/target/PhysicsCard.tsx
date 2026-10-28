@@ -1,6 +1,6 @@
 import React from 'react'
 import { TriangleAlert } from 'lucide-react'
-import { sizeAgainstMoon } from '@shared/learning'
+import { safetyCaution, sizeAgainstMoon } from '@shared/learning'
 import type { Target } from '@shared/types'
 import { Card } from '../common/Card'
 import { Explain } from '../ui'
@@ -24,14 +24,15 @@ function Part({ title, children }: { title: string; children: React.ReactNode })
 export function PhysicsCard({ target }: { target: Pick<Target, 'objectType' | 'magnitude' | 'angularSizeArcmin'> }): React.ReactElement | null {
   const { level, primer, concept, source, openSource } = useLearning()
   const p = primer(target.objectType)
-  if (!p) return null
-  const caution = p.caution && (
+  // The warning comes from the shared list, so it shows even before the library loads, or if it never does.
+  const warning = safetyCaution(target.objectType) ?? p?.caution ?? null
+  const caution = warning && (
     <p role="note" className="flex items-start gap-2 rounded border border-astro-danger/40 bg-astro-danger/10 p-2 text-sm text-astro-text">
       <TriangleAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-astro-danger" />
-      <span><span className="font-semibold">Warning: </span>{p.caution}</span>
+      <span><span className="font-semibold">Warning: </span>{warning}</span>
     </p>
   )
-  if (level === 'off') return caution ? <Card title="Safety">{caution}</Card> : null
+  if (level === 'off' || !p) return caution ? <Card title="Safety">{caution}</Card> : null
 
   const size = sizeAgainstMoon(target.angularSizeArcmin)
   return (
@@ -40,7 +41,7 @@ export function PhysicsCard({ target }: { target: Pick<Target, 'objectType' | 'm
         {caution}
         <p className="text-sm text-astro-text">{p.summary}</p>
         {(target.magnitude != null || size) && (
-          <p className="text-sm text-astro-text">
+          <div className="text-sm text-astro-text">
             {target.magnitude != null && (
               <span className="mr-3">
                 Magnitude {target.magnitude} <Explain concept="apparent-magnitude" />
@@ -51,7 +52,7 @@ export function PhysicsCard({ target }: { target: Pick<Target, 'objectType' | 'm
                 {target.angularSizeArcmin}′ on the sky, {size} <Explain concept="angular-size" />
               </span>
             )}
-          </p>
+          </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
           <Part title="What makes its light">{p.shines}</Part>

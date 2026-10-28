@@ -57,7 +57,17 @@ export const OBJECT_KINDS = [
   'constellation', 'custom', 'unknown'
 ] as const
 
-export type ObjectKind = (typeof OBJECT_KINDS)[number]
+/**
+ * Finer kinds the shipped catalogues store beside the shared ones (NGC and IC spiral, elliptical and
+ * irregular galaxies, and plain nebulae), each with a primer of its own (LRN-003).
+ */
+export const CATALOGUE_KINDS = ['spiral_galaxy', 'elliptical_galaxy', 'irregular_galaxy', 'nebula'] as const
+
+export type ObjectKind = (typeof OBJECT_KINDS)[number] | (typeof CATALOGUE_KINDS)[number]
+
+/** The warning that must show beside the Sun at every learning level (LRN-007); the renderer holds the same words. */
+export const SOLAR_CAUTION =
+  'Never point a telescope, camera or finder at the Sun without a certified solar filter over the front. It can blind you instantly and destroy a camera.'
 
 const wiki = (id: string, article: string, title = article.replace(/_/g, ' ')): LearningSource => ({
   id,
@@ -68,6 +78,11 @@ const wiki = (id: string, article: string, title = article.replace(/_/g, ' ')): 
 
 export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-galaxy', 'Galaxy'),
+  wiki('wiki-spiral-galaxy', 'Spiral_galaxy'),
+  wiki('wiki-density-wave', 'Density_wave_theory'),
+  wiki('wiki-elliptical-galaxy', 'Elliptical_galaxy'),
+  wiki('wiki-irregular-galaxy', 'Irregular_galaxy'),
+  wiki('wiki-nebula', 'Nebula'),
   wiki('wiki-milky-way', 'Milky_Way', 'Milky Way'),
   wiki('wiki-emission-nebula', 'Emission_nebula'),
   wiki('wiki-h-ii-region', 'H_II_region', 'H II region'),
@@ -286,6 +301,54 @@ export const PRIMERS: Readonly<Record<ObjectKind, ObjectPrimer>> = {
     concepts: ['lookback', 'light-year', 'surface-brightness', 'h-alpha', 'dust-extinction'],
     sources: ['wiki-galaxy', 'wiki-milky-way']
   },
+  spiral_galaxy: {
+    kind: 'spiral_galaxy',
+    title: 'Spiral galaxy',
+    summary: 'A spiral galaxy is a flat, rotating disc of stars, gas and dust with arms winding out from a central bulge. The Milky Way and the Andromeda Galaxy are spirals.',
+    shines: 'The arms are blue with young, hot stars and dotted with pink clouds of hydrogen lit by newborn stars; the bulge is yellower with older stars.',
+    life: 'The arms are not fixed rings of stars: in the leading explanation they are waves where stars and gas crowd together as they orbit, setting off new star formation as gas passes through.',
+    inPicture: 'Arms, dark dust lanes along them, pink star-forming knots, and in many a straight bar across the centre.',
+    imaging: 'Long broadband integration under dark skies shows the arms; H-alpha added to red brings out the star-forming knots.',
+    caution: null,
+    concepts: ['lookback', 'h-alpha', 'star-colour', 'dust-extinction', 'surface-brightness'],
+    sources: ['wiki-spiral-galaxy', 'wiki-density-wave']
+  },
+  elliptical_galaxy: {
+    kind: 'elliptical_galaxy',
+    title: 'Elliptical galaxy',
+    summary: 'An elliptical galaxy is a smooth, rounded swarm of stars with little gas or dust and little new star formation. The largest galaxies known are giant ellipticals.',
+    shines: 'Mostly old, yellow and red stars; with little gas left, few new stars form.',
+    life: 'Many are thought to have grown through mergers of smaller galaxies, which used up or blew away their gas.',
+    inPicture: 'A smooth glow, brightest at the centre and fading outwards; giant ones are ringed by swarms of globular clusters.',
+    imaging: 'Smooth and featureless, so flats must be good to keep the faint outer glow even. The bright core needs care when stretching.',
+    caution: null,
+    concepts: ['lookback', 'star-colour', 'surface-brightness'],
+    sources: ['wiki-elliptical-galaxy']
+  },
+  irregular_galaxy: {
+    kind: 'irregular_galaxy',
+    title: 'Irregular galaxy',
+    summary: 'An irregular galaxy has no clear spiral or elliptical shape, often because the gravity of a neighbour has pulled it about. The Magellanic Clouds are irregular galaxies.',
+    shines: 'Many are rich in gas and forming stars, so they are full of young blue stars and pink hydrogen clouds.',
+    life: 'Encounters with other galaxies can stir up their gas and set off bursts of star formation.',
+    inPicture: 'Patchy, lopsided shapes with bright knots of star formation.',
+    imaging: 'Broadband with H-alpha shows the star-forming knots; most are small, so focal length helps.',
+    caution: null,
+    concepts: ['lookback', 'h-alpha', 'stellar-evolution'],
+    sources: ['wiki-irregular-galaxy']
+  },
+  nebula: {
+    kind: 'nebula',
+    title: 'Nebula',
+    summary: 'A nebula is a cloud of gas and dust in space. What it looks like depends on the stars near it: it glows, reflects their light, or blocks the light behind it.',
+    shines: 'Gas lit by hot stars glows in emission lines; dust near cooler stars reflects their light, often blue; dense dust shows as a silhouette.',
+    life: 'Some are where stars are born, others what dying stars threw off.',
+    inPicture: 'Red or teal glow from gas, blue haze from dust, or dark lanes, often several together.',
+    imaging: 'If it glows red, narrowband filters suit it; if it is blue reflected light, use broadband under dark skies.',
+    caution: null,
+    concepts: ['emission-lines', 'scattering', 'dust-extinction'],
+    sources: ['wiki-nebula']
+  },
   emission_nebula: {
     kind: 'emission_nebula',
     title: 'Emission nebula',
@@ -474,7 +537,7 @@ export const PRIMERS: Readonly<Record<ObjectKind, ObjectPrimer>> = {
     life: 'It is about halfway through its life of fusing hydrogen.',
     inPicture: 'Sunspots, cooler regions where magnetic fields hold heat in, and with special filters prominences and filaments.',
     imaging: 'Only through a certified solar filter that covers the front of the telescope, or a dedicated solar telescope.',
-    caution: 'Never point a telescope, camera or finder at the Sun without a certified solar filter over the front. It can blind you instantly and destroy a camera.',
+    caution: SOLAR_CAUTION,
     concepts: ['star-colour', 'stellar-evolution'],
     sources: ['wiki-sun', 'wiki-solar-observation']
   },
@@ -561,7 +624,7 @@ export function libraryProblems(
   concepts: readonly Concept[] = CONCEPTS,
   primers: Readonly<Record<string, ObjectPrimer>> = PRIMERS,
   sources: readonly LearningSource[] = LEARNING_SOURCES,
-  kinds: readonly string[] = OBJECT_KINDS
+  kinds: readonly string[] = [...OBJECT_KINDS, ...CATALOGUE_KINDS]
 ): string[] {
   const problems: string[] = []
   const sourceIds = new Set<string>()

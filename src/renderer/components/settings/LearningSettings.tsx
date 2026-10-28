@@ -30,10 +30,10 @@ export function LearningSettings(): React.ReactElement {
 
   return (
     <Card title="Learning">
-      <p className="mb-3 text-sm text-astro-muted">
+      <div className="mb-3 text-sm text-astro-muted">
         Each target explains what kind of object it is and what makes its light, and a "Why?" beside a number opens the idea
         behind it. Every fact names its source. Try one: <Explain concept="light-year" />
-      </p>
+      </div>
       <div role="radiogroup" aria-label="How much to explain" className="grid gap-2 sm:grid-cols-3">
         {CHOICES.map((c, i) => {
           const selected = c.id === level

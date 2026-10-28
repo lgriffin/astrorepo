@@ -43,3 +43,30 @@ export function sizeAgainstMoon(arcmin: number | null | undefined): string | nul
   if (fraction <= 2) return 'about half the width of the full Moon'
   return fraction > 100 ? 'far smaller than the full Moon' : `about 1/${fraction} of the full Moon’s width`
 }
+
+/**
+ * Warnings that must show at every learning level, even before the knowledge base has loaded or if
+ * it never does (LRN-007). The same words as the core's primers; a test keeps the two in step.
+ */
+export const SAFETY_CAUTIONS: Readonly<Record<string, string>> = {
+  solar_object:
+    'Never point a telescope, camera or finder at the Sun without a certified solar filter over the front. It can blind you instantly and destroy a camera.'
+}
+
+/** The warning for a kind of object, or null. */
+export function safetyCaution(kind: string | null | undefined): string | null {
+  return kind && Object.hasOwn(SAFETY_CAUTIONS, kind) ? SAFETY_CAUTIONS[kind] : null
+}
+
+/**
+ * Keeps saves of a setting in the order they were made (LRN-004): each waits for the one before,
+ * so a slower earlier save can never land after a later one.
+ */
+export function makeSaveQueue(save: (value: string) => Promise<void>): (value: string) => Promise<boolean> {
+  let last: Promise<unknown> = Promise.resolve()
+  return value => {
+    const next = last.then(() => save(value)).then(() => true, () => false)
+    last = next
+    return next
+  }
+}
