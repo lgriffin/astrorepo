@@ -7,7 +7,7 @@ import { useLearning } from '../../contexts/LearningContext'
 const CHOICES: { id: LearningLevel; label: string; hint: string }[] = [
   { id: 'off', label: 'Off', hint: 'No explanations; safety warnings still show' },
   { id: 'short', label: 'Short', hint: 'A one-line answer behind every "Why?"' },
-  { id: 'deep', label: 'Deep', hint: 'The answer, a paragraph more and the formula behind it' }
+  { id: 'deep', label: 'Deep', hint: 'The answer, a paragraph more and the formula behind it (the default)' }
 ]
 
 /** Settings → Learning (LRN-004): how much the app explains the astrophysics behind what it shows. */

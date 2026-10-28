@@ -5,6 +5,7 @@ import type { Target } from '@shared/types'
 import { Card } from '../common/Card'
 import { Explain } from '../ui'
 import { useLearning } from '../../contexts/LearningContext'
+import { InNumbers } from './InNumbers'
 
 function Part({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
@@ -21,7 +22,7 @@ function Part({ title, children }: { title: string; children: React.ReactNode })
  * image it, with its own magnitude and size told in words and the ideas behind them a "Why?" away.
  * A warning such as solar safety always shows, whatever the learning level (LRN-007).
  */
-export function PhysicsCard({ target }: { target: Pick<Target, 'objectType' | 'magnitude' | 'angularSizeArcmin'> }): React.ReactElement | null {
+export function PhysicsCard({ target }: { target: Pick<Target, 'id' | 'objectType' | 'magnitude' | 'angularSizeArcmin'> }): React.ReactElement | null {
   const { level, primer, concept, source, openSource } = useLearning()
   const p = primer(target.objectType)
   // The warning comes from the shared list, so it shows even before the library loads, or if it never does.
@@ -54,6 +55,7 @@ export function PhysicsCard({ target }: { target: Pick<Target, 'objectType' | 'm
             )}
           </div>
         )}
+        <InNumbers targetId={target.id} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Part title="What makes its light">{p.shines}</Part>
           <Part title="Where it comes from">{p.life}</Part>

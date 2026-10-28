@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
 import { FULL_MOON_ARCMIN, LEARNING_SETTING_KEY, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
-import { toLearningLibraryView } from '../../src/main/adapters/learning-presenter'
+import { toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
+import { objectNumbers } from '@astro/domain'
 
 const root = path.resolve(__dirname, '../..')
 const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -32,13 +33,13 @@ describe('Learning while you observe', () => {
     expect(handlers).toMatch(/learning:open-source[\s\S]{0,200}sourceUrl\(args\.source_id\)[\s\S]{0,80}if \(!url\) return \{ opened: false \}/)
   })
 
-  it('[LRN-004] Given a saved level, When it is read, Then off, short or deep is kept and anything else is short', () => {
+  it('[LRN-004] Given a saved level, When it is read, Then off, short or deep is kept and anything else is deep', () => {
     expect(LEARNING_SETTING_KEY).toBe('learning_level')
     expect(parseLearningLevel('deep')).toBe('deep')
     expect(parseLearningLevel(' OFF ')).toBe('off')
     expect(parseLearningLevel('short')).toBe('short')
-    expect(parseLearningLevel(null)).toBe('short')
-    expect(parseLearningLevel('loud')).toBe('short')
+    expect(parseLearningLevel(null)).toBe('deep')
+    expect(parseLearningLevel('loud')).toBe('deep')
     expect(SETTINGS_SECTIONS.find(s => s.id === 'learning')?.group).toBe('This app')
     expect(read('src/renderer/pages/Settings.tsx')).toMatch(/learning: \(\) => <LearningSettings \/>/)
   })
@@ -118,5 +119,36 @@ describe('Learning while you observe', () => {
     expect(sizeAgainstMoon(-3)).toBeNull()
     expect(sizeAgainstMoon(null)).toBeNull()
     expect(sizeAgainstMoon(Number.NaN)).toBeNull()
+  })
+
+  it('[LRN-008] Given Andromeda, When it is shown in numbers, Then its distance, travel time, lookback and true size read in words', () => {
+    const v = toObjectNumbersView(objectNumbers({ names: ['Andromeda Galaxy', 'M31'], angularSizeArcmin: 178, thisYear: 2026 }))!
+    expect(v.designation).toBe('M31')
+    expect(v.distance).toBe('about 2.5 million light years')
+    expect(v.range).toBe('2.4 to 2.6 million light years')
+    expect(v.travel).toBe('2.5 million years')
+    expect(v.size).toBe('about 130,000 light years across')
+    expect(v.lookback).toBe('It set out before our species, Homo sapiens, appeared, about 300,000 years ago.')
+    expect(v.sources).toEqual(['wiki-messier-object', 'wiki-homo-sapiens'])
+    expect(v.approx).toBe(false)
+    // Ranges across a scale word keep both words.
+    expect(toObjectNumbersView(objectNumbers({ names: ['M109'], angularSizeArcmin: null, thisYear: 2026 }))!.range).toBe('60 to 110 million light years')
+    expect(toObjectNumbersView(objectNumbers({ names: ['M7'], angularSizeArcmin: null, thisYear: 2026 }))!.range).toBe('650 to 1,300 light years')
+  })
+
+  it('[LRN-009] Given a single published value, When shown, Then no range is given; and with no size, no true size', () => {
+    const v = toObjectNumbersView(objectNumbers({ names: ['M13'], angularSizeArcmin: null, thisYear: 2026 }))!
+    expect(v.range).toBeNull()
+    expect(v.size).toBeNull()
+    expect(toObjectNumbersView(null)).toBeNull()
+    expect(toObjectNumbersView(objectNumbers({ names: ['M24'], angularSizeArcmin: null, thisYear: 2026 }))!.approx).toBe(true)
+  })
+
+  it('[LRN-009] Given a target page, When its physics card shows, Then the numbers come from learning:object for that target', () => {
+    expect(read('src/renderer/components/target/PhysicsCard.tsx')).toMatch(/<InNumbers targetId=\{target\.id\} \/>/)
+    const src = read('src/renderer/components/target/InNumbers.tsx')
+    expect(src).toMatch(/invoke<ObjectNumbersView \| null>\('learning:object', \{ target_id: targetId \}\)/)
+    expect(src).toMatch(/if \(!numbers\) return null/)
+    expect(read('src/main/ipc/handlers.ts')).toMatch(/handle\('learning:object'[\s\S]{0,160}\.objectNumbers\(args\.target_id\)/)
   })
 })
