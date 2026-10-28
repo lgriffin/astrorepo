@@ -122,6 +122,6 @@ slice being built has requirements here (charter III).
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| LRN-024 | Ubiquitous | The system shall list every concept on a Learn page under Insights, each under exactly one theme, with its explanation, related ideas, sources and a link to the page of the app where it shows up in the user's data. |
+| LRN-024 | Ubiquitous | The system shall list every concept on a Learn page under Insights, each under exactly one theme, with its full explanation whatever the learning level, related ideas, sources and a link to the page of the app where it shows up in the user's data. |
 | LRN-025 | Ubiquitous | The system shall keep, on the user's computer only, a trail of the ideas opened, most recent first, each once, no more than 30, without counts or scores, shall let the user forget it, and while the learning level is off shall not add to it. |
 | LRN-026 | Event | When the user types an idea's name in the command palette, the system shall offer that idea and open it on the Learn page. |

@@ -398,6 +398,8 @@ describe('The Learn page and the trail', () => {
     expect(locate('/learn')).toMatchObject({ place: { id: 'insights' }, item: { id: 'learn' }, detail: false })
     const page = read('src/renderer/pages/Learn.tsx')
     expect(page).toMatch(/See it: \{place\.label\}/)
+    // In full whatever the level: the short level shortens only the Why?s elsewhere.
+    expect(page).toMatch(/conceptAtLevel\(c, 'deep'\)/)
     expect(read('src/renderer/App.tsx')).toMatch(/<Route path="\/learn" element=\{<Learn \/>\} \/>/)
   })
 
@@ -422,7 +424,10 @@ describe('The Learn page and the trail', () => {
     expect(ctx).toMatch(/localStorage\.removeItem\(TRAIL_KEY\)/)
     expect(ctx).not.toMatch(/invoke\([^)]*trail/i)
     expect(read('src/renderer/components/ui/Explain.tsx')).toMatch(/if \(open && concept\(shown\)\) remember\(shown\)/)
-    expect(read('src/renderer/pages/Learn.tsx')).toMatch(/onClick=\{forget\}/)
+    const learn = read('src/renderer/pages/Learn.tsx')
+    expect(learn).toMatch(/onClick=\{forget\}/)
+    // The address's idea joins the trail once, so forgetting on its page leaves the trail empty.
+    expect(learn).toMatch(/brought\.current === wanted/)
   })
 
   it('[LRN-026] Given the command palette, When an idea’s name is typed, Then it offers the idea on the Learn page', () => {

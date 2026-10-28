@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import { PageContainer } from '../components/common/PageContainer'
@@ -16,15 +16,20 @@ const ideaLink = (id: string): string => `/learn?concept=${encodeURIComponent(id
  * Learn (specs/042-learning, L7): every idea the app explains, by theme, each with a link to where
  * it shows up in your own data, and the ideas you have opened lately (kept on this computer, never
  * a score). An idea named in the address (`?concept=`) is brought into view and joins the trail.
- * The page explains whatever the level, since opening it is asking; off only hides the "Why?"s elsewhere.
+ * The page explains every idea in full whatever the level, since opening it is asking; the level
+ * only sets how much the "Why?"s elsewhere say.
  */
 export function Learn(): React.ReactElement {
   const { level, library, concept, trail, remember, forget } = useLearning()
   const wanted = new URLSearchParams(useLocation().search).get('concept')
   const loaded = library.concepts.length > 0
+  // The idea last brought up by the address, so it joins the trail once per visit, not again when
+  // the trail changes (Forget them must leave it empty).
+  const brought = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!wanted || !loaded || !concept(wanted)) return
+    if (!wanted || !loaded || brought.current === wanted || !concept(wanted)) return
+    brought.current = wanted
     remember(wanted)
     document.getElementById(`concept-${wanted}`)?.scrollIntoView({ block: 'start' })
   }, [wanted, loaded, concept, remember])
@@ -91,10 +96,10 @@ export function Learn(): React.ReactElement {
   )
 }
 
-/** One idea at full length (short at the short level), its next ideas, where to see it and its sources. */
+/** One idea at full length, its next ideas, where to see it and its sources. */
 function Idea({ concept: c, chosen }: { concept: ConceptView; chosen: boolean }): React.ReactElement {
-  const { level, concept, source, openSource } = useLearning()
-  const text = conceptAtLevel(c, level === 'off' ? 'deep' : level)!
+  const { concept, source, openSource } = useLearning()
+  const text = conceptAtLevel(c, 'deep')!
   const place = CONCEPT_PLACES[c.id]
   return (
     <article id={`concept-${c.id}`} className={`scroll-mt-6 rounded p-3 ${chosen ? 'border border-astro-accent bg-astro-accent/5' : ''}`}>
