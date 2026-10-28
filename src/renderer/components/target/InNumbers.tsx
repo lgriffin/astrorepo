@@ -44,7 +44,7 @@ export function InNumbers({ targetId }: { targetId: string }): React.ReactElemen
         )}
       </ul>
       <p className="mt-2 text-xs text-astro-muted">
-        Distance for {numbers.designation} from{' '}
+        Sources for {numbers.designation}:{' '}
         {numbers.sources.map((s, i) => {
           const src = source(s)
           return src ? (
