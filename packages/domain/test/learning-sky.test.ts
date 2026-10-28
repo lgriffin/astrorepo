@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AXIAL_TILT_DEG, TWILIGHT_DEPTHS, darknessAt, dayOfYear, lowestSunDepth, solarDeclination, tonightSky } from '@astro/domain'
+import { AXIAL_TILT_DEG, TWILIGHT_DEPTHS, darknessAt, dayOfYear, isCalendarDate, lowestSunDepth, solarDeclination, tonightSky } from '@astro/domain'
 
 describe('The Sun through the year', () => {
   it('[LRN-015] Given dates, When counted, Then 1 January is day 1 and leap years run to 366', () => {
@@ -72,3 +72,35 @@ describe('Tonight’s darkness', () => {
     expect(north.fullDarkReturns).toBe('2026-09-16')
   })
 })
+
+describe('Agreeing with the plan', () => {
+  it('[LRN-015] Given the forward plan’s own judgement of tonight, When it differs from the approximation, Then the plan wins and the depth stays in its band', () => {
+    // The approximation says nautical (about 13°) at Dublin on midsummer night.
+    const full = tonightSky(53.3, '2026-06-21', 'full')
+    expect(full.darkness).toBe('full')
+    expect(full.lowestSunDeg).toBe(18)
+    expect(full.fullDarkEnds).not.toBeNull()
+    const short = tonightSky(53.3, '2026-06-21', 'short')
+    expect(short.lowestSunDeg).toBeCloseTo(11.9, 10)
+    expect(short.darkness).toBe('civil')
+    const nautical = tonightSky(53.3, '2026-10-28', 'nautical')
+    expect(nautical.lowestSunDeg).toBeCloseTo(17.9, 10)
+    expect(nautical.darkness).toBe('nautical')
+    // Where they agree, the approximate depth is kept.
+    expect(tonightSky(53.3, '2026-06-21', 'nautical').lowestSunDeg).toBe(tonightSky(53.3, '2026-06-21').lowestSunDeg)
+    expect(tonightSky(70, '2026-06-21', 'short').lowestSunDeg).toBe(tonightSky(70, '2026-06-21').lowestSunDeg)
+  })
+
+  it('[LRN-015] Given dates, When checked, Then only real calendar dates pass', () => {
+    expect(isCalendarDate('2026-10-28')).toBe(true)
+    expect(isCalendarDate('2028-02-29')).toBe(true)
+    expect(isCalendarDate('2026-02-29')).toBe(false)
+    expect(isCalendarDate('2026-02-31')).toBe(false)
+    expect(isCalendarDate('2026-13-01')).toBe(false)
+    expect(isCalendarDate('2026-00-10')).toBe(false)
+    expect(isCalendarDate('2026-1-01')).toBe(false)
+    expect(isCalendarDate('x2026-01-01')).toBe(false)
+    expect(isCalendarDate('2026-01-01x')).toBe(false)
+  })
+})
+

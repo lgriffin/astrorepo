@@ -49,6 +49,7 @@ export function toForwardPlanView(plan: ForwardPlan): ForwardPlanView {
   return {
     status: 'ok',
     site: { latitudeDeg: plan.site.latitudeDeg, longitudeDeg: plan.site.longitudeDeg },
+    ...(plan.night ? { night: plan.night } : {}),
     tonight: plan.tonight ? toTonightView(plan.tonight) : null,
     closing: plan.closing.map(c => ({
       targetId: c.targetId,

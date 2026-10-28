@@ -54,6 +54,8 @@ describe('PlanForward', () => {
     const { plan } = setup()
     const p = await okPlan(plan)
     expect(p.tonight?.night).toBe('2026-09-29')
+    // The night is named on its own too, for a night with no dark window (LRN-015).
+    expect(p.night).toBe('2026-09-29')
     const names = p.tonight?.choices.map(c => c.targetName) ?? []
     expect(names.sort()).toEqual(['M 13', 'M 31', 'NGC 7000'])
     const hours = p.tonight?.choices.map(c => c.usableHours) ?? []

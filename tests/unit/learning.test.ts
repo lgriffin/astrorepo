@@ -262,13 +262,17 @@ describe('Why tonight looks like this', () => {
     })
     expect(toTonightSkyView(tonightSky(53.3, '2026-06-21'))).toEqual({
       darkness: 'nautical',
-      text: 'At 53.3° N on 21 Jun, the Sun gets only about 13° below your horizon at its lowest, short of the 18° that full darkness needs, so the sky stays in nautical twilight.',
+      text: 'At 53.3° N on 21 Jun, the Sun gets only about 13° below your horizon at its lowest, short of the 18° that full darkness needs: the sky reaches astronomical twilight but never full darkness.',
       change: 'Fully dark nights return around 30 Jul.'
     })
-    expect(toTonightSkyView(tonightSky(58, '2026-06-21')).text).toBe('At 58.0° N on 21 Jun, the Sun gets only about 9° below your horizon at its lowest, so the sky never gets past civil twilight.')
-    expect(toTonightSkyView(tonightSky(62, '2026-06-21')).text).toBe('At 62.0° N on 21 Jun, the Sun gets only about 5° below your horizon at its lowest, so twilight lasts all night.')
+    expect(toTonightSkyView(tonightSky(58, '2026-06-21')).text).toBe('At 58.0° N on 21 Jun, the Sun gets only about 8° below your horizon at its lowest, so the sky gets no darker than nautical twilight.')
+    expect(toTonightSkyView(tonightSky(62, '2026-06-21')).text).toBe('At 62.0° N on 21 Jun, the Sun gets only about 4° below your horizon at its lowest, so civil twilight lasts all night.')
     expect(toTonightSkyView(tonightSky(70, '2026-06-21')).text).toBe('At 70.0° N on 21 Jun, the Sun stays above your horizon all night: the midnight sun.')
     expect(toTonightSkyView(tonightSky(-33.9, '2026-12-21')).change).toBeNull()
+    // Just short of a threshold the depth rounds down, so it never reads as the depth it lacks.
+    const edge = { latitudeDeg: 53.3, night: '2026-08-01', lowestSunDeg: 17.7, darkness: 'nautical' as const, fullDarkReturns: '2026-08-02', fullDarkEnds: null }
+    expect(toTonightSkyView(edge).text).toMatch(/about 17° below/)
+    expect(toTonightSkyView({ ...edge, lowestSunDeg: 18.6, darkness: 'full', fullDarkReturns: null }).text).toMatch(/about 19° below/)
   })
 
   it('[LRN-017] Given Home and the Sky planner, When learning is on, Then tonight’s dark, moon, bright-moon note, best targets, twilight and seasons each offer their idea', () => {
@@ -281,7 +285,12 @@ describe('Why tonight looks like this', () => {
     const planner = read('src/renderer/pages/SkyPlanner.tsx')
     expect(planner).toMatch(/Twilight times <Explain concept="twilight" \/>/)
     expect(planner).toMatch(/Seasons for targets with work left <Explain concept="seasons" \/>/)
-    expect(read('src/renderer/pages/Dashboard.tsx')).toMatch(/site=\{tonightSite\}/)
+    const home = read('src/renderer/pages/Dashboard.tsx')
+    expect(home).toMatch(/site=\{tonightSite\}/)
+    // The plan's own night and judgement of tonight are passed on, never the renderer's calendar date.
+    expect(home).toMatch(/plan\.tonight\?\.night \?\? plan\.night \?\? null/)
+    expect(home).not.toMatch(/toLocaleDateString/)
+    expect(home).toMatch(/planned: !plan\.tonight \? \('short' as const\)/)
   })
 
   it('[LRN-017] Given learning is off, When Home opens, Then tonight’s darkness is not worked out or shown', () => {

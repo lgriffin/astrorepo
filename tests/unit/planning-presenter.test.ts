@@ -113,4 +113,12 @@ describe('planning presenter', () => {
     ])
     expect(shortDate('2027-01-07')).toBe('7 Jan')
   })
+
+  it('[LRN-015] Given a plan with its night and no dark window, When presented, Then the night is passed on', () => {
+    const view = toForwardPlanView(plan({ night: '2026-06-21', tonight: null }))
+    expect(view.status === 'ok' && view.night).toBe('2026-06-21')
+    const without = toForwardPlanView(plan({ tonight: null }))
+    expect(without.status === 'ok' && 'night' in without).toBe(false)
+  })
 })
+

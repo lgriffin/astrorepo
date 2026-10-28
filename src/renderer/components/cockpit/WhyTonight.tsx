@@ -8,6 +8,8 @@ import { Explain } from '../ui'
 export interface TonightSite {
   latitudeDeg: number
   night: string
+  /** How dark the forward plan found tonight, which wins over the approximation. */
+  planned?: 'full' | 'nautical' | 'short'
 }
 
 /**
@@ -23,13 +25,13 @@ export function WhyTonight({ site }: { site: TonightSite }): React.ReactElement 
     let current = true
     setSky(null)
     if (level === 'off') return
-    invoke<TonightSkyView>('learning:tonight', { latitude_deg: site.latitudeDeg, night: site.night })
+    invoke<TonightSkyView>('learning:tonight', { latitude_deg: site.latitudeDeg, night: site.night, planned: site.planned })
       .then(v => { if (current) setSky(v ?? null) })
       .catch(error => console.warn('Tonight’s darkness could not be worked out:', error))
     return () => {
       current = false
     }
-  }, [site.latitudeDeg, site.night, level])
+  }, [site.latitudeDeg, site.night, site.planned, level])
 
   if (level === 'off' || !sky) return null
   return (

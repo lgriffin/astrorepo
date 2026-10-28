@@ -95,17 +95,18 @@ export const latitudeText = (deg: number): string => `${Math.abs(deg).toFixed(1)
 /** Why tonight is as dark as it is, in words (LRN-015, LRN-016). */
 export function toTonightSkyView(t: TonightSky): TonightSkyView {
   const where = `At ${latitudeText(t.latitudeDeg)} on ${dayText(t.night)}`
-  const depth = Math.round(t.lowestSunDeg)
+  // Short of full darkness the depth is rounded down, so 17.7° never reads as the 18° it falls short of.
+  const depth = t.darkness === 'full' ? Math.round(t.lowestSunDeg) : Math.floor(t.lowestSunDeg)
   const text =
     t.lowestSunDeg < 0
       ? `${where}, the Sun stays above your horizon all night: the midnight sun.`
       : t.darkness === 'full'
         ? `${where}, the Sun sinks to about ${depth}° below your horizon at its lowest, past the 18° that full darkness needs.`
         : t.darkness === 'nautical'
-          ? `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, short of the 18° that full darkness needs, so the sky stays in nautical twilight.`
+          ? `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, short of the 18° that full darkness needs: the sky reaches astronomical twilight but never full darkness.`
           : t.darkness === 'civil'
-            ? `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, so the sky never gets past civil twilight.`
-            : `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, so twilight lasts all night.`
+            ? `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, so the sky gets no darker than nautical twilight.`
+            : `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, so civil twilight lasts all night.`
   const change = t.fullDarkReturns
     ? `Fully dark nights return around ${dayText(t.fullDarkReturns)}.`
     : t.fullDarkEnds

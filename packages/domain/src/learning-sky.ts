@@ -43,6 +43,28 @@ export function darknessAt(depthDeg: number): NightDarkness {
   return 'none'
 }
 
+/** True for a real calendar date written "YYYY-MM-DD" (no 31 February). */
+export function isCalendarDate(date: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  if (!m) return false
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const t = new Date(Date.UTC(y, mo - 1, d))
+  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d
+}
+
+/**
+ * How dark the forward plan, with its full ephemeris, found tonight: fully dark, nautical only, or
+ * short of nautical darkness (no dark window).
+ */
+export type PlannedDarkness = 'full' | 'nautical' | 'short'
+
+/** The depths each planned darkness allows: [at least, below]. */
+const PLANNED_BAND: Record<PlannedDarkness, [number, number]> = {
+  full: [TWILIGHT_DEPTHS.astronomical, Infinity],
+  nautical: [TWILIGHT_DEPTHS.nautical, TWILIGHT_DEPTHS.astronomical],
+  short: [-Infinity, TWILIGHT_DEPTHS.nautical]
+}
+
 /** "2026-10-28" moved on by some days. */
 function addDays(date: string, days: number): string {
   const [y, m, d] = date.split('-').map(Number)
@@ -62,10 +84,15 @@ export interface TonightSky {
   fullDarkEnds: string | null
 }
 
-/** Tonight's darkness at a latitude, and when that changes (searching up to a year ahead). */
-export function tonightSky(latitudeDeg: number, night: string): TonightSky {
+/**
+ * Tonight's darkness at a latitude, and when that changes (searching up to a year ahead). When the
+ * forward plan has already judged tonight with its fuller Sun model, its judgement wins: the
+ * approximate depth is held inside that band, so the page never says two things about one night.
+ */
+export function tonightSky(latitudeDeg: number, night: string, planned?: PlannedDarkness): TonightSky {
   const depth = (date: string): number => lowestSunDepth(latitudeDeg, dayOfYear(date))
-  const lowest = depth(night)
+  const band = planned ? PLANNED_BAND[planned] : null
+  const lowest = band ? Math.min(Math.max(depth(night), band[0]), band[1] - 0.1) : depth(night)
   const darkness = darknessAt(lowest)
   const full = darkness === 'full'
   let change: string | null = null

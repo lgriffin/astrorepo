@@ -1004,7 +1004,7 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('learning:library', async () => toLearningLibraryView())
   // A target in numbers: its published distance found by any of its names, its size from the catalogue.
   handle('learning:object', validated('learning:object', async (args) => toObjectNumbersView(await sky().objectNumbers(args.target_id))))
-  handle('learning:tonight', validated('learning:tonight', async (args) => toTonightSkyView(tonightSky(args.latitude_deg, args.night))))
+  handle('learning:tonight', validated('learning:tonight', async (args) => toTonightSkyView(tonightSky(args.latitude_deg, args.night, args.planned))))
   handle('learning:fits', validated('learning:fits', async (args) => toFitsLearningView(explainHeaders(args.headers))))
   handle('learning:open-source', validated('learning:open-source', async (args) => {
     const url = sourceUrl(args.source_id)

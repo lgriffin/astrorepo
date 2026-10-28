@@ -140,9 +140,14 @@ export function Dashboard(): React.ReactElement {
 
   const { shoot, ahead, process } = splitHomeActions(nextActions)
   const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
-  // Tonight's darkness is worked out for the site the plan uses, on the plan's night or else today.
-  const tonightSite = plan && plan !== FAILED && plan.status === 'ok'
-    ? { latitudeDeg: plan.site.latitudeDeg, night: plan.tonight?.night ?? new Date().toLocaleDateString('en-CA') }
+  // Tonight's darkness is worked out for the site and night the plan uses, and agrees with how dark the plan found it.
+  const planNight = plan && plan !== FAILED && plan.status === 'ok' ? plan.tonight?.night ?? plan.night ?? null : null
+  const tonightSite = plan && plan !== FAILED && plan.status === 'ok' && planNight
+    ? {
+        latitudeDeg: plan.site.latitudeDeg,
+        night: planNight,
+        planned: !plan.tonight ? ('short' as const) : plan.tonight.darkness === 'astronomical' ? ('full' as const) : ('nautical' as const)
+      }
     : null
 
   return (

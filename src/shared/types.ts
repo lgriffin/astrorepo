@@ -1086,6 +1086,8 @@ export type ForwardPlanView =
   | {
       status: 'ok'
       site: { latitudeDeg: number; longitudeDeg: number }
+      /** The night the plan is for, worked out at the site, whether or not it has a dark window. */
+      night?: string
       /** Null when the sun never gets 12° below the horizon tonight. */
       tonight: TonightView | null
       closing: PlanTargetView[]
