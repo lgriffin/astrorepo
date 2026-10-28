@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Loading } from '../ui'
+import { Explain, Loading } from '../ui'
 import { Link } from 'react-router-dom'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
@@ -50,11 +50,19 @@ export function ProcessTab({ targetId, rawPath }: { targetId: string; rawPath: s
         <FrameGrades targetId={targetId} onChanged={() => setGradesKey(k => k + 1)} />
       </Card>
 
-      <Card title="What another hour buys">
+      <Card title="What another hour buys" action={<Explain concept="stacking" label="Why less each hour?" />}>
         <IntegrationForecast targetId={targetId} version={gradesKey} />
       </Card>
 
-      <Card title="2 · Stack">
+      <Card
+        title="2 · Stack"
+        action={
+          <span className="flex items-center gap-2">
+            <Explain concept="stacking" label="Why stack?" />
+            <Explain concept="calibration" label="Calibration frames" />
+          </span>
+        }
+      >
         {runs.stack && <RunBanner job={runs.stack} />}
         {rawPath ? (
           <>

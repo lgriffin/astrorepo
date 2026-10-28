@@ -79,3 +79,18 @@ slice being built has requirements here (charter III).
 | LRN-016 | Ubiquitous | The system shall say, looking up to a year ahead, when fully dark nights return after a night short of full darkness, or end after a fully dark night, and say nothing when they never change. |
 | LRN-017 | Ubiquitous | The system shall offer the idea behind tonight's dark window, the Moon's phase, a bright-moon note, the height of the best targets, twilight times and target seasons, and while learning is off shall not work out or show tonight's darkness. |
 
+## L5: stacking physics and emission lines
+
+- **What your filters catch** under a target's forecast on Stack and process: for each filter its
+  frames name, the light it passes, and for narrowband and dual-band filters each emission line with
+  its wavelength, colour and the atom behind it (`packages/domain/src/learning-filters.ts`).
+- Why? on the forecast (why each hour buys less: √N) and on the Stack card (why stacking works,
+  what bias, darks and flats do); at the deep level, with two or more narrowband filters, the
+  Hubble palette.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LRN-018 | Ubiquitous | The system shall recognise a target's filters by the names capture software writes (narrowband Hα, Hβ, O III, S II and N II, common dual-band makes, luminance, red, green, blue, UV/IR-cut and light-pollution filters), say what each passes, give each emission line it passes with its wavelength, colour and sources, explain each filter once, and leave out names it does not recognise. |
+| LRN-019 | Ubiquitous | The system shall offer, on a target's Stack and process tab, why stacking works and why each extra hour buys less, what calibration frames do, the idea behind each emission line, and at the deep level with two or more narrowband filters the Hubble palette. |
+| LRN-020 | State | While the learning level is off, the system shall not explain a target's filters. |
+

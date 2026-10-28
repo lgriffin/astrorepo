@@ -1,5 +1,5 @@
-import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type SetupNumbers, type TonightSky } from '@astro/domain'
-import type { ConceptView, FitsLearningView, FitsSetupView, TonightSkyView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
+import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type FilterLight, type SetupNumbers, type TonightSky } from '@astro/domain'
+import type { ConceptView, FilterLightView, FitsLearningView, FitsSetupView, TonightSkyView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
 
 /** A source as the page names it; its address stays here and is opened by id (LRN-005). */
 const toSourceView = (s: LearningSource): LearningSourceView => ({ id: s.id, title: s.title, publisher: s.publisher })
@@ -113,5 +113,16 @@ export function toTonightSkyView(t: TonightSky): TonightSkyView {
       ? `Nights stay fully dark until around ${dayText(t.fullDarkEnds)}.`
       : null
   return { darkness: t.darkness, text, change }
+}
+
+/** What one filter catches, for `learning:filters` (LRN-018); unknown filters never reach here. */
+export function toFilterLightView(f: FilterLight): FilterLightView {
+  return {
+    filter: f.filter,
+    kind: f.kind as FilterLightView['kind'],
+    passes: f.passes,
+    lines: f.lines.map(l => ({ name: l.name, nm: l.nm, colour: l.colour, origin: l.origin, concept: l.concept })),
+    concept: f.concept
+  }
 }
 

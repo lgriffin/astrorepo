@@ -42,6 +42,16 @@ nights return around 30 Jul"). The figure is good to about a degree. **Why?** si
 dark window, the Moon, a bright-moon note and the best targets, and on the Sky planner beside the
 twilight times and the seasons table.
 
+## Stacking and your filters
+
+On a target's **Stack and process** tab, **What your filters catch** sits under the forecast: what
+each filter in your frames lets through, and for narrowband and dual-band filters which emission
+lines, at what wavelength, from which atoms (Hα at 656.3 nm from hydrogen, O III at 500.7 nm from
+doubly ionised oxygen). **Why?** on the forecast explains why each extra hour buys less (signal to
+noise grows as √N), and on the Stack card why stacking works and what bias, darks and flats do.
+Filters are recognised by the names in your frames' FILTER keyword; a name it does not know is left
+out.
+
 ## Why?
 
 A **Why?** beside a number or a word opens the idea behind it: a one-line answer, and at the deep
