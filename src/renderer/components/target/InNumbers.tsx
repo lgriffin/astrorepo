@@ -19,7 +19,7 @@ export function InNumbers({ targetId }: { targetId: string }): React.ReactElemen
     setNumbers(null)
     invoke<ObjectNumbersView | null>('learning:object', { target_id: targetId })
       .then(n => { if (current) setNumbers(n ?? null) })
-      .catch(() => {})
+      .catch(error => console.warn(`The numbers for target ${targetId} could not be read:`, error))
     return () => {
       current = false
     }

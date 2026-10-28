@@ -128,7 +128,7 @@ describe('Learning while you observe', () => {
     expect(v.range).toBe('2.4 to 2.6 million light years')
     expect(v.travel).toBe('2.5 million years')
     expect(v.size).toBe('about 130,000 light years across')
-    expect(v.lookback).toBe('It set out before our species, Homo sapiens, appeared, about 300,000 years ago.')
+    expect(v.lookback).toBe('It set out before our species, Homo sapiens, appeared, which was about 300,000 years ago.')
     expect(v.sources).toEqual(['wiki-messier-object', 'wiki-homo-sapiens'])
     expect(v.approx).toBe(false)
     // Ranges across a scale word keep both words.

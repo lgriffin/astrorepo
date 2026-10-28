@@ -164,7 +164,7 @@ export function distanceFor(names: readonly string[]): { designation: string; ra
   return null
 }
 
-/** Light years in one radian's worth of arcminutes: true size = distance × arcminutes ÷ this. */
+/** Arcminutes in one radian: true size = distance × arcminutes ÷ this. */
 export const ARCMIN_PER_RADIAN = (180 * 60) / Math.PI
 
 /** The true width of something this many arcminutes across at this distance, in the same unit as the distance. */
@@ -185,7 +185,7 @@ export function lookback(travelYears: number, thisYear: number): { text: string;
   }
   // Oldest first, so the first milestone the light is older than is the most striking one.
   const m = older[0]
-  return { text: `It set out before ${m.event}, about ${m.yearsAgo.toLocaleString('en-GB')} years ago.`, source: m.source }
+  return { text: `It set out before ${m.event}, which was about ${m.yearsAgo.toLocaleString('en-GB')} years ago.`, source: m.source }
 }
 
 /** What the page shows about one object in numbers. */
