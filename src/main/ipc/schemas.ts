@@ -469,6 +469,7 @@ export const schemas = {
     night: z.string().refine(isCalendarDate, 'Expected a calendar date, YYYY-MM-DD'),
     planned: z.enum(['full', 'nautical', 'short']).optional()
   }),
+  'learning:filters': z.object({ filters: z.array(z.string().max(80)).max(40) }),
   'learning:fits': z.object({
     headers: z.array(z.object({ keyword: z.string().max(80), value: z.string().max(HEADER_VALUE_MAX).nullable() })).max(HEADER_LINES_MAX)
   }),

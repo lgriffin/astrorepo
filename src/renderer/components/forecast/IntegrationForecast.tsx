@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Input, Loading } from '../ui'
 import { ForecastKind, ForecastTable } from './ForecastTable'
+import { FilterLights } from './FilterLights'
 import { invoke } from '../../hooks/useIPC'
 import type { IntegrationView } from '@shared/types'
 
@@ -61,6 +62,7 @@ export function IntegrationForecast({ targetId, version }: { targetId: string; v
         {view.total.accepted} accepted of {view.total.acquired} acquired{view.total.rejection ? `, ${view.total.rejection}` : ''}.{view.weighted ? ` ${view.weighted}.` : ''}
       </p>
       <ForecastTable rows={view.filters} />
+      <FilterLights filters={view.filters.map(f => f.filter)} />
       {view.best.length > 0 && view.best[0].gain && (
         <p className="text-astro-text">
           The next hour buys most on <span className="font-medium">{view.best[0].label}</span> ({view.best[0].gain} signal to noise) <ForecastKind kind={view.best[0].kind} />

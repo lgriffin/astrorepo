@@ -2296,3 +2296,13 @@ export interface TonightSkyView {
   change: string | null
 }
 
+/** What one filter catches (specs/042-learning, L5), in words ready to show. */
+export interface FilterLightView {
+  filter: string
+  kind: 'narrowband' | 'dual-band' | 'luminance' | 'colour' | 'uv-ir-cut' | 'light-pollution'
+  passes: string
+  /** Each emission line it passes: "Hydrogen alpha (Hα), 656.3 nm, deep red". */
+  lines: { name: string; nm: number; colour: string; concept: string }[]
+  concept: string | null
+}
+

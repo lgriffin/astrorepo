@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
 import { FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
-import { angleText, latitudeText, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../../src/main/adapters/learning-presenter'
-import { explainHeaders, objectNumbers, tonightSky } from '@astro/domain'
+import { angleText, latitudeText, toFilterLightView, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../../src/main/adapters/learning-presenter'
+import { explainHeaders, filterLight, objectNumbers, tonightSky } from '@astro/domain'
 
 const root = path.resolve(__dirname, '../..')
 const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -299,6 +299,41 @@ describe('Why tonight looks like this', () => {
     expect(off).toBeGreaterThan(-1)
     expect(off).toBeLessThan(src.indexOf("invoke<TonightSkyView>('learning:tonight'"))
     expect(src).toMatch(/if \(level === 'off' \|\| !sky\) return null/)
+  })
+})
+
+describe('Stacking physics and emission lines', () => {
+  it('[LRN-018] Given a dual-band filter, When shown, Then its lines read with wavelength and colour', () => {
+    expect(toFilterLightView(filterLight('L-eXtreme'))).toEqual({
+      filter: 'L-eXtreme',
+      kind: 'dual-band',
+      passes: 'Two narrow windows, hydrogen alpha at 656.3 nm and O III at 500.7 nm, blocking most light pollution and moonlight between them.',
+      lines: [
+        { name: 'Hydrogen alpha (Hα)', nm: 656.3, colour: 'deep red', concept: 'h-alpha' },
+        { name: 'Oxygen III (O III)', nm: 500.7, colour: 'teal', concept: 'oiii' }
+      ],
+      concept: 'emission-lines'
+    })
+  })
+
+  it('[LRN-019] Given the Stack and process tab, When learning is on, Then stacking, calibration, filters and the Hubble palette each offer their idea', () => {
+    const tab = read('src/renderer/components/target/ProcessTab.tsx')
+    expect(tab).toMatch(/title="What another hour buys" action=\{<Explain concept="stacking"/)
+    expect(tab).toMatch(/<Explain concept="stacking" label="Why stack\?" \/>/)
+    expect(tab).toMatch(/<Explain concept="calibration" label="Calibration frames" \/>/)
+    expect(read('src/renderer/components/forecast/IntegrationForecast.tsx')).toMatch(/<FilterLights filters=\{view\.filters\.map\(f => f\.filter\)\} \/>/)
+    const lights = read('src/renderer/components/forecast/FilterLights.tsx')
+    expect(lights).toMatch(/level === 'deep' && lights\.filter\(l => l\.kind === 'narrowband'\)\.length >= 2/)
+    expect(lights).toMatch(/<Explain concept="hubble-palette" \/>/)
+    expect(lights).toMatch(/<Explain concept=\{line\.concept\} \/>/)
+  })
+
+  it('[LRN-020] Given learning is off, When a target’s process tab opens, Then its filters are not explained', () => {
+    const src = read('src/renderer/components/forecast/FilterLights.tsx')
+    const off = src.indexOf("if (level === 'off' || filters.length === 0) return")
+    expect(off).toBeGreaterThan(-1)
+    expect(off).toBeLessThan(src.indexOf("invoke<FilterLightView[]>('learning:filters'"))
+    expect(src).toMatch(/if \(level === 'off' \|\| lights\.length === 0\) return null/)
   })
 })
 

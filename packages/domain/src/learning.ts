@@ -144,6 +144,12 @@ export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-midnight-sun', 'Midnight_sun'),
   wiki('wiki-lunar-phase', 'Lunar_phase'),
   wiki('wiki-sky-brightness', 'Sky_brightness'),
+  wiki('wiki-balmer', 'Balmer_series'),
+  wiki('wiki-forbidden', 'Forbidden_mechanism'),
+  wiki('wiki-false-color', 'False_color'),
+  wiki('wiki-signal-averaging', 'Signal_averaging'),
+  wiki('wiki-shift-and-add', 'Shift-and-add'),
+  wiki('wiki-flat-field', 'Flat-field_correction'),
   {
     id: 'fits-standard',
     title: 'The FITS standard',
@@ -428,6 +434,46 @@ export const CONCEPTS: readonly Concept[] = [
     formula: null,
     related: ['moon-phase', 'scattering', 'emission-lines'],
     sources: ['wiki-sky-brightness', 'wiki-lunar-phase']
+  },
+  {
+    id: 'sii',
+    title: 'Sulphur II',
+    short: 'S II is sulphur missing one electron; it glows deep red at 671.6 and 673.1 nm, just past hydrogen alpha.',
+    detail:
+      'Like O III it is a forbidden line: on Earth atoms bump into each other too often to give it off, but in a nebula’s thin gas they have time to. It is usually fainter than hydrogen alpha and strongest at the edges of nebulae and where shock waves pass, so an S II image often shows structure the others miss.',
+    formula: null,
+    related: ['emission-lines', 'hubble-palette'],
+    sources: ['wiki-forbidden', 'wiki-emission-nebula']
+  },
+  {
+    id: 'hubble-palette',
+    title: 'The Hubble palette',
+    short: 'Narrowband images are often shown with S II as red, hydrogen alpha as green and O III as blue, so the three gases show apart.',
+    detail:
+      'Hydrogen alpha and S II are both deep red, so in true colour they blur together. Mapping each line to its own channel is false colour: it does not show what the eye would see, but it shows where each element is. Made famous by the Hubble Space Telescope’s Pillars of Creation, it is also called SHO after the order of the channels.',
+    formula: 'red = S II, green = Hα, blue = O III',
+    related: ['sii', 'h-alpha', 'oiii'],
+    sources: ['wiki-false-color']
+  },
+  {
+    id: 'stacking',
+    title: 'Why stacking works',
+    short: 'Every frame holds the same signal but different random noise, so averaging N frames keeps the signal and shrinks the noise by √N.',
+    detail:
+      'Sixteen frames are four times cleaner than one; a hundred are ten times. Each doubling of total time buys only √2, about 41% more signal to noise, which is why each extra hour buys less than the last. Stacking also lets outlier rejection drop what is in only a few frames, such as satellite trails, cosmic-ray hits and aircraft.',
+    formula: 'SNR of N frames = √N × SNR of one',
+    related: ['noise', 'calibration'],
+    sources: ['wiki-signal-averaging', 'wiki-shift-and-add']
+  },
+  {
+    id: 'calibration',
+    title: 'Calibration frames',
+    short: 'Bias, dark and flat frames record what the camera and optics add, so it can be taken out of every light before stacking.',
+    detail:
+      'A bias is the shortest possible exposure: the camera’s fixed offset and pattern. A dark is a light-tight exposure as long and warm as the lights: the heat signal and hot pixels. A flat is an evenly lit frame: dust shadows and the darkening towards the corners (vignetting). Lights have the dark taken away and are divided by the flat.',
+    formula: 'calibrated = (light − dark) ÷ normalised flat',
+    related: ['dark-current', 'stacking'],
+    sources: ['wiki-dark-frame', 'wiki-flat-field']
   }
 ]
 
