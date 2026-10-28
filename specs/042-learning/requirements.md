@@ -105,6 +105,6 @@ slice being built has requirements here (charter III).
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| LRN-021 | Ubiquitous | The system shall order the gallery's pictures by how long their light travelled, nearest first, with one stop per object that has a published distance giving its distance, the light's travel time and, at the deep level, when the light set out; a picture naming two such objects shall appear at both, and pictures of objects with no distance held shall be left out. |
+| LRN-021 | Ubiquitous | The system shall order the gallery's pictures by how long their light travelled, nearest first, with one stop per object that has a published distance giving its distance with its sources, the light's travel time and, at the deep level, when the light set out; a picture naming two such objects shall appear at both, and pictures of objects with no distance held shall be left out. |
 | LRN-022 | Ubiquitous | The system shall offer, in the mosaic workspace, the ideas of right ascension and declination, the tangent plane a grid is laid out on and position angle, and on the Messier mosaic the history of Messier's catalogue. |
 | LRN-023 | State | While the learning level is off, the system shall not order or show the gallery's pictures by lookback. |

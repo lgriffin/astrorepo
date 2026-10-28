@@ -3,10 +3,11 @@ import type { GalleryPictureView, LookbackStopView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { useLearning } from '../../contexts/LearningContext'
 import { Card } from '../common/Card'
+import { ExternalLink } from 'lucide-react'
 import { Explain } from '../ui'
 
 /** The most pictures, and designations per picture, `learning:lookback` takes. */
-const PICTURES_MAX = 5000
+const PICTURES_MAX = 100_000
 const DESIGNATIONS_MAX = 20
 
 /**
@@ -16,7 +17,7 @@ const DESIGNATIONS_MAX = 20
  * picture names an object with a distance.
  */
 export function LookbackStrip({ pictures, onOpen }: { pictures: GalleryPictureView[]; onOpen: (path: string) => void }): React.ReactElement | null {
-  const { level } = useLearning()
+  const { level, source, openSource } = useLearning()
   const [stops, setStops] = useState<LookbackStopView[]>([])
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function LookbackStrip({ pictures, onOpen }: { pictures: GalleryPictureVi
           <li key={s.designation} className="shrink-0 w-56">
             <button
               onClick={() => onOpen(s.paths[0])}
-              className="w-full h-full text-left rounded border border-astro-border bg-astro-bg/40 p-3 hover:border-astro-accent focus:outline-none focus-visible:border-astro-accent"
+              className="w-full text-left rounded border border-astro-border bg-astro-bg/40 p-3 hover:border-astro-accent focus:outline-none focus-visible:border-astro-accent"
             >
               <span className="block font-medium text-astro-text">{s.designation}</span>
               <span className="block text-xs text-astro-muted">{s.distance}</span>
@@ -53,6 +54,18 @@ export function LookbackStrip({ pictures, onOpen }: { pictures: GalleryPictureVi
               {level === 'deep' && <span className="block text-xs text-astro-muted mt-1">{s.lookback}</span>}
               {s.paths.length > 1 && <span className="block text-xs text-astro-muted mt-1">{s.paths.length} pictures</span>}
             </button>
+            {/* Where the distance and the milestone come from, outside the button that opens the picture. */}
+            <span className="mt-1 block space-y-0.5 text-xs">
+              {s.sources.map(id => {
+                const src = source(id)
+                return src ? (
+                  <button key={id} type="button" onClick={() => openSource(id)} className="flex items-center gap-1 text-astro-muted hover:text-astro-accent hover:underline">
+                    <ExternalLink aria-hidden className="h-3 w-3" />
+                    {src.title}, {src.publisher}
+                  </button>
+                ) : null
+              })}
+            </span>
           </li>
         ))}
       </ol>

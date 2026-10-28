@@ -2296,7 +2296,6 @@ export interface TonightSkyView {
   change: string | null
 }
 
-/** What one filter catches (specs/042-learning, L5), in words ready to show. */
 /** One object on the gallery's lookback strip (LRN-021). */
 export interface LookbackStopView {
   designation: string
@@ -2311,6 +2310,7 @@ export interface LookbackStopView {
   sources: string[]
 }
 
+/** What one filter catches (specs/042-learning, L5), in words ready to show. */
 export interface FilterLightView {
   filter: string
   kind: 'narrowband' | 'dual-band' | 'luminance' | 'colour' | 'uv-ir-cut' | 'light-pollution'
