@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
 import { FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
-import { angleText, latitudeText, toFilterLightView, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../../src/main/adapters/learning-presenter'
-import { explainHeaders, filterLight, objectNumbers, tonightSky } from '@astro/domain'
+import { angleText, latitudeText, toFilterLightView, toLookbackStopView, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../../src/main/adapters/learning-presenter'
+import { explainHeaders, filterLight, lookbackStrip, objectNumbers, tonightSky } from '@astro/domain'
 
 const root = path.resolve(__dirname, '../..')
 const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -337,3 +337,47 @@ describe('Stacking physics and emission lines', () => {
   })
 })
 
+describe('Sky geometry and the gallery', () => {
+  it('[LRN-021] Given pictures of M42 and M31, When the gallery opens, Then the strip reads nearest first with travel time and when the light set out', () => {
+    const stops = lookbackStrip(
+      [
+        { path: '/i/m31.png', designations: ['M31', 'NGC 224'] },
+        { path: '/i/m42.png', designations: ['M42', 'NGC 1976'] }
+      ],
+      2026
+    ).map(toLookbackStopView)
+    expect(stops.map(s => s.designation)).toEqual(['M42', 'M31'])
+    expect(stops[1]).toEqual({
+      designation: 'M31',
+      distance: 'about 2.5 million light years',
+      travel: '2.5 million years',
+      lookback: 'It set out before our species, Homo sapiens, appeared, which was about 300,000 years ago.',
+      paths: ['/i/m31.png'],
+      sources: ['wiki-messier-object', 'wiki-homo-sapiens']
+    })
+    const strip = read('src/renderer/components/gallery/LookbackStrip.tsx')
+    expect(strip).toMatch(/Its light left \{s\.travel\} ago\./)
+    expect(strip).toMatch(/s\.sources\.map\(id => \{\r?\n\s+const src = source\(id\)/)
+    expect(strip).toMatch(/onClick=\{\(\) => openSource\(id\)\}/)
+    expect(strip).toMatch(/level === 'deep' && <span[^>]*>\{s\.lookback\}/)
+    expect(read('src/renderer/pages/Images.tsx')).toMatch(/<LookbackStrip pictures=\{view\.pictures\}/)
+  })
+
+  it('[LRN-022] Given the mosaic workspace and the Messier mosaic, When learning is on, Then sky geometry and Messier’s history each offer their idea', () => {
+    const workspace = read('src/renderer/pages/MosaicWorkspace.tsx')
+    expect(workspace).toMatch(/<Explain concept="tangent-plane"/)
+    expect(workspace).toMatch(/<Explain concept="celestial-sphere" label="RA and Dec" \/>/)
+    expect(workspace).toMatch(/<Explain concept="position-angle" label="Position angle" \/>/)
+    expect(read('src/renderer/pages/MessierMosaic.tsx')).toMatch(/<Explain concept="messier-catalogue" label="Who was Messier\?" \/>/)
+    const ids = toLearningLibraryView().concepts.map(c => c.id)
+    for (const id of ['celestial-sphere', 'tangent-plane', 'position-angle', 'messier-catalogue']) expect(ids).toContain(id)
+  })
+
+  it('[LRN-023] Given learning is off, When the gallery opens, Then its pictures are not ordered by lookback', () => {
+    const src = read('src/renderer/components/gallery/LookbackStrip.tsx')
+    const off = src.indexOf("if (level === 'off' || named.length === 0) return")
+    expect(off).toBeGreaterThan(-1)
+    expect(off).toBeLessThan(src.indexOf("invoke<LookbackStopView[]>('learning:lookback'"))
+    expect(src).toMatch(/if \(level === 'off' \|\| stops\.length === 0\) return null/)
+  })
+})

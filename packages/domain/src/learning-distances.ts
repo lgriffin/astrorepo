@@ -235,3 +235,32 @@ export function lightYearsText(ly: number): string {
   if (ly >= 1e6) return `${round2(ly / 1e6)} million`
   return round2(ly).toLocaleString('en-GB')
 }
+
+/** One object on the gallery's lookback strip: its numbers and the pictures of it. */
+export interface LookbackStop {
+  numbers: ObjectNumbers
+  /** The pictures that name it, in the order they were given. */
+  paths: string[]
+}
+
+/**
+ * The gallery's pictures ordered by how long their light travelled (LRN-021): one stop per object
+ * with a published distance, nearest first, each with every picture that names it. A picture that
+ * names two such objects (M31 with M32) appears at both; pictures of objects with no distance held
+ * are left out.
+ */
+export function lookbackStrip(pictures: readonly { path: string; designations: readonly string[] }[], thisYear: number): LookbackStop[] {
+  const stops = new Map<string, LookbackStop>()
+  for (const p of pictures) {
+    const seen = new Set<string>()
+    for (const d of p.designations) {
+      const numbers = objectNumbers({ names: [d], angularSizeArcmin: null, thisYear })
+      if (!numbers || seen.has(numbers.designation)) continue
+      seen.add(numbers.designation)
+      const stop = stops.get(numbers.designation)
+      if (stop) stop.paths.push(p.path)
+      else stops.set(numbers.designation, { numbers, paths: [p.path] })
+    }
+  }
+  return [...stops.values()].sort((a, b) => a.numbers.distanceLy - b.numbers.distanceLy || a.numbers.designation.localeCompare(b.numbers.designation))
+}

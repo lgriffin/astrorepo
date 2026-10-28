@@ -4,6 +4,7 @@ import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState } from '../components/common/Card'
 import { PictureTile } from '../components/gallery/PictureTile'
 import { PictureViewer } from '../components/gallery/PictureViewer'
+import { LookbackStrip } from '../components/gallery/LookbackStrip'
 import { invoke } from '../hooks/useIPC'
 import { settingsLink } from '@shared/navigation'
 import type { GalleryPictureView, GalleryView } from '@shared/types'
@@ -109,6 +110,7 @@ export function Images(): React.ReactElement {
         </Card>
       ) : (
         <div className="space-y-4">
+          <LookbackStrip pictures={view.pictures} onOpen={path => (setQuery(''), setOpen(path))} />
           <div className="flex flex-wrap items-center gap-3">
             <input
               type="search"

@@ -38,10 +38,10 @@ describe('browsing the gallery', () => {
     const listing = await gallery.browse()
     expect(listing.root).toBe('/home/images')
     expect(listing.pictures.map(p => [p.name, p.objects])).toEqual([
-      ['final.png', [{ objectId: 't-m42', label: 'M42 · Orion Nebula' }]],
-      ['NGC9.png', [{ objectId: 't-ngc9', label: 'NGC 9' }]],
+      ['final.png', [{ objectId: 't-m42', label: 'M42 · Orion Nebula', designations: ['M42'] }]],
+      ['NGC9.png', [{ objectId: 't-ngc9', label: 'NGC 9', designations: ['NGC 9'] }]],
       ['widefield.jpg', []],
-      ['M31.png', [{ objectId: 't-m31', label: 'M31 · Andromeda Galaxy' }]]
+      ['M31.png', [{ objectId: 't-m31', label: 'M31 · Andromeda Galaxy', designations: ['M31', 'NGC 224'] }]]
     ])
     expect(listing.pictures[0]).toMatchObject({ path: '/home/images/M42/final.png', folders: ['M42'], sizeBytes: 1000 })
   })
@@ -66,7 +66,7 @@ describe('browsing the gallery', () => {
     folder.add('Cave Nebula.png')
     expect((await gallery.browse()).pictures[0].objects).toEqual([])
     catalogue.add(objectFacts('t-cave', { name: 'Cave Nebula', designations: ['Sh2-155'] }))
-    expect((await gallery.browse()).pictures[0].objects).toEqual([{ objectId: 't-cave', label: 'Sh2-155 · Cave Nebula' }])
+    expect((await gallery.browse()).pictures[0].objects).toEqual([{ objectId: 't-cave', label: 'Sh2-155 · Cave Nebula', designations: ['Sh2-155'] }])
     expect(catalogue.namesRead).toBe(2)
   })
 
@@ -75,8 +75,8 @@ describe('browsing the gallery', () => {
     catalogue.namedObjects = async () => [{ id: 'bare', designations: [], names: ['Bare Thing'] }, { id: 'nameless', designations: ['M99'], names: [] }]
     folder.add('Bare Thing M99.png')
     expect((await gallery.browse()).pictures[0].objects).toEqual([
-      { objectId: 'nameless', label: 'M99' },
-      { objectId: 'bare', label: 'Bare Thing' }
+      { objectId: 'nameless', label: 'M99', designations: ['M99'] },
+      { objectId: 'bare', label: 'Bare Thing', designations: [] }
     ])
   })
 })
@@ -90,7 +90,7 @@ describe('a picture’s side panel', () => {
     expect(details.readFrom).toBe('file')
     expect(details.unknown).toEqual([])
     expect(details.hasSite).toBe(true)
-    expect(details.picture.objects).toEqual([{ objectId: 't-m31', label: 'M31 · Andromeda Galaxy' }])
+    expect(details.picture.objects).toEqual([{ objectId: 't-m31', label: 'M31 · Andromeda Galaxy', designations: ['M31', 'NGC 224'] }])
     expect(details.objects).toHaveLength(1)
     const [m31] = details.objects
     expect(m31.facts.name).toBe('Andromeda Galaxy')

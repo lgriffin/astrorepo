@@ -9,6 +9,7 @@ import {
   distanceFor,
   lightYearsText,
   lookback,
+  lookbackStrip,
   objectNumbers,
   trueSize
 } from '@astro/domain'
@@ -82,5 +83,39 @@ describe('Published distances', () => {
     expect(lightYearsText(999_999_999)).toBe('1000 million')
     expect(lightYearsText(1e9)).toBe('1 billion')
     expect(lightYearsText(13_800_000_000)).toBe('14 billion')
+  })
+})
+
+describe('lookbackStrip', () => {
+  it('[LRN-021] puts one stop per object nearest first, keeps every picture of it, and leaves out objects with no distance', () => {
+    const stops = lookbackStrip(
+      [
+        { path: 'a', designations: ['M31', 'NGC 224'] },
+        { path: 'b', designations: ['M 42'] },
+        { path: 'c', designations: ['NGC 7000'] },
+        { path: 'd', designations: ['m31'] },
+        { path: 'e', designations: ['M31', 'M32'] }
+      ],
+      2026
+    )
+    expect(stops.map(s => [s.numbers.designation, s.paths])).toEqual([
+      ['M42', ['b']],
+      ['M32', ['e']],
+      ['M31', ['a', 'd', 'e']]
+    ])
+  })
+
+  it('[LRN-021] counts a picture once at an object it names twice', () => {
+    expect(lookbackStrip([{ path: 'a', designations: ['M31', 'M 31'] }], 2026)[0].paths).toEqual(['a'])
+  })
+
+  it('[LRN-021] orders objects at the same distance by designation', () => {
+    expect(lookbackStrip([{ path: 'a', designations: ['M15'] }, { path: 'b', designations: ['M2'] }], 2026).map(s => s.numbers.designation)).toEqual(['M15', 'M2'])
+  })
+
+  it('[LRN-021] gives the light-travel time without a true size', () => {
+    const [m42] = lookbackStrip([{ path: 'b', designations: ['M42'] }], 2026)
+    expect(m42.numbers.sizeLy).toBeNull()
+    expect(m42.numbers.travelYears).toBe(m42.numbers.distanceLy)
   })
 })

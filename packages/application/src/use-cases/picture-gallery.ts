@@ -27,6 +27,8 @@ export interface NamedInPicture {
   objectId: string
   /** "M31 · Andromeda Galaxy", or just the designation or name when it has only one. */
   label: string
+  /** Its catalogue designations, "M31" and "NGC 224", for what the app knows of it (specs/042-learning). */
+  designations: string[]
 }
 
 export interface GalleryEntry extends PictureFile {
@@ -91,7 +93,11 @@ export function makePictureGallery(deps: PictureGalleryDeps) {
 
   const entry = (idx: ObjectNameIndex, file: PictureFile): GalleryEntry => ({
     ...file,
-    objects: readImageName(file.name, file.folders, idx).matches.map(m => ({ objectId: m.objectId, label: label(idx, m.objectId) }))
+    objects: readImageName(file.name, file.folders, idx).matches.map(m => ({
+      objectId: m.objectId,
+      label: label(idx, m.objectId),
+      designations: [...(idx.objects.get(m.objectId)?.designations ?? [])]
+    }))
   })
 
   /**

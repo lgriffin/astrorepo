@@ -470,6 +470,9 @@ export const schemas = {
     planned: z.enum(['full', 'nautical', 'short']).optional()
   }),
   'learning:filters': z.object({ filters: z.array(z.string().max(80)).max(40), scopes: z.array(z.string().max(200)).max(20).optional() }),
+  'learning:lookback': z.object({
+    pictures: z.array(z.object({ path: z.string().min(1).max(4096), designations: z.array(z.string().max(80)).max(20) })).max(100_000)
+  }),
   'learning:fits': z.object({
     headers: z.array(z.object({ keyword: z.string().max(80), value: z.string().max(HEADER_VALUE_MAX).nullable() })).max(HEADER_LINES_MAX)
   }),

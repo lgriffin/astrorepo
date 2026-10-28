@@ -1,5 +1,5 @@
-import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type FilterLight, type SetupNumbers, type TonightSky } from '@astro/domain'
-import type { ConceptView, FilterLightView, FitsLearningView, FitsSetupView, TonightSkyView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
+import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type FilterLight, type LookbackStop, type SetupNumbers, type TonightSky } from '@astro/domain'
+import type { ConceptView, FilterLightView, LookbackStopView, FitsLearningView, FitsSetupView, TonightSkyView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
 
 /** A source as the page names it; its address stays here and is opened by id (LRN-005). */
 const toSourceView = (s: LearningSource): LearningSourceView => ({ id: s.id, title: s.title, publisher: s.publisher })
@@ -40,6 +40,19 @@ export function toObjectNumbersView(n: ObjectNumbers | null): ObjectNumbersView 
     travel: `${lightYearsText(n.travelYears)} years`,
     size: n.sizeLy === null ? null : `about ${lightYearsText(n.sizeLy)} light years across`,
     lookback: n.lookback.text,
+    sources: [...n.sources]
+  }
+}
+
+/** One stop on the gallery's lookback strip (LRN-021). */
+export function toLookbackStopView(stop: LookbackStop): LookbackStopView {
+  const n = stop.numbers
+  return {
+    designation: n.designation,
+    distance: `about ${lightYearsText(n.distanceLy)} light years`,
+    travel: `${lightYearsText(n.travelYears)} years`,
+    lookback: n.lookback.text,
+    paths: [...stop.paths],
     sources: [...n.sources]
   }
 }

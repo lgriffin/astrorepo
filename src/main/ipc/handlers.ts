@@ -34,12 +34,12 @@ import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../ad
 import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { fromRuleView, toProjectChange, toProjectSummaries, toProjectView } from '../adapters/project-presenter'
 import { toIntegrationView, toMosaicIntegrationView } from '../adapters/forecast-presenter'
-import { toFilterLightView, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../adapters/learning-presenter'
+import { toFilterLightView, toFitsLearningView, toLearningLibraryView, toLookbackStopView, toObjectNumbersView, toTonightSkyView } from '../adapters/learning-presenter'
 import { toComparisonView, toExperimentChange, toExperimentView, toRunView } from '../adapters/experiment-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
-import { explainHeaders, filtersLight, sourceUrl, tonightSky } from '@astro/domain'
+import { explainHeaders, filtersLight, lookbackStrip, sourceUrl, tonightSky } from '@astro/domain'
 import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError, MessierRefusedError, PictureRefusedError, FORECAST_MINUTES } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { ingestIdentify, ingestName, ingestPause, ingestPreview, ingestProgress, ingestResume, ingestScan, ingestTransfer } from '../vespera-ingest-host'
@@ -1006,6 +1006,8 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('learning:object', validated('learning:object', async (args) => toObjectNumbersView(await sky().objectNumbers(args.target_id))))
   handle('learning:tonight', validated('learning:tonight', async (args) => toTonightSkyView(tonightSky(args.latitude_deg, args.night, args.planned))))
   handle('learning:filters', validated('learning:filters', async (args) => filtersLight(args.filters, args.scopes).map(toFilterLightView)))
+  // The gallery's pictures in order of how long their light travelled.
+  handle('learning:lookback', validated('learning:lookback', async (args) => lookbackStrip(args.pictures, clock.now().getUTCFullYear()).map(toLookbackStopView)))
   handle('learning:fits', validated('learning:fits', async (args) => toFitsLearningView(explainHeaders(args.headers))))
   handle('learning:open-source', validated('learning:open-source', async (args) => {
     const url = sourceUrl(args.source_id)

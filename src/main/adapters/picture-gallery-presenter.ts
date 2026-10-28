@@ -21,7 +21,7 @@ export function toPictureView(p: GalleryEntry): GalleryPictureView {
     size: formatBytes(p.sizeBytes),
     savedAt: p.modifiedAt?.toISOString() ?? null,
     saved: p.modifiedAt ? savedDay(p.modifiedAt) : null,
-    objects: p.objects.map(o => ({ id: o.objectId, label: o.label }))
+    objects: p.objects.map(o => ({ id: o.objectId, label: o.label, designations: [...o.designations] }))
   }
 }
 
