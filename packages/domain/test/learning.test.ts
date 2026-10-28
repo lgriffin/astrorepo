@@ -6,6 +6,7 @@ import {
   OBJECT_KINDS,
   PRIMERS,
   SHORT_MAX,
+  themeProblems,
   conceptById,
   libraryProblems,
   primerFor,
@@ -117,5 +118,24 @@ describe('Looking things up', () => {
     expect(sourceUrl('wiki-light-year')).toBe('https://en.wikipedia.org/wiki/Light-year')
     expect(sourceUrl('s1', [source()])).toBe('https://example.org/s')
     expect(LEARNING_SOURCES.every(s => s.url.startsWith('https://'))).toBe(true)
+  })
+})
+
+describe('themes', () => {
+  it('[LRN-024] puts every concept under exactly one theme', () => {
+    expect(themeProblems()).toEqual([])
+  })
+
+  it('[LRN-024] names a concept under no theme, under two, and a theme naming a concept that does not exist', () => {
+    const c = (id: string) => ({ id, title: id, short: 's', detail: 'd', formula: null, related: [], sources: ['x'] })
+    expect(
+      themeProblems(
+        [
+          { id: 'a', title: 'A', concepts: ['one', 'ghost'] },
+          { id: 'b', title: 'B', concepts: ['one'] }
+        ],
+        [c('one'), c('two')]
+      )
+    ).toEqual(['Theme a lists ghost, which is not a concept.', 'Concept one is under both a and b.', 'Concept two is under no theme.'])
   })
 })

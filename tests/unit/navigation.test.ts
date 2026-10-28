@@ -57,7 +57,7 @@ describe('navigation', () => {
       process: ['Jobs', 'Stacks', 'Calibration'],
       data: ['Library', 'FITS files', 'Nights', 'Vespera', 'Storage'],
       gallery: ['Pictures', 'Posters'],
-      insights: ['Insights'],
+      insights: ['Insights', 'Learn'],
       settings: ['Settings']
     })
     expect(new Set(NAV_PLACES.map(p => p.id)).size).toBe(NAV_PLACES.length)

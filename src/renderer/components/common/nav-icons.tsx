@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  CalendarDays, FolderKanban, Grid3x3, ChartLine, Crosshair, FileSearch, Frame, HardDrive, House, Images, LayoutGrid, LibraryBig,
+  CalendarDays, FolderKanban, GraduationCap, Grid3x3, ChartLine, Crosshair, FileSearch, Frame, HardDrive, House, Images, LayoutGrid, LibraryBig,
   ListChecks, MoonStar, Settings, SquareStack, Telescope, Wifi, Wrench, Layers, Database, Workflow, Zap
 } from 'lucide-react'
 
@@ -21,6 +21,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   nights: CalendarDays,
   stacks: SquareStack,
   insights: ChartLine,
+  learn: GraduationCap,
   storage: HardDrive,
   collections: LayoutGrid,
   projects: FolderKanban,

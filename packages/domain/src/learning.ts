@@ -907,3 +907,40 @@ export function libraryProblems(
   }
   return problems
 }
+
+/** A theme of the Learn page: ideas that belong together, in the order they read best. */
+export interface ConceptTheme {
+  id: string
+  title: string
+  concepts: string[]
+}
+
+/** Every concept under one theme (LRN-024). */
+export const CONCEPT_THEMES: readonly ConceptTheme[] = [
+  { id: 'distance', title: 'Distance and time', concepts: ['light-year', 'lookback', 'angular-size', 'apparent-magnitude', 'surface-brightness'] },
+  { id: 'light', title: 'Light and colour', concepts: ['emission-lines', 'h-alpha', 'oiii', 'sii', 'hubble-palette', 'star-colour', 'scattering', 'dust-extinction'] },
+  { id: 'stars', title: 'How stars live', concepts: ['stellar-evolution', 'nucleosynthesis'] },
+  {
+    id: 'sky',
+    title: 'The sky above you',
+    concepts: ['celestial-sphere', 'tangent-plane', 'position-angle', 'seasons', 'twilight', 'moon-phase', 'moonlight', 'airmass', 'seeing', 'solar-system-motion', 'messier-catalogue']
+  },
+  { id: 'camera', title: 'Your camera and your data', concepts: ['fits-header', 'bayer', 'image-scale', 'sampling', 'wcs', 'noise', 'dark-current', 'stacking', 'calibration'] }
+]
+
+/** What is wrong with the themes, one line each: a concept under no theme or two, or a theme naming a concept that does not exist. */
+export function themeProblems(themes: readonly ConceptTheme[] = CONCEPT_THEMES, concepts: readonly Concept[] = CONCEPTS): string[] {
+  const problems: string[] = []
+  const ids = new Set(concepts.map(c => c.id))
+  const placed = new Map<string, string>()
+  for (const t of themes) {
+    for (const id of t.concepts) {
+      if (!ids.has(id)) problems.push(`Theme ${t.id} lists ${id}, which is not a concept.`)
+      const earlier = placed.get(id)
+      if (earlier) problems.push(`Concept ${id} is under both ${earlier} and ${t.id}.`)
+      else placed.set(id, t.id)
+    }
+  }
+  for (const c of concepts) if (!placed.has(c.id)) problems.push(`Concept ${c.id} is under no theme.`)
+  return problems
+}

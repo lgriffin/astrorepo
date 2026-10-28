@@ -7,7 +7,7 @@ export interface PaletteEntry {
   /** Where it sits, said under the label: the place, "Settings" or "Target". */
   where: string
   to: string
-  kind: 'page' | 'setting' | 'action' | 'target'
+  kind: 'page' | 'setting' | 'action' | 'target' | 'concept'
   /** The navigation id whose icon it shows. */
   icon: string
   /** More words it answers to. */
@@ -35,7 +35,8 @@ const PAGE_WORDS: Record<string, string> = {
   storage: 'disk space',
   images: 'gallery pictures',
   posters: 'print',
-  insights: 'totals trends statistics'
+  insights: 'totals trends statistics',
+  learn: 'astrophysics physics explain why ideas concepts'
 }
 
 /** The same for Settings sections; Equipment keeps its own icon now that it lives there. */
@@ -87,6 +88,19 @@ export function targetEntry(target: { id: string; canonicalName: string; aliases
     kind: 'target',
     icon: 'targets',
     keywords: target.aliases.join(' ')
+  }
+}
+
+/** An idea of the knowledge base, as the palette lists it: it opens the idea on the Learn page (LRN-026). */
+export function conceptEntry(concept: { id: string; title: string }): PaletteEntry {
+  return {
+    id: `concept:${concept.id}`,
+    label: concept.title,
+    where: 'Learn',
+    to: `/learn?concept=${encodeURIComponent(concept.id)}`,
+    kind: 'concept',
+    icon: 'learn',
+    keywords: concept.id.replace(/-/g, ' ')
   }
 }
 

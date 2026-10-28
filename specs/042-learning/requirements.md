@@ -108,3 +108,20 @@ slice being built has requirements here (charter III).
 | LRN-021 | Ubiquitous | The system shall order the gallery's pictures by how long their light travelled, nearest first, with one stop per object that has a published distance giving its distance with its sources, the light's travel time and, at the deep level, when the light set out; a picture naming two such objects shall appear at both, and pictures of objects with no distance held shall be left out. |
 | LRN-022 | Ubiquitous | The system shall offer, in the mosaic workspace, the ideas of right ascension and declination, the tangent plane a grid is laid out on and position angle, and on the Messier mosaic the history of Messier's catalogue. |
 | LRN-023 | State | While the learning level is off, the system shall not order or show the gallery's pictures by lookback. |
+
+## L7: the Learn page and the trail
+
+- **Learn** under Insights (`/learn`, `src/renderer/pages/Learn.tsx`): every idea the app explains,
+  under five themes (`CONCEPT_THEMES` in `packages/domain/src/learning.ts`), each at full length
+  with its next ideas, its sources and a **See it** link to where it shows up in your own data
+  (`CONCEPT_PLACES` in `src/shared/learning.ts`). It explains whatever the level, since opening it is
+  asking.
+- **Ideas you have opened**: a trail of the ideas read with a "Why?" or on the page, most recent
+  first, kept in this browser only, with no counts and no score, and a button to forget it.
+- The command palette finds an idea by name and opens it on the Learn page.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LRN-024 | Ubiquitous | The system shall list every concept on a Learn page under Insights, each under exactly one theme, with its full explanation whatever the learning level, related ideas, sources and a link to the page of the app where it shows up in the user's data. |
+| LRN-025 | Ubiquitous | The system shall keep, on the user's computer only, a trail of the ideas opened, most recent first, each once, no more than 30, without counts or scores, shall let the user forget it, and while the learning level is off shall not add to it. |
+| LRN-026 | Event | When the user types an idea's name in the command palette, the system shall offer that idea and open it on the Learn page. |

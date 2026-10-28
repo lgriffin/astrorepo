@@ -78,7 +78,10 @@ export const NAV_PLACES: NavPlace[] = [
   {
     id: 'insights',
     label: 'Insights',
-    pages: [{ id: 'insights', to: '/insights', label: 'Insights', hint: 'Totals, catalogue progress, and seeing, filters and activity over time' }]
+    pages: [
+      { id: 'insights', to: '/insights', label: 'Insights', hint: 'Totals, catalogue progress, and seeing, filters and activity over time' },
+      { id: 'learn', to: '/learn', label: 'Learn', hint: 'The astrophysics behind what the app shows, idea by idea' }
+    ]
   },
   {
     id: 'settings',
