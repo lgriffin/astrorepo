@@ -118,8 +118,9 @@ describe('Explaining a header', () => {
     const e = explainHeaders(header)
     expect(e.keywords.map(k => k.keyword)).toEqual(['SIMPLE', 'NAXIS1', 'NAXIS2', 'FOCALLEN', 'XPIXSZ'])
     expect(e.keywords[1].entry.key).toBe('NAXISn')
-    // The first value of a repeated keyword is the one used.
-    expect(e.setup!.fieldArcmin!.width).toBeCloseTo(97.2, 1)
+    // The last card of a repeated keyword is the one used, as in the FITS parser.
+    expect(e.setup!.fieldArcmin!.width).toBeCloseTo(e.setup!.scaleArcsec / 60, 10)
+    expect(e.setup!.fieldArcmin!.height).toBeCloseTo(97.2, 1)
     expect(e.setup!.scaleArcsec).toBeCloseTo(1.939, 3)
     expect(e.solvedScaleArcsec).toBeNull()
     expect(explainHeaders(header, []).keywords).toEqual([])
@@ -131,6 +132,9 @@ describe('Explaining a header', () => {
     expect(explainHeaders([{ keyword: 'CD2_1', value: '-0.0005' }]).solvedScaleArcsec).toBeCloseTo(1.8, 10)
     expect(explainHeaders([{ keyword: 'CD1_1', value: '0.0005' }]).solvedScaleArcsec).toBeCloseTo(1.8, 10)
     expect(explainHeaders([{ keyword: 'CDELT1', value: '0' }, { keyword: 'CD1_1', value: '0.0005' }]).solvedScaleArcsec).toBeCloseTo(1.8, 10)
+    // A CD matrix is read before a CDELT1 that disagrees with it, as the sky overlay reads it.
+    expect(explainHeaders([{ keyword: 'CDELT1', value: '0.001' }, { keyword: 'CD1_1', value: '0.002' }]).solvedScaleArcsec).toBeCloseTo(7.2, 10)
+    expect(explainHeaders([{ keyword: 'CDELT1', value: '0' }]).solvedScaleArcsec).toBeNull()
     expect(explainHeaders([{ keyword: 'CD1_1', value: '0' }, { keyword: 'CD2_1', value: '0' }]).solvedScaleArcsec).toBeNull()
     expect(explainHeaders([]).setup).toBeNull()
   })

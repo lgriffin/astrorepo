@@ -25,8 +25,8 @@ const CONV = ['wiki-fits']
 export const FITS_KEYWORDS: readonly FitsKeyword[] = [
   { key: 'SIMPLE', meaning: 'The file follows the FITS standard.', why: 'Every FITS file starts with it; a reader that sees anything else stops.', concept: 'fits-header', standard: true, sources: STD },
   { key: 'BITPIX', meaning: 'How each pixel is stored: 8, 16 or 32 are whole numbers of that many bits; −32 and −64 are floating point.', why: 'Raw subs are usually 16-bit whole numbers; stacks are usually −32, floating point, so faint signal averaged over many frames is not rounded away.', concept: 'fits-header', standard: true, sources: STD },
-  { key: 'NAXIS', meaning: 'How many dimensions the picture has: 2 for a single plane, 3 for a colour cube.', why: 'A raw colour frame is still 2: its colours are in the Bayer pattern until it is debayered.', concept: 'bayer', standard: true, sources: STD },
-  { key: 'NAXISn', meaning: 'The length of one dimension in pixels: NAXIS1 is the width, NAXIS2 the height, NAXIS3 the colour planes.', why: 'Width × height × pixel scale gives the field of view.', concept: 'image-scale', standard: true, sources: STD },
+  { key: 'NAXIS', meaning: 'How many dimensions the data has: 2 for a single picture, 3 for a stack of planes, such as a debayered colour image.', why: 'A raw colour frame is still 2: its colours are in the Bayer pattern until it is debayered.', concept: 'bayer', standard: true, sources: STD },
+  { key: 'NAXISn', meaning: 'The length of one dimension: NAXIS1 is the width in pixels, NAXIS2 the height, NAXIS3 (when there is one) the number of planes, such as the three colours of a debayered image.', why: 'Width × height × pixel scale gives the field of view.', concept: 'image-scale', standard: true, sources: STD },
   { key: 'BZERO', meaning: 'An offset added to every stored value to get the real one.', why: 'BZERO = 32768 is how unsigned 16-bit camera data fits in FITS, which stores 16-bit numbers as signed.', concept: null, standard: true, sources: STD },
   { key: 'BSCALE', meaning: 'A factor every stored value is multiplied by to get the real one.', why: 'Real value = BZERO + BSCALE × stored value; it is 1 for almost all camera data.', concept: null, standard: true, sources: STD },
   { key: 'DATE-OBS', meaning: 'When the exposure started, normally in UTC.', why: 'It ties the frame to a night, the Moon’s phase and the target’s height in the sky.', concept: null, standard: true, sources: STD },
@@ -161,8 +161,8 @@ export function headerNumber(value: string | null | undefined): number | null {
 
 /**
  * Explains a file's header: the meaning of each keyword the dictionary holds, the image scale and
- * field its optics give, and the scale a plate solve measured (from CDELT1, or from the CD matrix's
- * first column), so the two can be compared.
+ * field its optics give, and the scale a plate solve measured (from the CD matrix's first column, or
+ * from CDELT1 when there is no matrix), so the two can be compared.
  */
 export function explainHeaders(lines: readonly HeaderLine[], keywords: readonly FitsKeyword[] = FITS_KEYWORDS): ExplainedHeaders {
   const values = new Map<string, number | null>()
@@ -170,7 +170,8 @@ export function explainHeaders(lines: readonly HeaderLine[], keywords: readonly 
   const seen = new Set<string>()
   for (const line of lines) {
     const key = line.keyword.trim().toUpperCase()
-    if (!values.has(key)) values.set(key, headerNumber(line.value))
+    // The last card of a name wins, as in the FITS parser that indexed the file.
+    values.set(key, headerNumber(line.value))
     if (seen.has(key)) continue
     seen.add(key)
     const entry = keywordMeaning(key, keywords)
@@ -181,10 +182,11 @@ export function explainHeaders(lines: readonly HeaderLine[], keywords: readonly 
   return { keywords: found, setup, solvedScaleArcsec: solvedScale(num('CDELT1'), num('CD1_1'), num('CD2_1')) }
 }
 
-/** Arcseconds per pixel from a solve's CDELT1, or failing that from the CD matrix's first column. */
+/**
+ * Arcseconds per pixel from a solve: the CD matrix's first column when the matrix is there, as the
+ * sky overlay reads it, otherwise CDELT1.
+ */
 function solvedScale(cdelt1: number | null, cd11: number | null, cd21: number | null): number | null {
-  if (cdelt1 != null && cdelt1 !== 0) return Math.abs(cdelt1) * 3600
-  if (cd11 == null && cd21 == null) return null
-  const step = Math.hypot(cd11 ?? 0, cd21 ?? 0)
+  const step = cd11 != null || cd21 != null ? Math.hypot(cd11 ?? 0, cd21 ?? 0) : Math.abs(cdelt1 ?? 0)
   return step > 0 ? step * 3600 : null
 }

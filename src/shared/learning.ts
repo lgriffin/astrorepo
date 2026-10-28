@@ -70,3 +70,25 @@ export function makeSaveQueue(save: (value: string) => Promise<void>): (value: s
     return next
   }
 }
+
+/** The most header lines `learning:fits` takes, above the FITS parser's 7,200 cards. */
+export const HEADER_LINES_MAX = 8000
+/** The longest header value `learning:fits` takes; a number never comes near it. */
+export const HEADER_VALUE_MAX = 200
+
+/**
+ * The header lines worth explaining (L3): COMMENT, HISTORY and blank cards left out, values cut to
+ * HEADER_VALUE_MAX (joined CONTINUE strings can run long) and at most HEADER_LINES_MAX lines, so a
+ * long header is still explained rather than refused.
+ */
+export function headerLinesForLearning(rows: readonly { keyword: string; value: string | null }[]): { keyword: string; value: string | null }[] {
+  const lines: { keyword: string; value: string | null }[] = []
+  for (const r of rows) {
+    const keyword = r.keyword.trim()
+    if (keyword === '' || keyword === 'COMMENT' || keyword === 'HISTORY') continue
+    lines.push({ keyword: keyword.slice(0, 80), value: r.value == null ? null : r.value.slice(0, HEADER_VALUE_MAX) })
+    if (lines.length === HEADER_LINES_MAX) break
+  }
+  return lines
+}
+

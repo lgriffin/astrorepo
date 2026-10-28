@@ -8,14 +8,15 @@ import { useLearning } from '../../contexts/LearningContext'
  * the idea behind it, at the user's learning level, with related ideas to follow and the sources
  * it rests on. Escape (from the button or the panel) or Close shuts it and gives focus back to the
  * button; a click outside shuts it too. Built of phrasing elements only, so it can sit inside a
- * sentence. Hidden when learning is off, or when the concept is not in the knowledge base.
+ * sentence. The panel is placed against the window, not its parent, so a scrolling table or card
+ * never cuts it off; it opens above the button when there is more room there, and scrolling shuts it. Hidden when learning is off, or when the concept is not in the knowledge base.
  */
 export function Explain({ concept: id, label = 'Why?' }: { concept: string; label?: string }): React.ReactElement | null {
   const { level, concept, source, openSource } = useLearning()
   const [open, setOpen] = useState(false)
   const [shown, setShown] = useState(id)
-  // The panel opens towards the side of the window with more room, so it never runs off screen.
-  const [alignRight, setAlignRight] = useState(false)
+  // Where the panel sits in the window: towards the side with more room, so it never runs off screen.
+  const [place, setPlace] = useState<React.CSSProperties>({})
   const panelId = useId()
   const button = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLSpanElement>(null)
@@ -30,8 +31,20 @@ export function Explain({ concept: id, label = 'Why?' }: { concept: string; labe
       setOpen(false)
       setShown(id)
     }
+    // The panel is fixed to the window, so it would drift from its button: scrolling anything else shuts it.
+    const onScroll = (e: Event): void => {
+      if (panel.current?.contains(e.target as Node)) return
+      setOpen(false)
+      setShown(id)
+    }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
   }, [open, id])
 
   const root = concept(id)
@@ -42,7 +55,13 @@ export function Explain({ concept: id, label = 'Why?' }: { concept: string; labe
 
   const show = (): void => {
     const box = button.current?.getBoundingClientRect()
-    setAlignRight(!!box && box.left > window.innerWidth / 2)
+    if (box) {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      const across: React.CSSProperties = box.left > w / 2 ? { right: Math.max(8, w - box.right) } : { left: Math.max(8, box.left) }
+      const down = h - box.bottom >= box.top
+      setPlace({ ...across, ...(down ? { top: box.bottom + 4 } : { bottom: h - box.top + 4 }), maxHeight: (down ? h - box.bottom : box.top) - 12 })
+    }
     setOpen(true)
   }
 
@@ -80,7 +99,8 @@ export function Explain({ concept: id, label = 'Why?' }: { concept: string; labe
           id={panelId}
           role="region"
           aria-label={current.title}
-          className={`absolute ${alignRight ? 'right-0' : 'left-0'} top-full z-30 mt-1 block w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-astro-border bg-astro-raised p-3 text-left shadow-lg`}
+          style={place}
+          className="fixed z-50 block w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-astro-border bg-astro-raised p-3 text-left font-sans shadow-lg"
         >
           <span className="flex items-start justify-between gap-2">
             <span className="font-condensed text-sm font-semibold text-astro-text">{current.title}</span>

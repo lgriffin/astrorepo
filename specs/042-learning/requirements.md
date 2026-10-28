@@ -61,6 +61,6 @@ slice being built has requirements here (charter III).
 |----|---------|-------------|
 | LRN-011 | Ubiquitous | The system shall explain each header keyword the dictionary holds, numbered keywords by their family and each keyword once, with what it means, why it matters at the deep level, a concept to follow where there is one, and whether the FITS standard defines it or it is a capture-software convention, citing the FITS standard or the FITS article accordingly. |
 | LRN-012 | Ubiquitous | The system shall work out a file's image scale as 206.265 × XPIXSZ ÷ FOCALLEN arcseconds per pixel, its field from NAXIS1 and NAXIS2, and its sampling against 2″ seeing (under-sampled above half the seeing, over-sampled below a third of it), and show no setup when the focal length or pixel size is missing or not positive. |
-| LRN-013 | Event | When a file has been plate solved, the system shall show the image scale the solve measured, from CDELT1 or otherwise the first column of the CD matrix. |
+| LRN-013 | Event | When a file has been plate solved, the system shall show the image scale the solve measured, from the first column of the CD matrix when it has one (as the sky overlay reads it) and otherwise from CDELT1, the last card of a repeated keyword counting. |
 | LRN-014 | State | While the learning level is off, the system shall not explain a file's header or show its setup. |
 

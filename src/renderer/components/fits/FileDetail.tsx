@@ -37,8 +37,11 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
   const explaining = level !== 'off' && learning !== null
 
   useEffect(() => {
+    // The last file's headers go at once, so its setup is never shown against this one.
+    setHeaders([])
     invoke<FitsFileDetailType>('fits:get-file', { id: fileId }).then(setFile)
-    invoke<{ headers: FitsHeaderRow[] }>('fits:get-headers', { file_id: fileId }).then(r => setHeaders(r.headers))
+    let current = true
+    invoke<{ headers: FitsHeaderRow[] }>('fits:get-headers', { file_id: fileId }).then(r => { if (current) setHeaders(r.headers) })
     setThumbnailLoading(true)
     setThumbnail(null)
     invoke<{ width: number; height: number; dataBase64: string } | null>('fits:get-thumbnail', { file_id: fileId })
@@ -46,6 +49,9 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
       .catch(() => setThumbnail(null))
       .finally(() => setThumbnailLoading(false))
     invoke<{ metrics: QualityMetrics | null }>('quality:get-metrics', { file_id: fileId }).then(r => setQuality(r.metrics))
+    return () => {
+      current = false
+    }
   }, [fileId])
 
   async function handleAnalyze(): Promise<void> {

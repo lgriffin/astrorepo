@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
-import { FULL_MOON_ARCMIN, LEARNING_SETTING_KEY, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
+import { FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
 import { angleText, toFitsLearningView, toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
 import { explainHeaders, objectNumbers } from '@astro/domain'
@@ -211,6 +211,42 @@ describe('Your FITS header, in words', () => {
     expect(page).toMatch(/const explaining = level !== 'off' && learning !== null/)
     expect(page).toMatch(/<YourSetup learning=\{learning\} \/>/)
     expect(page).toMatch(/\{explaining && <th className="px-2 py-1">What it means<\/th>\}/)
+  })
+
+  it('[LRN-011] Given a long header, When sent to be explained, Then notes are left out and long values cut, so it is never refused', () => {
+    const rows = [
+      { keyword: 'COMMENT', value: 'x' },
+      { keyword: 'HISTORY', value: 'y' },
+      { keyword: '  ', value: null },
+      { keyword: ' FOCALLEN ', value: '400' },
+      { keyword: 'LONGSTR', value: 'z'.repeat(5000) },
+      { keyword: 'BLANK', value: null }
+    ]
+    expect(headerLinesForLearning(rows)).toEqual([
+      { keyword: 'FOCALLEN', value: '400' },
+      { keyword: 'LONGSTR', value: 'z'.repeat(HEADER_VALUE_MAX) },
+      { keyword: 'BLANK', value: null }
+    ])
+    const many = Array.from({ length: HEADER_LINES_MAX + 50 }, (_, i) => ({ keyword: `K${i}`, value: '1' }))
+    const sent = headerLinesForLearning(many)
+    expect(sent).toHaveLength(HEADER_LINES_MAX)
+    expect(sent[HEADER_LINES_MAX - 1].keyword).toBe(`K${HEADER_LINES_MAX - 1}`)
+    // Above the FITS parser's 7,200 cards, and the schema takes exactly these limits.
+    expect(HEADER_LINES_MAX).toBeGreaterThan(7200)
+    const schema = read('src/main/ipc/schemas.ts')
+    expect(schema).toMatch(/value: z\.string\(\)\.max\(HEADER_VALUE_MAX\)\.nullable\(\) \}\)\)\.max\(HEADER_LINES_MAX\)/)
+    expect(read('src/renderer/components/fits/HeaderLearning.tsx')).toMatch(/\{ headers: headerLinesForLearning\(headers\) \}/)
+  })
+
+  it('[LRN-011] Given a Why? inside a scrolling table, When it opens, Then its panel is placed against the window and scrolling shuts it', () => {
+    const src = read('src/renderer/components/ui/Explain.tsx')
+    expect(src).toMatch(/className="fixed z-50/)
+    expect(src).toMatch(/addEventListener\('scroll', onScroll, true\)/)
+    expect(src).toMatch(/const down = h - box\.bottom >= box\.top/)
+    // A file switch drops the last file's headers before its own arrive.
+    const page = read('src/renderer/components/fits/FileDetail.tsx')
+    expect(page.indexOf('setHeaders([])')).toBeLessThan(page.indexOf("'fits:get-headers'"))
+    expect(page).toMatch(/if \(current\) setHeaders\(r\.headers\)/)
   })
 })
 

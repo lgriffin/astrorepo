@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { FitsHeaderRow, FitsKeywordView, FitsLearningView } from '@shared/types'
+import { headerLinesForLearning } from '@shared/learning'
 import { invoke } from '../../hooks/useIPC'
 import { useLearning } from '../../contexts/LearningContext'
 import { Explain } from '../ui'
@@ -20,7 +21,7 @@ export function useHeaderLearning(headers: FitsHeaderRow[]): {
     let current = true
     setLearning(null)
     if (level === 'off' || headers.length === 0) return
-    invoke<FitsLearningView>('learning:fits', { headers: headers.map(h => ({ keyword: h.keyword, value: h.value })) })
+    invoke<FitsLearningView>('learning:fits', { headers: headerLinesForLearning(headers) })
       .then(l => { if (current) setLearning(l ?? null) })
       .catch(error => console.warn('The header could not be explained:', error))
     return () => {
