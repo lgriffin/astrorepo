@@ -11,7 +11,7 @@ const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 describe('Learning while you observe', () => {
   it('[LRN-003] Given the shared object types, When the knowledge base is built, Then every type has a primer kind', () => {
-    const union = /export type ObjectType =([\s\S]*?)\n\n/.exec(read('src/shared/types.ts'))![1]
+    const union = /export type ObjectType =([\s\S]*?)\r?\n\r?\n/.exec(read('src/shared/types.ts'))![1]
     const types = [...union.matchAll(/'([a-z_]+)'/g)].map(m => m[1])
     expect([...OBJECT_KINDS].sort()).toEqual(types.sort())
     expect(toLearningLibraryView().primers.map(p => p.kind).sort()).toEqual([...types, ...CATALOGUE_KINDS].sort())
