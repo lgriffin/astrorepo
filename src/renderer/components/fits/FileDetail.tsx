@@ -289,7 +289,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
               <div className="max-h-96 overflow-y-auto border border-astro-border rounded">
                 <table className="w-full text-xs font-mono">
                   <thead>
-                    <tr className="text-left text-astro-muted border-b border-astro-border sticky top-0 bg-astro-surface font-condensed">
+                    <tr className="text-left text-astro-muted border-b border-astro-border sticky top-0 z-10 bg-astro-surface font-condensed">
                       <th className="px-2 py-1 w-8">#</th>
                       <th className="px-2 py-1 w-24">Keyword</th>
                       <th className="px-2 py-1">Value</th>

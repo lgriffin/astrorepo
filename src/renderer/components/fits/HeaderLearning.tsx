@@ -43,9 +43,9 @@ export function KeywordMeaning({ entry }: { entry: FitsKeywordView | null }): Re
   return (
     <span className="font-sans">
       <span className="text-astro-text">{entry.meaning}</span>
-      {level === 'deep' && <span className="block text-astro-muted">{entry.why}</span>}
-      {entry.concept && <Explain concept={entry.concept} />}
-      {!entry.standard && <span className="block text-astro-muted">A capture-software convention, not part of the FITS standard.</span>}
+      {level === 'deep' && <span className="text-astro-muted"> {entry.why}</span>}
+      {entry.concept && <> <Explain concept={entry.concept} /></>}
+      {!entry.standard && <span className="block text-astro-muted italic">A capture-software convention, not part of the FITS standard.</span>}
     </span>
   )
 }
