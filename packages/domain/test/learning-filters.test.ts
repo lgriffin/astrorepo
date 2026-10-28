@@ -52,6 +52,9 @@ describe('What your filters catch', () => {
     expect(filterLight('R').kind).toBe('colour')
     expect(filterLight('R').lines).toEqual([])
     for (const f of ['L', 'R', 'G', 'B', 'IRCUT', 'LP']) expect(filterLight(f).passes.length, f).toBeGreaterThan(20)
+    expect(filterLight('Dual band').passes).toBe('Two narrow windows, hydrogen alpha at 656.3 nm and O III at 500.7 nm, blocking most light pollution and moonlight between them.')
+    // Names are matched whole or from the start, never from the middle or with extra letters.
+    for (const name of ['X-IRCUT', 'XLP', 'Luna', 'XL', 'Rx', 'XR', 'Gx', 'XG', 'Bx', 'XB']) expect(filterLight(name).kind, name).toBe('unknown')
     const odd = filterLight('Mystery')
     expect(odd).toEqual({ filter: 'Mystery', kind: 'unknown', lines: [], passes: '', concept: null })
   })
