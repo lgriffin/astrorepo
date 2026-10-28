@@ -64,4 +64,33 @@ describe('What your filters catch', () => {
     expect(filtersLight(['Ha', 'HA']).map(f => f.filter)).toEqual(['Ha'])
     expect(filtersLight([])).toEqual([])
   })
+
+  it('[LRN-018] Given spellings other parts of the app accept, When read, Then each is still recognised', () => {
+    expect(filterLight('H').lines.map(l => l.id)).toEqual(['ha'])
+    expect(filterLight('HB').lines.map(l => l.id)).toEqual(['hb'])
+    expect(filterLight('Hx').kind).toBe('unknown')
+    expect(filterLight('Duo-band').kind).toBe('dual-band')
+    expect(filterLight('Lum 6.5 nm').kind).toBe('luminance')
+    expect(filterLight('L3').kind).toBe('luminance')
+    expect(filterLight('R 100nm').kind).toBe('colour')
+    expect(filterLight('Green2').passes).toMatch(/^Green light/)
+    expect(filterLight('B5nm').passes).toMatch(/^Blue light/)
+    expect(filterLight('NM').kind).toBe('unknown')
+    expect(filterLight('Lx3').kind).toBe('unknown')
+  })
+
+  it('[LRN-018] Given LP on a Seestar, When read, Then it is the built-in dual-band filter, and elsewhere a light-pollution filter', () => {
+    const seestar = filterLight('LP', ['Seestar S50'])
+    expect(seestar.kind).toBe('dual-band')
+    expect(seestar.lines.map(l => l.id)).toEqual(['ha', 'oiii'])
+    expect(seestar.passes).toBe('The Seestar’s built-in dual-band filter. Two narrow windows, hydrogen alpha at 656.3 nm and O III at 500.7 nm, blocking most light pollution and moonlight between them.')
+    expect(filterLight('LP', ['Vespera Pro']).kind).toBe('light-pollution')
+    expect(filterLight('LPS', ['Seestar S50']).kind).toBe('light-pollution')
+    expect(filtersLight(['LP'], ['ZWO', 'seestar s30'])[0].kind).toBe('dual-band')
+    expect(filtersLight(['LP'])[0].kind).toBe('light-pollution')
+  })
+
+  it('[LRN-018] Given the Hβ line, When explained, Then it opens the emission-line idea, not Hα’s', () => {
+    expect(EMISSION_LINES.hb.concept).toBe('emission-lines')
+  })
 })

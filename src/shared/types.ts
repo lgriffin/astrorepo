@@ -2302,7 +2302,7 @@ export interface FilterLightView {
   kind: 'narrowband' | 'dual-band' | 'luminance' | 'colour' | 'uv-ir-cut' | 'light-pollution'
   passes: string
   /** Each emission line it passes: "Hydrogen alpha (Hα), 656.3 nm, deep red". */
-  lines: { name: string; nm: number; colour: string; concept: string }[]
+  lines: { name: string; nm: number; colour: string; origin: string; concept: string }[]
   concept: string | null
 }
 

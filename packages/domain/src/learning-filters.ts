@@ -21,7 +21,7 @@ export interface EmissionLine {
 
 export const EMISSION_LINES: Readonly<Record<EmissionLine['id'], EmissionLine>> = {
   ha: { id: 'ha', name: 'Hydrogen alpha (Hα)', nm: 656.3, origin: 'hydrogen whose electron drops from the third level to the second', colour: 'deep red', concept: 'h-alpha', sources: ['wiki-h-alpha', 'wiki-balmer'] },
-  hb: { id: 'hb', name: 'Hydrogen beta (Hβ)', nm: 486.1, origin: 'hydrogen whose electron drops from the fourth level to the second', colour: 'blue-green', concept: 'h-alpha', sources: ['wiki-balmer'] },
+  hb: { id: 'hb', name: 'Hydrogen beta (Hβ)', nm: 486.1, origin: 'hydrogen whose electron drops from the fourth level to the second', colour: 'blue-green', concept: 'emission-lines', sources: ['wiki-balmer'] },
   oiii: { id: 'oiii', name: 'Oxygen III (O III)', nm: 500.7, origin: 'oxygen missing two electrons, in hot, very thin gas', colour: 'teal', concept: 'oiii', sources: ['wiki-oiii'] },
   sii: { id: 'sii', name: 'Sulphur II (S II)', nm: 671.6, origin: 'sulphur missing one electron, often at the edges of nebulae and in shock fronts', colour: 'deep red, just past Hα', concept: 'sii', sources: ['wiki-forbidden', 'wiki-emission-nebula'] },
   nii: { id: 'nii', name: 'Nitrogen II (N II)', nm: 658.4, origin: 'nitrogen missing one electron', colour: 'deep red, beside Hα', concept: 'emission-lines', sources: ['wiki-forbidden', 'wiki-emission-nebula'] }
@@ -53,7 +53,7 @@ const squeeze = (name: string): string => name.toUpperCase().replace(/[^A-Z0-9]/
 
 /** Narrowband names, squeezed, matched at the start (so "Ha7nm" and "OIII 6.5nm" are found). */
 const NARROW: [RegExp, EmissionLine['id']][] = [
-  [/^(HA|HALPHA)(\d|NM|$)/, 'ha'],
+  [/^(HA|HALPHA)(\d|NM|$)|^H$/, 'ha'],
   [/^(HB|HBETA)(\d|NM|$)/, 'hb'],
   [/^(OIII|O3)(\d|NM|$)/, 'oiii'],
   [/^(SII|S2)(\d|NM|$)/, 'sii'],
@@ -61,10 +61,18 @@ const NARROW: [RegExp, EmissionLine['id']][] = [
 ]
 
 /** Dual-band filters by the names of common makes, squeezed; all pass Hα and O III. */
-const DUAL = /^(DUAL|DUALBAND|DB|LEXTREME|LENHANCE|LULTIMATE|ALPT|NBZ|DUONB|HAOIII|HAO3|OIIIHA|ENHANCE)/
+const DUAL = /^(DUAL|DUALBAND|DUO|DB|LEXTREME|LENHANCE|LULTIMATE|ALPT|NBZ|HAOIII|HAO3|OIIIHA|ENHANCE)/
 
-/** What a filter named this does to the light (LRN-018). */
-export function filterLight(filter: string): FilterLight {
+const DUAL_PASSES = 'Two narrow windows, hydrogen alpha at 656.3 nm and O III at 500.7 nm, blocking most light pollution and moonlight between them.'
+
+/** The Seestar names its built-in dual-band filter just "LP"; elsewhere LP is a broadband light-pollution filter. */
+const SEESTAR = /seestar/i
+
+/**
+ * What a filter named this does to the light (LRN-018). `scopes` are the TELESCOP or INSTRUME
+ * names of the frames, which tell the Seestar's dual-band "LP" from a broadband one.
+ */
+export function filterLight(filter: string, scopes: readonly string[] = []): FilterLight {
   const s = squeeze(filter)
   for (const [pattern, id] of NARROW) {
     if (pattern.test(s)) {
@@ -72,9 +80,11 @@ export function filterLight(filter: string): FilterLight {
       return { filter, kind: 'narrowband', lines: [line], passes: `Only ${line.name} at ${line.nm} nm, from ${line.origin}.`, concept: line.concept }
     }
   }
-  if (DUAL.test(s)) {
+  const seestarLp = s === 'LP' && scopes.some(scope => SEESTAR.test(scope))
+  if (seestarLp || DUAL.test(s)) {
     const lines = [EMISSION_LINES.ha, EMISSION_LINES.oiii]
-    return { filter, kind: 'dual-band', lines, passes: 'Two narrow windows, hydrogen alpha at 656.3 nm and O III at 500.7 nm, blocking most light pollution and moonlight between them.', concept: 'emission-lines' }
+    const passes = seestarLp ? `The Seestar’s built-in dual-band filter. ${DUAL_PASSES}` : DUAL_PASSES
+    return { filter, kind: 'dual-band', lines, passes, concept: 'emission-lines' }
   }
   if (/^(IRCUT|UVIR|UVIRCUT|IRUV)/.test(s)) {
     return { filter, kind: 'uv-ir-cut', lines: [], passes: 'All visible light, blocking the ultraviolet and infrared that would blur star images and upset colour.', concept: null }
@@ -82,22 +92,24 @@ export function filterLight(filter: string): FilterLight {
   if (/^(LP|LPS|LPR|CLS|LIGHTPOLLUTION|UHC)/.test(s)) {
     return { filter, kind: 'light-pollution', lines: [], passes: 'Most visible light, cutting the bands where street lights shine; it helps less with modern white LEDs.', concept: 'emission-lines' }
   }
-  if (/^(L|LUM|LUMINANCE|CLEAR|C)$/.test(s)) return { filter, kind: 'luminance', lines: [], passes: BROADBAND.L, concept: null }
-  if (/^(R|RED)$/.test(s)) return { filter, kind: 'colour', lines: [], passes: BROADBAND.R, concept: null }
-  if (/^(G|GREEN)$/.test(s)) return { filter, kind: 'colour', lines: [], passes: BROADBAND.G, concept: null }
-  if (/^(B|BLUE)$/.test(s)) return { filter, kind: 'colour', lines: [], passes: BROADBAND.B, concept: null }
+  // Broadband names may carry a bandwidth or a number ("Lum 6.5 nm"), which says nothing about the colour.
+  const broad = s.replace(/\d+(NM)?$/, '')
+  if (/^(L|LUM|LUMINANCE|CLEAR|C)$/.test(broad)) return { filter, kind: 'luminance', lines: [], passes: BROADBAND.L, concept: null }
+  if (/^(R|RED)$/.test(broad)) return { filter, kind: 'colour', lines: [], passes: BROADBAND.R, concept: null }
+  if (/^(G|GREEN)$/.test(broad)) return { filter, kind: 'colour', lines: [], passes: BROADBAND.G, concept: null }
+  if (/^(B|BLUE)$/.test(broad)) return { filter, kind: 'colour', lines: [], passes: BROADBAND.B, concept: null }
   return { filter, kind: 'unknown', lines: [], passes: '', concept: null }
 }
 
 /** The filters a target was shot through, each explained once, unknown names left out. */
-export function filtersLight(filters: readonly string[]): FilterLight[] {
+export function filtersLight(filters: readonly string[], scopes: readonly string[] = []): FilterLight[] {
   const seen = new Set<string>()
   const out: FilterLight[] = []
   for (const f of filters) {
     const key = squeeze(f)
     if (seen.has(key)) continue
     seen.add(key)
-    const light = filterLight(f)
+    const light = filterLight(f, scopes)
     if (light.kind !== 'unknown') out.push(light)
   }
   return out

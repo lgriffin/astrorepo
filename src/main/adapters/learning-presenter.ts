@@ -121,7 +121,7 @@ export function toFilterLightView(f: FilterLight): FilterLightView {
     filter: f.filter,
     kind: f.kind as FilterLightView['kind'],
     passes: f.passes,
-    lines: f.lines.map(l => ({ name: l.name, nm: l.nm, colour: l.colour, concept: l.concept })),
+    lines: f.lines.map(l => ({ name: l.name, nm: l.nm, colour: l.colour, origin: l.origin, concept: l.concept })),
     concept: f.concept
   }
 }

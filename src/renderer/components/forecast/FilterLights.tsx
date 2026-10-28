@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react'
-import type { FilterLightView } from '@shared/types'
+import type { FilterLightView, TargetDiscoveryView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { useLearning } from '../../contexts/LearningContext'
 import { Explain } from '../ui'
 
+/** The most filter names and scopes `learning:filters` takes. */
+const FILTERS_MAX = 40
+const SCOPES_MAX = 20
+
 /**
  * What your filters catch (specs/042-learning, L5): for each filter a target was shot through, the
  * light it passes, and for narrowband and dual-band filters the emission lines with their
- * wavelengths. Hidden while learning is off and for filters it does not recognise.
+ * wavelengths. Hidden while learning is off and for filters it does not recognise. A filter named
+ * just "LP" is the Seestar's dual-band filter on a Seestar, so then the target's scopes are asked for.
  */
-export function FilterLights({ filters }: { filters: string[] }): React.ReactElement | null {
+export function FilterLights({ targetId, filters }: { targetId: string; filters: string[] }): React.ReactElement | null {
   const { level } = useLearning()
   const [lights, setLights] = useState<FilterLightView[]>([])
   const key = filters.join('\u0000')
@@ -19,7 +24,13 @@ export function FilterLights({ filters }: { filters: string[] }): React.ReactEle
     let current = true
     setLights([])
     if (level === 'off' || filters.length === 0) return
-    invoke<FilterLightView[]>('learning:filters', { filters })
+    // Each name once, and no more than the channel takes.
+    const names = [...new Set(filters)].slice(0, FILTERS_MAX)
+    const scopes = names.some(n => n.replace(/[^a-z0-9]/gi, '').toUpperCase() === 'LP')
+      ? invoke<TargetDiscoveryView | null>('discovery:target', { target_id: targetId }).then(d => (d?.byScope ?? []).map(b => b.key).slice(0, SCOPES_MAX), () => [])
+      : Promise.resolve([])
+    scopes
+      .then(s => invoke<FilterLightView[]>('learning:filters', { filters: names, scopes: s }))
       .then(l => { if (current) setLights(l ?? []) })
       .catch(error => console.warn('The filters could not be explained:', error))
     return () => {
@@ -27,7 +38,7 @@ export function FilterLights({ filters }: { filters: string[] }): React.ReactEle
     }
     // The names, not the array, decide when to ask again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, level])
+  }, [key, level, targetId])
 
   if (level === 'off' || lights.length === 0) return null
   return (
@@ -44,7 +55,8 @@ export function FilterLights({ filters }: { filters: string[] }): React.ReactEle
                 {l.lines.map((line, i) => (
                   <React.Fragment key={line.name}>
                     {i > 0 && '; '}
-                    {line.name}, {line.nm} nm, {line.colour} <Explain concept={line.concept} />
+                    {line.name}, {line.nm} nm, {line.colour}
+                    {l.kind === 'dual-band' && `, from ${line.origin}`} <Explain concept={line.concept} />
                   </React.Fragment>
                 ))}
               </span>

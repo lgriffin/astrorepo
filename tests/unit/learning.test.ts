@@ -309,8 +309,8 @@ describe('Stacking physics and emission lines', () => {
       kind: 'dual-band',
       passes: 'Two narrow windows, hydrogen alpha at 656.3 nm and O III at 500.7 nm, blocking most light pollution and moonlight between them.',
       lines: [
-        { name: 'Hydrogen alpha (Hα)', nm: 656.3, colour: 'deep red', concept: 'h-alpha' },
-        { name: 'Oxygen III (O III)', nm: 500.7, colour: 'teal', concept: 'oiii' }
+        { name: 'Hydrogen alpha (Hα)', nm: 656.3, colour: 'deep red', origin: 'hydrogen whose electron drops from the third level to the second', concept: 'h-alpha' },
+        { name: 'Oxygen III (O III)', nm: 500.7, colour: 'teal', origin: 'oxygen missing two electrons, in hot, very thin gas', concept: 'oiii' }
       ],
       concept: 'emission-lines'
     })
@@ -321,7 +321,7 @@ describe('Stacking physics and emission lines', () => {
     expect(tab).toMatch(/title="What another hour buys" action=\{<Explain concept="stacking"/)
     expect(tab).toMatch(/<Explain concept="stacking" label="Why stack\?" \/>/)
     expect(tab).toMatch(/<Explain concept="calibration" label="Calibration frames" \/>/)
-    expect(read('src/renderer/components/forecast/IntegrationForecast.tsx')).toMatch(/<FilterLights filters=\{view\.filters\.map\(f => f\.filter\)\} \/>/)
+    expect(read('src/renderer/components/forecast/IntegrationForecast.tsx')).toMatch(/<FilterLights targetId=\{targetId\} filters=\{view\.filters\.filter\(f => f\.rejection !== null\)\.map\(f => f\.filter\)\} \/>/)
     const lights = read('src/renderer/components/forecast/FilterLights.tsx')
     expect(lights).toMatch(/level === 'deep' && lights\.filter\(l => l\.kind === 'narrowband'\)\.length >= 2/)
     expect(lights).toMatch(/<Explain concept="hubble-palette" \/>/)
