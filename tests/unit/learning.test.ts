@@ -417,7 +417,7 @@ describe('The Learn page and the trail', () => {
 
   it('[LRN-025] Given learning is off, When an idea is opened, Then the trail is not added to; and it is kept in this browser only and can be forgotten', () => {
     const ctx = read('src/renderer/contexts/LearningContext.tsx')
-    expect(ctx).toMatch(/if \(level === 'off'\) return\n\s+setTrail/)
+    expect(ctx).toMatch(/if \(level === 'off'\) return\r?\n\s+setTrail/)
     expect(ctx).toMatch(/localStorage\.setItem\(TRAIL_KEY/)
     expect(ctx).toMatch(/localStorage\.removeItem\(TRAIL_KEY\)/)
     expect(ctx).not.toMatch(/invoke\([^)]*trail/i)
