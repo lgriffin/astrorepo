@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
-import { matchEntries, paletteEntries, paletteKeyTarget, targetEntry, type PaletteEntry } from '@shared/command-palette'
+import { conceptEntry, matchEntries, paletteEntries, paletteKeyTarget, targetEntry, type PaletteEntry } from '@shared/command-palette'
 import type { TargetSummary } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { ACTION_ICON, NAV_ICONS } from './nav-icons'
+import { useLearning } from '../../contexts/LearningContext'
 
 const ENTRIES = paletteEntries()
 /** Targets asked of the index per query, and the most shown. */
@@ -23,6 +24,9 @@ function EntryIcon({ entry }: { entry: PaletteEntry }): React.ReactElement {
  */
 export function CommandPalette({ onClose }: { onClose: () => void }): React.ReactElement {
   const navigate = useNavigate()
+  const { library } = useLearning()
+  // Ideas are found by typing only, so the list before any typing stays the places.
+  const concepts = useMemo(() => library.concepts.map(conceptEntry), [library])
   const [query, setQuery] = useState('')
   // Targets found for one query; shown only while that query is still the one typed.
   const [found, setFound] = useState<{ query: string; targets: PaletteEntry[] }>({ query: '', targets: [] })
@@ -63,8 +67,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }): React.Reac
   const shown = useMemo(() => {
     if (!query.trim()) return ENTRIES
     const targets = found.query === query.trim() ? found.targets : []
-    return matchEntries([...ENTRIES, ...matchEntries(targets, query, TARGETS_SHOWN)], query, 14)
-  }, [query, found])
+    return matchEntries([...ENTRIES, ...concepts, ...matchEntries(targets, query, TARGETS_SHOWN)], query, 14)
+  }, [query, found, concepts])
   const active = Math.min(index, Math.max(0, shown.length - 1))
 
   const open = (entry: PaletteEntry): void => {

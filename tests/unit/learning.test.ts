@@ -2,8 +2,9 @@ import fs from 'fs'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
-import { FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
-import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
+import { CONCEPT_PLACES, TRAIL_MAX, parseTrail, withOpened, FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
+import { SETTINGS_SECTIONS, locate } from '../../src/shared/navigation'
+import { conceptEntry } from '../../src/shared/command-palette'
 import { angleText, latitudeText, toFilterLightView, toLookbackStopView, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../../src/main/adapters/learning-presenter'
 import { explainHeaders, filterLight, lookbackStrip, objectNumbers, tonightSky } from '@astro/domain'
 
@@ -379,5 +380,63 @@ describe('Sky geometry and the gallery', () => {
     expect(off).toBeGreaterThan(-1)
     expect(off).toBeLessThan(src.indexOf("invoke<LookbackStopView[]>('learning:lookback'"))
     expect(src).toMatch(/if \(level === 'off' \|\| stops\.length === 0\) return null/)
+  })
+})
+
+describe('The Learn page and the trail', () => {
+  it('[LRN-024] Given the knowledge base, When the Learn page lists it, Then every idea sits under one theme and links to a page of the app where it shows', () => {
+    const view = toLearningLibraryView()
+    const listed = view.themes.flatMap(t => t.concepts)
+    expect([...listed].sort()).toEqual(view.concepts.map(c => c.id).sort())
+    expect(view.themes.map(t => t.title)).toEqual(['Distance and time', 'Light and colour', 'How stars live', 'The sky above you', 'Your camera and your data'])
+    for (const c of view.concepts) {
+      const place = CONCEPT_PLACES[c.id]
+      expect(place, c.id).toBeDefined()
+      expect(locate(place.to)?.detail, `${c.id} → ${place.to}`).toBe(false)
+    }
+    expect(Object.keys(CONCEPT_PLACES).sort()).toEqual(view.concepts.map(c => c.id).sort())
+    expect(locate('/learn')).toMatchObject({ place: { id: 'insights' }, item: { id: 'learn' }, detail: false })
+    const page = read('src/renderer/pages/Learn.tsx')
+    expect(page).toMatch(/See it: \{place\.label\}/)
+    expect(read('src/renderer/App.tsx')).toMatch(/<Route path="\/learn" element=\{<Learn \/>\} \/>/)
+  })
+
+  it('[LRN-025] Given ideas opened one after another, When the trail is kept, Then the latest comes first, each once, no more than the limit, with no counts', () => {
+    let trail: string[] = []
+    for (const id of ['stacking', 'noise', 'stacking', 'airmass']) trail = withOpened(trail, id)
+    expect(trail).toEqual(['airmass', 'stacking', 'noise'])
+    const long = Array.from({ length: TRAIL_MAX + 5 }, (_, i) => `c${i}`).reduce<string[]>((t, id) => withOpened(t, id), [])
+    expect(long).toHaveLength(TRAIL_MAX)
+    expect(long[0]).toBe(`c${TRAIL_MAX + 4}`)
+    expect(parseTrail(JSON.stringify(['a', 'b', 'a', 3, null]))).toEqual(['a', 'b'])
+    expect(parseTrail('not json')).toEqual([])
+    expect(parseTrail('{"a":1}')).toEqual([])
+    expect(parseTrail(null)).toEqual([])
+    expect(parseTrail(JSON.stringify(Array.from({ length: TRAIL_MAX + 3 }, (_, i) => `x${i}`)))).toHaveLength(TRAIL_MAX)
+  })
+
+  it('[LRN-025] Given learning is off, When an idea is opened, Then the trail is not added to; and it is kept in this browser only and can be forgotten', () => {
+    const ctx = read('src/renderer/contexts/LearningContext.tsx')
+    expect(ctx).toMatch(/if \(level === 'off'\) return\n\s+setTrail/)
+    expect(ctx).toMatch(/localStorage\.setItem\(TRAIL_KEY/)
+    expect(ctx).toMatch(/localStorage\.removeItem\(TRAIL_KEY\)/)
+    expect(ctx).not.toMatch(/invoke\([^)]*trail/i)
+    expect(read('src/renderer/components/ui/Explain.tsx')).toMatch(/if \(open && concept\(shown\)\) remember\(shown\)/)
+    expect(read('src/renderer/pages/Learn.tsx')).toMatch(/onClick=\{forget\}/)
+  })
+
+  it('[LRN-026] Given the command palette, When an idea’s name is typed, Then it offers the idea on the Learn page', () => {
+    expect(conceptEntry({ id: 'position-angle', title: 'Position angle' })).toEqual({
+      id: 'concept:position-angle',
+      label: 'Position angle',
+      where: 'Learn',
+      to: '/learn?concept=position-angle',
+      kind: 'concept',
+      icon: 'learn',
+      keywords: 'position angle'
+    })
+    const palette = read('src/renderer/components/common/CommandPalette.tsx')
+    expect(palette).toMatch(/library\.concepts\.map\(conceptEntry\)/)
+    expect(palette).toMatch(/matchEntries\(\[\.\.\.ENTRIES, \.\.\.concepts,/)
   })
 })

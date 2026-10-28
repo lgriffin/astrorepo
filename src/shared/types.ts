@@ -2234,6 +2234,8 @@ export interface ObjectPrimerView {
 /** The whole knowledge base, read once per screen. */
 export interface LearningLibraryView {
   concepts: ConceptView[]
+  /** The Learn page's themes, each with its concepts in order (LRN-024). */
+  themes: { id: string; title: string; concepts: string[] }[]
   primers: ObjectPrimerView[]
   sources: LearningSourceView[]
 }

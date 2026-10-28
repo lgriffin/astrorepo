@@ -12,7 +12,7 @@ import { useLearning } from '../../contexts/LearningContext'
  * never cuts it off; it opens above the button when there is more room there, and scrolling shuts it. Hidden when learning is off, or when the concept is not in the knowledge base.
  */
 export function Explain({ concept: id, label = 'Why?' }: { concept: string; label?: string }): React.ReactElement | null {
-  const { level, concept, source, openSource } = useLearning()
+  const { level, concept, source, openSource, remember } = useLearning()
   const [open, setOpen] = useState(false)
   const [shown, setShown] = useState(id)
   // Where the panel sits in the window: towards the side with more room, so it never runs off screen.
@@ -46,6 +46,11 @@ export function Explain({ concept: id, label = 'Why?' }: { concept: string; labe
       window.removeEventListener('resize', onScroll)
     }
   }, [open, id])
+
+  // Each idea read joins the trail on the Learn page (LRN-025).
+  useEffect(() => {
+    if (open && concept(shown)) remember(shown)
+  }, [open, shown, concept, remember])
 
   const root = concept(id)
   const current = concept(shown) ?? root

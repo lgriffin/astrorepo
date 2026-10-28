@@ -1,4 +1,4 @@
-import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type FilterLight, type LookbackStop, type SetupNumbers, type TonightSky } from '@astro/domain'
+import { CONCEPTS, CONCEPT_THEMES, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ConceptTheme, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type FilterLight, type LookbackStop, type SetupNumbers, type TonightSky } from '@astro/domain'
 import type { ConceptView, FilterLightView, LookbackStopView, FitsLearningView, FitsSetupView, TonightSkyView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
 
 /** A source as the page names it; its address stays here and is opened by id (LRN-005). */
@@ -12,10 +12,12 @@ const toPrimerView = (p: ObjectPrimer): ObjectPrimerView => ({ ...p, concepts: [
 export function toLearningLibraryView(
   concepts: readonly Concept[] = CONCEPTS,
   primers: Readonly<Record<string, ObjectPrimer>> = PRIMERS,
-  sources: readonly LearningSource[] = LEARNING_SOURCES
+  sources: readonly LearningSource[] = LEARNING_SOURCES,
+  themes: readonly ConceptTheme[] = CONCEPT_THEMES
 ): LearningLibraryView {
   return {
     concepts: concepts.map(toConceptView),
+    themes: themes.map(t => ({ id: t.id, title: t.title, concepts: [...t.concepts] })),
     primers: Object.values(primers).map(toPrimerView),
     sources: sources.map(toSourceView)
   }

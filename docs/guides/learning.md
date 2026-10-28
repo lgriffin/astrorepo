@@ -64,6 +64,15 @@ In a **mosaic**, **Why?** explains right ascension and declination, why the grid
 flat plane touching the sky (the tangent plane) and what position angle measures. On the
 **Messier mosaic**, **Who was Messier?** tells why a comet hunter made the list.
 
+## Learn
+
+**Insights → Learn** gathers every idea the app explains under five themes: distance and time,
+light and colour, how stars live, the sky above you, and your camera and your data. Each idea is
+shown in full, with the ideas to read next, its sources and a **See it** link to where it shows up
+in your own data. **Ideas you have opened** lists what you have read with a **Why?** or on the
+page, most recent first; it stays on this computer, counts nothing, and **Forget them** empties it.
+Type an idea's name in **Go to** (Ctrl+K) to open it here.
+
 ## Why?
 
 A **Why?** beside a number or a word opens the idea behind it: a one-line answer, and at the deep
