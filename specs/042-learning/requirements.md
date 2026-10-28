@@ -45,3 +45,22 @@ slice being built has requirements here (charter III).
 | LRN-008 | Ubiquitous | The system shall show a target with a published distance as the middle of its published range in light years, with the range when its ends differ, marked approximate where the source is, and name the source. |
 | LRN-009 | Ubiquitous | The system shall work out a target's true width as its distance times its angular size in radians, and show none when the catalogue gives no angular size, and show nothing in numbers for a target with no published distance. |
 | LRN-010 | Ubiquitous | The system shall say when a target's light set out: as a calendar year when it set out within the last 5,200 years, and otherwise as before the earliest dated milestone it is older than, citing that milestone's source. |
+
+## L3: reading your FITS headers
+
+- A dictionary of about fifty common header keywords in `packages/domain/src/learning-fits.ts`:
+  what each means and why it matters, filed once under its family for numbered ones (NAXISn,
+  CRVALn, CDi_j), marked as part of the FITS standard or a capture-software convention.
+- The headers table on a file's page gains a **What it means** column, and the page a
+  **Your setup** card: image scale, field of view, sampling against 2″ seeing, and the scale a
+  plate solve measured. Over `learning:fits`, which takes the header lines the page already holds.
+- XPIXSZ is taken to include any binning, as the MaxIm DL convention most capture software
+  follows defines it; not yet checked against Seestar or Vespera files.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LRN-011 | Ubiquitous | The system shall explain each header keyword the dictionary holds, numbered keywords by their family and each keyword once, with what it means, why it matters at the deep level, a concept to follow where there is one, and whether the FITS standard defines it or it is a capture-software convention, citing the FITS standard or the FITS article accordingly. |
+| LRN-012 | Ubiquitous | The system shall work out a file's image scale as 206.265 × XPIXSZ ÷ FOCALLEN arcseconds per pixel, its field from NAXIS1 and NAXIS2, and its sampling against 2″ seeing (under-sampled above half the seeing, over-sampled below a third of it), and show no setup when the focal length or pixel size is missing or not positive. |
+| LRN-013 | Event | When a file has been plate solved, the system shall show the image scale the solve measured, from CDELT1 or otherwise the first column of the CD matrix. |
+| LRN-014 | State | While the learning level is off, the system shall not explain a file's header or show its setup. |
+

@@ -463,6 +463,9 @@ export const schemas = {
   'learning:library': z.object({}).optional(),
   'learning:open-source': z.object({ source_id: z.string().min(1).max(80) }),
   'learning:object': z.object({ target_id: id }),
+  'learning:fits': z.object({
+    headers: z.array(z.object({ keyword: z.string().max(80), value: z.string().max(1000).nullable() })).max(5000)
+  }),
 
   'vespera:settings': z.object({}).optional(),
 

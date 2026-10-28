@@ -4,6 +4,8 @@ import { formatSize } from '../../utils/format'
 import { Inspector } from './Inspector'
 import type { FitsFileDetail as FitsFileDetailType, FitsHeaderRow, QualityMetrics } from '@shared/types'
 import { Loading, Button } from '../ui'
+import { useLearning } from '../../contexts/LearningContext'
+import { KeywordMeaning, YourSetup, useHeaderLearning } from './HeaderLearning'
 
 interface FileDetailProps {
   fileId: string
@@ -30,6 +32,9 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
   const [quality, setQuality] = useState<QualityMetrics | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [computingStats, setComputingStats] = useState(false)
+  const { level } = useLearning()
+  const { learning, meaning } = useHeaderLearning(headers)
+  const explaining = level !== 'off' && learning !== null
 
   useEffect(() => {
     invoke<FitsFileDetailType>('fits:get-file', { id: fileId }).then(setFile)
@@ -262,6 +267,8 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
           )}
         </div>
 
+        <YourSetup learning={learning} />
+
         <div>
           <button
             onClick={() => setShowHeaders(!showHeaders)}
@@ -287,6 +294,7 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
                       <th className="px-2 py-1 w-24">Keyword</th>
                       <th className="px-2 py-1">Value</th>
                       <th className="px-2 py-1">Comment</th>
+                      {explaining && <th className="px-2 py-1">What it means</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-astro-border/30">
@@ -296,6 +304,11 @@ export function FileDetail({ fileId, onClose }: FileDetailProps): React.ReactEle
                         <td className="px-2 py-0.5 text-astro-accent">{h.keyword}</td>
                         <td className="px-2 py-0.5 text-astro-text">{h.value ?? ''}</td>
                         <td className="px-2 py-0.5 text-astro-muted">{h.comment ?? ''}</td>
+                        {explaining && (
+                          <td className="px-2 py-0.5">
+                            <KeywordMeaning entry={meaning(h.keyword)} />
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

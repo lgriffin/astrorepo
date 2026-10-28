@@ -2252,3 +2252,36 @@ export interface ObjectNumbersView {
   lookback: string
   sources: string[]
 }
+
+/** One header keyword explained (specs/042-learning, L3, LRN-011). */
+export interface FitsKeywordView {
+  /** The keyword as the file writes it. */
+  keyword: string
+  meaning: string
+  why: string
+  concept: string | null
+  /** True when the FITS standard defines it; false for a capture-software convention. */
+  standard: boolean
+}
+
+/** The optics in a file's header, worked out (LRN-012), in words ready to show. */
+export interface FitsSetupView {
+  /** "400 mm focal length, 3.76 µm pixels" */
+  inputs: string
+  /** "1.94″ per pixel" */
+  scale: string
+  /** "1° 39′ × 1° 6′", when the frame's size is known. */
+  field: string | null
+  sampling: 'under' | 'matched' | 'over'
+  /** What the sampling means against the seeing assumed. */
+  samplingText: string
+}
+
+/** A file's header read for a learner (`learning:fits`). */
+export interface FitsLearningView {
+  keywords: FitsKeywordView[]
+  setup: FitsSetupView | null
+  /** "A plate solve measured 1.95″ per pixel.", when the file is solved. */
+  solved: string | null
+}
+

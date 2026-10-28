@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
 import { FULL_MOON_ARCMIN, LEARNING_SETTING_KEY, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
-import { toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
-import { objectNumbers } from '@astro/domain'
+import { angleText, toFitsLearningView, toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
+import { explainHeaders, objectNumbers } from '@astro/domain'
 
 const root = path.resolve(__dirname, '../..')
 const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -152,3 +152,65 @@ describe('Learning while you observe', () => {
     expect(read('src/main/ipc/handlers.ts')).toMatch(/handle\('learning:object'[\s\S]{0,160}\.objectNumbers\(args\.target_id\)/)
   })
 })
+
+describe('Your FITS header, in words', () => {
+  it('[LRN-012] Given angles on the sky, When written, Then arcminutes below two degrees and degrees with arcminutes above', () => {
+    expect(angleText(48.4)).toBe('48′')
+    expect(angleText(119.4)).toBe('119′')
+    expect(angleText(120)).toBe('2°')
+    expect(angleText(126.2)).toBe('2° 6′')
+    expect(angleText(179.6)).toBe('3°')
+  })
+
+  it('[LRN-011] [LRN-012] Given a Seestar-like header, When shown, Then its keywords, setup and sampling read in words', () => {
+    const v = toFitsLearningView(explainHeaders([
+      { keyword: 'NAXIS1', value: '1080' },
+      { keyword: 'NAXIS2', value: '1920' },
+      { keyword: 'FOCALLEN', value: '250' },
+      { keyword: 'XPIXSZ', value: '2.9' },
+      { keyword: 'GAIN', value: '80' }
+    ]))
+    expect(v.keywords.map(k => k.keyword)).toEqual(['NAXIS1', 'NAXIS2', 'FOCALLEN', 'XPIXSZ', 'GAIN'])
+    const gain = v.keywords[4]
+    expect(gain.concept).toBe('noise')
+    expect(gain.standard).toBe(false)
+    expect(gain.meaning).toMatch(/amplification/)
+    expect(gain.why).toMatch(/read noise/)
+    expect(v.keywords[0].standard).toBe(true)
+    expect(v.setup).toEqual({
+      inputs: '250 mm focal length, 2.9 µm pixels',
+      scale: '2.39″ per pixel',
+      field: '43′ × 77′',
+      sampling: 'under',
+      samplingText: 'Under-sampled: fewer than two pixels span a star’s blur, so stars can look square and fine detail is lost. (Against 2″ seeing, typical at an amateur site.)'
+    })
+    expect(v.solved).toBeNull()
+  })
+
+  it('[LRN-012] [LRN-013] Given finer sampling and a solve, When shown, Then the words follow and the measured scale is given', () => {
+    const matched = toFitsLearningView(explainHeaders([{ keyword: 'FOCALLEN', value: '1000' }, { keyword: 'XPIXSZ', value: '4.5' }, { keyword: 'CDELT1', value: '0.000255' }]))
+    expect(matched.setup!.sampling).toBe('matched')
+    expect(matched.setup!.samplingText).toMatch(/^Well matched: two to three pixels/)
+    expect(matched.setup!.field).toBeNull()
+    expect(matched.solved).toBe('A plate solve measured 0.92″ per pixel.')
+    const over = toFitsLearningView(explainHeaders([{ keyword: 'FOCALLEN', value: '2000' }, { keyword: 'XPIXSZ', value: '3.76' }]))
+    expect(over.setup!.sampling).toBe('over')
+    expect(over.setup!.samplingText).toMatch(/^Over-sampled: more than three pixels/)
+    expect(over.setup!.inputs).toBe('2000 mm focal length, 3.76 µm pixels')
+    expect(toFitsLearningView(explainHeaders([])).setup).toBeNull()
+  })
+
+  it('[LRN-014] Given learning is off, When a file opens, Then its header is not explained and no setup shows', () => {
+    const src = read('src/renderer/components/fits/HeaderLearning.tsx')
+    const off = src.indexOf("if (level === 'off' || headers.length === 0) return")
+    expect(off).toBeGreaterThan(-1)
+    expect(off).toBeLessThan(src.indexOf("invoke<FitsLearningView>('learning:fits'"))
+    expect(src).toMatch(/if \(!entry \|\| level === 'off'\) return null/)
+    expect(src).toMatch(/if \(level === 'off' \|\| !learning \|\| \(!learning\.setup && !learning\.solved\)\) return null/)
+    const page = read('src/renderer/components/fits/FileDetail.tsx')
+    expect(page).toMatch(/const explaining = level !== 'off' && learning !== null/)
+    expect(page).toMatch(/<YourSetup learning=\{learning\} \/>/)
+    expect(page).toMatch(/\{explaining && <th className="px-2 py-1">What it means<\/th>\}/)
+  })
+})
+
