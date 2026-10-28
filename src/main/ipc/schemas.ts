@@ -460,6 +460,9 @@ export const schemas = {
   'experiment:export': z.object({ experiment_id: id, format: z.enum(['json', 'md']) }),
   'forecast:mosaic': z.object({ workspace_id: id, revision: z.number().int().min(1).optional() }),
 
+  'learning:library': z.object({}).optional(),
+  'learning:open-source': z.object({ source_id: z.string().min(1).max(80) }),
+
   'vespera:settings': z.object({}).optional(),
 
   'vespera-ingest:scan': z.object({}).optional(),

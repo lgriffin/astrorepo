@@ -9,6 +9,7 @@ import { FilesTab } from '../components/target/FilesTab'
 import { NotesTab } from '../components/target/NotesTab'
 import { TargetAside } from '../components/target/TargetAside'
 import { SkyGeometryCard } from '../components/target/SkyGeometryCard'
+import { PhysicsCard } from '../components/target/PhysicsCard'
 import { invoke } from '../hooks/useIPC'
 import { TARGET_TABS, targetLink, targetTabFrom, type TargetTab } from '@shared/navigation'
 import type { Target, TargetAlias, CatalogueEntry, TargetHomeData, TargetObservationData, TargetDiscoveryView } from '@shared/types'
@@ -124,6 +125,7 @@ export function TargetDetail(): React.ReactElement {
               >
                 <p className="text-sm text-astro-text">{nextStep(discovery)}</p>
               </Card>
+              <PhysicsCard target={target} />
               <SkyGeometryCard targetId={target.id} />
               <Card title="Workflow">
                 <WorkflowStepper

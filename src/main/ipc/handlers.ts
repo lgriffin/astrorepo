@@ -34,10 +34,12 @@ import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../ad
 import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { fromRuleView, toProjectChange, toProjectSummaries, toProjectView } from '../adapters/project-presenter'
 import { toIntegrationView, toMosaicIntegrationView } from '../adapters/forecast-presenter'
+import { toLearningLibraryView } from '../adapters/learning-presenter'
 import { toComparisonView, toExperimentChange, toExperimentView, toRunView } from '../adapters/experiment-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
 import { toMessierMosaicView, toMessierPictureView } from '../adapters/messier-presenter'
+import { sourceUrl } from '@astro/domain'
 import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefusedError, JobStateError, MessierRefusedError, PictureRefusedError, FORECAST_MINUTES } from '@astro/application'
 import { jobs, kickJobs } from '../jobs-host'
 import { ingestIdentify, ingestName, ingestPause, ingestPreview, ingestProgress, ingestResume, ingestScan, ingestTransfer } from '../vespera-ingest-host'
@@ -995,6 +997,16 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('forecast:mosaic', validated('forecast:mosaic', async (args) => {
     const m = await sky().integration.mosaic(args.workspace_id, args.revision)
     return m ? toMosaicIntegrationView(m) : null
+  }))
+
+  // Learning while you observe (specs/042-learning): the knowledge base, and its sources opened by
+  // id only, so the page can never ask for an address of its own (LRN-005).
+  handle('learning:library', async () => toLearningLibraryView())
+  handle('learning:open-source', validated('learning:open-source', async (args) => {
+    const url = sourceUrl(args.source_id)
+    if (!url) return { opened: false }
+    await desktop.openExternal(url)
+    return { opened: true }
   }))
 
   // The experiment lab (specs/040-experiment-lab): the work folder and read-only folders come from

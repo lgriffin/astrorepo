@@ -2198,3 +2198,40 @@ export interface ExperimentComparisonView {
 
 export type ExperimentChangeView = { ok: true; id: string } | { ok: false; problems: string[] }
 export type ExperimentRunView = { ok: true; queued: string } | { ok: false; problems: string[] }
+
+/** One source of a fact (specs/042-learning). */
+export interface LearningSourceView {
+  id: string
+  title: string
+  publisher: string
+}
+
+export interface ConceptView {
+  id: string
+  title: string
+  short: string
+  detail: string
+  formula: string | null
+  related: string[]
+  sources: string[]
+}
+
+export interface ObjectPrimerView {
+  kind: string
+  title: string
+  summary: string
+  shines: string
+  life: string
+  inPicture: string
+  imaging: string
+  caution: string | null
+  concepts: string[]
+  sources: string[]
+}
+
+/** The whole knowledge base, read once per screen. */
+export interface LearningLibraryView {
+  concepts: ConceptView[]
+  primers: ObjectPrimerView[]
+  sources: LearningSourceView[]
+}

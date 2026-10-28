@@ -8,6 +8,7 @@ import { GradingSettings } from '../components/target/GradingSettings'
 import { WeatherSettings } from '../components/weather/WeatherSettings'
 import { CompanionSettings } from '../components/companion/CompanionSettings'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings'
+import { LearningSettings } from '../components/settings/LearningSettings'
 import { EquipmentSettings } from '../components/settings/EquipmentSettings'
 import { Button, Checkbox, Field, Input, Loading } from '../components/ui'
 import { SETTINGS_GROUPS, SETTINGS_SECTIONS, settingsLink, settingsSectionFrom, type SettingsSection } from '@shared/navigation'
@@ -65,6 +66,7 @@ const SECTION_VIEWS: Record<SettingsSection, () => React.ReactElement> = {
   'run-window': () => <RunWindowSettings />,
   grading: () => <GradingSettings />,
   appearance: () => <AppearanceSettings />,
+  learning: () => <LearningSettings />,
   companions: () => <CompanionSettings />,
   reset: () => <ResetSection />
 }
