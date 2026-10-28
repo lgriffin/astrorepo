@@ -140,6 +140,15 @@ export function Dashboard(): React.ReactElement {
 
   const { shoot, ahead, process } = splitHomeActions(nextActions)
   const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
+  // Tonight's darkness is worked out for the site and night the plan uses, and agrees with how dark the plan found it.
+  const planNight = plan && plan !== FAILED && plan.status === 'ok' ? plan.tonight?.night ?? plan.night ?? null : null
+  const tonightSite = plan && plan !== FAILED && plan.status === 'ok' && planNight
+    ? {
+        latitudeDeg: plan.site.latitudeDeg,
+        night: planNight,
+        planned: !plan.tonight ? ('short' as const) : plan.tonight.darkness === 'astronomical' ? ('full' as const) : ('nautical' as const)
+      }
+    : null
 
   return (
     <PageContainer
@@ -150,7 +159,7 @@ export function Dashboard(): React.ReactElement {
       <div className="space-y-4">
         <SetupCard />
 
-        <TonightHero summary={summary} loading={skies === null || plan === null} />
+        <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {actionsCard(

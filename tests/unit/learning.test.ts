@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
 import { FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
-import { angleText, toFitsLearningView, toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
-import { explainHeaders, objectNumbers } from '@astro/domain'
+import { angleText, latitudeText, toFitsLearningView, toLearningLibraryView, toObjectNumbersView, toTonightSkyView } from '../../src/main/adapters/learning-presenter'
+import { explainHeaders, objectNumbers, tonightSky } from '@astro/domain'
 
 const root = path.resolve(__dirname, '../..')
 const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -247,6 +247,58 @@ describe('Your FITS header, in words', () => {
     const page = read('src/renderer/components/fits/FileDetail.tsx')
     expect(page.indexOf('setHeaders([])')).toBeLessThan(page.indexOf("'fits:get-headers'"))
     expect(page).toMatch(/if \(current\) setHeaders\(r\.headers\)/)
+  })
+})
+
+describe('Why tonight looks like this', () => {
+  it('[LRN-015] [LRN-016] Given nights through the year, When told in words, Then the Sun’s depth, the darkness and the change read plainly', () => {
+    expect(latitudeText(53.3)).toBe('53.3° N')
+    expect(latitudeText(-33.86)).toBe('33.9° S')
+    expect(latitudeText(0)).toBe('0.0° N')
+    expect(toTonightSkyView(tonightSky(53.3, '2026-10-28'))).toEqual({
+      darkness: 'full',
+      text: 'At 53.3° N on 28 Oct, the Sun sinks to about 51° below your horizon at its lowest, past the 18° that full darkness needs.',
+      change: 'Nights stay fully dark until around 15 May.'
+    })
+    expect(toTonightSkyView(tonightSky(53.3, '2026-06-21'))).toEqual({
+      darkness: 'nautical',
+      text: 'At 53.3° N on 21 Jun, the Sun gets only about 13° below your horizon at its lowest, short of the 18° that full darkness needs: the sky reaches astronomical twilight but never full darkness.',
+      change: 'Fully dark nights return around 30 Jul.'
+    })
+    expect(toTonightSkyView(tonightSky(58, '2026-06-21')).text).toBe('At 58.0° N on 21 Jun, the Sun gets only about 8° below your horizon at its lowest, so the sky gets no darker than nautical twilight.')
+    expect(toTonightSkyView(tonightSky(62, '2026-06-21')).text).toBe('At 62.0° N on 21 Jun, the Sun gets only about 4° below your horizon at its lowest, so civil twilight lasts all night.')
+    expect(toTonightSkyView(tonightSky(70, '2026-06-21')).text).toBe('At 70.0° N on 21 Jun, the Sun stays above your horizon all night: the midnight sun.')
+    expect(toTonightSkyView(tonightSky(-33.9, '2026-12-21')).change).toBeNull()
+    // Just short of a threshold the depth rounds down, so it never reads as the depth it lacks.
+    const edge = { latitudeDeg: 53.3, night: '2026-08-01', lowestSunDeg: 17.7, darkness: 'nautical' as const, fullDarkReturns: '2026-08-02', fullDarkEnds: null }
+    expect(toTonightSkyView(edge).text).toMatch(/about 17° below/)
+    expect(toTonightSkyView({ ...edge, lowestSunDeg: 18.6, darkness: 'full', fullDarkReturns: null }).text).toMatch(/about 19° below/)
+  })
+
+  it('[LRN-017] Given Home and the Sky planner, When learning is on, Then tonight’s dark, moon, bright-moon note, best targets, twilight and seasons each offer their idea', () => {
+    const hero = read('src/renderer/components/cockpit/TonightHero.tsx')
+    expect(hero).toMatch(/concept="twilight">/)
+    expect(hero).toMatch(/<Fact label="Moon" concept="moon-phase">/)
+    expect(hero).toMatch(/\/\^The moon is\/\.test\(n\) && <> <Explain concept="moonlight" \/><\/>/)
+    expect(hero).toMatch(/Best to shoot <Explain concept="airmass"/)
+    expect(hero).toMatch(/\{site && <WhyTonight site=\{site\} \/>\}/)
+    const planner = read('src/renderer/pages/SkyPlanner.tsx')
+    expect(planner).toMatch(/Twilight times <Explain concept="twilight" \/>/)
+    expect(planner).toMatch(/Seasons for targets with work left <Explain concept="seasons" \/>/)
+    const home = read('src/renderer/pages/Dashboard.tsx')
+    expect(home).toMatch(/site=\{tonightSite\}/)
+    // The plan's own night and judgement of tonight are passed on, never the renderer's calendar date.
+    expect(home).toMatch(/plan\.tonight\?\.night \?\? plan\.night \?\? null/)
+    expect(home).not.toMatch(/toLocaleDateString/)
+    expect(home).toMatch(/planned: !plan\.tonight \? \('short' as const\)/)
+  })
+
+  it('[LRN-017] Given learning is off, When Home opens, Then tonight’s darkness is not worked out or shown', () => {
+    const src = read('src/renderer/components/cockpit/WhyTonight.tsx')
+    const off = src.indexOf("if (level === 'off') return")
+    expect(off).toBeGreaterThan(-1)
+    expect(off).toBeLessThan(src.indexOf("invoke<TonightSkyView>('learning:tonight'"))
+    expect(src).toMatch(/if \(level === 'off' \|\| !sky\) return null/)
   })
 })
 

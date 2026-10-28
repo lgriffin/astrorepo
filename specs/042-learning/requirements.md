@@ -64,3 +64,18 @@ slice being built has requirements here (charter III).
 | LRN-013 | Event | When a file has been plate solved, the system shall show the image scale the solve measured, from the first column of the CD matrix when it has one (as the sky overlay reads it) and otherwise from CDELT1, the last card of a repeated keyword counting. |
 | LRN-014 | State | While the learning level is off, the system shall not explain a file's header or show its setup. |
 
+## L4: why tonight looks like this
+
+- How far the Sun sinks below the user's horizon tonight, from the site's latitude and the date
+  (`packages/domain/src/learning-sky.ts`, the Sun's declination by the cosine approximation the
+  Wikipedia article "Position of the Sun" gives, good to about a degree), and so how dark the night
+  gets, with when that changes. Shown under Tonight on Home over `learning:tonight`.
+- Why? beside tonight's dark window (twilight), the Moon (its phases), a bright-moon note
+  (moonlight), the best targets (airmass), and on the Sky planner beside twilight times and seasons.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LRN-015 | Ubiquitous | The system shall work out how far below the horizon the Sun gets at its lowest tonight at the user's latitude, as 90° less the size of latitude plus the Sun's declination (−23.44° × cos(360° ÷ 365 × (day of year + 10))), and say whether that gives full darkness (18° or more), astronomical twilight at best (12° to 18°), nautical twilight at best (6° to 12°) or civil twilight all night, or the midnight sun when the Sun stays up; for the forward plan's own night, keeping to how dark the plan found it, and showing a depth short of a threshold rounded down. |
+| LRN-016 | Ubiquitous | The system shall say, looking up to a year ahead, when fully dark nights return after a night short of full darkness, or end after a fully dark night, and say nothing when they never change. |
+| LRN-017 | Ubiquitous | The system shall offer the idea behind tonight's dark window, the Moon's phase, a bright-moon note, the height of the best targets, twilight times and target seasons, and while learning is off shall not work out or show tonight's darkness. |
+

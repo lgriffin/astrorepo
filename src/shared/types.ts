@@ -1086,6 +1086,8 @@ export type ForwardPlanView =
   | {
       status: 'ok'
       site: { latitudeDeg: number; longitudeDeg: number }
+      /** The night the plan is for, worked out at the site, whether or not it has a dark window. */
+      night?: string
       /** Null when the sun never gets 12° below the horizon tonight. */
       tonight: TonightView | null
       closing: PlanTargetView[]
@@ -2283,5 +2285,14 @@ export interface FitsLearningView {
   setup: FitsSetupView | null
   /** "A plate solve measured 1.95″ per pixel.", when the file is solved. */
   solved: string | null
+}
+
+/** Why tonight is as dark as it is (specs/042-learning, L4), in words ready to show. */
+export interface TonightSkyView {
+  darkness: 'full' | 'nautical' | 'civil' | 'none'
+  /** "At 53.3° N on 28 Oct, the Sun sinks to about 50° below your horizon at its lowest, …" */
+  text: string
+  /** When that changes: "Fully dark nights return around 12 Aug.", or null. */
+  change: string | null
 }
 

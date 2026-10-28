@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { COMPANION_SCREENS, PALETTE_IDS, REFERENCE_SITES } from '@astro/domain'
+import { COMPANION_SCREENS, PALETTE_IDS, REFERENCE_SITES, isCalendarDate } from '@astro/domain'
 import { GALLERY_VIEW_WIDTH } from '@shared/gallery'
 import { HEADER_LINES_MAX, HEADER_VALUE_MAX } from '@shared/learning'
 
@@ -464,6 +464,11 @@ export const schemas = {
   'learning:library': z.object({}).optional(),
   'learning:open-source': z.object({ source_id: z.string().min(1).max(80) }),
   'learning:object': z.object({ target_id: id }),
+  'learning:tonight': z.object({
+    latitude_deg: z.number().min(-90).max(90),
+    night: z.string().refine(isCalendarDate, 'Expected a calendar date, YYYY-MM-DD'),
+    planned: z.enum(['full', 'nautical', 'short']).optional()
+  }),
   'learning:fits': z.object({
     headers: z.array(z.object({ keyword: z.string().max(80), value: z.string().max(HEADER_VALUE_MAX).nullable() })).max(HEADER_LINES_MAX)
   }),

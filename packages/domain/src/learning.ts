@@ -137,6 +137,13 @@ export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-dark-current', 'Dark_current_(physics)', 'Dark current (physics)'),
   wiki('wiki-dark-frame', 'Dark-frame_subtraction', 'Dark-frame subtraction'),
   wiki('wiki-air-mass', 'Air_mass_(astronomy)', 'Air mass (astronomy)'),
+  wiki('wiki-twilight', 'Twilight'),
+  wiki('wiki-season', 'Season'),
+  wiki('wiki-axial-tilt', 'Axial_tilt'),
+  wiki('wiki-position-of-the-sun', 'Position_of_the_Sun'),
+  wiki('wiki-midnight-sun', 'Midnight_sun'),
+  wiki('wiki-lunar-phase', 'Lunar_phase'),
+  wiki('wiki-sky-brightness', 'Sky_brightness'),
   {
     id: 'fits-standard',
     title: 'The FITS standard',
@@ -381,6 +388,46 @@ export const CONCEPTS: readonly Concept[] = [
     formula: 'airmass ≈ 1 ÷ sin(altitude)',
     related: ['scattering', 'dust-extinction', 'seeing'],
     sources: ['wiki-air-mass']
+  },
+  {
+    id: 'twilight',
+    title: 'Twilight',
+    short: 'After sunset the sky darkens in stages as the Sun sinks: civil twilight ends at 6° below the horizon, nautical at 12°, astronomical at 18°.',
+    detail:
+      'Even below the horizon the Sun lights the upper air, and that scattered light keeps the sky from being fully dark. Only once the Sun is 18° down is the sky as dark as it gets; faint galaxies and nebulae need that. Nautical darkness, 12° down, is dark enough for bright targets and narrowband imaging.',
+    formula: null,
+    related: ['seasons', 'scattering'],
+    sources: ['wiki-twilight']
+  },
+  {
+    id: 'seasons',
+    title: 'Seasons and the night sky',
+    short: 'Earth’s axis is tilted 23.4°, so through the year the Sun climbs higher or stays lower, changing how long and how dark your nights are.',
+    detail:
+      'In summer your hemisphere leans towards the Sun, which then stays close below the horizon at midnight; far enough north it never gets 18° down and the night is never fully dark. Through the year Earth also moves around its orbit, so the night side faces a different part of the sky: each target has a season, rising about four minutes earlier each night.',
+    formula: 'Sun’s depth at midnight ≈ 90° − |latitude + declination|',
+    related: ['twilight'],
+    sources: ['wiki-season', 'wiki-axial-tilt', 'wiki-position-of-the-sun', 'wiki-midnight-sun']
+  },
+  {
+    id: 'moon-phase',
+    title: 'The Moon’s phases',
+    short: 'The Moon is always half lit by the Sun; its phase is how much of that lit half faces us, going from new to full and back every 29.5 days.',
+    detail:
+      'At new moon the Moon sits near the Sun in our sky, so it is up by day and gone at night: the darkest nights of the month. At full moon it is opposite the Sun, rising at sunset and up all night. Around first quarter it sets near midnight, around last quarter it rises then, so half the night can still be dark.',
+    formula: null,
+    related: ['moonlight'],
+    sources: ['wiki-lunar-phase']
+  },
+  {
+    id: 'moonlight',
+    title: 'Moonlight and the sky',
+    short: 'Moonlight is sunlight reflected off the Moon, and the air scatters it across the whole sky, so a bright Moon washes out faint targets.',
+    detail:
+      'A full Moon brightens the sky background many times over, which buries faint galaxies and reflection nebulae. Emission nebulae shine in a few narrow lines, so a narrowband or dual-band filter that passes only those lines blocks most of the moonlit sky and still lets the target through. Keeping well away from the Moon helps too.',
+    formula: null,
+    related: ['moon-phase', 'scattering', 'emission-lines'],
+    sources: ['wiki-sky-brightness', 'wiki-lunar-phase']
   }
 ]
 

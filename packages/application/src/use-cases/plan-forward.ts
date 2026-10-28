@@ -63,6 +63,8 @@ export type ForwardPlan =
   | {
       status: 'ok'
       site: Site
+      /** The night the plan is for ("2026-10-28"), whether or not it has a dark window. */
+      night?: string
       /** Null when tonight has no dark window at all (the sun never gets 12° down). */
       tonight: TonightPlan | null
       closing: ClosingTarget[]
@@ -204,6 +206,6 @@ export function makePlanForward(
       return { targetId: t.targetId, targetName: t.targetName, months, bestMonth: best?.month ?? null }
     })
 
-    return { status: 'ok', site, tonight, closing, windows, seasons }
+    return { status: 'ok', site, night: tonightDate, tonight, closing, windows, seasons }
   }
 }
