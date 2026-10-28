@@ -2,10 +2,10 @@ import fs from 'fs'
 import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { CATALOGUE_KINDS, OBJECT_KINDS, PRIMERS, SOLAR_CAUTION, primerFor } from '@astro/domain'
-import { FULL_MOON_ARCMIN, LEARNING_SETTING_KEY, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
+import { FULL_MOON_ARCMIN, HEADER_LINES_MAX, HEADER_VALUE_MAX, LEARNING_SETTING_KEY, headerLinesForLearning, SAFETY_CAUTIONS, conceptAtLevel, makeSaveQueue, parseLearningLevel, safetyCaution, sizeAgainstMoon } from '../../src/shared/learning'
 import { SETTINGS_SECTIONS } from '../../src/shared/navigation'
-import { toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
-import { objectNumbers } from '@astro/domain'
+import { angleText, toFitsLearningView, toLearningLibraryView, toObjectNumbersView } from '../../src/main/adapters/learning-presenter'
+import { explainHeaders, objectNumbers } from '@astro/domain'
 
 const root = path.resolve(__dirname, '../..')
 const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -152,3 +152,101 @@ describe('Learning while you observe', () => {
     expect(read('src/main/ipc/handlers.ts')).toMatch(/handle\('learning:object'[\s\S]{0,160}\.objectNumbers\(args\.target_id\)/)
   })
 })
+
+describe('Your FITS header, in words', () => {
+  it('[LRN-012] Given angles on the sky, When written, Then arcminutes below two degrees and degrees with arcminutes above', () => {
+    expect(angleText(48.4)).toBe('48′')
+    expect(angleText(119.4)).toBe('119′')
+    expect(angleText(120)).toBe('2°')
+    expect(angleText(126.2)).toBe('2° 6′')
+    expect(angleText(179.6)).toBe('3°')
+  })
+
+  it('[LRN-011] [LRN-012] Given a Seestar-like header, When shown, Then its keywords, setup and sampling read in words', () => {
+    const v = toFitsLearningView(explainHeaders([
+      { keyword: 'NAXIS1', value: '1080' },
+      { keyword: 'NAXIS2', value: '1920' },
+      { keyword: 'FOCALLEN', value: '250' },
+      { keyword: 'XPIXSZ', value: '2.9' },
+      { keyword: 'GAIN', value: '80' }
+    ]))
+    expect(v.keywords.map(k => k.keyword)).toEqual(['NAXIS1', 'NAXIS2', 'FOCALLEN', 'XPIXSZ', 'GAIN'])
+    const gain = v.keywords[4]
+    expect(gain.concept).toBe('noise')
+    expect(gain.standard).toBe(false)
+    expect(gain.meaning).toMatch(/amplification/)
+    expect(gain.why).toMatch(/read noise/)
+    expect(v.keywords[0].standard).toBe(true)
+    expect(v.setup).toEqual({
+      inputs: '250 mm focal length, 2.9 µm pixels',
+      scale: '2.39″ per pixel',
+      field: '43′ × 77′',
+      sampling: 'under',
+      samplingText: 'Under-sampled: fewer than two pixels span a star’s blur, so stars can look square and fine detail is lost. (Against 2″ seeing, typical at an amateur site.)'
+    })
+    expect(v.solved).toBeNull()
+  })
+
+  it('[LRN-012] [LRN-013] Given finer sampling and a solve, When shown, Then the words follow and the measured scale is given', () => {
+    const matched = toFitsLearningView(explainHeaders([{ keyword: 'FOCALLEN', value: '1000' }, { keyword: 'XPIXSZ', value: '4.5' }, { keyword: 'CDELT1', value: '0.000255' }]))
+    expect(matched.setup!.sampling).toBe('matched')
+    expect(matched.setup!.samplingText).toMatch(/^Well matched: two to three pixels/)
+    expect(matched.setup!.field).toBeNull()
+    expect(matched.solved).toBe('A plate solve measured 0.92″ per pixel.')
+    const over = toFitsLearningView(explainHeaders([{ keyword: 'FOCALLEN', value: '2000' }, { keyword: 'XPIXSZ', value: '3.76' }]))
+    expect(over.setup!.sampling).toBe('over')
+    expect(over.setup!.samplingText).toMatch(/^Over-sampled: more than three pixels/)
+    expect(over.setup!.inputs).toBe('2000 mm focal length, 3.76 µm pixels')
+    expect(toFitsLearningView(explainHeaders([])).setup).toBeNull()
+  })
+
+  it('[LRN-014] Given learning is off, When a file opens, Then its header is not explained and no setup shows', () => {
+    const src = read('src/renderer/components/fits/HeaderLearning.tsx')
+    const off = src.indexOf("if (level === 'off' || headers.length === 0) return")
+    expect(off).toBeGreaterThan(-1)
+    expect(off).toBeLessThan(src.indexOf("invoke<FitsLearningView>('learning:fits'"))
+    expect(src).toMatch(/if \(!entry \|\| level === 'off'\) return null/)
+    expect(src).toMatch(/if \(level === 'off' \|\| !learning \|\| \(!learning\.setup && !learning\.solved\)\) return null/)
+    const page = read('src/renderer/components/fits/FileDetail.tsx')
+    expect(page).toMatch(/const explaining = level !== 'off' && learning !== null/)
+    expect(page).toMatch(/<YourSetup learning=\{learning\} \/>/)
+    expect(page).toMatch(/\{explaining && <th className="px-2 py-1">What it means<\/th>\}/)
+  })
+
+  it('[LRN-011] Given a long header, When sent to be explained, Then notes are left out and long values cut, so it is never refused', () => {
+    const rows = [
+      { keyword: 'COMMENT', value: 'x' },
+      { keyword: 'HISTORY', value: 'y' },
+      { keyword: '  ', value: null },
+      { keyword: ' FOCALLEN ', value: '400' },
+      { keyword: 'LONGSTR', value: 'z'.repeat(5000) },
+      { keyword: 'BLANK', value: null }
+    ]
+    expect(headerLinesForLearning(rows)).toEqual([
+      { keyword: 'FOCALLEN', value: '400' },
+      { keyword: 'LONGSTR', value: 'z'.repeat(HEADER_VALUE_MAX) },
+      { keyword: 'BLANK', value: null }
+    ])
+    const many = Array.from({ length: HEADER_LINES_MAX + 50 }, (_, i) => ({ keyword: `K${i}`, value: '1' }))
+    const sent = headerLinesForLearning(many)
+    expect(sent).toHaveLength(HEADER_LINES_MAX)
+    expect(sent[HEADER_LINES_MAX - 1].keyword).toBe(`K${HEADER_LINES_MAX - 1}`)
+    // Above the FITS parser's 7,200 cards, and the schema takes exactly these limits.
+    expect(HEADER_LINES_MAX).toBeGreaterThan(7200)
+    const schema = read('src/main/ipc/schemas.ts')
+    expect(schema).toMatch(/value: z\.string\(\)\.max\(HEADER_VALUE_MAX\)\.nullable\(\) \}\)\)\.max\(HEADER_LINES_MAX\)/)
+    expect(read('src/renderer/components/fits/HeaderLearning.tsx')).toMatch(/\{ headers: headerLinesForLearning\(headers\) \}/)
+  })
+
+  it('[LRN-011] Given a Why? inside a scrolling table, When it opens, Then its panel is placed against the window and scrolling shuts it', () => {
+    const src = read('src/renderer/components/ui/Explain.tsx')
+    expect(src).toMatch(/className="fixed z-50/)
+    expect(src).toMatch(/addEventListener\('scroll', onScroll, true\)/)
+    expect(src).toMatch(/const down = h - box\.bottom >= box\.top/)
+    // A file switch drops the last file's headers before its own arrive.
+    const page = read('src/renderer/components/fits/FileDetail.tsx')
+    expect(page.indexOf('setHeaders([])')).toBeLessThan(page.indexOf("'fits:get-headers'"))
+    expect(page).toMatch(/if \(current\) setHeaders\(r\.headers\)/)
+  })
+})
+

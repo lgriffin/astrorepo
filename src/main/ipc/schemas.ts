@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { COMPANION_SCREENS, PALETTE_IDS, REFERENCE_SITES } from '@astro/domain'
 import { GALLERY_VIEW_WIDTH } from '@shared/gallery'
+import { HEADER_LINES_MAX, HEADER_VALUE_MAX } from '@shared/learning'
 
 const objectTypes = [
   'galaxy', 'emission_nebula', 'reflection_nebula', 'planetary_nebula', 'dark_nebula',
@@ -463,6 +464,9 @@ export const schemas = {
   'learning:library': z.object({}).optional(),
   'learning:open-source': z.object({ source_id: z.string().min(1).max(80) }),
   'learning:object': z.object({ target_id: id }),
+  'learning:fits': z.object({
+    headers: z.array(z.object({ keyword: z.string().max(80), value: z.string().max(HEADER_VALUE_MAX).nullable() })).max(HEADER_LINES_MAX)
+  }),
 
   'vespera:settings': z.object({}).optional(),
 

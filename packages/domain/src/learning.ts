@@ -126,6 +126,23 @@ export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-wien', 'Wien%27s_displacement_law', "Wien's displacement law"),
   wiki('wiki-seeing', 'Astronomical_seeing'),
   wiki('wiki-lucky-imaging', 'Lucky_imaging'),
+  wiki('wiki-fits', 'FITS'),
+  wiki('wiki-bayer-filter', 'Bayer_filter'),
+  wiki('wiki-demosaicing', 'Demosaicing'),
+  wiki('wiki-plate-scale', 'Plate_scale'),
+  wiki('wiki-nyquist', 'Nyquist%E2%80%93Shannon_sampling_theorem', 'Nyquist–Shannon sampling theorem'),
+  wiki('wiki-gnomonic', 'Gnomonic_projection'),
+  wiki('wiki-shot-noise', 'Shot_noise'),
+  wiki('wiki-snr-imaging', 'Signal-to-noise_ratio_(imaging)', 'Signal-to-noise ratio (imaging)'),
+  wiki('wiki-dark-current', 'Dark_current_(physics)', 'Dark current (physics)'),
+  wiki('wiki-dark-frame', 'Dark-frame_subtraction', 'Dark-frame subtraction'),
+  wiki('wiki-air-mass', 'Air_mass_(astronomy)', 'Air mass (astronomy)'),
+  {
+    id: 'fits-standard',
+    title: 'The FITS standard',
+    publisher: 'NASA FITS Support Office',
+    url: 'https://fits.gsfc.nasa.gov/fits_standard.html'
+  },
   {
     id: 'iau-constellations',
     title: 'The constellations',
@@ -272,7 +289,7 @@ export const CONCEPTS: readonly Concept[] = [
     detail:
       'Pockets of warmer and cooler air bend starlight a little differently from moment to moment, so a point of light becomes a dancing blur. Typical seeing at an amateur site is 1.5 to 3 arcseconds. Very short exposures can freeze moments of good seeing, which is how planets are imaged.',
     formula: null,
-    related: ['solar-system-motion'],
+    related: ['sampling', 'solar-system-motion'],
     sources: ['wiki-seeing', 'wiki-lucky-imaging']
   },
   {
@@ -284,6 +301,86 @@ export const CONCEPTS: readonly Concept[] = [
     formula: null,
     related: ['seeing'],
     sources: ['wiki-comet', 'wiki-asteroid']
+  },
+  {
+    id: 'fits-header',
+    title: 'The FITS header',
+    short: 'A FITS file opens with a header of 80-character lines, each a keyword, a value and a comment, describing the picture that follows.',
+    detail:
+      'FITS was made by astronomers in 1981 so that data could move between observatories and still be read decades later. The standard defines a few keywords, such as the picture’s size and how its pixels are stored; capture software adds many more by convention, such as the exposure, filter and sensor temperature.',
+    formula: null,
+    related: ['wcs', 'image-scale'],
+    sources: ['fits-standard', 'wiki-fits']
+  },
+  {
+    id: 'bayer',
+    title: 'The Bayer pattern',
+    short: 'A colour camera covers its pixels with a grid of red, green and blue filters, so each pixel records only one colour.',
+    detail:
+      'The usual grid repeats a 2 × 2 block of one red, two green and one blue, because our eyes are most sensitive to green. Debayering works out the two missing colours at every pixel from its neighbours. A raw colour frame is therefore a single grey plane until it is debayered, and a hydrogen-alpha nebula falls only on the red quarter of the pixels.',
+    formula: null,
+    related: ['h-alpha'],
+    sources: ['wiki-bayer-filter', 'wiki-demosaicing']
+  },
+  {
+    id: 'image-scale',
+    title: 'Image scale',
+    short: 'Image scale is how much sky one pixel sees, in arcseconds: 206.265 × the pixel size in µm ÷ the focal length in mm.',
+    detail:
+      'A radian holds 206,265 arcseconds, and a pixel of size p at the focus of a lens of focal length f sees an angle of p ÷ f radians. Multiply the scale by the picture’s width and height in pixels and you have its field of view. A plate solve measures the scale directly, which is a good check on the numbers in the header.',
+    formula: 'scale (″ per pixel) = 206.265 × pixel size (µm) ÷ focal length (mm)',
+    related: ['sampling', 'angular-size'],
+    sources: ['wiki-plate-scale']
+  },
+  {
+    id: 'sampling',
+    title: 'Sampling',
+    short: 'Sampling compares the image scale with the seeing: two to three pixels across a star’s blur records all the detail the air lets through.',
+    detail:
+      'With fewer than two pixels across the blur, stars turn square and fine detail is lost: under-sampled. With more than three, the same light is spread over more pixels, each with its own noise, for no extra detail: over-sampled. The rule comes from the sampling theorem, which says a signal needs at least two samples across its finest detail.',
+    formula: 'matched when seeing ÷ 3 ≤ scale ≤ seeing ÷ 2',
+    related: ['image-scale', 'seeing'],
+    sources: ['wiki-nyquist', 'wiki-seeing']
+  },
+  {
+    id: 'wcs',
+    title: 'Sky coordinates in a picture',
+    short: 'A plate-solved file carries a world coordinate system: keywords that turn any pixel into a right ascension and a declination.',
+    detail:
+      'The solver matches the stars in the frame against a catalogue, then records one reference pixel (CRPIX), where it lies on the sky (CRVAL), and how far and in which direction each pixel steps (CDELT and CROTA, or the CD matrix). A projection, usually the tangent-plane one, links the flat picture to the curved sky.',
+    formula: null,
+    related: ['image-scale'],
+    sources: ['fits-standard', 'wiki-gnomonic']
+  },
+  {
+    id: 'noise',
+    title: 'Signal and noise',
+    short: 'Signal grows in step with exposure time, while its random noise grows only as the square root, so the signal-to-noise ratio improves as √time.',
+    detail:
+      'Light arrives as separate photons, so even a steady source gives a count that varies at random: shot noise, the square root of the count. Four times the exposure gives four times the signal but only twice the noise. The camera adds read noise each time a frame is read out, which gain and offset settings trade against how bright a star can get before it saturates.',
+    formula: 'SNR ∝ √(total exposure)',
+    related: ['dark-current'],
+    sources: ['wiki-shot-noise', 'wiki-snr-imaging']
+  },
+  {
+    id: 'dark-current',
+    title: 'Dark current',
+    short: 'Heat alone frees electrons in a sensor, adding a signal and its noise even in complete darkness, and it rises steeply with temperature.',
+    detail:
+      'A dark frame is an exposure with the light blocked, at the same length, gain and temperature as the lights. Subtracting a stack of darks removes the dark signal and the hot pixels, but not its noise, which is why cooled cameras hold the sensor at a fixed low temperature.',
+    formula: null,
+    related: ['noise'],
+    sources: ['wiki-dark-current', 'wiki-dark-frame']
+  },
+  {
+    id: 'airmass',
+    title: 'Airmass',
+    short: 'Airmass is how much air starlight passes through compared with looking straight up: 1 overhead, about 2 at 30° above the horizon.',
+    detail:
+      'Away from the horizon it is close to 1 ÷ the sine of the altitude. More air means more light scattered away, especially blue, and more turbulence, so targets look dimmer, redder and softer low down. That is why the best time for a target is usually when it is highest.',
+    formula: 'airmass ≈ 1 ÷ sin(altitude)',
+    related: ['scattering', 'dust-extinction', 'seeing'],
+    sources: ['wiki-air-mass']
   }
 ]
 

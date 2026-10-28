@@ -19,6 +19,20 @@ and when that light set out ("before our species, Homo sapiens, appeared"), and 
 is, worked out from its size on the sky and its distance. Distances are the published ranges from
 Wikipedia's Messier object table; the card leads with the middle and shows the range.
 
+## Reading your FITS headers
+
+A file's page (open one from Files or a target's files) has a **Your setup** card: the image scale,
+how much sky each pixel sees, from the header's focal length (FOCALLEN) and pixel size (XPIXSZ),
+the field the whole frame covers, and whether that suits typical 2″ seeing (two to three pixels
+across a star's blur is well matched). A plate-solved file also shows the scale the solve measured,
+a check on the header's numbers. XPIXSZ is read as including any binning, as most capture software
+writes it.
+
+**Show raw headers** adds a **What it means** column: each keyword the dictionary knows, with why
+it matters at the deep level and a **Why?** where an idea lies behind it. Keywords the FITS
+standard does not define are marked as capture-software conventions. The dictionary is
+`packages/domain/src/learning-fits.ts`.
+
 ## Why?
 
 A **Why?** beside a number or a word opens the idea behind it: a one-line answer, and at the deep
