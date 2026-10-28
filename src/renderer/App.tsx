@@ -26,46 +26,49 @@ import { Insights } from './pages/Insights'
 import { SkyPlanner } from './pages/SkyPlanner'
 import { SessionTimeline } from './pages/SessionTimeline'
 import { ToastProvider } from './contexts/ToastContext'
+import { LearningProvider } from './contexts/LearningContext'
 import { CompanionLinks } from './components/companion/CompanionLinks'
 import { settingsLink } from '@shared/navigation'
 
 export function App(): React.ReactElement {
   return (
     <ToastProvider>
-      <HashRouter>
-        <CompanionLinks />
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/targets" element={<TargetList />} />
-            <Route path="/targets/:id" element={<TargetDetail />} />
-            <Route path="/sessions/new" element={<SessionForm />} />
-            <Route path="/sessions/:id/edit" element={<SessionForm />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/collections/:id" element={<CollectionDetail />} />
-            <Route path="/equipment" element={<Navigate to={settingsLink('equipment')} replace />} />
-            <Route path="/library" element={<Library />} />
-            <Route path="/images" element={<Images />} />
-            <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
-            <Route path="/stacking" element={<StackingAnalysis />} />
-            <Route path="/insights" element={<Insights />} />
-            <Route path="/sky-planner" element={<SkyPlanner />} />
-            <Route path="/analytics" element={<StorageAnalytics />} />
-            <Route path="/calibration" element={<Calibration />} />
-            <Route path="/timeline" element={<SessionTimeline />} />
-            <Route path="/poster" element={<Poster />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:id" element={<ProjectDetail />} />
-            <Route path="/mosaics" element={<MosaicWorkspaces />} />
-            <Route path="/mosaics/:id" element={<MosaicWorkspaceDetail />} />
-            <Route path="/messier" element={<MessierMosaic />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/vespera" element={<Vespera />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </Layout>
-      </HashRouter>
+      <LearningProvider>
+        <HashRouter>
+          <CompanionLinks />
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/targets" element={<TargetList />} />
+              <Route path="/targets/:id" element={<TargetDetail />} />
+              <Route path="/sessions/new" element={<SessionForm />} />
+              <Route path="/sessions/:id/edit" element={<SessionForm />} />
+              <Route path="/collections" element={<Collections />} />
+              <Route path="/collections/:id" element={<CollectionDetail />} />
+              <Route path="/equipment" element={<Navigate to={settingsLink('equipment')} replace />} />
+              <Route path="/library" element={<Library />} />
+              <Route path="/images" element={<Images />} />
+              <Route path="/fits-analyzer" element={<FitsAnalyzer />} />
+              <Route path="/stacking" element={<StackingAnalysis />} />
+              <Route path="/insights" element={<Insights />} />
+              <Route path="/sky-planner" element={<SkyPlanner />} />
+              <Route path="/analytics" element={<StorageAnalytics />} />
+              <Route path="/calibration" element={<Calibration />} />
+              <Route path="/timeline" element={<SessionTimeline />} />
+              <Route path="/poster" element={<Poster />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:id" element={<ProjectDetail />} />
+              <Route path="/mosaics" element={<MosaicWorkspaces />} />
+              <Route path="/mosaics/:id" element={<MosaicWorkspaceDetail />} />
+              <Route path="/messier" element={<MessierMosaic />} />
+              <Route path="/jobs" element={<Jobs />} />
+              <Route path="/vespera" element={<Vespera />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Layout>
+        </HashRouter>
+      </LearningProvider>
     </ToastProvider>
   )
 }

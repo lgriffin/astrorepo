@@ -125,6 +125,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'run-window', label: 'Run window', group: 'Processing', hint: 'When queued jobs may run' },
   { id: 'grading', label: 'Frame grading', group: 'Processing', hint: 'Which frames are kept for stacking' },
   { id: 'appearance', label: 'Appearance', group: 'This app', hint: 'Dark, light or red night theme' },
+  { id: 'learning', label: 'Learning', group: 'This app', hint: 'How much the app explains the astrophysics behind what it shows' },
   { id: 'companions', label: 'Companion screens', group: 'This app', hint: 'Other screens that follow this one' },
   { id: 'reset', label: 'Start again', group: 'This app', hint: 'Clear the database, or bring back the setup checklist' }
 ] as const satisfies readonly { id: string; label: string; group: (typeof SETTINGS_GROUPS)[number]; hint: string }[]
