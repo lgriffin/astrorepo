@@ -33,6 +33,15 @@ it matters at the deep level and a **Why?** where an idea lies behind it. Keywor
 standard does not define are marked as capture-software conventions. The dictionary is
 `packages/domain/src/learning-fits.ts`.
 
+## Why tonight looks like this
+
+Under **Tonight** on Home, a line says how far the Sun sinks below your horizon tonight, worked out
+from your site's latitude and the date: past 18° the night is fully dark; short of it the sky stays
+in twilight, as it does around midsummer in Ireland. It also says when that changes ("Fully dark
+nights return around 30 Jul"). The figure is good to about a degree. **Why?** sits beside the
+dark window, the Moon, a bright-moon note and the best targets, and on the Sky planner beside the
+twilight times and the seasons table.
+
 ## Why?
 
 A **Why?** beside a number or a word opens the idea behind it: a one-line answer, and at the deep

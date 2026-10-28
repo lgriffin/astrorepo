@@ -140,6 +140,10 @@ export function Dashboard(): React.ReactElement {
 
   const { shoot, ahead, process } = splitHomeActions(nextActions)
   const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
+  // Tonight's darkness is worked out for the site the plan uses, on the plan's night or else today.
+  const tonightSite = plan && plan !== FAILED && plan.status === 'ok'
+    ? { latitudeDeg: plan.site.latitudeDeg, night: plan.tonight?.night ?? new Date().toLocaleDateString('en-CA') }
+    : null
 
   return (
     <PageContainer
@@ -150,7 +154,7 @@ export function Dashboard(): React.ReactElement {
       <div className="space-y-4">
         <SetupCard />
 
-        <TonightHero summary={summary} loading={skies === null || plan === null} />
+        <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {actionsCard(

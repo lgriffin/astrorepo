@@ -1,5 +1,5 @@
-import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type SetupNumbers } from '@astro/domain'
-import type { ConceptView, FitsLearningView, FitsSetupView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
+import { CONCEPTS, LEARNING_SOURCES, PRIMERS, lightYearsText, type Concept, type ExplainedHeaders, type LearningSource, type ObjectNumbers, type ObjectPrimer, type SetupNumbers, type TonightSky } from '@astro/domain'
+import type { ConceptView, FitsLearningView, FitsSetupView, TonightSkyView, LearningLibraryView, LearningSourceView, ObjectNumbersView, ObjectPrimerView } from '@shared/types'
 
 /** A source as the page names it; its address stays here and is opened by id (LRN-005). */
 const toSourceView = (s: LearningSource): LearningSourceView => ({ id: s.id, title: s.title, publisher: s.publisher })
@@ -80,3 +80,37 @@ export function toFitsLearningView(e: ExplainedHeaders): FitsLearningView {
     solved: e.solvedScaleArcsec === null ? null : `A plate solve measured ${e.solvedScaleArcsec.toFixed(2)}″ per pixel.`
   }
 }
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "2026-10-28" as "28 Oct". */
+const dayText = (date: string): string => {
+  const [, m, d] = date.split('-').map(Number)
+  return `${d} ${MONTH_NAMES[m - 1]}`
+}
+
+/** "53.3° N", "33.9° S". */
+export const latitudeText = (deg: number): string => `${Math.abs(deg).toFixed(1)}° ${deg < 0 ? 'S' : 'N'}`
+
+/** Why tonight is as dark as it is, in words (LRN-015, LRN-016). */
+export function toTonightSkyView(t: TonightSky): TonightSkyView {
+  const where = `At ${latitudeText(t.latitudeDeg)} on ${dayText(t.night)}`
+  const depth = Math.round(t.lowestSunDeg)
+  const text =
+    t.lowestSunDeg < 0
+      ? `${where}, the Sun stays above your horizon all night: the midnight sun.`
+      : t.darkness === 'full'
+        ? `${where}, the Sun sinks to about ${depth}° below your horizon at its lowest, past the 18° that full darkness needs.`
+        : t.darkness === 'nautical'
+          ? `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, short of the 18° that full darkness needs, so the sky stays in nautical twilight.`
+          : t.darkness === 'civil'
+            ? `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, so the sky never gets past civil twilight.`
+            : `${where}, the Sun gets only about ${depth}° below your horizon at its lowest, so twilight lasts all night.`
+  const change = t.fullDarkReturns
+    ? `Fully dark nights return around ${dayText(t.fullDarkReturns)}.`
+    : t.fullDarkEnds
+      ? `Nights stay fully dark until around ${dayText(t.fullDarkEnds)}.`
+      : null
+  return { darkness: t.darkness, text, change }
+}
+

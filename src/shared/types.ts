@@ -2285,3 +2285,12 @@ export interface FitsLearningView {
   solved: string | null
 }
 
+/** Why tonight is as dark as it is (specs/042-learning, L4), in words ready to show. */
+export interface TonightSkyView {
+  darkness: 'full' | 'nautical' | 'civil' | 'none'
+  /** "At 53.3° N on 28 Oct, the Sun sinks to about 50° below your horizon at its lowest, …" */
+  text: string
+  /** When that changes: "Fully dark nights return around 12 Aug.", or null. */
+  change: string | null
+}
+

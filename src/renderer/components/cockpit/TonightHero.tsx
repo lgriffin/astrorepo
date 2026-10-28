@@ -5,7 +5,8 @@ import type { NightSkyView } from '@shared/types'
 import { settingsLink, targetLink } from '@shared/navigation'
 import { moonPath, type TonightSummary } from '@shared/tonight'
 import { tokenColor } from '../../theme'
-import { Skeleton } from '../ui'
+import { Explain, Skeleton } from '../ui'
+import { WhyTonight, type TonightSite } from './WhyTonight'
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -32,10 +33,13 @@ export function MoonGlyph({ percent, size = 40 }: { percent: number; size?: numb
   )
 }
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }): React.ReactElement {
+function Fact({ label, concept, children }: { label: string; concept?: string; children: React.ReactNode }): React.ReactElement {
   return (
     <div>
-      <p className="font-condensed text-xs text-astro-muted">{label}</p>
+      <p className="font-condensed text-xs text-astro-muted">
+        {label}
+        {concept && <> <Explain concept={concept} /></>}
+      </p>
       <p className="text-sm text-astro-text tabular-nums">{children}</p>
     </div>
   )
@@ -45,7 +49,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
  * What Home leads with (LF-016): whether tonight is clear, when it is dark, the moon, and the
  * best few targets to shoot, each a link to its page.
  */
-export function TonightHero({ summary, loading }: { summary: TonightSummary; loading: boolean }): React.ReactElement {
+export function TonightHero({ summary, loading, site = null }: { summary: TonightSummary; loading: boolean; site?: TonightSite | null }): React.ReactElement {
   if (loading && summary.state === 'unknown') {
     return (
       <section aria-label="Tonight" className="rounded-lg border border-astro-border bg-astro-surface p-5">
@@ -72,7 +76,7 @@ export function TonightHero({ summary, loading }: { summary: TonightSummary; loa
         <h2 className={`text-2xl font-semibold ${tone}`}>{summary.headline}</h2>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
           {summary.dark && (
-            <Fact label={DARK_LABEL[summary.dark.darkness ?? 'unknown']}>
+            <Fact label={DARK_LABEL[summary.dark.darkness ?? 'unknown']} concept="twilight">
               {time(summary.dark.start)} to {time(summary.dark.end)}
             </Fact>
           )}
@@ -84,17 +88,23 @@ export function TonightHero({ summary, loading }: { summary: TonightSummary; loa
           {summary.moonPercent !== null && (
             <div className="flex items-center gap-3">
               <MoonGlyph percent={summary.moonPercent} />
-              <Fact label="Moon">{summary.moon ?? `${Math.round(summary.moonPercent)}% lit`}</Fact>
+              <Fact label="Moon" concept="moon-phase">{summary.moon ?? `${Math.round(summary.moonPercent)}% lit`}</Fact>
             </div>
           )}
         </div>
         {summary.notes.map(n => (
-          <p key={n} className="mt-3 text-xs text-astro-muted">{n}</p>
+          <p key={n} className="mt-3 text-xs text-astro-muted">
+            {n}
+            {/^The moon is/.test(n) && <> <Explain concept="moonlight" /></>}
+          </p>
         ))}
+        {site && <WhyTonight site={site} />}
       </div>
       {summary.picks.length > 0 && (
         <div>
-          <p className="font-condensed text-xs text-astro-muted">Best to shoot</p>
+          <p className="font-condensed text-xs text-astro-muted">
+            Best to shoot <Explain concept="airmass" label="Why high?" />
+          </p>
           <ul className="mt-1 divide-y divide-astro-border">
             {summary.picks.map(p => (
               <li key={p.targetId}>

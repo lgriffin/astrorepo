@@ -9,7 +9,7 @@ import { SeasonsTable } from '../components/cockpit/SeasonsTable'
 import { MosaicPlanner } from '../components/sky/MosaicPlanner'
 import type { AltitudePoint, BestTargetTonight, ForwardPlanView, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
 import { tokenColor } from '../theme'
-import { Loading } from '../components/ui'
+import { Explain, Loading } from '../components/ui'
 
 function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement {
   if (data.length < 2) return <p className="text-astro-muted text-sm">No altitude data available</p>
@@ -275,7 +275,9 @@ export function SkyPlanner(): React.ReactElement {
 
         {twilight && (
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-base font-semibold text-astro-text mb-3">Twilight times</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-3">
+              Twilight times <Explain concept="twilight" />
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-astro-muted text-xs">Sunset</span>
@@ -392,7 +394,9 @@ export function SkyPlanner(): React.ReactElement {
       {plan?.status === 'ok' && (
         <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 bg-astro-surface border border-astro-border rounded-lg p-4">
-            <h2 className="text-base font-semibold text-astro-text mb-4">Seasons for targets with work left</h2>
+            <h2 className="text-base font-semibold text-astro-text mb-4">
+              Seasons for targets with work left <Explain concept="seasons" />
+            </h2>
             <SeasonsTable plan={plan} />
           </div>
           <div className="bg-astro-surface border border-astro-border rounded-lg p-4">

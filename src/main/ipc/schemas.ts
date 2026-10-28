@@ -464,6 +464,10 @@ export const schemas = {
   'learning:library': z.object({}).optional(),
   'learning:open-source': z.object({ source_id: z.string().min(1).max(80) }),
   'learning:object': z.object({ target_id: id }),
+  'learning:tonight': z.object({
+    latitude_deg: z.number().min(-90).max(90),
+    night: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  }),
   'learning:fits': z.object({
     headers: z.array(z.object({ keyword: z.string().max(80), value: z.string().max(HEADER_VALUE_MAX).nullable() })).max(HEADER_LINES_MAX)
   }),
