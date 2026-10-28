@@ -8,6 +8,7 @@ import { TILE_WIDTH, forgetPictures, pictureSources } from '../components/messie
 import { download, mosaicPng } from '../components/messier/save-mosaic'
 import { invoke } from '../hooks/useIPC'
 import { useToast } from '../contexts/ToastContext'
+import { Explain } from '../components/ui'
 import { messierLink, messierNumberFrom, settingsLink } from '@shared/navigation'
 import type { MessierFilterView, MessierMosaicView } from '@shared/types'
 
@@ -103,6 +104,7 @@ export function MessierMosaic(): React.ReactElement {
             <span className="text-astro-warning">{s!.captured} captured, not stacked</span>
             <span className="text-astro-muted">{s!.gaps} not captured yet</span>
             {view.siteSet && <span className="text-astro-text">{s!.missingUpTonight} missing and up tonight</span>}
+            <Explain concept="messier-catalogue" label="Who was Messier?" />
           </div>
           <div className="h-1.5 rounded bg-astro-border overflow-hidden mb-4 flex">
             <div className="bg-astro-success" style={{ width: `${(s!.imaged / s!.total) * 100}%` }} />

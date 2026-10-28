@@ -150,6 +150,12 @@ export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-signal-averaging', 'Signal_averaging'),
   wiki('wiki-shift-and-add', 'Shift-and-add'),
   wiki('wiki-flat-field', 'Flat-field_correction'),
+  wiki('wiki-celestial-sphere', 'Celestial_sphere'),
+  wiki('wiki-equatorial-coordinates', 'Equatorial_coordinate_system'),
+  wiki('wiki-icrs', 'International_Celestial_Reference_System'),
+  wiki('wiki-gnomonic-projection', 'Gnomonic_projection'),
+  wiki('wiki-position-angle', 'Position_angle'),
+  wiki('wiki-charles-messier', 'Charles_Messier'),
   {
     id: 'fits-standard',
     title: 'The FITS standard',
@@ -474,6 +480,46 @@ export const CONCEPTS: readonly Concept[] = [
     formula: 'calibrated = (light − dark) ÷ normalised flat',
     related: ['dark-current', 'stacking'],
     sources: ['wiki-dark-frame', 'wiki-flat-field']
+  },
+  {
+    id: 'celestial-sphere',
+    title: 'RA and Dec',
+    short: 'Picture the sky as a sphere around Earth: declination is latitude on it and right ascension is longitude, so each object has a fixed address.',
+    detail:
+      'Declination is measured in degrees north or south of the celestial equator, Earth’s equator projected onto the sky. Right ascension is measured eastwards along that equator from the point where the Sun crosses it in March, in hours: 24 hours make the full circle. The stars are so far away that their addresses barely change, while their altitude and direction change all night as Earth turns. The app gives positions in the ICRS, today’s standard frame, pinned to distant quasars.',
+    formula: '1 h of RA = 15°; on the sky that is 15° × cos(Dec), shrinking towards the poles',
+    related: ['tangent-plane', 'position-angle', 'seasons'],
+    sources: ['wiki-celestial-sphere', 'wiki-equatorial-coordinates', 'wiki-icrs']
+  },
+  {
+    id: 'tangent-plane',
+    title: 'The tangent plane',
+    short: 'A mosaic is laid out on a flat plane touching the sky at the grid’s centre, which is how a lens maps the sky onto a flat sensor.',
+    detail:
+      'Points on the sky are projected from the sphere’s centre onto a plane that touches it: the gnomonic projection. Straight lines on that plane are great circles on the sky, as with a lens, so each panel is a true rectangle. Lines of right ascension, by contrast, meet at the poles, so a grid stepped in RA would pinch near Polaris. Far from the centre the plane stretches, so an equal step there covers a little less sky.',
+    formula: 'distance on the plane = tan(angle from the centre)',
+    related: ['celestial-sphere', 'position-angle', 'image-scale'],
+    sources: ['wiki-gnomonic-projection']
+  },
+  {
+    id: 'position-angle',
+    title: 'Position angle',
+    short: 'Position angle is a direction on the sky, measured from north through east: 0° points north and 90° east.',
+    detail:
+      'Looking up at the sky you see the sphere from inside, so with north at the top, east is on the left, the mirror of a map. Here the angle sets which way each panel’s up edge points. Plate solvers report the same idea as the picture’s rotation, though programs differ in the sign and the starting edge they use.',
+    formula: null,
+    related: ['celestial-sphere', 'tangent-plane', 'wcs'],
+    sources: ['wiki-position-angle']
+  },
+  {
+    id: 'messier-catalogue',
+    title: 'Messier’s catalogue',
+    short: 'Charles Messier, a comet hunter in Paris, listed fuzzy objects that were not comets so they would not fool him; they became the best-known list in the sky.',
+    detail:
+      'Messier (1730–1817) published his final list in 1781 with 103 objects, some of them found by his colleague Pierre Méchain. M104 to M110 were added in the 20th century from their notes. Everything on it is visible from Paris, so it favours the northern sky, and it mixes every kind of object: a supernova remnant (M1), star clusters, nebulae and galaxies.',
+    formula: null,
+    related: ['lookback', 'angular-size'],
+    sources: ['wiki-charles-messier', 'wiki-messier-object']
   }
 ]
 

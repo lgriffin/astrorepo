@@ -11,7 +11,7 @@ import { MosaicCoverage } from '../components/mosaic/MosaicCoverage'
 import { MosaicForecast } from '../components/forecast/MosaicForecast'
 import { GridWorkbench, PanelTable } from './MosaicWorkspaces'
 import type { FlushCentre } from '../components/mosaic/GridEditor'
-import { Loading } from '../components/ui'
+import { Explain, Loading } from '../components/ui'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const button = 'px-3 py-1.5 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -120,7 +120,7 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
       }
     >
       <div className="space-y-6">
-        <Card title={`Revision ${view.revision} of ${view.latestRevision}`}>
+        <Card title={`Revision ${view.revision} of ${view.latestRevision}`} action={<Explain concept="tangent-plane" label="Why a flat grid?" />}>
           <div className="space-y-2 text-sm">
             <p className="text-astro-text">
               {view.drawing.summary} {view.fieldFrom}.
@@ -160,7 +160,15 @@ export function MosaicWorkspaceDetail(): React.ReactElement {
         <MosaicCoverage workspaceId={view.id} revision={view.revision} drawing={view.drawing} version={placements} />
         <MosaicForecast workspaceId={view.id} revision={view.revision} version={placements} />
 
-        <Card title="Change the grid">
+        <Card
+          title="Change the grid"
+          action={
+            <span className="flex gap-3">
+              <Explain concept="celestial-sphere" label="RA and Dec" />
+              <Explain concept="position-angle" label="Position angle" />
+            </span>
+          }
+        >
           <div className="space-y-4 text-sm">
             <GridWorkbench grid={grid} setGrid={setGrid} flushRef={flushRef} />
             {problems.length > 0 && (

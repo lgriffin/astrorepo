@@ -94,3 +94,17 @@ slice being built has requirements here (charter III).
 | LRN-019 | Ubiquitous | The system shall offer, on a target's Stack and process tab, why stacking works and why each extra hour buys less, what calibration frames do, the idea behind each emission line, and at the deep level with two or more narrowband filters the Hubble palette. |
 | LRN-020 | State | While the learning level is off, the system shall not explain a target's filters. |
 
+## L6: sky geometry in mosaics, lookback in the gallery
+
+- **Back in time** at the top of the gallery: the pictures in order of how long their light
+  travelled, nearest first, one stop per Messier object with a published distance, each opening its
+  first picture; at the deep level, when the light set out (`lookbackStrip` in
+  `packages/domain/src/learning-distances.ts`, channel `learning:lookback`).
+- Why? in the mosaic workspace on RA and Dec, the tangent plane the grid is laid out on and position
+  angle, and on the Messier mosaic on who Messier was and why he made his list.
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LRN-021 | Ubiquitous | The system shall order the gallery's pictures by how long their light travelled, nearest first, with one stop per object that has a published distance giving its distance, the light's travel time and, at the deep level, when the light set out; a picture naming two such objects shall appear at both, and pictures of objects with no distance held shall be left out. |
+| LRN-022 | Ubiquitous | The system shall offer, in the mosaic workspace, the ideas of right ascension and declination, the tangent plane a grid is laid out on and position angle, and on the Messier mosaic the history of Messier's catalogue. |
+| LRN-023 | State | While the learning level is off, the system shall not order or show the gallery's pictures by lookback. |

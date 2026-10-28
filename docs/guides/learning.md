@@ -52,6 +52,18 @@ noise grows as √N), and on the Stack card why stacking works and what bias, da
 Filters are recognised by the names in your frames' FILTER keyword; a name it does not know is left
 out.
 
+## Back in time, and the shape of the sky
+
+At the top of the **Gallery**, **Back in time** lines up your pictures by how long their light
+travelled, nearest first: the Orion Nebula's light left about 1,300 years ago, Andromeda's about
+2.5 million. Each stop opens its picture; at the deep level it also says what had not happened yet
+when the light set out. Only Messier objects have a published distance in the app so far, so other
+pictures are left off the strip.
+
+In a **mosaic**, **Why?** explains right ascension and declination, why the grid is laid out on a
+flat plane touching the sky (the tangent plane) and what position angle measures. On the
+**Messier mosaic**, **Who was Messier?** tells why a comet hunter made the list.
+
 ## Why?
 
 A **Why?** beside a number or a word opens the idea behind it: a one-line answer, and at the deep

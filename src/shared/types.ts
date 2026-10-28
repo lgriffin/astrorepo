@@ -1890,8 +1890,8 @@ export interface GalleryPictureView {
   savedAt: string | null
   /** "1 Oct 2026". */
   saved: string | null
-  /** The objects its name names, as captions: "M31 · Andromeda Galaxy". */
-  objects: { id: string; label: string }[]
+  /** The objects its name names, as captions: "M31 · Andromeda Galaxy", with their designations. */
+  objects: { id: string; label: string; designations: string[] }[]
 }
 
 export interface GalleryView {
@@ -2297,6 +2297,20 @@ export interface TonightSkyView {
 }
 
 /** What one filter catches (specs/042-learning, L5), in words ready to show. */
+/** One object on the gallery's lookback strip (LRN-021). */
+export interface LookbackStopView {
+  designation: string
+  /** "about 2.5 million light years" */
+  distance: string
+  /** "2.5 million years" */
+  travel: string
+  /** When the light set out, against a milestone or a calendar year. */
+  lookback: string
+  /** The pictures of it. */
+  paths: string[]
+  sources: string[]
+}
+
 export interface FilterLightView {
   filter: string
   kind: 'narrowband' | 'dual-band' | 'luminance' | 'colour' | 'uv-ir-cut' | 'light-pollution'

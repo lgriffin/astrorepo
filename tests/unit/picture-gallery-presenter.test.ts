@@ -10,7 +10,7 @@ const entry = (overrides: Partial<GalleryEntry> = {}): GalleryEntry => ({
   folders: ['M42'],
   sizeBytes: 2.5 * 1024 * 1024,
   modifiedAt: new Date(2026, 9, 1, 20, 0),
-  objects: [{ objectId: 't-m42', label: 'M42 · Orion Nebula' }],
+  objects: [{ objectId: 't-m42', label: 'M42 · Orion Nebula', designations: ['M42', 'NGC 1976'] }],
   ...overrides
 })
 
@@ -58,7 +58,7 @@ describe('picture gallery presenter', () => {
       size: '2.5 MB',
       savedAt: new Date(2026, 9, 1, 20, 0).toISOString(),
       saved: '1 Oct 2026',
-      objects: [{ id: 't-m42', label: 'M42 · Orion Nebula' }]
+      objects: [{ id: 't-m42', label: 'M42 · Orion Nebula', designations: ['M42', 'NGC 1976'] }]
     })
     expect(view.pictures[1]).toMatchObject({ folder: '', saved: null, savedAt: null, objects: [] })
     expect(toGalleryView({ root: null, pictures: [] })).toEqual({ root: null, pictures: [] })
