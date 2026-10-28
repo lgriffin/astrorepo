@@ -357,7 +357,7 @@ describe('Sky geometry and the gallery', () => {
     })
     const strip = read('src/renderer/components/gallery/LookbackStrip.tsx')
     expect(strip).toMatch(/Its light left \{s\.travel\} ago\./)
-    expect(strip).toMatch(/s\.sources\.map\(id => \{\n\s+const src = source\(id\)/)
+    expect(strip).toMatch(/s\.sources\.map\(id => \{\r?\n\s+const src = source\(id\)/)
     expect(strip).toMatch(/onClick=\{\(\) => openSource\(id\)\}/)
     expect(strip).toMatch(/level === 'deep' && <span[^>]*>\{s\.lookback\}/)
     expect(read('src/renderer/pages/Images.tsx')).toMatch(/<LookbackStrip pictures=\{view\.pictures\}/)
