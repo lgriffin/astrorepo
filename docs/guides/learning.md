@@ -12,6 +12,13 @@ but remove a reflection nebula, why a globular cluster wants short subs). Its ma
 told in words, such as "about 6 full Moons across". The Sun's card always carries its safety
 warning.
 
+## In numbers
+
+For each Messier object the card adds how far away it is, how long its light has been travelling
+and when that light set out ("before our species, Homo sapiens, appeared"), and how wide it really
+is, worked out from its size on the sky and its distance. Distances are the published ranges from
+Wikipedia's Messier object table; the card leads with the middle and shows the range.
+
 ## Why?
 
 A **Why?** beside a number or a word opens the idea behind it: a one-line answer, and at the deep
@@ -20,7 +27,7 @@ open in your browser. Escape, Close or a click outside closes it.
 
 ## How much it explains
 
-**Settings → Learning**: off, short (the default) or deep. Off hides every explanation but keeps
+**Settings → Learning**: off, short or deep (the default). Off hides every explanation but keeps
 safety warnings.
 
 ## Where the facts come from

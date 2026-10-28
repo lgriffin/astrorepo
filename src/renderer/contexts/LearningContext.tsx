@@ -21,7 +21,7 @@ const LearningContext = createContext<LearningContextValue | null>(null)
 
 /** The knowledge base and the learning level, read once for the whole screen (specs/042-learning). */
 export function LearningProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  const [level, setLevel] = useState<LearningLevel>('short')
+  const [level, setLevel] = useState<LearningLevel>('deep')
   const [library, setLibrary] = useState<LearningLibraryView>(EMPTY)
   // Once the user has chosen on this screen, a saved level read at start must not overwrite it.
   const chosen = useRef(false)

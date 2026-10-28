@@ -78,6 +78,12 @@ const wiki = (id: string, article: string, title = article.replace(/_/g, ' ')): 
 
 export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-galaxy', 'Galaxy'),
+  wiki('wiki-messier-object', 'Messier_object'),
+  wiki('wiki-kpg-extinction', 'Cretaceous%E2%80%93Paleogene_extinction_event', 'Cretaceous–Paleogene extinction event'),
+  wiki('wiki-oldowan', 'Oldowan'),
+  wiki('wiki-homo-sapiens', 'Homo_sapiens', 'Homo sapiens'),
+  wiki('wiki-neolithic-revolution', 'Neolithic_Revolution'),
+  wiki('wiki-history-of-writing', 'History_of_writing'),
   wiki('wiki-spiral-galaxy', 'Spiral_galaxy'),
   wiki('wiki-density-wave', 'Density_wave_theory'),
   wiki('wiki-elliptical-galaxy', 'Elliptical_galaxy'),

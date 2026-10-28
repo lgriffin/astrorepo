@@ -18,14 +18,30 @@ slice being built has requirements here (charter III).
   over `learning:library`; a source opens by id over `learning:open-source`.
 - One shared **Why?** control (`components/ui/Explain.tsx`) and a **The physics** card on every
   target's Overview, with the target's magnitude and size told in words.
-- **Settings → Learning**: off, short (the default) or deep.
+- **Settings → Learning**: off, short or deep (the default since L2, Leigh's choice).
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | LRN-001 | Event | When the user opens a Why? beside a value, the system shall show the concept behind it at the user's learning level, with its related concepts to open in place and the sources it rests on, and shall close it on Escape, on Close or on a click outside, giving focus back to the Why?. |
 | LRN-002 | Ubiquitous | The system shall name at least one source for every concept and object primer, link only to concepts and sources the knowledge base holds, and keep each concept's one-line answer within 160 characters. |
 | LRN-003 | Ubiquitous | The system shall show on every target's Overview a primer for its kind of object, saying what it is, what makes its light, where it comes from, what to look for and how its physics shapes the imaging, including the finer kinds the shipped catalogues store (spiral, elliptical and irregular galaxies, and nebulae), and shall show the not yet known primer for a kind it does not know. |
-| LRN-004 | Event | When the user chooses a learning level of off, short or deep in Settings → Learning, the system shall save it and apply it at once, saving quick changes in the order they were made and keeping a choice made on the screen over a saved level read afterwards, short being the level until one is chosen. |
+| LRN-004 | Event | When the user chooses a learning level of off, short or deep in Settings → Learning, the system shall save it and apply it at once, saving quick changes in the order they were made and keeping a choice made on the screen over a saved level read afterwards, deep being the level until one is chosen. |
 | LRN-005 | Unwanted | If the page asks to open a source that the knowledge base does not hold, then the system shall open nothing, since a source's address never comes from the page. |
 | LRN-006 | Ubiquitous | The system shall tell a target's angular size against the width of the full Moon. |
 | LRN-007 | Ubiquitous | The system shall show an object's safety warning, such as never pointing at the Sun without a certified solar filter, at every learning level including off, and whether or not the knowledge base has loaded. |
+
+## L2: your object in numbers
+
+- Every Messier object's distance as the range Wikipedia's "Messier object" table gives (read 28
+  October 2026), in `packages/domain/src/learning-distances.ts`, found by any of a target's names.
+- The physics card's **In numbers** part: how far away it is, how long its light has travelled and
+  when that light set out (a calendar year within the last 5,200 years, otherwise the earliest of
+  five dated milestones it is older than: writing, farming, Homo sapiens, the first stone tools,
+  the end of the dinosaurs), and its true width from its size on the sky. Over `learning:object`.
+- The learning level is deep until the user chooses (Leigh, 28 October 2026).
+
+| ID | Pattern | Requirement |
+|----|---------|-------------|
+| LRN-008 | Ubiquitous | The system shall show a target with a published distance as the middle of its published range in light years, with the range when its ends differ, marked approximate where the source is, and name the source. |
+| LRN-009 | Ubiquitous | The system shall work out a target's true width as its distance times its angular size in radians, and show none when the catalogue gives no angular size, and show nothing in numbers for a target with no published distance. |
+| LRN-010 | Ubiquitous | The system shall say when a target's light set out: as a calendar year when it set out within the last 5,200 years, and otherwise as before the earliest dated milestone it is older than, citing that milestone's source. |

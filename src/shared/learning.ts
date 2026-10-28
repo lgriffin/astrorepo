@@ -4,7 +4,7 @@
  * knowledge base itself is in packages/domain/src/learning.ts and comes over `learning:library`.
  */
 
-/** Off hides every explanation; short gives the one-line answer; deep adds the paragraph and the formula. */
+/** Off hides every explanation; short gives the one-line answer; deep (the default) adds the paragraph and the formula. */
 export type LearningLevel = 'off' | 'short' | 'deep'
 
 export const LEARNING_LEVELS: readonly LearningLevel[] = ['off', 'short', 'deep']
@@ -12,10 +12,10 @@ export const LEARNING_LEVELS: readonly LearningLevel[] = ['off', 'short', 'deep'
 /** The setting that holds the level. */
 export const LEARNING_SETTING_KEY = 'learning_level'
 
-/** A saved level, or 'short' when nothing (or something unreadable) is saved (LRN-004). */
+/** A saved level, or 'deep' when nothing (or something unreadable) is saved (LRN-004; Leigh chose deep, 28 October 2026). */
 export function parseLearningLevel(raw: string | null | undefined): LearningLevel {
   const wanted = (raw ?? '').trim().toLowerCase()
-  return (LEARNING_LEVELS as readonly string[]).includes(wanted) ? (wanted as LearningLevel) : 'short'
+  return (LEARNING_LEVELS as readonly string[]).includes(wanted) ? (wanted as LearningLevel) : 'deep'
 }
 
 /** What one concept shows at a level: nothing when off, the paragraph and formula only when deep. */

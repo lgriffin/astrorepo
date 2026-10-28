@@ -43,7 +43,8 @@ const NOT_PORTS: Record<string, string> = {
   RevisionSummary: 'what MosaicWorkspaceStore.history lists',
   StoredRevision: 'what MosaicWorkspaceStore saves',
   ProjectRecord: 'what ProjectStore saves',
-  ProjectSource: 'what ProjectSources lists'
+  ProjectSource: 'what ProjectSources lists',
+  TargetFacts: 'what TargetFactsSource.facts returns'
 }
 
 const read = (dir: string, suffix: string) =>

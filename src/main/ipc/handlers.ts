@@ -34,7 +34,7 @@ import { toMosaicPlanView, toSolveQueuedView, toTargetGeometryView } from '../ad
 import { toCapturesView, toChangeViews, toCoverageView, toCreatedView, toDrawingView, toGridDefinition, toGridInput, toRevisionSavedView, toWorkspaceSummaries, toWorkspaceView } from '../adapters/mosaic-workspace-presenter'
 import { fromRuleView, toProjectChange, toProjectSummaries, toProjectView } from '../adapters/project-presenter'
 import { toIntegrationView, toMosaicIntegrationView } from '../adapters/forecast-presenter'
-import { toLearningLibraryView } from '../adapters/learning-presenter'
+import { toLearningLibraryView, toObjectNumbersView } from '../adapters/learning-presenter'
 import { toComparisonView, toExperimentChange, toExperimentView, toRunView } from '../adapters/experiment-presenter'
 import { toGalleryImagesView, toOpenedView, toPalettePreviewView, toPalettesView, toPreviewView } from '../adapters/gallery-presenter'
 import { toDetailsView, toGalleryView, toPictureData } from '../adapters/picture-gallery-presenter'
@@ -1002,6 +1002,8 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   // Learning while you observe (specs/042-learning): the knowledge base, and its sources opened by
   // id only, so the page can never ask for an address of its own (LRN-005).
   handle('learning:library', async () => toLearningLibraryView())
+  // A target in numbers: its published distance found by any of its names, its size from the catalogue.
+  handle('learning:object', validated('learning:object', async (args) => toObjectNumbersView(await sky().objectNumbers(args.target_id))))
   handle('learning:open-source', validated('learning:open-source', async (args) => {
     const url = sourceUrl(args.source_id)
     if (!url) return { opened: false }

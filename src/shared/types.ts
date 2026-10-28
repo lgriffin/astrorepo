@@ -2235,3 +2235,20 @@ export interface LearningLibraryView {
   primers: ObjectPrimerView[]
   sources: LearningSourceView[]
 }
+
+/** A target in numbers (specs/042-learning, L2), in words ready to show. */
+export interface ObjectNumbersView {
+  designation: string
+  /** "about 2.5 million light years" */
+  distance: string
+  /** "2.4 to 2.7 million light years", when the source gives a range. */
+  range: string | null
+  approx: boolean
+  /** "2.5 million years" */
+  travel: string
+  /** "about 190,000 light years across", when the catalogue gives an angular size. */
+  size: string | null
+  /** When the light set out, against a milestone or a calendar year. */
+  lookback: string
+  sources: string[]
+}

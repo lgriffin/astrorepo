@@ -5,6 +5,7 @@ import type { Worker } from 'worker_threads'
 import { MESSIER_GAPS_IN_NEXT_ACTIONS, parseDec, parseRa } from '@astro/domain'
 import {
   makeArchiveTarget,
+  makeDescribeObjectNumbers,
   makeCompanion,
   type Companion,
   type ExperimentDeps,
@@ -106,6 +107,7 @@ import { NodeVesperaMetadata } from './adapters/vespera-metadata'
 import { FileVesperaTransferStore, TRANSFER_INDEX_FILE } from './adapters/file-vespera-transfers'
 import { NodeSirilWorkspace } from './adapters/node-siril-workspace'
 import { systemClock } from './adapters/system-clock'
+import { SqliteTargetFacts } from './adapters/sqlite-target-facts'
 import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
 import { SqlitePlanningSettings, SqliteTargetPositions } from './adapters/sqlite-planning'
 import { NodeToolHub } from './adapters/node-tool-hub'
@@ -397,6 +399,8 @@ export function composeCore(db: Database.Database) {
       target: makeDescribeIntegration({ grading, goals: new SqliteIntegrationGoalSource(db) }),
       mosaic: makeDescribeMosaicIntegration({ coverage: workspaces.coverage })
     },
+    /** A target in numbers: distance, light-travel time, true size (specs/042-learning). */
+    objectNumbers: makeDescribeObjectNumbers({ targets: new SqliteTargetFacts(db), clock: systemClock }),
     setCometOrbit: makeSetCometOrbit({ comets }),
     planComet: makePlanComet({ comets, workspace: new NodeSirilWorkspace(db), selection: grading, ephemeris, settings: planningSettings, targets: stacks })
   }
