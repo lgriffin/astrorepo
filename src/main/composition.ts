@@ -89,6 +89,7 @@ import {
   makeMessierMosaic,
   makePictureGallery,
   makeClearSkies,
+  makeDescribeSkyInsight,
   makeWeatherCache,
   type Gallery,
   type MessierMosaicService,
@@ -109,7 +110,7 @@ import { NodeSirilWorkspace } from './adapters/node-siril-workspace'
 import { systemClock } from './adapters/system-clock'
 import { SqliteTargetFacts } from './adapters/sqlite-target-facts'
 import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
-import { SqlitePlanningSettings, SqliteTargetPositions } from './adapters/sqlite-planning'
+import { SqlitePlanningSettings, SqliteSkyQualitySettings, SqliteTargetPositions } from './adapters/sqlite-planning'
 import { NodeToolHub } from './adapters/node-tool-hub'
 import { SqliteStackCatalogue } from './adapters/sqlite-stack-catalogue'
 import { SqliteJobSettings, SqliteJobStore } from './adapters/sqlite-jobs'
@@ -309,6 +310,14 @@ export function composeCore(db: Database.Database) {
   const solves = new SqliteSolveStore(db)
   const mosaics = new SqliteMosaicStore(db, systemClock)
   const sky = { store: solves, mosaics, settings: planningSettings, ephemeris, clock: systemClock }
+  const clearSkies = makeClearSkies({
+    planning: planningSettings,
+    weather: new SqliteWeatherSettings(db),
+    ephemeris,
+    clock: systemClock,
+    publicSource: provider => weatherCache(publicWeatherSource(provider)),
+    serviceSource: address => weatherCache(new WeatherServiceSource(address))
+  })
   const folders = composeFolders(db)
   const planMosaic = makePlanMosaic(sky)
   const comets = new SqliteCometStore(db, systemClock)
@@ -336,13 +345,14 @@ export function composeCore(db: Database.Database) {
     estimateSirilRun,
     planForward,
     /** The next three nights' skies on Home (specs/036-clear-skies). */
-    clearSkies: makeClearSkies({
+    clearSkies,
+    /** Tonight's sky at a glance on Home (specs/043-sky-insight), over the same kept forecast. */
+    describeSkyInsight: makeDescribeSkyInsight({
       planning: planningSettings,
-      weather: new SqliteWeatherSettings(db),
+      quality: new SqliteSkyQualitySettings(db),
       ephemeris,
       clock: systemClock,
-      publicSource: provider => weatherCache(publicWeatherSource(provider)),
-      serviceSource: address => weatherCache(new WeatherServiceSource(address))
+      clearSkies
     }),
     /** The same outlook with every source asked now, for Settings → Weather's check (WX-009). */
     checkWeather: makeClearSkies({

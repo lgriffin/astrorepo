@@ -1,5 +1,5 @@
 import type { NightSky, Site, SkySample, Vec3 } from '@astro/domain'
-import type { Ephemeris, PlanningSettings, TargetPosition, TargetPositions } from '@astro/application'
+import type { Ephemeris, PlanningSettings, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
 
 export interface FakeMoon {
   altitudeDeg: number
@@ -153,5 +153,23 @@ export class InMemoryTargetPositions implements TargetPositions {
 
   async listPositions(): Promise<TargetPosition[]> {
     return [...this.positions.values()].map(p => ({ ...p }))
+  }
+}
+
+/** The user's sky quality as saved in Settings → Your site (specs/043-sky-insight). */
+export class InMemorySkyQualitySettings implements SkyQualitySettings {
+  constructor(
+    private bortle: string | null = null,
+    private sqm: string | null = null
+  ) {}
+
+  set(saved: { bortle?: string | null; sqm?: string | null }): this {
+    if (saved.bortle !== undefined) this.bortle = saved.bortle
+    if (saved.sqm !== undefined) this.sqm = saved.sqm
+    return this
+  }
+
+  async skyQuality(): Promise<{ bortle: string | null; sqm: string | null }> {
+    return { bortle: this.bortle, sqm: this.sqm }
   }
 }

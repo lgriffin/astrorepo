@@ -10,9 +10,10 @@ import { CompanionSettings } from '../components/companion/CompanionSettings'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings'
 import { LearningSettings } from '../components/settings/LearningSettings'
 import { EquipmentSettings } from '../components/settings/EquipmentSettings'
-import { Button, Checkbox, Field, Input, Loading } from '../components/ui'
+import { Button, Checkbox, Field, Input, Loading, Select } from '../components/ui'
 import { SETTINGS_GROUPS, SETTINGS_SECTIONS, settingsLink, settingsSectionFrom, type SettingsSection } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
+import { BORTLE_NAMES, SKY_QUALITY_SETTING, sqmProblem } from '@shared/sky-insight'
 
 interface FolderSetting {
   key: string
@@ -144,8 +145,13 @@ function LocationSection(): React.ReactElement {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [narrowband, setNarrowband] = useState(true)
+  const [quality, setQuality] = useState<{ bortle: string; sqm: string } | null>(null)
 
   useEffect(() => {
+    void Promise.all([
+      invoke<{ value: string | null }>('settings:get', { key: SKY_QUALITY_SETTING.bortle }),
+      invoke<{ value: string | null }>('settings:get', { key: SKY_QUALITY_SETTING.sqm })
+    ]).then(([b, q]) => setQuality({ bortle: b.value?.trim() ?? '', sqm: q.value?.trim() ?? '' }))
     void Promise.all(
       OBSERVER_SETTINGS.map(async s => [s.key, (await invoke<{ value: string | null }>('settings:get', { key: s.key })).value ?? ''] as const)
     ).then(values => setObserver(Object.fromEntries(values)))
@@ -157,7 +163,15 @@ function LocationSection(): React.ReactElement {
   const save = async (): Promise<void> => {
     setSaving(true)
     // A cleared field is saved blank, which clears the site rather than keeping the old value.
-    await Promise.all(OBSERVER_SETTINGS.map(s => invoke('settings:set', { key: s.key, value: (observer?.[s.key] ?? '').trim() })))
+    await Promise.all([
+      ...OBSERVER_SETTINGS.map(s => invoke('settings:set', { key: s.key, value: (observer?.[s.key] ?? '').trim() })),
+      ...(quality
+        ? [
+            invoke('settings:set', { key: SKY_QUALITY_SETTING.bortle, value: quality.bortle }),
+            invoke('settings:set', { key: SKY_QUALITY_SETTING.sqm, value: quality.sqm.trim() })
+          ]
+        : [])
+    ])
     setSaving(false)
     setSaved(true)
   }
@@ -166,7 +180,7 @@ function LocationSection(): React.ReactElement {
     <div className="rounded-lg border border-astro-border bg-astro-surface p-4">
       <h2 className="text-base font-semibold text-astro-text">Your site</h2>
       <p className="mt-1 mb-4 text-xs text-astro-muted">
-        Used by the Sky planner and Home for the weather, seasons, moon windows, twilight times and altitude curves.
+        Used by the Sky planner and Home for the weather, seasons, moon windows, twilight times, altitude curves and how dark your sky is.
       </p>
       <form onSubmit={e => { e.preventDefault(); void save() }}>
         <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -188,8 +202,47 @@ function LocationSection(): React.ReactElement {
             </Field>
           ))}
         </div>
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Bortle class" hint="How dark your sky is, 1 darkest to 9 inner city. Look your site up on a light-pollution map such as lightpollutionmap.info.">
+            {c => (
+              <Select
+                id={c.id}
+                aria-describedby={c.describedBy}
+                disabled={quality === null}
+                value={quality?.bortle ?? ''}
+                onChange={e => { setSaved(false); setQuality(prev => ({ bortle: e.target.value, sqm: prev?.sqm ?? '' })) }}
+              >
+                <option value="">Not set</option>
+                {BORTLE_NAMES.map((name, i) => (
+                  <option key={name} value={String(i + 1)}>{i + 1}: {name}</option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field
+            label="Sky quality meter reading (mag/arcsec²)"
+            hint="Optional. A measured reading wins over the class."
+            error={quality ? sqmProblem(quality.sqm) : null}
+          >
+            {c => (
+              <Input
+                id={c.id}
+                aria-describedby={c.describedBy}
+                aria-invalid={c.invalid}
+                type="number"
+                step="0.01"
+                min={16}
+                max={22.5}
+                disabled={quality === null}
+                value={quality?.sqm ?? ''}
+                onChange={e => { setSaved(false); setQuality(prev => ({ bortle: prev?.bortle ?? '', sqm: e.target.value })) }}
+                placeholder="For example 21.3"
+              />
+            )}
+          </Field>
+        </div>
         <div className="flex items-center gap-3">
-          <Button type="submit" variant="primary" busy={saving} disabled={observer === null}>Save your site</Button>
+          <Button type="submit" variant="primary" busy={saving} disabled={observer === null || (quality !== null && sqmProblem(quality.sqm) !== null)}>Save your site</Button>
           {saved && <span role="status" className="text-xs text-astro-success">Saved</span>}
         </div>
       </form>

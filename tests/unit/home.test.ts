@@ -55,7 +55,8 @@ describe('Home', () => {
     expect(home).toContain('Could not work out the coming nights.')
     expect(home).toContain('Could not look through your files.')
     expect(home).toContain('Could not read the forecast.')
-    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(4)
+    expect(home).toContain('Could not work out tonight’s sky.')
+    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(5)
     const insights = read('pages/Insights.tsx')
     // The totals sit before the loading and failure branch, so a trends failure never hides them.
     expect(insights.indexOf('<ObservatoryTotals />')).toBeLessThan(insights.indexOf('Could not read the seeing, filter and activity trends.'))

@@ -1127,6 +1127,54 @@ export type ClearSkiesView =
       credit: string | null
     }
 
+/** Tonight's sky at a glance on Home (specs/043-sky-insight). Times are ISO strings. */
+export type SkyInsightView =
+  | { status: 'no-site'; message: string }
+  | {
+      status: 'ok'
+      night: string
+      /** How tonight suits faint galaxies and nebulae (SKY-006). */
+      faint: 'good' | 'possible' | 'poor' | 'none'
+      /** "Good", "Possible", "Poor", "No proper dark": the word on the badge before the summary. */
+      faintLabel: string
+      /** One sentence: the night for faint targets and why (SKY-007). */
+      summary: string
+      dark: {
+        start: string
+        end: string
+        hours: number
+        /** "9 h 40 min". */
+        text: string
+        darkness: 'astronomical' | 'nautical'
+        /** "12 min longer than last night", or null when unchanged or not known. */
+        change: string | null
+      } | null
+      moon: {
+        percent: number
+        trend: 'waxing' | 'waning' | null
+        /** "Waning crescent". */
+        phase: string
+        upHours: number
+        /** "Up for 1 h of the dark", "Down all through the dark", "Up all through the dark". */
+        up: string
+        upFrom: string | null
+        upTo: string | null
+        /** "8 h 40 min". */
+        moonFree: string
+      } | null
+      cloud: {
+        state: 'forecast' | 'off' | 'unavailable'
+        /** "Clear", "Clear spells", "Cloudy", "No forecast yet", "Forecast off", "Forecast unavailable". */
+        headline: string
+        cloudPct: number | null
+        /** "6 h clear of 9 h 40 min dark", or why there is no figure. */
+        detail: string
+        dew: boolean
+      }
+      /** The user's sky on the Bortle scale; null until set in Settings → Your site. */
+      sky: { bortle: number; name: string; sqm: number | null; from: 'reading' | 'class' } | null
+    }
+
 /** One external tool in Settings > Tools (specs/015-tool-hub). */
 export interface ToolView {
   id: string

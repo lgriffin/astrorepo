@@ -144,6 +144,8 @@ export const LEARNING_SOURCES: readonly LearningSource[] = [
   wiki('wiki-midnight-sun', 'Midnight_sun'),
   wiki('wiki-lunar-phase', 'Lunar_phase'),
   wiki('wiki-sky-brightness', 'Sky_brightness'),
+  wiki('wiki-bortle', 'Bortle_scale', 'Bortle scale'),
+  wiki('wiki-light-pollution', 'Light_pollution', 'Light pollution'),
   wiki('wiki-balmer', 'Balmer_series'),
   wiki('wiki-forbidden', 'Forbidden_mechanism'),
   wiki('wiki-false-color', 'False_color'),
@@ -440,6 +442,16 @@ export const CONCEPTS: readonly Concept[] = [
     formula: null,
     related: ['moon-phase', 'scattering', 'emission-lines'],
     sources: ['wiki-sky-brightness', 'wiki-lunar-phase']
+  },
+  {
+    id: 'light-pollution',
+    title: 'Light pollution and the Bortle scale',
+    short: 'Artificial light scattered by the air brightens the night sky; the Bortle scale rates it from 1, a truly dark site, to 9, an inner-city sky.',
+    detail:
+      'Street and building lights shine up and the air scatters that light back down, as it does moonlight, so a bright sky background buries faint galaxies and nebulae. John Bortle’s nine-class scale (2001) describes what the eye sees under each sky; a Sky Quality Meter measures the zenith brightness in magnitudes per square arcsecond, higher numbers meaning darker skies, about 22 at the darkest sites. Narrowband filters pass the few lines emission nebulae shine in and block most of the glow, which is why they suit a city sky.',
+    formula: 'Each step of 1 mag/arcsec² is a sky about 2.5 times darker',
+    related: ['moonlight', 'scattering', 'surface-brightness'],
+    sources: ['wiki-bortle', 'wiki-light-pollution', 'wiki-sky-brightness']
   },
   {
     id: 'sii',
@@ -923,7 +935,7 @@ export const CONCEPT_THEMES: readonly ConceptTheme[] = [
   {
     id: 'sky',
     title: 'The sky above you',
-    concepts: ['celestial-sphere', 'tangent-plane', 'position-angle', 'seasons', 'twilight', 'moon-phase', 'moonlight', 'airmass', 'seeing', 'solar-system-motion', 'messier-catalogue']
+    concepts: ['celestial-sphere', 'tangent-plane', 'position-angle', 'seasons', 'twilight', 'moon-phase', 'moonlight', 'light-pollution', 'airmass', 'seeing', 'solar-system-motion', 'messier-catalogue']
   },
   { id: 'camera', title: 'Your camera and your data', concepts: ['fits-header', 'bayer', 'image-scale', 'sampling', 'wcs', 'noise', 'dark-current', 'stacking', 'calibration'] }
 ]
