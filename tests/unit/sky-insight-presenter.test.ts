@@ -5,7 +5,7 @@ import { SKY_INSIGHT_NO_SITE_MESSAGE, toSkyInsightView } from '../../src/main/ad
 const insight = (over: Partial<SkyInsight> = {}): SkyInsight => ({
   night: '2026-11-05',
   dark: { start: new Date('2026-11-05T18:40:00Z'), end: new Date('2026-11-06T05:00:00Z'), hours: 10.3, darkness: 'astronomical', changeMinutes: 7 },
-  moon: { percent: 10, trend: 'waning', upHours: 1, upFrom: new Date('2026-11-06T04:00:00Z'), upTo: new Date('2026-11-06T05:00:00Z'), moonFreeHours: 9.3 },
+  moon: { percent: 10, trend: 'waning', upHours: 1, upSpans: [{ start: new Date('2026-11-06T04:00:00Z'), end: new Date('2026-11-06T05:00:00Z') }], moonFreeHours: 9.3 },
   cloud: { state: 'forecast', verdict: 'clear-spells', cloudPct: 40, clearHours: 4, spell: null, dew: true },
   sky: { bortle: 3, name: 'Rural sky', sqm: 21.8, from: 'reading' },
   faint: 'possible',
@@ -21,14 +21,14 @@ describe('sky insight presenter', () => {
       faint: 'possible',
       faintLabel: 'Possible',
       dark: { start: '2026-11-05T18:40:00.000Z', text: '10 h 18 min', change: '7 min longer than last night', darkness: 'astronomical' },
-      moon: { phase: 'Waning crescent', up: 'Up for 1 h of the dark', upFrom: '2026-11-06T04:00:00.000Z', moonFree: '9 h 18 min' },
+      moon: { phase: 'Waning crescent', up: 'Up for 1 h of the dark', spans: [{ start: '2026-11-06T04:00:00.000Z', end: '2026-11-06T05:00:00.000Z' }], moonFree: '9 h 18 min' },
       cloud: { state: 'forecast', headline: 'Clear spells', cloudPct: 40, detail: '4 h clear of 10 h 18 min dark', dew: true },
       sky: { bortle: 3, name: 'Rural sky', sqm: 21.8, from: 'reading' }
     })
   })
 
   it('[NSI-001] [NSI-002] Given a shorter night and the Moon down or up throughout, When shown, Then the words follow', () => {
-    const down = toSkyInsightView({ status: 'ok', insight: insight({ dark: { ...insight().dark!, changeMinutes: -65 }, moon: { ...insight().moon!, upHours: 0, upFrom: null, upTo: null } }) })
+    const down = toSkyInsightView({ status: 'ok', insight: insight({ dark: { ...insight().dark!, changeMinutes: -65 }, moon: { ...insight().moon!, upHours: 0, upSpans: [] } }) })
     if (down.status !== 'ok') throw new Error('not ok')
     expect(down.dark?.change).toBe('1 h 5 min shorter than last night')
     expect(down.moon?.up).toBe('Down all through the dark')
@@ -73,13 +73,24 @@ describe('Tonight’s sky, shared with the renderer', () => {
   it('[NSI-001] [NSI-002] Given a dark window from 18:00 to 06:00 with the Moon up from 04:00, When the strip is laid out, Then it starts at noon and places both', async () => {
     const { nightStrip } = await import('../../src/shared/sky-insight')
     const local = (d: number, h: number) => new Date(2026, 10, d, h, 0, 0).toISOString()
-    const s = nightStrip(local(5, 18), local(6, 6), local(6, 4), local(6, 6))
+    const s = nightStrip(local(5, 18), local(6, 6), [{ start: local(5, 19), end: local(5, 20) }, { start: local(6, 4), end: local(6, 6) }])
     expect(s.from.getHours()).toBe(12)
     expect(s.dark.left).toBeCloseTo(0.25)
     expect(s.dark.width).toBeCloseTo(0.5)
-    expect(s.moon?.left).toBeCloseTo(16 / 24)
-    expect(s.moon?.width).toBeCloseTo(2 / 24)
-    expect(nightStrip(local(6, 1), local(6, 5), null, null).dark.left).toBeCloseTo(13 / 24)
+    expect(s.moon).toHaveLength(2)
+    expect(s.moon[1].left).toBeCloseTo(16 / 24)
+    expect(s.moon[1].width).toBeCloseTo(2 / 24)
+    expect(nightStrip(local(6, 1), local(6, 5), []).dark.left).toBeCloseTo(13 / 24)
+  })
+
+  it('[NSI-001] Given the night the clocks go back, When the strip is laid out, Then it runs noon to noon by the calendar and midnight is not mid-strip', async () => {
+    const { nightStrip } = await import('../../src/shared/sky-insight')
+    const local = (d: number, h: number) => new Date(2026, 9, d, h, 0, 0).toISOString()
+    const s = nightStrip(local(24, 18), local(25, 6), [])
+    const length = new Date(2026, 9, 25, 12).getTime() - new Date(2026, 9, 24, 12).getTime()
+    // Wherever the test runs, the strip's end is the next local noon.
+    expect(s.dark.left).toBeCloseTo((new Date(2026, 9, 24, 18).getTime() - s.from.getTime()) / length)
+    expect(s.dark.left + s.dark.width).toBeCloseTo((new Date(2026, 9, 25, 6).getTime() - s.from.getTime()) / length)
   })
 
   it('[NSI-004] Given a reading typed in Settings, When it is checked, Then only 16 to 22.5 passes and a blank is fine', async () => {

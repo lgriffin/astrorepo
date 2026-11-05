@@ -1133,11 +1133,11 @@ export type SkyInsightView =
   | {
       status: 'ok'
       night: string
-      /** How tonight suits faint galaxies and nebulae (SKY-006). */
+      /** How tonight suits faint galaxies and nebulae (NSI-006). */
       faint: 'good' | 'possible' | 'poor' | 'none'
       /** "Good", "Possible", "Poor", "No proper dark": the word on the badge before the summary. */
       faintLabel: string
-      /** One sentence: the night for faint targets and why (SKY-007). */
+      /** One sentence: the night for faint targets and why (NSI-007). */
       summary: string
       dark: {
         start: string
@@ -1157,8 +1157,8 @@ export type SkyInsightView =
         upHours: number
         /** "Up for 1 h of the dark", "Down all through the dark", "Up all through the dark". */
         up: string
-        upFrom: string | null
-        upTo: string | null
+        /** Each stretch of the dark with the Moon up, in order. */
+        spans: { start: string; end: string }[]
         /** "8 h 40 min". */
         moonFree: string
       } | null

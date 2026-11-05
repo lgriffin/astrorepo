@@ -48,7 +48,7 @@ A strip under the tiles runs from noon to noon and shows the dark window and the
 the Moon up.
 
 A night is **good** when it is astronomically dark, forecast clear, has three or more hours of dark
-with the Moon down, and the sky is darker than Bortle 7. It is **poor** when it is forecast cloudy
+with the Moon down, and your sky is set and darker than Bortle 7. It is **poor** when it is forecast cloudy
 or the Moon leaves less than an hour of dark. Anything between is **possible**, and the sentence
 names what held it back.
 

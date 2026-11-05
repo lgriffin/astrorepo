@@ -64,8 +64,7 @@ export function toSkyInsightView(answer: SkyInsightAnswer): SkyInsightView {
             phase: moonPhaseName(i.moon.percent, i.moon.trend),
             upHours: i.moon.upHours,
             up: moonUp(i.moon.upHours, i.dark.hours),
-            upFrom: i.moon.upFrom?.toISOString() ?? null,
-            upTo: i.moon.upTo?.toISOString() ?? null,
+            spans: i.moon.upSpans.map(sp => ({ start: sp.start.toISOString(), end: sp.end.toISOString() })),
             moonFree: hoursText(i.moon.moonFreeHours)
           }
         : null,

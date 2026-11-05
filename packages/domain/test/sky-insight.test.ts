@@ -103,12 +103,11 @@ describe('Darkness and the Moon tonight', () => {
     expect(darkInsight(sky(), null).changeMinutes).toBeNull()
   })
 
-  it('[NSI-002] Given the Moon up for the last two hours of a 10 h dark, When it is read, Then it is up 2 h from 02:00, leaving 8 h without it', () => {
+  it('[NSI-002] Given the Moon rising between the 01:30 and 02:00 samples of a 10 h dark, When it is read, Then it rises at 01:45 where its altitude crosses 0°, leaving 7 h 45 min without it', () => {
     const m = moonInDark(sky({ moonUp: i => i >= 16, lit: 0.1 }), sky({ lit: 0.18, dusk: DUSK - 24 * HOUR }))
-    expect(m.upHours).toBe(2)
-    expect(m.moonFreeHours).toBe(8)
-    expect(m.upFrom?.toISOString()).toBe('2026-11-06T02:00:00.000Z')
-    expect(m.upTo?.toISOString()).toBe('2026-11-06T04:00:00.000Z')
+    expect(m.upHours).toBe(2.3)
+    expect(m.moonFreeHours).toBe(7.8)
+    expect(m.upSpans.map(s => [s.start.toISOString(), s.end.toISOString()])).toEqual([['2026-11-06T01:45:00.000Z', '2026-11-06T04:00:00.000Z']])
     expect(m.percent).toBe(10)
     expect(m.trend).toBe('waning')
   })
@@ -116,7 +115,7 @@ describe('Darkness and the Moon tonight', () => {
   it('[NSI-002] Given no last night, When the trend is read, Then tonight’s first and last samples tell it, and a flat Moon has none', () => {
     expect(moonInDark(sky({ lit: i => 0.3 + i * 0.001 }), null).trend).toBe('waxing')
     expect(moonInDark(sky({ lit: 0.3 }), null).trend).toBeNull()
-    expect(moonInDark(sky({ moonUp: () => false }), null).upFrom).toBeNull()
+    expect(moonInDark(sky({ moonUp: () => false }), null).upSpans).toEqual([])
   })
 
   it('[NSI-002] Given the lit share and trend, When the phase is named, Then it reads as people say it', () => {
@@ -173,7 +172,7 @@ describe('Tonight for faint targets', () => {
     const spells: CloudInsight = cloudInsight(outlook({ verdict: 'clear-spells', longestSpell: { start: new Date(DUSK), end: new Date(DUSK + 3 * HOUR), hours: 3 } }))
     const short = moonInDark(sky({ moonUp: i => i >= 4 }), null)
     expect(faintTargets(dark, short, spells, rural)).toBe('possible')
-    expect(insightSummary('possible', dark, short, spells, rural)).toBe('Possible for faint targets: clear for 3 h at best, only 2 h of dark without the Moon.')
+    expect(insightSummary('possible', dark, short, spells, rural)).toBe('Possible for faint targets: clear for 3 h at best, only 1 h 48 min of dark without the Moon.')
   })
 
   it('[NSI-008] Given the forecast turned off or not readable, When the night is rated, Then it is rated without the cloud and the sentence says the cloud is not known', () => {
@@ -195,7 +194,7 @@ describe('Tonight for faint targets', () => {
   })
 
   it('[NSI-001] [NSI-002] [NSI-005] Given a full night, When the insight is built, Then every part is there', () => {
-    const i = skyInsight({ night: '2026-11-05', sky: sky(), previous: sky({ dusk: DUSK - 24 * HOUR, lit: 0.15 }), outlook: outlook(), quality: null })
+    const i = skyInsight({ night: '2026-11-05', sky: sky(), previous: sky({ dusk: DUSK - 24 * HOUR, lit: 0.15 }), outlook: outlook(), quality: rural })
     expect(i.dark?.hours).toBe(10)
     expect(i.moon?.trend).toBe('waning')
     expect(i.cloud.state).toBe('forecast')
@@ -224,16 +223,18 @@ describe('Edges of the rules', () => {
 
   it('[NSI-002] Given a dark window ending mid-step with the Moon up at the end, When it is read, Then only the dark part counts, and a Moon on the horizon is down', () => {
     // 9.75 h of dark: the last sample, at 9.5 h, covers only a quarter hour.
+    // The Moon rises half way between 9 h 15 min and 9 h 30 min and is up to the end at 9 h 45 min.
     const m = moonInDark(sky({ hours: 9.75, moonUp: i => i === 19 }), null)
-    expect(m.upHours).toBe(0.3)
-    expect(m.upTo?.toISOString()).toBe(new Date(DUSK + 9.75 * HOUR).toISOString())
+    expect(m.upHours).toBe(0.5)
+    expect(m.upSpans[0].end.toISOString()).toBe(new Date(DUSK + 9.75 * HOUR).toISOString())
     const horizon = sky()
     horizon.samples[0].moonAltitudeDeg = 0
     expect(moonInDark(horizon, null).upHours).toBe(0)
     // A sample at the very end of the dark adds nothing, even with the Moon up.
-    const atEnd = sky({ hours: 2 })
+    const atEnd = sky({ hours: 2, moonUp: () => true })
     atEnd.samples.push({ ...atEnd.samples[0], at: atEnd.darkEnd, moonAltitudeDeg: 30 })
-    expect(moonInDark(atEnd, null)).toMatchObject({ upHours: 0, upFrom: null, upTo: null })
+    expect(moonInDark(atEnd, null)).toMatchObject({ upHours: 2, moonFreeHours: 0 })
+    expect(moonInDark(atEnd, null).upSpans).toHaveLength(1)
   })
 
   it('[NSI-002] Given last night with no samples, When the trend is read, Then tonight’s samples tell it; with none at all there is none', () => {
@@ -243,6 +244,17 @@ describe('Edges of the rules', () => {
     expect(moonInDark(sky({ lit: 0.4 }), sky({ lit: 0.3 })).trend).toBe('waxing')
   })
 
+  it('[NSI-002] Given the Moon setting a quarter of a step after a sample and rising again later, When it is read, Then each crossing is interpolated and the stretches are kept apart', () => {
+    const night = sky({ hours: 4 })
+    // Samples every half hour at 30, -10, -10, -10, -10, -10, 10, 30 degrees.
+    const alts = [30, -10, -10, -10, -10, -10, 10, 30]
+    night.samples.forEach((s, i) => (s.moonAltitudeDeg = alts[i]))
+    const m = moonInDark(night, null)
+    expect(m.upSpans.map(s => [(s.start.getTime() - DUSK) / HOUR, (s.end.getTime() - DUSK) / HOUR])).toEqual([[0, 0.375], [2.75, 4]])
+    expect(m.upHours).toBe(1.6)
+    expect(m.moonFreeHours).toBe(2.4)
+  })
+
   it('[NSI-006] Given moonless dark and Bortle on the thresholds, When rated, Then 1 h is possible, 3 h is good, Bortle 7 is only possible', () => {
     expect(faintTargets(dark, withFree(0.9), clear, rural)).toBe('poor')
     expect(faintTargets(dark, withFree(1), clear, rural)).toBe('possible')
@@ -250,6 +262,7 @@ describe('Edges of the rules', () => {
     expect(faintTargets(dark, withFree(3), clear, rural)).toBe('good')
     expect(faintTargets(dark, withFree(3), clear, { ...rural, bortle: 6 })).toBe('good')
     expect(faintTargets(dark, withFree(3), clear, { ...rural, bortle: 7 })).toBe('possible')
+    expect(faintTargets(dark, withFree(10), clear, null)).toBe('possible')
     expect(faintTargets(dark, withFree(10), cloudInsight(outlook({ verdict: 'clear-spells' })), rural)).toBe('possible')
     expect(faintTargets(dark, withFree(10), cloudInsight(outlook({ verdict: 'no-darkness' })), rural)).toBe('poor')
   })
@@ -259,7 +272,17 @@ describe('Edges of the rules', () => {
     expect(insightSummary('possible', dark, withFree(3), spellsNoSpell, rural)).toBe('Possible for faint targets: clear spells only.')
     expect(insightSummary('possible', dark, withFree(3), cloudInsight(outlook({ verdict: 'no-forecast' })), rural)).toBe('Possible for faint targets: the cloud is not known.')
     expect(insightSummary('possible', dark, withFree(3), clear, { ...rural, bortle: 7 })).toBe('Possible for faint targets: a bright Bortle 7 sky.')
-    expect(insightSummary('possible', dark, withFree(2.9), clear, null)).toBe('Possible for faint targets: only 2 h 54 min of dark without the Moon.')
+    expect(insightSummary('possible', dark, withFree(2.9), clear, rural)).toBe('Possible for faint targets: only 2 h 54 min of dark without the Moon.')
+    expect(insightSummary('possible', dark, withFree(10), clear, null)).toBe('Possible for faint targets: your sky’s Bortle class is not set.')
+  })
+
+  it('[NSI-007] Given a dark window under an hour with the Moon down, When summed up, Then the sentence blames the short dark, not the Moon', () => {
+    const short = darkInsight(sky({ hours: 0.5 }), null)
+    const moon = moonInDark(sky({ hours: 0.5 }), null)
+    expect(faintTargets(short, moon, clear, rural)).toBe('poor')
+    expect(insightSummary('poor', short, moon, clear, rural)).toBe('Only 30 min of proper dark tonight, too short for faint targets.')
+    const hour = darkInsight(sky({ hours: 1 }), null)
+    expect(insightSummary('poor', hour, withFree(0.5), clear, rural)).toMatch(/^The Moon is up/)
   })
 
   it('[NSI-002] Given the lit share on the phase boundaries, When named, Then 2 and 98 are crescent and gibbous, 45 and 55 are quarters', () => {

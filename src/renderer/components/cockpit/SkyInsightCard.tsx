@@ -35,7 +35,7 @@ function Meter({ share, label }: { share: number; label: string }): React.ReactE
   )
 }
 
-/** The nine Bortle steps, darkest on the left, the user's class marked (SKY-003). */
+/** The nine Bortle steps, darkest on the left, the user's class marked (NSI-003). */
 function BortleScale({ bortle }: { bortle: number }): React.ReactElement {
   return (
     <div role="img" aria-label={`Bortle ${bortle} of 9`} className="mt-2 flex gap-0.5">
@@ -50,19 +50,20 @@ function BortleScale({ bortle }: { bortle: number }): React.ReactElement {
   )
 }
 
-/** Noon to noon: the dark window, and the part of it with the Moon up (SKY-001, SKY-002). */
+/** Noon to noon: the dark window, and the parts of it with the Moon up (NSI-001, NSI-002). */
 function NightStripBar({ insight }: { insight: Insight }): React.ReactElement | null {
   if (!insight.dark) return null
-  const strip = nightStrip(insight.dark.start, insight.dark.end, insight.moon?.upFrom ?? null, insight.moon?.upTo ?? null)
+  const spans = insight.moon?.spans ?? []
+  const strip = nightStrip(insight.dark.start, insight.dark.end, spans)
   const pct = (n: number) => `${(n * 100).toFixed(2)}%`
-  const label = `Dark ${time(insight.dark.start)} to ${time(insight.dark.end)}${
-    insight.moon?.upFrom && insight.moon.upTo ? `, Moon up ${time(insight.moon.upFrom)} to ${time(insight.moon.upTo)}` : ''
-  }`
+  const label = `Dark ${time(insight.dark.start)} to ${time(insight.dark.end)}${spans.map(s => `, Moon up ${time(s.start)} to ${time(s.end)}`).join('')}`
   return (
     <div className="mt-4">
       <div role="img" aria-label={label} className="relative h-3 w-full overflow-hidden rounded-full bg-astro-raised">
         <div className="absolute inset-y-0 bg-astro-scrim" style={{ left: pct(strip.dark.left), width: pct(strip.dark.width) }} />
-        {strip.moon && <div className="absolute inset-y-0 bg-astro-on-scrim" style={{ left: pct(strip.moon.left), width: pct(strip.moon.width), opacity: 0.55 }} />}
+        {strip.moon.map(m => (
+          <div key={m.left} className="absolute inset-y-0 bg-astro-on-scrim" style={{ left: pct(m.left), width: pct(m.width), opacity: 0.55 }} />
+        ))}
       </div>
       <div className="mt-1 flex justify-between text-[10px] text-astro-muted tabular-nums">
         <span>Noon</span>
@@ -122,7 +123,7 @@ export function SkyInsightCard({ insight }: { insight: SkyInsightView }): React.
               <p>{moon.phase}</p>
               <p>
                 {moon.up}
-                {moon.upFrom && moon.upTo && moon.upHours > 0 && moon.up.startsWith('Up for') && `, ${time(moon.upFrom)} to ${time(moon.upTo)}`}
+                {moon.spans.length === 1 && moon.up.startsWith('Up for') && `, ${time(moon.spans[0].start)} to ${time(moon.spans[0].end)}`}
               </p>
               <p>{moon.moonFree} of dark without it</p>
             </>

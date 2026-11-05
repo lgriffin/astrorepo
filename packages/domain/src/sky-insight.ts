@@ -90,9 +90,8 @@ export interface MoonInsight {
   trend: 'waxing' | 'waning' | null
   /** Hours of the dark window with the Moon above the horizon. */
   upHours: number
-  /** The first and last dark moments the Moon is up; null when it stays down. */
-  upFrom: Date | null
-  upTo: Date | null
+  /** Each stretch of the dark with the Moon up, in order; empty when it stays down. */
+  upSpans: { start: Date; end: Date }[]
   /** Dark hours with the Moon down: the time for faint targets. */
   moonFreeHours: number
 }
@@ -118,8 +117,6 @@ export interface SkyInsight {
   summary: string
 }
 
-/** A Moon this far into the dark window's samples counts as up. */
-const MOON_UP_DEG = 0
 /** Moon-free dark needed for a good night, and the least worth calling possible. */
 export const FAINT_POLICY = { goodHours: 3, possibleHours: 1, brightSkyBortle: 7 } as const
 
@@ -138,16 +135,25 @@ export function hoursText(hours: number): string {
 export function moonInDark(sky: NightSky, previous: NightSky | null): MoonInsight {
   const stepMs = sky.stepHours * HOUR_MS
   const endMs = sky.darkEnd.getTime()
-  let upMs = 0
-  let upFrom: Date | null = null
-  let upTo: Date | null = null
-  for (const s of sky.samples) {
-    const ms = Math.max(0, Math.min(stepMs, endMs - s.at.getTime()))
-    if (ms === 0 || s.moonAltitudeDeg <= MOON_UP_DEG) continue
-    upMs += ms
-    upFrom ??= s.at
-    upTo = new Date(s.at.getTime() + ms)
+  const spans: { start: number; end: number }[] = []
+  const up = (start: number, end: number) => {
+    if (end <= start) return
+    const last = spans[spans.length - 1]
+    if (last && last.end === start) last.end = end
+    else spans.push({ start, end })
   }
+  // The altitude runs straight from one sample to the next, so rising and setting fall between
+  // samples where the altitude crosses 0°, not on the half hour.
+  sky.samples.forEach((s, i) => {
+    const t = s.at.getTime()
+    const ms = Math.max(0, Math.min(stepMs, endMs - t))
+    const a = s.moonAltitudeDeg
+    const b = a + ((sky.samples[i + 1]?.moonAltitudeDeg ?? a) - a) * (ms / stepMs)
+    if (a > 0 && b > 0) up(t, t + ms)
+    else if (a > 0) up(t, t + Math.round((ms * a) / (a - b)))
+    else if (b > 0) up(t + Math.round((ms * -a) / (b - a)), t + ms)
+  })
+  const upMs = spans.reduce((sum, sp) => sum + sp.end - sp.start, 0)
   const darkHours = (endMs - sky.darkStart.getTime()) / HOUR_MS
   const lit = moonPhase(sky)
   // Last night's Moon says which way the phase is going; without it, the first and last samples tonight.
@@ -156,7 +162,8 @@ export function moonInDark(sky: NightSky, previous: NightSky | null): MoonInsigh
     : [sky.samples[0]?.moonIllumination ?? 0, sky.samples[sky.samples.length - 1]?.moonIllumination ?? 0]
   const trend = after > before ? 'waxing' : after < before ? 'waning' : null
   const upHours = round1(upMs / HOUR_MS)
-  return { percent: Math.round(lit * 100), trend, upHours, upFrom, upTo, moonFreeHours: round1(Math.max(0, darkHours - upMs / HOUR_MS)) }
+  const upSpans = spans.map(sp => ({ start: new Date(sp.start), end: new Date(sp.end) }))
+  return { percent: Math.round(lit * 100), trend, upHours, upSpans, moonFreeHours: round1(Math.max(0, darkHours - upMs / HOUR_MS)) }
 }
 
 /** Tonight's dark window against last night's (NSI-001). */
@@ -189,15 +196,16 @@ export function cloudInsight(outlook: NightOutlook | 'off' | 'unavailable'): Clo
 /**
  * How tonight suits faint targets (NSI-006): none with no dark window; poor when cloudy or the
  * Moon leaves under an hour of dark; good with three moonless hours forecast clear under a sky
- * darker than Bortle 7; possible otherwise, including when the cloud is not known.
+ * known to be darker than Bortle 7; possible otherwise, including when the cloud or sky is not known.
  */
 export function faintTargets(dark: DarkInsight | null, moon: MoonInsight | null, cloud: CloudInsight, sky: SkyQuality | null): FaintTargets {
   if (!dark || !moon) return 'none'
   const verdict = cloud.state === 'forecast' ? cloud.verdict : null
   if (verdict === 'cloudy' || verdict === 'no-darkness') return 'poor'
   if (moon.moonFreeHours < FAINT_POLICY.possibleHours) return 'poor'
-  const brightSky = sky !== null && sky.bortle >= FAINT_POLICY.brightSkyBortle
-  if (verdict === 'clear' && moon.moonFreeHours >= FAINT_POLICY.goodHours && !brightSky && dark.darkness === 'astronomical') return 'good'
+  // Good needs a sky known to be darker than Bortle 7; one not set yet could be a city's.
+  const darkSky = sky !== null && sky.bortle < FAINT_POLICY.brightSkyBortle
+  if (verdict === 'clear' && moon.moonFreeHours >= FAINT_POLICY.goodHours && darkSky && dark.darkness === 'astronomical') return 'good'
   return 'possible'
 }
 
@@ -208,6 +216,7 @@ export function insightSummary(faint: FaintTargets, dark: DarkInsight | null, mo
   const moonless = `${hoursText(moon.moonFreeHours)} of dark without the Moon`
   if (faint === 'poor') {
     if (verdict === 'cloudy') return 'Cloud is forecast through the dark, so not a night for faint targets.'
+    if (dark.hours < FAINT_POLICY.possibleHours) return `Only ${hoursText(dark.hours)} of proper dark tonight, too short for faint targets.`
     return `The Moon is up for nearly all of the ${hoursText(dark.hours)} of dark, so bright clusters or narrowband targets suit tonight better than faint galaxies.`
   }
   if (faint === 'good') return `A good night for faint galaxies and nebulae: ${moonless}, forecast clear.`
@@ -216,7 +225,8 @@ export function insightSummary(faint: FaintTargets, dark: DarkInsight | null, mo
   else if (verdict === null || verdict === 'no-forecast') reasons.push('the cloud is not known')
   if (moon.moonFreeHours < FAINT_POLICY.goodHours) reasons.push(`only ${moonless}`)
   if (dark.darkness === 'nautical') reasons.push('the sky only gets nautically dark')
-  if (sky && sky.bortle >= FAINT_POLICY.brightSkyBortle) reasons.push(`a bright Bortle ${sky.bortle} sky`)
+  if (sky === null) reasons.push('your sky’s Bortle class is not set')
+  else if (sky.bortle >= FAINT_POLICY.brightSkyBortle) reasons.push(`a bright Bortle ${sky.bortle} sky`)
   // A night short of good always has one of these reasons, by faintTargets' rules.
   return `Possible for faint targets: ${reasons.join(', ')}.`
 }
