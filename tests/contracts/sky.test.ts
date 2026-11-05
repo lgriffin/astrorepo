@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { FakeEphemeris, gmstHours, InMemoryPlanningSettings, InMemoryTargetPositions } from '@astro/testkit'
-import { ephemerisContract, planningSettingsContract, targetPositionsContract } from '@astro/testkit/contracts/sky.contract'
+import { FakeEphemeris, gmstHours, InMemoryPlanningSettings, InMemorySkyQualitySettings, InMemoryTargetPositions } from '@astro/testkit'
+import { ephemerisContract, planningSettingsContract, skyQualitySettingsContract, targetPositionsContract } from '@astro/testkit/contracts/sky.contract'
 import { AstronomyEngineEphemeris } from '../../src/main/adapters/astronomy-engine-ephemeris'
-import { NARROWBAND_KEY, SITE_KEYS, SqlitePlanningSettings, SqliteTargetPositions } from '../../src/main/adapters/sqlite-planning'
+import { NARROWBAND_KEY, SITE_KEYS, SqlitePlanningSettings, SqliteSkyQualitySettings, SqliteTargetPositions } from '../../src/main/adapters/sqlite-planning'
+import { SKY_QUALITY_KEYS } from '@astro/domain'
 import { setupTestDb, seedTarget, teardownTestDb } from '../helpers/setup'
 
 const NEW_MOONS = ['2026-10-10T15:50:36Z', '2026-11-09T07:02:42Z', '2026-12-09T00:52:31Z', '2027-01-07T20:25:05Z']
@@ -29,6 +30,18 @@ planningSettingsContract('SQLite', seed => {
   }
   if (seed.narrowband !== undefined && seed.narrowband !== null) set.run(NARROWBAND_KEY, String(seed.narrowband))
   return new SqlitePlanningSettings(db)
+})
+
+skyQualitySettingsContract('in-memory', seed => new InMemorySkyQualitySettings(seed.bortle ?? null, seed.sqm ?? null))
+
+skyQualitySettingsContract('SQLite', seed => {
+  const db = setupTestDb()
+  const set = db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)')
+  if (seed.bortle !== undefined) set.run(SKY_QUALITY_KEYS.bortle, seed.bortle)
+  if (seed.sqm !== undefined) set.run(SKY_QUALITY_KEYS.sqm, seed.sqm)
+  // A blank field saved by Settings counts as not set.
+  if (seed.bortle === undefined) set.run(SKY_QUALITY_KEYS.bortle, '  ')
+  return new SqliteSkyQualitySettings(db)
 })
 
 targetPositionsContract('SQLite', seed => {

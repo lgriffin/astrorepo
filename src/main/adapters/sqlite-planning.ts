@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
-import type { PlanningSettings, TargetPosition, TargetPositions } from '@astro/application'
-import { isValidSite, type Site } from '@astro/domain'
+import type { PlanningSettings, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
+import { SKY_QUALITY_KEYS, isValidSite, type Site } from '@astro/domain'
 import { settingReader } from './shared/app-settings'
 
 /** Settings keys the Sky Planner and Settings pages already write. */
@@ -28,6 +28,20 @@ export class SqlitePlanningSettings implements PlanningSettings {
   async hasNarrowbandFilter(): Promise<boolean> {
     const value = this.read(NARROWBAND_KEY)
     return value === null ? true : !['false', '0', 'no'].includes(value.toLowerCase())
+  }
+}
+
+/** SkyQualitySettings over the app_settings table: Settings → Your site saves both (specs/043-sky-insight). */
+export class SqliteSkyQualitySettings implements SkyQualitySettings {
+  constructor(private readonly db: Database.Database) {}
+
+  async skyQuality(): Promise<{ bortle: string | null; sqm: string | null }> {
+    const read = settingReader(this.db)
+    const value = (key: string) => {
+      const v = read(key)?.trim()
+      return v ? v : null
+    }
+    return { bortle: value(SKY_QUALITY_KEYS.bortle), sqm: value(SKY_QUALITY_KEYS.sqm) }
   }
 }
 

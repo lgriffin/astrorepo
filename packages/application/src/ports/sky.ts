@@ -39,3 +39,9 @@ export interface TargetPosition {
 export interface TargetPositions {
   listPositions(): Promise<TargetPosition[]>
 }
+
+/** Driven port: how dark the user's sky is, as saved in Settings → Your site (specs/043-sky-insight). */
+export interface SkyQualitySettings {
+  /** The Bortle class and the Sky Quality Meter reading exactly as saved, each null when not saved. */
+  skyQuality(): Promise<{ bortle: string | null; sqm: string | null }>
+}

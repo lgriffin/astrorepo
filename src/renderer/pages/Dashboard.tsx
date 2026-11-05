@@ -9,9 +9,10 @@ import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
 import { ClearSkiesCard } from '../components/cockpit/ClearSkiesCard'
 import { SetupCard } from '../components/cockpit/SetupCard'
 import { TonightHero } from '../components/cockpit/TonightHero'
+import { SkyInsightCard } from '../components/cockpit/SkyInsightCard'
 import { Button, Skeleton } from '../components/ui'
 import { useToast } from '../contexts/ToastContext'
-import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView } from '@shared/types'
+import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView, SkyInsightView } from '@shared/types'
 import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
 import { splitHomeActions, tonightSummary } from '@shared/tonight'
@@ -37,6 +38,7 @@ export function Dashboard(): React.ReactElement {
   const [cockpit, setCockpit] = useState<CockpitOverview | null | typeof FAILED>(null)
   const [plan, setPlan] = useState<ForwardPlanView | null | typeof FAILED>(null)
   const [skies, setSkies] = useState<ClearSkiesView | null | typeof FAILED>(null)
+  const [insight, setInsight] = useState<SkyInsightView | null | typeof FAILED>(null)
   const { addToast } = useToast()
   // Only the newest recommendations request may update the list, so a slow old one never wins.
   const recommendationsRequest = useRef(0)
@@ -63,9 +65,15 @@ export function Dashboard(): React.ReactElement {
       .then(setSkies)
       .catch(() => setSkies(FAILED))
 
+  const loadInsight = (): Promise<void> =>
+    invoke<SkyInsightView>('sky:insight')
+      .then(setInsight)
+      .catch(() => setInsight(FAILED))
+
   useEffect(() => {
     // The forecast asks services on the network, so it loads on its own like the plan.
     void loadSkies()
+    void loadInsight()
     void loadRecommendations()
     void loadCockpit()
     // Planning computes a year of nights, so it loads on its own and never holds up the page.
@@ -160,6 +168,16 @@ export function Dashboard(): React.ReactElement {
         <SetupCard />
 
         <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} />
+
+        {insight === null ? (
+          <Card title="Tonight’s sky"><Skeleton className="h-24 w-full" label="Working out tonight’s darkness, moon and cloud" /></Card>
+        ) : insight === FAILED ? (
+          <Card title="Tonight’s sky">
+            <EmptyState action={<LinkButton onClick={() => { setInsight(null); void loadInsight() }}>Try again</LinkButton>}>Could not work out tonight’s sky.</EmptyState>
+          </Card>
+        ) : (
+          <SkyInsightCard insight={insight} />
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {actionsCard(

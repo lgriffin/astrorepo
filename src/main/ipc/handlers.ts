@@ -24,6 +24,7 @@ import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toClearSkiesView } from '../adapters/weather-presenter'
+import { toSkyInsightView } from '../adapters/sky-insight-presenter'
 import { toPostProcessView, toSyqonView, toToolHealthView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toCometPlanView } from '../adapters/comet-presenter'
@@ -883,6 +884,9 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   // fresh: Settings' check asks every source now instead of using the answers kept for Home.
   handle('weather:outlook', validated('weather:outlook', async (args) =>
     toClearSkiesView(await (args?.fresh ? sky().checkWeather() : sky().clearSkies()))))
+
+  // Tonight's sky at a glance on Home: darkness, the moon, the cloud and the user's Bortle class.
+  handle('sky:insight', validated('sky:insight', async () => toSkyInsightView(await sky().describeSkyInsight())))
 
   handle('sky:solve-target', validated('sky:solve-target', async (args) => {
     const result = await composeCore(getSqlite()).queueSolves(args.target_id, args.timing ?? 'now')

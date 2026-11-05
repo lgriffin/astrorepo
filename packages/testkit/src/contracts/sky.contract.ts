@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Ephemeris, PlanningSettings, TargetPosition, TargetPositions } from '@astro/application'
+import type { Ephemeris, PlanningSettings, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
 import type { Site } from '@astro/domain'
 
 const london: Site = { latitudeDeg: 51.5, longitudeDeg: -0.13, elevationM: 20 }
@@ -103,6 +103,19 @@ export function targetPositionsContract(adapterName: string, make: (seed: Target
       ]
       const listed = await make(seed).listPositions()
       expect([...listed].sort((a, b) => a.targetId.localeCompare(b.targetId))).toEqual(seed)
+    })
+  })
+}
+
+/** Every SkyQualitySettings adapter must pass this suite. `make` returns settings holding what was saved (undefined: nothing). */
+export function skyQualitySettingsContract(adapterName: string, make: (seed: { bortle?: string; sqm?: string }) => SkyQualitySettings): void {
+  describe(`SkyQualitySettings contract: ${adapterName}`, () => {
+    it('[NSI-003] Given nothing saved, When the sky quality is read, Then both are null', async () => {
+      expect(await make({}).skyQuality()).toEqual({ bortle: null, sqm: null })
+    })
+
+    it('[NSI-004] Given a class and a reading, When the sky quality is read, Then both come back as saved', async () => {
+      expect(await make({ bortle: '4', sqm: '21.2' }).skyQuality()).toEqual({ bortle: '4', sqm: '21.2' })
     })
   })
 }

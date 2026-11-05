@@ -117,6 +117,7 @@ export const CONCEPT_PLACES: Readonly<Record<string, { to: string; label: string
   twilight: { to: '/dashboard', label: 'Tonight, on Home' },
   'moon-phase': { to: '/dashboard', label: 'Tonight, on Home' },
   moonlight: { to: '/dashboard', label: 'Tonight, on Home' },
+  'light-pollution': { to: '/dashboard', label: 'Tonight’s sky, on Home' },
   airmass: { to: '/dashboard', label: 'Tonight, on Home' },
   seeing: { to: '/insights', label: 'Seeing over time, in Insights' },
   'solar-system-motion': { to: '/targets', label: 'The physics card on a planet, comet or asteroid' },

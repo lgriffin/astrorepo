@@ -14,18 +14,50 @@ Below that, from the top, Home shows:
    the three best targets to shoot, each opening its page. A cloudy night or one with no dark
    window lists no targets. If the forecast and the plan disagree about which night is tonight
    (just before dawn), the sky is only judged for the plan's night.
-2. **Shoot tonight** and **Ready to process**, side by side: what is worth doing next (see
+2. **Tonight's sky**: tonight at a glance (see [Tonight's sky](#tonights-sky)).
+3. **Shoot tonight** and **Ready to process**, side by side: what is worth doing next (see
    [Next actions](#next-actions)).
-3. **Clear skies**: whether tonight and the next two nights look clear (see
+4. **Clear skies**: whether tonight and the next two nights look clear (see
    [Planning ahead](planning.md#clear-skies)).
-4. **Coming nights** and **Hidden in your files**, side by side, with **Plan ahead** beside them
+5. **Coming nights** and **Hidden in your files**, side by side, with **Plan ahead** beside them
    when a mosaic tile has no lights yet: it is up on a coming night, not necessarily tonight.
-5. **Where your targets are**: how many targets are at each stage.
-6. **Other checks**.
+6. **Where your targets are**: how many targets are at each stage.
+7. **Other checks**.
 
 Apart from the weather, everything on it is worked out from the files the app has indexed (the Library and FITS files
 scans), so it changes as you capture, stack and process. Totals, catalogue progress and
 breakdowns by object type and equipment are on **Insights**, under **Your observatory**.
+
+## Tonight's sky
+
+Inspired by Ryan Clinton's [Meanwhile, in space](https://ryanclinton.uk/astrophotography/meanwhile),
+this card sums tonight up in one sentence for faint galaxies and nebulae, rated **Good**,
+**Possible**, **Poor** or **No proper dark**, with four tiles under it:
+
+- **Darkness**: how long it is properly dark (astronomical, or nautical on summer nights), from
+  when to when, and how much longer or shorter than last night.
+- **Moon**: how much of it is lit, drawn as it is, its phase (waxing or waning against last
+  night), how long it is up during the dark and when, and the dark hours left without it.
+- **Cloud**: the mean cloud cover over the dark window, tonight's verdict and clear hours from
+  the [Clear skies](planning.md#clear-skies) forecast, and dew. With the forecast off or not
+  readable, the tile says so and the rest still shows.
+- **Your sky**: your Bortle class, from 1 (an excellent dark-sky site) to 9 (an inner-city sky),
+  on a nine-step scale.
+
+A strip under the tiles runs from noon to noon and shows the dark window and the part of it with
+the Moon up.
+
+A night is **good** when it is astronomically dark, forecast clear, has three or more hours of dark
+with the Moon down, and your sky is set and darker than Bortle 7. It is **poor** when it is forecast cloudy
+or the Moon leaves less than an hour of dark. Anything between is **possible**, and the sentence
+names what held it back.
+
+**Setting your sky.** In Settings → Your site, pick your Bortle class, or type a Sky Quality Meter
+reading in mag/arcsec² (a measured reading wins). The app has no light-pollution atlas of its
+own: the atlases are gigabytes, or an online service the app would have to send your location to.
+To find your class, look your site up on a light-pollution map such as
+[lightpollutionmap.info](https://www.lightpollutionmap.info) and read off the Bortle class or the
+sky brightness it gives.
 
 ## Coming nights
 
