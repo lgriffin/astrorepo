@@ -102,4 +102,19 @@ describe('Tonight’s sky at a glance', () => {
     w.quality.set({ sqm: '19.2' })
     expect(ok(await w.run()).sky).toEqual({ bortle: 6, name: 'Bright suburban sky', sqm: 19.2, from: 'reading' })
   })
+
+  it('[NSI-005] Given an outlook whose nights do not include tonight, When the insight is read, Then tonight’s cloud is unavailable rather than another night’s', async () => {
+    const w = new World()
+    const real = await w.clearSkies()
+    if (real.status !== 'ok') throw new Error('no outlook')
+    w.clearSkies = async () => ({ ...real, nights: real.nights.filter(n => n.night !== '2026-11-05') })
+    expect(ok(await w.run()).cloud).toEqual({ state: 'unavailable' })
+  })
+
+  it('[NSI-001] Given tonight and last night, When the insight is read, Then the ephemeris is asked once for each', async () => {
+    const w = new World()
+    w.clearSkies = async () => ({ status: 'off' })
+    await w.run()
+    expect([...w.ephemeris.nightsRequested].sort()).toEqual(['2026-11-04', '2026-11-05'])
+  })
 })

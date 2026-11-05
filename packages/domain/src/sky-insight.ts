@@ -38,10 +38,13 @@ export const SQM_RANGE = { min: 16, max: 22.5 } as const
 /** The settings keys the user's sky quality is saved under (Settings → Your site). */
 export const SKY_QUALITY_KEYS = { bortle: 'site_bortle', sqm: 'site_sqm' } as const
 
+/** The faintest reading of classes 1 to 7, in order; a reading below the last is class 8. */
+const SQM_FLOORS = BORTLE_CLASSES.slice(0, 7).map(c => c.sqmFrom as number)
+
 /** The Bortle class a zenith sky brightness falls in; below 18.38 it is 8, since a reading cannot tell 8 from 9 (NSI-004). */
 export function bortleFromSqm(sqm: number): number {
-  for (const c of BORTLE_CLASSES) if (c.sqmFrom !== null && sqm >= c.sqmFrom) return c.bortle
-  return 8
+  const i = SQM_FLOORS.findIndex(floor => sqm >= floor)
+  return i === -1 ? 8 : i + 1
 }
 
 /** How dark the user's sky is, and whether they measured it or picked the class. */
@@ -58,14 +61,13 @@ export interface SkyQuality {
  * class, since it is measured; a class from 1 to 9 otherwise; null when neither reads.
  */
 export function readSkyQuality(saved: { bortle: string | null; sqm: string | null }): SkyQuality | null {
-  const sqmText = saved.sqm?.trim() ?? ''
-  const sqm = sqmText === '' ? NaN : Number(sqmText)
-  if (Number.isFinite(sqm) && sqm >= SQM_RANGE.min && sqm <= SQM_RANGE.max) {
+  // Number() trims, reads a blank or null as 0 and anything else unreadable as NaN, all out of range.
+  const sqm = Number(saved.sqm)
+  if (sqm >= SQM_RANGE.min && sqm <= SQM_RANGE.max) {
     const bortle = bortleFromSqm(sqm)
     return { bortle, name: BORTLE_CLASSES[bortle - 1].name, sqm: Math.round(sqm * 100) / 100, from: 'reading' }
   }
-  const classText = saved.bortle?.trim() ?? ''
-  const bortle = classText === '' ? NaN : Number(classText)
+  const bortle = Number(saved.bortle)
   if (Number.isInteger(bortle) && bortle >= 1 && bortle <= 9) return { bortle, name: BORTLE_CLASSES[bortle - 1].name, sqm: null, from: 'class' }
   return null
 }
@@ -149,9 +151,10 @@ export function moonInDark(sky: NightSky, previous: NightSky | null): MoonInsigh
   const darkHours = (endMs - sky.darkStart.getTime()) / HOUR_MS
   const lit = moonPhase(sky)
   // Last night's Moon says which way the phase is going; without it, the first and last samples tonight.
-  const before = previous && previous.samples.length > 0 ? moonPhase(previous) : sky.samples[0]?.moonIllumination
-  const after = previous && previous.samples.length > 0 ? lit : sky.samples[sky.samples.length - 1]?.moonIllumination
-  const trend = before === undefined || after === undefined || before === after ? null : after > before ? 'waxing' : 'waning'
+  const [before, after] = previous?.samples.length
+    ? [moonPhase(previous), lit]
+    : [sky.samples[0]?.moonIllumination ?? 0, sky.samples[sky.samples.length - 1]?.moonIllumination ?? 0]
+  const trend = after > before ? 'waxing' : after < before ? 'waning' : null
   const upHours = round1(upMs / HOUR_MS)
   return { percent: Math.round(lit * 100), trend, upHours, upFrom, upTo, moonFreeHours: round1(Math.max(0, darkHours - upMs / HOUR_MS)) }
 }
@@ -200,7 +203,7 @@ export function faintTargets(dark: DarkInsight | null, moon: MoonInsight | null,
 
 /** The one-sentence verdict (NSI-007), worded from the same figures the tiles show. */
 export function insightSummary(faint: FaintTargets, dark: DarkInsight | null, moon: MoonInsight | null, cloud: CloudInsight, sky: SkyQuality | null): string {
-  if (faint === 'none' || !dark || !moon) return 'No proper dark tonight: the Sun stays less than 12° below the horizon all night.'
+  if (!dark || !moon) return 'No proper dark tonight: the Sun stays less than 12° below the horizon all night.'
   const verdict = cloud.state === 'forecast' ? cloud.verdict : null
   const moonless = `${hoursText(moon.moonFreeHours)} of dark without the Moon`
   if (faint === 'poor') {
@@ -214,7 +217,8 @@ export function insightSummary(faint: FaintTargets, dark: DarkInsight | null, mo
   if (moon.moonFreeHours < FAINT_POLICY.goodHours) reasons.push(`only ${moonless}`)
   if (dark.darkness === 'nautical') reasons.push('the sky only gets nautically dark')
   if (sky && sky.bortle >= FAINT_POLICY.brightSkyBortle) reasons.push(`a bright Bortle ${sky.bortle} sky`)
-  return reasons.length > 0 ? `Possible for faint targets: ${reasons.join(', ')}.` : `Possible for faint targets, with ${moonless}.`
+  // A night short of good always has one of these reasons, by faintTargets' rules.
+  return `Possible for faint targets: ${reasons.join(', ')}.`
 }
 
 /**

@@ -202,3 +202,72 @@ describe('Tonight for faint targets', () => {
     expect(i.faint).toBe('good')
   })
 })
+
+describe('Edges of the rules', () => {
+  const dark = darkInsight(sky(), null)
+  const clear = cloudInsight(outlook())
+  const withFree = (hours: number) => ({ ...moonInDark(sky(), null), moonFreeHours: hours })
+
+  it('[NSI-004] Given readings and classes on the ends of their ranges, When the sky is read, Then the ends count and just past them does not', () => {
+    expect(readSkyQuality({ bortle: null, sqm: '16' })?.bortle).toBe(8)
+    expect(readSkyQuality({ bortle: null, sqm: '22.5' })?.bortle).toBe(1)
+    expect(readSkyQuality({ bortle: null, sqm: '15.99' })).toBeNull()
+    expect(readSkyQuality({ bortle: null, sqm: '22.51' })).toBeNull()
+    expect(readSkyQuality({ bortle: '1', sqm: '' })?.bortle).toBe(1)
+    expect(readSkyQuality({ bortle: '9', sqm: null })?.name).toBe('Inner-city sky')
+    expect(readSkyQuality({ bortle: '10', sqm: null })).toBeNull()
+    expect(readSkyQuality({ bortle: null, sqm: ' 21.234 ' })?.sqm).toBe(21.23)
+    expect(bortleFromSqm(18.38)).toBe(7)
+    expect(bortleFromSqm(18.37)).toBe(8)
+    expect(BORTLE_CLASSES[7].sqmFrom).toBeNull()
+  })
+
+  it('[NSI-002] Given a dark window ending mid-step with the Moon up at the end, When it is read, Then only the dark part counts, and a Moon on the horizon is down', () => {
+    // 9.75 h of dark: the last sample, at 9.5 h, covers only a quarter hour.
+    const m = moonInDark(sky({ hours: 9.75, moonUp: i => i === 19 }), null)
+    expect(m.upHours).toBe(0.3)
+    expect(m.upTo?.toISOString()).toBe(new Date(DUSK + 9.75 * HOUR).toISOString())
+    const horizon = sky()
+    horizon.samples[0].moonAltitudeDeg = 0
+    expect(moonInDark(horizon, null).upHours).toBe(0)
+    // A sample at the very end of the dark adds nothing, even with the Moon up.
+    const atEnd = sky({ hours: 2 })
+    atEnd.samples.push({ ...atEnd.samples[0], at: atEnd.darkEnd, moonAltitudeDeg: 30 })
+    expect(moonInDark(atEnd, null)).toMatchObject({ upHours: 0, upFrom: null, upTo: null })
+  })
+
+  it('[NSI-002] Given last night with no samples, When the trend is read, Then tonight’s samples tell it; with none at all there is none', () => {
+    const empty = { ...sky(), samples: [] }
+    expect(moonInDark(sky({ lit: i => 0.5 - i * 0.001 }), empty).trend).toBe('waning')
+    expect(moonInDark(empty, null).trend).toBeNull()
+    expect(moonInDark(sky({ lit: 0.4 }), sky({ lit: 0.3 })).trend).toBe('waxing')
+  })
+
+  it('[NSI-006] Given moonless dark and Bortle on the thresholds, When rated, Then 1 h is possible, 3 h is good, Bortle 7 is only possible', () => {
+    expect(faintTargets(dark, withFree(0.9), clear, rural)).toBe('poor')
+    expect(faintTargets(dark, withFree(1), clear, rural)).toBe('possible')
+    expect(faintTargets(dark, withFree(2.9), clear, rural)).toBe('possible')
+    expect(faintTargets(dark, withFree(3), clear, rural)).toBe('good')
+    expect(faintTargets(dark, withFree(3), clear, { ...rural, bortle: 6 })).toBe('good')
+    expect(faintTargets(dark, withFree(3), clear, { ...rural, bortle: 7 })).toBe('possible')
+    expect(faintTargets(dark, withFree(10), cloudInsight(outlook({ verdict: 'clear-spells' })), rural)).toBe('possible')
+    expect(faintTargets(dark, withFree(10), cloudInsight(outlook({ verdict: 'no-darkness' })), rural)).toBe('poor')
+  })
+
+  it('[NSI-007] Given each reason alone, When summed up, Then the sentence names just that one', () => {
+    const spellsNoSpell = cloudInsight(outlook({ verdict: 'clear-spells', longestSpell: null }))
+    expect(insightSummary('possible', dark, withFree(3), spellsNoSpell, rural)).toBe('Possible for faint targets: clear spells only.')
+    expect(insightSummary('possible', dark, withFree(3), cloudInsight(outlook({ verdict: 'no-forecast' })), rural)).toBe('Possible for faint targets: the cloud is not known.')
+    expect(insightSummary('possible', dark, withFree(3), clear, { ...rural, bortle: 7 })).toBe('Possible for faint targets: a bright Bortle 7 sky.')
+    expect(insightSummary('possible', dark, withFree(2.9), clear, null)).toBe('Possible for faint targets: only 2 h 54 min of dark without the Moon.')
+  })
+
+  it('[NSI-002] Given the lit share on the phase boundaries, When named, Then 2 and 98 are crescent and gibbous, 45 and 55 are quarters', () => {
+    expect(moonPhaseName(2, 'waxing')).toBe('Waxing crescent')
+    expect(moonPhaseName(98, 'waning')).toBe('Waning gibbous')
+    expect(moonPhaseName(45, 'waxing')).toBe('First quarter')
+    expect(moonPhaseName(55, 'waning')).toBe('Last quarter')
+    expect(moonPhaseName(44, 'waxing')).toBe('Waxing crescent')
+    expect(moonPhaseName(56, 'waxing')).toBe('Waxing gibbous')
+  })
+})
