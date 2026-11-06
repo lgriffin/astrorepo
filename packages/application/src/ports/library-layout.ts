@@ -9,8 +9,11 @@ export interface LibraryFolders {
   survey(home: string): Promise<FolderSample[]>
   /** The names of the folders directly under `home`; none when it cannot be read. */
   names(home: string): Promise<string[]>
-  /** Whether a path is a folder that can be read. */
-  isFolder(path: string): Promise<boolean>
+  /**
+   * The folder's canonical path (links and ".." resolved) when it is a folder whose entries can be
+   * listed; null otherwise.
+   */
+  folderAt(path: string): Promise<string | null>
   /** A path under the home folder. */
   join(home: string, name: string): string
 }

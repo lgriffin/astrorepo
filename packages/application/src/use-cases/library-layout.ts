@@ -68,10 +68,15 @@ export function makeChooseLibraryLayout(deps: LibraryLayoutDeps): (layout: Parti
     const problems: string[] = []
     const conventional = resolveLayout({}, await deps.folders.names(now.home), name => deps.folders.join(now.home, name))
     const after: Partial<Record<LibraryRole, string | null>> = {}
+    const saving: Partial<Record<LibraryRole, string | null>> = {}
     for (const role of LIBRARY_ROLES) {
       const given = layout[role]
-      const picked = typeof given === 'string' ? given.trim() : given
-      if (picked && !(await deps.folders.isFolder(picked))) problems.push(`${picked} is not a folder that can be read.`)
+      const typed = typeof given === 'string' ? given.trim() : given
+      // Saved as the folder's one true path, so two spellings of one folder are seen to clash.
+      const real = typed ? await deps.folders.folderAt(typed) : null
+      if (typed && !real) problems.push(`${typed} is not a folder that can be read.`)
+      const picked = typed ? real ?? typed : typed
+      if (given !== undefined) saving[role] = picked || null
       // A part left out keeps its folder; a cleared one goes back to its conventional folder.
       // A folder that does not exist yet reads nothing, so it cannot clash.
       const kept = picked === undefined ? now.layout[role] : picked ? null : conventional[role]
@@ -79,7 +84,7 @@ export function makeChooseLibraryLayout(deps: LibraryLayoutDeps): (layout: Parti
     }
     problems.push(...layoutProblems(after))
     if (problems.length > 0) return { saved: false, problems }
-    await deps.store.choose(Object.fromEntries(Object.entries(layout).map(([role, p]) => [role, typeof p === 'string' && p.trim() ? p.trim() : null])))
+    await deps.store.choose(saving)
     return { saved: true }
   }
 }

@@ -6,7 +6,9 @@ export class InMemoryLibraryFolders implements LibraryFolders {
   constructor(
     private readonly homes: Record<string, FolderSample[]> = {},
     /** Folders elsewhere that can be chosen, beside those under each home. */
-    private readonly elsewhere: string[] = []
+    private readonly elsewhere: string[] = [],
+    /** Other spellings of a folder → its canonical path. */
+    private readonly aliases: Record<string, string> = {}
   ) {}
 
   async survey(home: string): Promise<FolderSample[]> {
@@ -17,8 +19,10 @@ export class InMemoryLibraryFolders implements LibraryFolders {
     return (this.homes[home] ?? []).map(f => f.name)
   }
 
-  async isFolder(path: string): Promise<boolean> {
-    return this.elsewhere.includes(path) || Object.values(this.homes).some(fs => fs.some(f => f.path === path))
+  async folderAt(path: string): Promise<string | null> {
+    // An alias spelling resolves to the folder it names, as a link or ".." would on disk.
+    const real = this.aliases[path] ?? path
+    return this.elsewhere.includes(real) || Object.values(this.homes).some(fs => fs.some(f => f.path === real)) ? real : null
   }
 
   join(home: string, name: string): string {

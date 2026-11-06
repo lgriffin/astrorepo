@@ -25,9 +25,10 @@ export function libraryLayoutNow(setting: SettingReader): { home: string; layout
   return { home, layout: resolveLayout(chosenFolders(setting), names, name => path.join(home, name)) }
 }
 
-/** The folder one part reads now; null with no home folder. */
+/** The folder one part reads now; null with no home folder. A chosen folder needs no listing of the home folder. */
 export function libraryFolder(setting: SettingReader, role: LibraryRole): string | null {
-  return libraryLayoutNow(setting)?.layout[role].path ?? null
+  if (!setting('home_folder_path')?.trim()) return null
+  return chosenFolders(setting)[role] ?? libraryLayoutNow(setting)?.layout[role].path ?? null
 }
 
 /** The folders the user chose for the library, which the app only reads, like the home folder. */

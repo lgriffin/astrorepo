@@ -22,7 +22,8 @@ libraryFoldersContract('in-memory', seed => {
     const objects = new Set(files.filter(f => f.includes('/')).map(f => f.split('/')[0]).filter(objectName))
     return { name, path: `${home}/${name}`, files: files.map(f => f.split('/').pop()!), objectFolders: objects.size, isObject: objectName(name) }
   })
-  return { folders: new InMemoryLibraryFolders({ [home]: folders }), home, notAFolder: 'D:/Nowhere' }
+  const alias = `${home}/Lights/../Masters`
+  return { folders: new InMemoryLibraryFolders({ [home]: folders }, undefined, { [alias]: `${home}/Masters` }), home, notAFolder: 'D:/Nowhere', alias }
 })
 
 libraryFoldersContract('file system', (seed: HomeSeed) => {
@@ -37,7 +38,9 @@ libraryFoldersContract('file system', (seed: HomeSeed) => {
   }
   // Hidden folders are not part of the library.
   fs.mkdirSync(path.join(home, '.thumbnails'))
-  return { folders: new NodeLibraryFolders(isAstronomicalName), home, notAFolder: path.join(home, 'nowhere') }
+  // A file is not a folder, even though its path exists.
+  const alias = `${home}${path.sep}Lights${path.sep}..${path.sep}Masters`
+  return { folders: new NodeLibraryFolders(isAstronomicalName), home, notAFolder: path.join(home, 'Exports', 'M 31.tif'), alias }
 })
 
 libraryLayoutStoreContract('in-memory', home => new InMemoryLibraryLayoutStore(home))

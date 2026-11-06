@@ -68,10 +68,20 @@ export class SqliteMessierCatalogue implements MessierCatalogue {
    * number. A scan can file several of these under one target but records only one folder, so the
    * shared folder is always looked at; its other images are other objects' (MES-003).
    */
+  /** The library's pictures folder, looked up once for all the tiles of a mosaic (LAY-004). */
+  private sharedImages(): string | null {
+    if (this.sharedImagesDir === undefined) {
+      const shared = libraryFolder(this.setting, 'images')
+      this.sharedImagesDir = shared ? path.resolve(shared) : null
+    }
+    return this.sharedImagesDir
+  }
+
+  private sharedImagesDir: string | null | undefined = undefined
+
   private finished(targetId: string): PictureCandidate[] {
     const dir = imagesFolderOf(this.db, targetId)
-    const shared = libraryFolder(this.setting, 'images')
-    const sharedDir = shared ? path.resolve(shared) : null
+    const sharedDir = this.sharedImages()
     const folders = new Set<string>()
     if (dir && path.resolve(dir) !== sharedDir) folders.add(path.resolve(dir))
     let loose: FolderImage[] = []

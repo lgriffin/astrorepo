@@ -7,9 +7,9 @@ const HOME = 'D:/Astro'
 const folder = (name: string, files: string[] = []): FolderSample => ({ name, path: `${HOME}/${name}`, files, objectFolders: 0, isObject: false })
 const lights = ['Light_1.fit', 'Light_2.fit', 'Light_3.fit']
 
-function setup(folders: FolderSample[], chosen = {}, elsewhere: string[] = [], home: string | null = HOME) {
+function setup(folders: FolderSample[], chosen = {}, elsewhere: string[] = [], home: string | null = HOME, aliases: Record<string, string> = {}) {
   const store = new InMemoryLibraryLayoutStore(home, chosen)
-  const deps = { store, folders: new InMemoryLibraryFolders({ [HOME]: folders }, elsewhere) }
+  const deps = { store, folders: new InMemoryLibraryFolders({ [HOME]: folders }, elsewhere, aliases) }
   return { store, describe: makeDescribeLibraryLayout(deps), choose: makeChooseLibraryLayout(deps), read: makeReadLibraryLayout(deps) }
 }
 
@@ -44,6 +44,18 @@ describe('choosing the library layout', () => {
     expect(await s.choose({ raw: `${HOME}/Lights`, images: ' E:/Final ' })).toEqual({ saved: true })
     expect(await s.store.chosen()).toEqual({ raw: `${HOME}/Lights`, stacked: null, tif: null, images: 'E:/Final' })
     expect((await s.read())!.layout.raw).toEqual({ path: `${HOME}/Lights`, source: 'chosen' })
+  })
+
+  it('[LAY-004] Given a folder chosen by another spelling, When saved, Then its one true path is kept', async () => {
+    const s = setup([folder('Lights', lights)], {}, ['E:/Final'], HOME, { 'E:/Links/Final': 'E:/Final' })
+    expect(await s.choose({ images: 'E:/Links/Final' })).toEqual({ saved: true })
+    expect((await s.store.chosen()).images).toBe('E:/Final')
+  })
+
+  it('[LAY-006] Given a part chosen by another spelling of a folder another part reads, When chosen, Then it is refused', async () => {
+    const s = setup([folder('Lights', lights), folder('raw')], {}, [], HOME, { [`${HOME}/Lights/../raw`]: `${HOME}/raw` })
+    const result = await s.choose({ stacked: `${HOME}/Lights/../raw` })
+    expect(result.saved).toBe(false)
   })
 
   it('[LAY-004] Given a chosen folder cleared, When saved, Then the part reads its conventional folder again', async () => {

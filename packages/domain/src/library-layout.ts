@@ -259,5 +259,8 @@ export function suggestedChanges(
   current: Record<LibraryRole, { path: string; source: FolderSource }>,
   suggestion: LayoutSuggestion
 ): RoleSuggestion[] {
-  return suggestion.roles.filter(s => current[s.role].source !== 'chosen' && samePathKey(current[s.role].path) !== samePathKey(s.path))
+  // Both paths are built from the same listing of the home folder, so they are compared as they
+  // are: on a system where case matters, images and Images are two folders.
+  const bare = (p: string) => p.trim().replace(/[\\/]+$/, '')
+  return suggestion.roles.filter(s => current[s.role].source !== 'chosen' && bare(current[s.role].path) !== bare(s.path))
 }

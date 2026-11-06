@@ -18,9 +18,13 @@ export const HOME_SEED: HomeSeed = {
 
 /**
  * Every LibraryFolders adapter must pass this suite. `make` returns the adapter and the home path
- * holding `HOME_SEED`, plus a path that is not a folder.
+ * holding `HOME_SEED`, a path that is not a folder, and `alias`: another spelling of the Masters
+ * folder (through ".." or a link) that the adapter must resolve to the folder's one path.
  */
-export function libraryFoldersContract(adapterName: string, make: (seed: HomeSeed) => { folders: LibraryFolders; home: string; notAFolder: string }): void {
+export function libraryFoldersContract(
+  adapterName: string,
+  make: (seed: HomeSeed) => { folders: LibraryFolders; home: string; notAFolder: string; alias: string }
+): void {
   describe(`LibraryFolders contract: ${adapterName}`, () => {
     it('[LAY-002] Given a home folder, When it is surveyed, Then each folder under it comes back with the names of files inside it at any depth', async () => {
       const { folders, home } = make(HOME_SEED)
@@ -45,10 +49,12 @@ export function libraryFoldersContract(adapterName: string, make: (seed: HomeSee
       expect(await folders.names(notAFolder)).toEqual([])
     })
 
-    it('[LAY-006] Given paths, When asked whether each is a folder, Then only a readable folder is', async () => {
-      const { folders, home, notAFolder } = make(HOME_SEED)
-      expect(await folders.isFolder(folders.join(home, 'Masters'))).toBe(true)
-      expect(await folders.isFolder(notAFolder)).toBe(false)
+    it('[LAY-006] Given paths, When each is looked up as a folder, Then only a readable folder has a path and two spellings of one folder give the same path', async () => {
+      const { folders, home, notAFolder, alias } = make(HOME_SEED)
+      const masters = await folders.folderAt(folders.join(home, 'Masters'))
+      expect(masters).not.toBeNull()
+      expect(await folders.folderAt(alias)).toBe(masters)
+      expect(await folders.folderAt(notAFolder)).toBeNull()
     })
   })
 }

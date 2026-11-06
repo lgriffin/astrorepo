@@ -13,6 +13,23 @@ const SAMPLE_ENTRIES = 2000
 /** How deep a survey looks: object, night, filter and one more. */
 const SAMPLE_DEPTH = 4
 
+/** Calls `visit` for each entry of a folder until it returns false; an unreadable folder has none. */
+async function eachEntry(dir: string, visit: (e: fs.Dirent) => boolean): Promise<void> {
+  let handle: fs.Dir
+  try {
+    handle = await fs.promises.opendir(dir, { bufferSize: 256 })
+  } catch {
+    return
+  }
+  try {
+    for await (const e of handle) if (!visit(e)) break
+  } catch {
+    // A folder that stops answering mid-listing gives what it gave.
+  } finally {
+    await handle.close().catch(() => undefined)
+  }
+}
+
 const hidden = (name: string) => name.startsWith('.') || name.startsWith('$') || name === 'System Volume Information'
 
 async function folderNames(dir: string): Promise<string[]> {
@@ -39,28 +56,28 @@ export class NodeLibraryFolders implements LibraryFolders {
     for (const name of names.sort((a, b) => a.localeCompare(b))) {
       const dir = path.join(home, name)
       const files: string[] = []
+      let objectFolders = 0
       let looked = 0
       let level = [dir]
-      for (let depth = 0; depth < SAMPLE_DEPTH && level.length > 0 && files.length < SAMPLE_FILES && looked < SAMPLE_ENTRIES; depth++) {
+      const full = () => looked >= SAMPLE_ENTRIES || files.length >= SAMPLE_FILES
+      for (let depth = 0; depth < SAMPLE_DEPTH && level.length > 0 && !full(); depth++) {
         const next: string[] = []
         for (const d of level) {
-          let entries: fs.Dirent[]
-          try {
-            entries = await fs.promises.readdir(d, { withFileTypes: true })
-          } catch {
-            continue
-          }
-          for (const e of entries) {
-            if (++looked > SAMPLE_ENTRIES || files.length >= SAMPLE_FILES) break
-            if (hidden(e.name)) continue
+          if (full()) break
+          // Streamed and given up at the limit, so a folder of 100,000 frames is never listed whole.
+          await eachEntry(d, e => {
+            looked++
+            if (hidden(e.name)) return !full()
             if (e.isFile()) files.push(e.name)
-            else if (e.isDirectory()) next.push(path.join(d, e.name))
-          }
-          if (looked > SAMPLE_ENTRIES || files.length >= SAMPLE_FILES) break
+            else if (e.isDirectory()) {
+              next.push(path.join(d, e.name))
+              if (depth === 0 && this.isObjectName(e.name)) objectFolders++
+            }
+            return !full()
+          })
         }
         level = next
       }
-      const objectFolders = (await folderNames(dir)).filter(n => this.isObjectName(n)).length
       out.push({ name, path: dir, files, objectFolders, isObject: this.isObjectName(name) })
     }
     return out
@@ -70,11 +87,18 @@ export class NodeLibraryFolders implements LibraryFolders {
     return folderNames(home)
   }
 
-  async isFolder(p: string): Promise<boolean> {
+  /**
+   * The folder's one true path when it is a folder whose entries can be listed: links and ".."
+   * resolved, so two spellings of one folder compare equal and the gallery reads it as a folder.
+   */
+  async folderAt(p: string): Promise<string | null> {
     try {
-      return (await fs.promises.stat(p)).isDirectory()
+      const real = await fs.promises.realpath(p)
+      const dir = await fs.promises.opendir(real)
+      await dir.close()
+      return real
     } catch {
-      return false
+      return null
     }
   }
 

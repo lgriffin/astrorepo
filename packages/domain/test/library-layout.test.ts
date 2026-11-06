@@ -297,6 +297,12 @@ describe('library layout: what the suggestion would change', () => {
     expect(suggestedChanges(now, suggestion).map(c => c.role)).toEqual(['raw'])
   })
 
+  it('[LAY-005] Given a part read from a folder whose name differs from the suggestion only by case, When the changes are listed, Then it is offered, since case can name two folders', () => {
+    const now = resolveLayout({}, ['Images'], join)
+    const lower = suggestLayout([folder('images', ['a.png'])])
+    expect(suggestedChanges(now, lower).map(c => [c.role, c.path])).toEqual([['images', join('images')]])
+  })
+
   it('[LAY-005] Given a part the user chose, When the suggestion differs, Then it is never offered', () => {
     const now = resolveLayout({ raw: 'E:/Elsewhere' }, [], join)
     expect(suggestedChanges(now, suggestion).map(c => c.role)).toEqual(['images'])
