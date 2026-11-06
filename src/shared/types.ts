@@ -573,6 +573,8 @@ export interface HomeScanPhaseProgress {
   name: 'raw' | 'stacked' | 'tif' | 'images'
   status: 'pending' | 'discovering' | 'scanning_fits' | 'complete'
   foldersFound: number
+  /** The folder this part is read from, once the scan reaches it (specs/044-library-layout). */
+  folder?: string
 }
 
 /** What a folder scan has done so far (ING-007). */

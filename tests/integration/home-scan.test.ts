@@ -89,4 +89,18 @@ describe('home folder scan', () => {
     expect(ended.status).toBe('error')
     expect(ended.error).toMatch(/already running/)
   })
+
+  it('[LAY-004] [LAY-008] Given folders chosen for each part, When the library is scanned, Then each part is read from its folder and the scan shows which', async () => {
+    const lights = path.join(home, 'Lights')
+    fs.renameSync(path.join(home, 'raw'), lights)
+    const finals = path.join(home, 'Final')
+    fs.renameSync(path.join(home, 'images'), finals)
+    const folders = { raw: lights, stacked: path.join(home, 'stacked'), tif: path.join(home, 'tif'), images: finals }
+    expect(startHomeScan(home, fast, folders)).toEqual({ started: true })
+    const done = await settled()
+    expect(done.status).toBe('done')
+    expect(done.phases.map(p => p.folder)).toEqual([lights, folders.stacked, folders.tif, finals])
+    const m31 = done.result!.targets.find(t => t.targetName === 'M31')!
+    expect(m31).toMatchObject({ rawFiles: 30, stackedFiles: 1, imageFiles: 1, rawPath: path.join(lights, 'M 31'), imagesPath: path.join(finals, 'M 31') })
+  })
 })

@@ -5,6 +5,7 @@ import type { MessierCatalogue, MessierObject } from '@astro/application'
 import { messierNumber, type PictureCandidate } from '@astro/domain'
 import { IS_INTEGRATED_LIGHT, parseUtc } from './shared/sql'
 import { imagesFolderOf, listFolderImages, type FolderImage } from './shared/images-folder'
+import { libraryFolder } from './shared/library-folders'
 import { settingReader } from './shared/app-settings'
 
 /** Finished images a tile could show: JPEG, PNG, TIFF and FITS. */
@@ -67,10 +68,20 @@ export class SqliteMessierCatalogue implements MessierCatalogue {
    * number. A scan can file several of these under one target but records only one folder, so the
    * shared folder is always looked at; its other images are other objects' (MES-003).
    */
+  /** The library's pictures folder, looked up once for all the tiles of a mosaic (LAY-004). */
+  private sharedImages(): string | null {
+    if (this.sharedImagesDir === undefined) {
+      const shared = libraryFolder(this.setting, 'images')
+      this.sharedImagesDir = shared ? path.resolve(shared) : null
+    }
+    return this.sharedImagesDir
+  }
+
+  private sharedImagesDir: string | null | undefined = undefined
+
   private finished(targetId: string): PictureCandidate[] {
     const dir = imagesFolderOf(this.db, targetId)
-    const home = this.setting('home_folder_path')
-    const sharedDir = home ? path.resolve(home, 'images') : null
+    const sharedDir = this.sharedImages()
     const folders = new Set<string>()
     if (dir && path.resolve(dir) !== sharedDir) folders.add(path.resolve(dir))
     let loose: FolderImage[] = []

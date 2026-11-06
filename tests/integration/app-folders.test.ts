@@ -1,3 +1,5 @@
+import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AppFolders } from '../../src/main/adapters/app-folders'
@@ -59,5 +61,37 @@ describe('AppFolders', () => {
     set(db, 'vespera_host', '192.168.4.1:2121')
     set(db, 'vespera_formats', 'fits,tiff')
     expect(folders.vesperaSettings()).toMatchObject({ host: '192.168.4.1', port: 2121, landingRoot: '/nas/vespera', landingIsHomeRaw: false, formats: ['fits', 'tiff'], ignored: [] })
+  })
+
+  it('[LAY-004] [VSP-012] Given folders chosen for the library, When asked, Then they are read only, the library reads them and Vespera copies land in the chosen raw folder', () => {
+    const db = setupTestDb()
+    set(db, 'home_folder_path', '/astro/home')
+    set(db, 'library_raw_folder', '/scratch/lights')
+    set(db, 'library_images_folder', ' ')
+    const folders = new AppFolders(db, DATA)
+    expect(folders.readOnlyDirs()).toEqual(['/astro/home', '/scratch/lights'])
+    expect(folders.library()).toEqual({
+      home: '/astro/home',
+      folders: { raw: '/scratch/lights', stacked: path.join('/astro/home', 'stacked'), tif: path.join('/astro/home', 'tif'), images: path.join('/astro/home', 'images') }
+    })
+    expect(folders.vesperaSettings()).toMatchObject({ landingRoot: '/scratch/lights', landingIsHomeRaw: true })
+  })
+
+  it('[LAY-001] Given conventional folders named in capitals, When the library is asked for, Then each is found in any case', () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-case-'))
+    try {
+      for (const name of ['RAW', 'Stacked', 'TIF']) fs.mkdirSync(path.join(home, name))
+      const db = setupTestDb()
+      set(db, 'home_folder_path', home)
+      expect(new AppFolders(db, DATA).library()!.folders).toEqual({
+        raw: path.join(home, 'RAW'), stacked: path.join(home, 'Stacked'), tif: path.join(home, 'TIF'), images: path.join(home, 'images')
+      })
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it('[LAY-004] Given no home folder, When the library is asked for, Then there is none', () => {
+    expect(new AppFolders(setupTestDb(), DATA).library()).toBeNull()
   })
 })

@@ -25,6 +25,7 @@ import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../ad
 import { toForwardPlanView } from '../adapters/planning-presenter'
 import { toClearSkiesView } from '../adapters/weather-presenter'
 import { toSkyInsightView } from '../adapters/sky-insight-presenter'
+import { toLibraryLayoutView } from '../adapters/library-layout-presenter'
 import { toPostProcessView, toSyqonView, toToolHealthView, toToolsView } from '../adapters/tool-hub-presenter'
 import { toSirilPlanView } from '../adapters/siril-plan-presenter'
 import { toCometPlanView } from '../adapters/comet-presenter'
@@ -58,6 +59,7 @@ import type { Desktop, FileKind } from '../transport/desktop'
 
 /** The folders the app reads from and writes to, from the composition root. */
 const folders = () => composeFolders(getSqlite())
+const core = () => composeCore(getSqlite())
 const sirilWorkDir = (sourceDir: string) => folders().sirilWorkDir(sourceDir)
 const readOnlyDirs = () => folders().readOnlyDirs()
 
@@ -445,10 +447,16 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   }))
 
   handle('home:scan-start', async () => {
-    const homePath = getSetting('home_folder_path')
-    if (!homePath) return { started: false, reason: 'Home folder not configured' }
-    return startHomeScan(homePath)
+    // Each part of the library is read from the folder chosen for it, or found by its name (LAY-004).
+    const library = folders().library()
+    if (!library) return { started: false, reason: 'Home folder not configured' }
+    return startHomeScan(library.home, undefined, library.folders)
   })
+
+  // Which folder holds raw frames, stacked masters, TIFF exports and finished pictures, with a
+  // suggestion from the folder names and the files inside them; and saving the user's choice.
+  handle('library:layout', validated('library:layout', async () => toLibraryLayoutView(await core().describeLibraryLayout())))
+  handle('library:choose-layout', validated('library:choose-layout', args => core().chooseLibraryLayout(args.layout)))
 
   handle('home:scan-progress', async () => {
     return getHomeScanProgress()
@@ -667,11 +675,11 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   handle('vespera-ingest:preview', validated('vespera-ingest:preview', args => ingestPreview(folders().vesperaSettings(), args.session_id)))
   handle('vespera-ingest:transfer', validated('vespera-ingest:transfer', args => {
     const f = folders()
-    return ingestTransfer(f.vesperaSettings(), f.homeFolder(), args.session_ids, args.allow_duplicate ?? false)
+    return ingestTransfer(f.vesperaSettings(), f.library(), args.session_ids, args.allow_duplicate ?? false)
   }))
   handle('vespera-ingest:resume', validated('vespera-ingest:resume', args => {
     const f = folders()
-    return ingestResume(f.vesperaSettings(), f.homeFolder(), args.job_id)
+    return ingestResume(f.vesperaSettings(), f.library(), args.job_id)
   }))
   handle('vespera-ingest:pause', validated('vespera-ingest:pause', () => ingestPause()))
   handle('vespera-ingest:progress', validated('vespera-ingest:progress', () => ingestProgress()))
@@ -878,7 +886,7 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
   }))
 
   // The sky ahead: the forward plan and the next nights' weather, from one composition.
-  const sky = () => composeCore(getSqlite())
+  const sky = core
   handle('planning:forward', async () => toForwardPlanView(await sky().planForward()))
 
   // fresh: Settings' check asks every source now instead of using the answers kept for Home.

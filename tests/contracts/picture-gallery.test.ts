@@ -44,6 +44,14 @@ pictureFolderContract('Node', async seed => {
 })
 
 describe('NodePictureFolder', () => {
+  it('[LAY-004] [LAY-001] Given a pictures folder chosen in Settings, or one named Images, When the root is asked for, Then the gallery reads it', async () => {
+    const home = tempHome()
+    const chosen = tempHome()
+    expect(await new NodePictureFolder(settings({ home_folder_path: home, library_images_folder: chosen })).root()).toBe(chosen)
+    fs.mkdirSync(path.join(home, 'Images'))
+    expect(await new NodePictureFolder(settings({ home_folder_path: home })).root()).toBe(path.join(home, 'Images'))
+  })
+
   it('[GAL-012] Given a home folder without an images folder, or an images file that is not a folder, When asked, Then there is no root', async () => {
     const home = tempHome()
     expect(await new NodePictureFolder(settings({ home_folder_path: home })).root()).toBeNull()

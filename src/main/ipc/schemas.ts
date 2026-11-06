@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { COMPANION_SCREENS, PALETTE_IDS, REFERENCE_SITES, isCalendarDate } from '@astro/domain'
+import { COMPANION_SCREENS, LIBRARY_ROLES, PALETTE_IDS, REFERENCE_SITES, isCalendarDate, type LibraryRole } from '@astro/domain'
 import { GALLERY_VIEW_WIDTH } from '@shared/gallery'
 import { HEADER_LINES_MAX, HEADER_VALUE_MAX } from '@shared/learning'
 
@@ -402,6 +402,10 @@ export const schemas = {
   'planning:forward': z.object({}).optional(),
   'weather:outlook': z.object({ fresh: z.boolean().optional() }).optional(),
   'sky:insight': z.object({}).optional(),
+  'library:layout': z.object({}).optional(),
+  'library:choose-layout': z.object({
+    layout: z.object(Object.fromEntries(LIBRARY_ROLES.map(role => [role, z.string().max(4096).nullable().optional()])) as Record<LibraryRole, z.ZodOptional<z.ZodNullable<z.ZodString>>>).strict()
+  }),
   'sky:solve-target': z.object({ target_id: id, timing: z.enum(['window', 'now']).optional() }),
   'sky:target-geometry': z.object({ target_id: id }),
   'mosaic:plan': mosaicRequest,

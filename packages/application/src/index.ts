@@ -49,6 +49,8 @@ export type { MessierCatalogue, MessierObject, TilePicture, TilePictures } from 
 export * from './use-cases/messier-mosaic'
 export type { WeatherSettings, WeatherSource } from './ports/weather'
 export * from './use-cases/clear-skies'
+export type { LibraryFolders, LibraryLayoutStore } from './ports/library-layout'
+export * from './use-cases/library-layout'
 export * from './use-cases/sky-insight'
 export type { CompanionDevice, CompanionDeviceStore, CompanionSecrets } from './ports/companion'
 export * from './use-cases/companion'

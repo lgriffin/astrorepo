@@ -1,7 +1,8 @@
 import path from 'path'
 import type Database from 'better-sqlite3'
-import { parseVesperaSettings, solveFolderName, workFolderName, type VesperaSettings } from '@astro/domain'
+import { LIBRARY_ROLES, parseVesperaSettings, solveFolderName, workFolderName, type LibraryRole, type VesperaSettings } from '@astro/domain'
 import { settingReader, type SettingReader } from './shared/app-settings'
+import { chosenLibraryFolders, libraryLayoutNow } from './shared/library-folders'
 
 /**
  * Where the app reads and writes on this PC: the folders it only reads, and the work area and
@@ -15,10 +16,10 @@ export class AppFolders {
     this.setting = settingReader(db)
   }
 
-  /** Folders the app only reads: the home and FITS master folders and every scanned folder. */
+  /** Folders the app only reads: the home and FITS master folders, the library's chosen folders and every scanned folder. */
   readOnlyDirs(): string[] {
     const scanned = (this.db.prepare('SELECT DISTINCT folder_path FROM fits_scans').all() as { folder_path: string }[]).map(r => r.folder_path)
-    return [this.setting('home_folder_path'), this.setting('fits_master_folder'), ...scanned].filter((d): d is string => !!d)
+    return [this.setting('home_folder_path'), this.setting('fits_master_folder'), ...chosenLibraryFolders(this.setting), ...scanned].filter((d): d is string => !!d)
   }
 
   /** The work area: the user's setting, else the app's data folder. */
@@ -46,15 +47,21 @@ export class AppFolders {
     return this.setting('home_folder_path') || null
   }
 
+  /** The home folder and the folder each part of the library is read from (specs/044-library-layout); null with no home folder. */
+  library(): { home: string; folders: Record<LibraryRole, string> } | null {
+    const now = libraryLayoutNow(this.setting)
+    if (!now) return null
+    return { home: now.home, folders: Object.fromEntries(LIBRARY_ROLES.map(role => [role, now.layout[role].path])) as Record<LibraryRole, string> }
+  }
+
   /**
    * Where the Vespera is and where its copies land (spec 033): the Vespera settings, landing in
-   * the home folder's `raw` folder when no other folder is set, so the home scan finds them.
+   * the library's raw folder when no other folder is set, so the home scan finds them.
    */
   vesperaSettings(): VesperaSettings {
-    const home = this.homeFolder()
     return parseVesperaSettings(
       { vespera_host: this.setting('vespera_host'), vespera_landing: this.setting('vespera_landing'), vespera_formats: this.setting('vespera_formats') },
-      home ? path.join(home, 'raw') : null
+      this.library()?.folders.raw ?? null
     )
   }
 }

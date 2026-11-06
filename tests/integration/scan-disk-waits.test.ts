@@ -95,3 +95,27 @@ describe('a scan on a disk that makes each call wait', () => {
     expect(disk.reads).toBe(1)
   })
 })
+
+describe('reading a header in pieces', () => {
+  it('[NFR-022] Given a disk that answers each read with less than asked for, When a multi-block header is read, Then every card is read and nothing is called unreadable', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'astro-short-'))
+    try {
+      const extra: Record<string, number> = {}
+      for (let k = 0; k < 120; k++) extra[`KEY${k}`] = k
+      const file = path.join(dir, 'Light_0.fit')
+      fs.writeFileSync(file, fitsBytes({ OBJECT: 'M 31', ...extra }, 2880 * 3))
+      promises.open = async (...args) => {
+        const handle = await originals.open.apply(fs.promises, args) as fs.promises.FileHandle
+        const read = handle.read.bind(handle) as (b: Buffer, o: number, l: number, p: number) => Promise<{ bytesRead: number }>
+        // 1,000 bytes at a time: never a whole block, never what was asked for.
+        ;(handle as unknown as { read: unknown }).read = (b: Buffer, o: number, l: number, p: number) => read(b, o, Math.min(l, 1000), p)
+        return handle
+      }
+      const parsed = await parseFitsHeadersAsync(file)
+      expect(parsed.headerMap.get('KEY119')?.value).toBe(119)
+      expect(parsed.headerMap.get('OBJECT')?.value).toBe('M 31')
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
