@@ -14,7 +14,7 @@ slow and gentle on purpose, rather than fast and greedy.
 - **The scan runs in the background, paced.** The walk, the header reads and the database writes
   happen a small piece at a time. The scan works in slices of at most 25 ms and rests between them
   so it uses no more than 40% of the time, leaving the app, the disk and the CPU for everything
-  else. One file is read at a time, so the disk or the NAS is never flooded.
+  else. At most four files are asked of the disk at once, so the disk or the NAS is never flooded.
 - **Live counts.** The Library page shows files found, read of how many new or changed, unchanged
   and unreadable, instead of a spinner that might mean anything.
 - **Cancel, and carry on later.** The Library page has Cancel. Files read before the cancel stay
@@ -49,3 +49,25 @@ slow and gentle on purpose, rather than fast and greedy.
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | NFR-013 | Ubiquitous | The system shall scan in slices of work separated by rests, so that it never holds the app's main process for a whole scan and uses at most the configured share of the time, and shall run at most one scan of any folder at once. |
+| NFR-022 | Ubiquitous | The system shall measure a scan's slices in the time the main process spends running code, not in time spent waiting for the disk, and shall have at most four file stats or header reads under way at once, each header asked for four blocks at a time. |
+
+## Update, 6 November 2026: waiting is not work
+
+Leigh's library scan on Windows (21,053 FITS files on a local disk) had read 120 headers after
+four minutes. The pacer measured its slices by the clock, so every millisecond a file open or a
+stat spent waiting on the disk counted as work and was followed by a rest one and a half times
+as long. Windows makes each open and stat wait a few milliseconds even on a local disk (the
+virus scanner looks at each file), and the scan stat'ed every file twice (once for the folder
+sizes, once for the rescan stamps) and read each header a block at a time, one file after
+another.
+
+With 8 ms of simulated latency per call, 1,000 files took 112 seconds. Now:
+
+- **Slices count busy time only** (NFR-022), from Node's event loop utilisation, so waiting for
+  the disk is never rested for. The app stays as responsive as before: the longest pause of the
+  main process on 20,000 local files stayed under 40 ms.
+- **Four files in flight.** Stats and header reads overlap their waits, four at a time.
+- **One read per header.** Four 2,880-byte blocks are asked for at once, so a typical Seestar or
+  Vespera header costs one round trip; directories are listed 256 entries per call.
+
+The same 1,000 files with 8 ms per call now take 11 seconds.

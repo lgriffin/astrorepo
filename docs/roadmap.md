@@ -87,6 +87,9 @@ app has run on real data on the Windows PC and the licence is settled.
   in Node, so faster), sampled hashing so only likely duplicates are read in full, and no
   asset/location tables until the Postgres store. Indexing TIFF/PNG/JPEG (ING-002) moves to the NAS core-api.
   Live scan progress (ING-007) landed with the gentle scan (spec 018) instead.
+- **The gentle scan paces by busy time** (spec 018, NFR-022, November 2026). Pacing by the clock
+  rested for every wait on the disk, which made a 21,000-file library on Windows crawl; slices now
+  count only the main process's running time, with four files in flight and one read per header.
 - **Seasons use the one site in Settings** (spec 012). Several sites wait for slice D, weather
   (FWD-003) waits for an optional forecast adapter, and nautical darkness stands in on summer
   nights when astronomical darkness never comes.

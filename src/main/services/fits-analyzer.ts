@@ -5,7 +5,7 @@ import { linkFitsFilesToTargetsPaced, normalizeCatalogName } from './fits-linker
 import { isAstronomicalName } from './astro-names'
 import { advanceStage } from './workflow'
 import { ulid, monotonicFactory } from 'ulid'
-import { ScanPacer, ScanCancelled } from './scan-pacer'
+import { ScanPacer, ScanCancelled, inFlight, FILES_IN_FLIGHT } from './scan-pacer'
 import { frameFileKind, planRescan, type FileStamp } from '@astro/domain'
 import { parseCameraRawFile } from '../raw/camera-raw'
 import fs from 'fs'
@@ -36,7 +36,7 @@ async function walkFitsFiles(dir: string, pacer: ScanPacer, onFound: (count: num
     const { dir: currentDir, targetFolder, sessionFolder, depth } = pending.pop()!
     let handle: fs.Dir
     try {
-      handle = await fs.promises.opendir(currentDir)
+      handle = await fs.promises.opendir(currentDir, { bufferSize: DIR_BUFFER })
     } catch {
       continue
     }
@@ -109,6 +109,8 @@ export interface FolderScanOptions {
 
 /** Files read, and rows written, per database transaction: small enough to never hold the app up. */
 const READ_BATCH = 20
+/** Directory entries fetched per call while walking, so a big folder is listed in few round trips. */
+const DIR_BUFFER = 256
 const WRITE_CHUNK = 250
 
 /** Folders being scanned now. Two scans of the same files at once would race each other. */
@@ -160,8 +162,10 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
 
     // Rescan fast path (ING-008): files whose size and modified time are unchanged keep their row,
     // headers, quality metrics and target link; only new or changed files are read again.
+    // A few at once (NFR-022): each stat is mostly waiting, on Windows even on a local disk.
     const stamps = new Map<string, FileStamp>()
-    for (const { filePath } of fitsFiles) {
+    await inFlight(fitsFiles.length, FILES_IN_FLIGHT, async k => {
+      const { filePath } = fitsFiles[k]
       try {
         const stat = await fs.promises.stat(filePath)
         stamps.set(filePath, { path: filePath, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() })
@@ -169,8 +173,7 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
       } catch {
         // Vanished between the walk and the stat; treated as removed.
       }
-      await pacer.checkpoint()
-    }
+    }, pacer)
     // Every indexed file under this folder counts, whichever scan found it: a scan of a parent
     // folder, or an earlier spelling of this one, must not leave files behind or hide them.
     const prefix = folderPath + path.sep
@@ -332,21 +335,20 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
       }
     }
 
-    // Headers are read outside any transaction, one file at a time, so the disk or the network is
-    // never asked for more than one read at once; each small batch is then written in one go and
-    // kept, so a cancelled scan resumes from where it stopped.
+    // Headers are read outside any transaction, a few files at once so each file's wait for the
+    // disk overlaps the others' (NFR-022) but the disk or the NAS is never flooded; each small
+    // batch is then written in one go and kept, so a cancelled scan resumes from where it stopped.
     for (let i = 0; i < toRead.length; i += READ_BATCH) {
-      const batch: { file: WalkedFile; stamp: FileStamp; result: FitsParseResult }[] = []
+      const files = toRead.slice(i, i + READ_BATCH)
+      const results: (FitsParseResult | undefined)[] = new Array(files.length)
       const write = () => {
+        const batch = files.flatMap((file, k) => results[k] ? [{ file, stamp: stamps.get(file.filePath)!, result: results[k]! }] : [])
         sqlite.transaction(() => { for (const b of batch) store(b.file, b.stamp, b.result) })()
         progress.filesRead += batch.length
         report()
       }
       try {
-        for (const file of toRead.slice(i, i + READ_BATCH)) {
-          batch.push({ file, stamp: stamps.get(file.filePath)!, result: await readFrame(file.filePath) })
-          await pacer.checkpoint()
-        }
+        await inFlight(files.length, FILES_IN_FLIGHT, async k => { results[k] = await readFrame(files[k].filePath) }, pacer)
       } catch (err) {
         // Files read before a cancel are kept, so the next scan does not read them again.
         if (err instanceof ScanCancelled) write()

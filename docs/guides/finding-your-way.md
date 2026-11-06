@@ -37,6 +37,17 @@ Siril, each linking to where it is done. Pages with nothing to show yet say what
 and link to the step that fills them. The site is set only in **Settings → Your site**; every page
 that needs it links there.
 
+## Scanning your library
+
+**Library** scans your home folder: `raw` and `stacked` for FITS (and camera RAW) headers, `tif`
+and `images` for exports and finished pictures. It runs in the background while you use the rest
+of the app, shows the files found and read as it goes, and **Cancel** stops it keeping everything
+read so far, so the next scan carries on from there. Only new or changed files are read again.
+
+The scan rests between short slices of work so the app never freezes, but it never rests for
+time spent waiting on the disk, and it keeps four files in flight. On Windows each file open
+waits a little even on a local disk; expect tens of thousands of files to take minutes, not hours.
+
 ## Pages below a place
 
 A target, a collection, a project, a mosaic and the night form belong to a page. While you are on

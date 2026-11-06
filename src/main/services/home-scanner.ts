@@ -4,7 +4,7 @@ import { getSqlite } from '../db/connection'
 import { normalizeCatalogName } from './fits-linker'
 import { isAstronomicalName } from './astro-names'
 import { startFolderScan } from './fits-analyzer'
-import { ScanPacer, ScanCancelled } from './scan-pacer'
+import { ScanPacer, ScanCancelled, inFlight, FILES_IN_FLIGHT } from './scan-pacer'
 import { advanceStage } from './workflow'
 import { syncTargetsToCollections } from './collection'
 import { ulid } from 'ulid'
@@ -120,7 +120,7 @@ async function listDir(dir: string, pacer: ScanPacer): Promise<fs.Dirent[]> {
   const entries: fs.Dirent[] = []
   let handle: fs.Dir
   try {
-    handle = await fs.promises.opendir(dir)
+    handle = await fs.promises.opendir(dir, { bufferSize: 256 })
   } catch {
     return entries
   }
@@ -145,44 +145,38 @@ async function sizeOf(file: string): Promise<number> {
   }
 }
 
+/** The total size of the files, a few asked of the disk at once (NFR-022). */
+async function totalSize(files: string[], pacer: ScanPacer): Promise<number> {
+  let total = 0
+  await inFlight(files.length, FILES_IN_FLIGHT, async k => { total += await sizeOf(files[k]) }, pacer)
+  return total
+}
+
 async function collectSubfolderDetail(dir: string, extensions: Set<string>, pacer: ScanPacer): Promise<TargetSubfolderDetail[]> {
   const subfolders: TargetSubfolderDetail[] = []
   const entries = await listDir(dir, pacer)
+  const wanted = (name: string) => extensions.has(path.extname(name).toLowerCase())
 
-  let rootFileCount = 0
-  let rootSizeBytes = 0
-  for (const entry of entries) {
-    if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) {
-      rootFileCount++
-      rootSizeBytes += await sizeOf(path.join(dir, entry.name))
-      await pacer.checkpoint()
-    }
-  }
-  if (rootFileCount > 0) {
-    subfolders.push({ name: null, path: dir, fileCount: rootFileCount, totalSizeBytes: rootSizeBytes })
+  const rootFiles = entries.filter(e => e.isFile() && wanted(e.name)).map(e => path.join(dir, e.name))
+  if (rootFiles.length > 0) {
+    subfolders.push({ name: null, path: dir, fileCount: rootFiles.length, totalSizeBytes: await totalSize(rootFiles, pacer) })
   }
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
     const subPath = path.join(dir, entry.name)
-    let count = 0
-    let sizeBytes = 0
+    const files: string[] = []
     const pending = [subPath]
     while (pending.length > 0) {
       const d = pending.pop()!
       for (const e of await listDir(d, pacer)) {
         const full = path.join(d, e.name)
-        if (e.isDirectory()) {
-          pending.push(full)
-        } else if (e.isFile() && extensions.has(path.extname(e.name).toLowerCase())) {
-          count++
-          sizeBytes += await sizeOf(full)
-          await pacer.checkpoint()
-        }
+        if (e.isDirectory()) pending.push(full)
+        else if (e.isFile() && wanted(e.name)) files.push(full)
       }
     }
-    if (count > 0) {
-      subfolders.push({ name: entry.name, path: subPath, fileCount: count, totalSizeBytes: sizeBytes })
+    if (files.length > 0) {
+      subfolders.push({ name: entry.name, path: subPath, fileCount: files.length, totalSizeBytes: await totalSize(files, pacer) })
     }
   }
 
