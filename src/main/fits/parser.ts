@@ -177,14 +177,25 @@ export function parseFitsHeaders(filePath: string): ParsedHeaders {
 }
 
 /** The same as parseFitsHeaders, without blocking the thread while the disk or network answers. */
+/** Header blocks asked for in each read of a scan. */
+const HEADER_BLOCKS_PER_READ = 4
+
 export async function parseFitsHeadersAsync(filePath: string): Promise<ParsedHeaders> {
   const handle = await fs.promises.open(filePath, 'r')
   try {
     const reader = new HeaderReader()
-    const blockBuf = Buffer.alloc(BLOCK_SIZE)
-    for (let position = 0; ; position += BLOCK_SIZE) {
-      const { bytesRead } = await handle.read(blockBuf, 0, BLOCK_SIZE, position)
-      if (bytesRead < BLOCK_SIZE || reader.take(blockBuf)) break
+    // A few blocks per read: most headers fit in the first, so a file costs one round trip to the
+    // disk rather than one per block (NFR-022).
+    const buf = Buffer.alloc(BLOCK_SIZE * HEADER_BLOCKS_PER_READ)
+    for (let position = 0; ;) {
+      const { bytesRead } = await handle.read(buf, 0, buf.length, position)
+      const whole = Math.floor(bytesRead / BLOCK_SIZE)
+      let done = whole < HEADER_BLOCKS_PER_READ
+      for (let b = 0; b < whole; b++) {
+        if (reader.take(buf.subarray(b * BLOCK_SIZE, (b + 1) * BLOCK_SIZE))) { done = true; break }
+      }
+      if (done) break
+      position += buf.length
     }
     return reader.result()
   } finally {
