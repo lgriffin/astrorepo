@@ -186,16 +186,21 @@ export async function parseFitsHeadersAsync(filePath: string): Promise<ParsedHea
     const reader = new HeaderReader()
     // A few blocks per read: most headers fit in the first, so a file costs one round trip to the
     // disk rather than one per block (NFR-022).
+    // A read may return less than asked for without being at the end, so only a read of nothing
+    // ends the file, and a part block is kept for the next read.
     const buf = Buffer.alloc(BLOCK_SIZE * HEADER_BLOCKS_PER_READ)
+    let filled = 0
     for (let position = 0; ;) {
-      const { bytesRead } = await handle.read(buf, 0, buf.length, position)
-      const whole = Math.floor(bytesRead / BLOCK_SIZE)
-      let done = whole < HEADER_BLOCKS_PER_READ
-      for (let b = 0; b < whole; b++) {
-        if (reader.take(buf.subarray(b * BLOCK_SIZE, (b + 1) * BLOCK_SIZE))) { done = true; break }
-      }
+      const { bytesRead } = await handle.read(buf, filled, buf.length - filled, position)
+      if (bytesRead === 0) break
+      position += bytesRead
+      filled += bytesRead
+      const whole = Math.floor(filled / BLOCK_SIZE)
+      let done = false
+      for (let b = 0; b < whole && !done; b++) done = reader.take(buf.subarray(b * BLOCK_SIZE, (b + 1) * BLOCK_SIZE))
       if (done) break
-      position += buf.length
+      buf.copy(buf, 0, whole * BLOCK_SIZE, filled)
+      filled -= whole * BLOCK_SIZE
     }
     return reader.result()
   } finally {

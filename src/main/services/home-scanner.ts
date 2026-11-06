@@ -152,6 +152,9 @@ async function totalSize(files: string[], pacer: ScanPacer): Promise<number> {
   return total
 }
 
+/** Files sized together while a folder is walked: a few hundred paths held at once, however big the folder. */
+const SIZE_BATCH = 256
+
 async function collectSubfolderDetail(dir: string, extensions: Set<string>, pacer: ScanPacer): Promise<TargetSubfolderDetail[]> {
   const subfolders: TargetSubfolderDetail[] = []
   const entries = await listDir(dir, pacer)
@@ -165,18 +168,29 @@ async function collectSubfolderDetail(dir: string, extensions: Set<string>, pace
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
     const subPath = path.join(dir, entry.name)
-    const files: string[] = []
+    let batch: string[] = []
+    let count = 0
+    let sizeBytes = 0
+    const flush = async () => {
+      sizeBytes += await totalSize(batch, pacer)
+      batch = []
+    }
     const pending = [subPath]
     while (pending.length > 0) {
       const d = pending.pop()!
       for (const e of await listDir(d, pacer)) {
         const full = path.join(d, e.name)
         if (e.isDirectory()) pending.push(full)
-        else if (e.isFile() && wanted(e.name)) files.push(full)
+        else if (e.isFile() && wanted(e.name)) {
+          count++
+          batch.push(full)
+          if (batch.length >= SIZE_BATCH) await flush()
+        }
       }
     }
-    if (files.length > 0) {
-      subfolders.push({ name: entry.name, path: subPath, fileCount: files.length, totalSizeBytes: await totalSize(files, pacer) })
+    await flush()
+    if (count > 0) {
+      subfolders.push({ name: entry.name, path: subPath, fileCount: count, totalSizeBytes: sizeBytes })
     }
   }
 
