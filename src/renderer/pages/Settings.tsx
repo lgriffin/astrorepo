@@ -10,6 +10,7 @@ import { CompanionSettings } from '../components/companion/CompanionSettings'
 import { AppearanceSettings } from '../components/settings/AppearanceSettings'
 import { LearningSettings } from '../components/settings/LearningSettings'
 import { EquipmentSettings } from '../components/settings/EquipmentSettings'
+import { LibraryLayoutCard } from '../components/library/LibraryLayoutCard'
 import { Button, Checkbox, Field, Input, Loading, Select } from '../components/ui'
 import { SETTINGS_GROUPS, SETTINGS_SECTIONS, settingsLink, settingsSectionFrom, type SettingsSection } from '@shared/navigation'
 import { SETUP_HIDDEN_KEY } from '@shared/setup'
@@ -26,7 +27,7 @@ const FOLDER_SETTINGS: Array<{ key: string; label: string; description: string }
   {
     key: 'home_folder_path',
     label: 'Home folder',
-    description: 'The folder that holds your raw, stacked, tif and images folders.'
+    description: 'The folder that holds your library: raw frames, stacked masters, TIFF exports and finished pictures. Which folder holds each is under Library layout below.'
   },
   {
     key: 'fits_master_folder',
@@ -284,7 +285,9 @@ function FoldersSection(): React.ReactElement {
     if (result.path) await set(key, result.path)
   }
 
+  const home = folders?.find(f => f.key === 'home_folder_path')?.value ?? null
   return (
+    <div className="space-y-6">
     <div className="rounded-lg border border-astro-border bg-astro-surface p-4">
       <h2 className="mb-4 text-base font-semibold text-astro-text">Folders</h2>
       <div className="space-y-5">
@@ -308,6 +311,9 @@ function FoldersSection(): React.ReactElement {
           </div>
         ))}
       </div>
+    </div>
+    {/* Looks again whenever the home folder changes. */}
+    {folders !== null && home && <LibraryLayoutCard key={home} place="settings" />}
     </div>
   )
 }

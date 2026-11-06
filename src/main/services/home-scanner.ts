@@ -67,6 +67,20 @@ function makePhases(): HomeScanPhaseProgress[] {
   ]
 }
 
+/**
+ * The home folder and the folder each part of the library is read from (specs/044-library-layout):
+ * chosen in Settings, or found by its conventional name.
+ */
+export interface LibraryFolderPaths {
+  home: string
+  folders: Record<'raw' | 'stacked' | 'tif' | 'images', string>
+}
+
+/** The folders a scan reads when it is given none: the conventional names under the home folder. */
+function conventionalFolders(home: string): LibraryFolderPaths['folders'] {
+  return { raw: path.join(home, 'raw'), stacked: path.join(home, 'stacked'), tif: path.join(home, 'tif'), images: path.join(home, 'images') }
+}
+
 let scanState: HomeScanProgress = {
   status: 'idle',
   phases: makePhases(),
@@ -304,7 +318,11 @@ function persistTargetHomeData(
  * the app and the PC stay usable however large the library is (NFR-013), reports live counts
  * (ING-007), and can be cancelled (ING-014). `pacer` overrides the pacing, for tests.
  */
-export function startHomeScan(homePath: string, pacer?: (signal: AbortSignal) => ScanPacer): { started: boolean; reason?: string } {
+export function startHomeScan(
+  homePath: string,
+  pacer?: (signal: AbortSignal) => ScanPacer,
+  folders: LibraryFolderPaths['folders'] = conventionalFolders(homePath)
+): { started: boolean; reason?: string } {
   if (scanState.status === 'scanning' || scanState.status === 'cancelling') {
     return { started: false, reason: 'Scan already in progress' }
   }
@@ -321,7 +339,7 @@ export function startHomeScan(homePath: string, pacer?: (signal: AbortSignal) =>
   const abort = new AbortController()
   scanAbort = abort
 
-  void runHomeScan(homePath, abort.signal, pacer?.(abort.signal) ?? new ScanPacer(abort.signal))
+  void runHomeScan(homePath, folders, abort.signal, pacer?.(abort.signal) ?? new ScanPacer(abort.signal))
     .then(result => {
       scanState.status = 'done'
       scanState.result = result
@@ -352,7 +370,7 @@ export function cancelHomeScan(): { cancelled: boolean } {
   return { cancelled: true }
 }
 
-async function runHomeScan(homePath: string, signal: AbortSignal, pacer: ScanPacer): Promise<HomeScanResult> {
+async function runHomeScan(homePath: string, folders: LibraryFolderPaths['folders'], signal: AbortSignal, pacer: ScanPacer): Promise<HomeScanResult> {
   const targetMap = new Map<string, TargetAccumulator>()
 
   function getOrCreateAccum(normalizedName: string, folderName: string, targetId: string | null): TargetAccumulator {
@@ -386,16 +404,17 @@ async function runHomeScan(homePath: string, signal: AbortSignal, pacer: ScanPac
   }
 
   const phases: { dir: string; extensions: Set<string>; field: 'rawDiscovery' | 'stackedDiscovery' | 'tifDiscovery' | 'imagesDiscovery'; fits: boolean }[] = [
-    { dir: path.join(homePath, 'raw'), extensions: FRAME_EXTENSIONS, field: 'rawDiscovery', fits: true },
-    { dir: path.join(homePath, 'stacked'), extensions: FITS_EXTENSIONS, field: 'stackedDiscovery', fits: true },
-    { dir: path.join(homePath, 'tif'), extensions: TIF_EXTENSIONS, field: 'tifDiscovery', fits: false },
-    { dir: path.join(homePath, 'images'), extensions: IMAGE_EXTENSIONS, field: 'imagesDiscovery', fits: false },
+    { dir: folders.raw, extensions: FRAME_EXTENSIONS, field: 'rawDiscovery', fits: true },
+    { dir: folders.stacked, extensions: FITS_EXTENSIONS, field: 'stackedDiscovery', fits: true },
+    { dir: folders.tif, extensions: TIF_EXTENSIONS, field: 'tifDiscovery', fits: false },
+    { dir: folders.images, extensions: IMAGE_EXTENSIONS, field: 'imagesDiscovery', fits: false },
   ]
 
   let targetLookup = buildTargetLookup()
   for (let i = 0; i < phases.length; i++) {
     const { dir, extensions, field, fits } = phases[i]
     const phase = scanState.phases[i]
+    phase.folder = dir
     scanState.currentPhaseIndex = i
     phase.status = 'discovering'
     const discoveries = await discoverTargetFolders(dir, extensions, targetLookup, pacer)

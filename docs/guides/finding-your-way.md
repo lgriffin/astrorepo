@@ -39,14 +39,31 @@ that needs it links there.
 
 ## Scanning your library
 
-**Library** scans your home folder: `raw` and `stacked` for FITS (and camera RAW) headers, `tif`
-and `images` for exports and finished pictures. It runs in the background while you use the rest
+**Library** scans your home folder in four parts: raw frames and stacked masters for their FITS
+(and camera RAW) headers, TIFF exports and finished pictures for what they say about progress. It runs in the background while you use the rest
 of the app, shows the files found and read as it goes, and **Cancel** stops it keeping everything
 read so far, so the next scan carries on from there. Only new or changed files are read again.
 
 The scan rests between short slices of work so the app never freezes, but it never rests for
 time spent waiting on the disk, and it keeps four files in flight. On Windows each file open
 waits a little even on a local disk; expect tens of thousands of files to take minutes, not hours.
+
+### Your library's layout
+
+By default each part is the folder named `raw`, `stacked`, `tif` or `images` directly in the home
+folder, in any letter case. If yours are named differently, **Settings → Folders → Library layout**
+looks inside your home folder and suggests a folder for each part, with its reasons: a folder
+called Lights or Subs, or one where most files are light frames, looks like raw frames; Masters, or
+files named Stacked_ or master_, looks like stacked masters; Exports or TIFF files like TIFF
+exports; Final, Processed or PNG and JPEG files like finished pictures. It only reads folder and
+file names. **Use** takes a suggestion, **Choose** picks any folder (another drive is fine), and
+**Default** goes back to the conventional name. A folder you chose is never changed by a
+suggestion, and the app only ever reads it.
+
+When a suggestion would change something, Library shows it above the scanner first, with one
+button to use it. Two parts cannot share a folder or sit one inside the other. The Gallery, the
+Messier mosaic and Vespera copies (when no landing folder is set) follow the same layout. A home
+folder filed by target first (`M 31/raw`, `M 31/stacked`) is spotted and said, but not read yet.
 
 ## Pages below a place
 

@@ -5,6 +5,7 @@ import { settingsLink } from '@shared/navigation'
 import { invoke } from '../hooks/useIPC'
 import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress, ScanFileCounts } from '@shared/types'
 import { Loading, Button } from '../components/ui'
+import { LibraryLayoutCard } from '../components/library/LibraryLayoutCard'
 
 const PHASE_LABELS: Record<string, { title: string; description: string }> = {
   raw: { title: 'Raw', description: 'FITS files from capture sessions' },
@@ -142,6 +143,7 @@ export function Library(): React.ReactElement {
   return (
     <PageContainer>
       <div className="space-y-6 max-w-4xl">
+        {!isScanning && <LibraryLayoutCard place="library" />}
         <div className="bg-astro-surface border border-astro-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-base font-semibold text-astro-text">Library scanner</h2>
@@ -154,7 +156,8 @@ export function Library(): React.ReactElement {
             </Button>
           </div>
           <p className="text-xs text-astro-muted">
-            Scans your home folder for raw FITS, stacked masters, TIF exports, and final images.
+            Scans your home folder for raw FITS, stacked masters, TIF exports, and final images, each
+            in the folder chosen for it in <a href={`#${settingsLink('folders')}`} className="text-astro-accent hover:underline">Settings → Folders</a>.
             Discovered targets are auto-linked to catalogue collections.
           </p>
           {lastScanTime && !isScanning && (
@@ -344,6 +347,7 @@ function PhaseRow({ phase, files = null }: { phase: HomeScanPhaseProgress; files
         <p className={`text-[11px] mt-0.5 ${isActive ? 'text-astro-accent' : 'text-astro-muted'}`}>
           {statusText}
         </p>
+        {phase.folder && <p className="text-[11px] text-astro-muted truncate" title={phase.folder}>{phase.folder}</p>}
       </div>
     </div>
   )

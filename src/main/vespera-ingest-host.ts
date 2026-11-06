@@ -5,7 +5,7 @@ import type { IngestPlanView, IngestProgressView, IngestScanView, IngestSessionV
 import { composeVesperaCopyQueue, composeVesperaIngest, type VesperaIngest } from './composition'
 import { folderPreview, scanSummary, toIngestJobView, toIngestProgressView, toIngestSessionView } from './adapters/vespera-ingest-presenter'
 import { indexingText } from './adapters/vespera-presenter'
-import { indexCopies, resetIndexing, vesperaIndexing } from './vespera-host'
+import { indexCopies, resetIndexing, vesperaIndexing, type LibraryFolderPaths } from './vespera-host'
 
 /**
  * The Vespera page's one copy flow (spec 034, on spec 033's connection): the last scan, the targets
@@ -17,11 +17,11 @@ let lastScan: VesperaScan | null = null
 const named = new Map<string, { target: IngestTarget; findings: Finding[] }>()
 
 /** The one copy queue: it outlives a change of settings, since it holds the copy under way. */
-let indexFor: { landingRoot: string; homeFolder: string | null } | null = null
+let indexFor: { landingRoot: string; library: LibraryFolderPaths | null } | null = null
 let runner: VesperaIngest['run'] = async job => job
 const copies = composeVesperaCopyQueue(
   () => runner,
-  () => (indexFor ? indexCopies(indexFor.landingRoot, indexFor.homeFolder) : undefined)
+  () => (indexFor ? indexCopies(indexFor.landingRoot, indexFor.library) : undefined)
 )
 
 /** The scope the last scan read; names found or given for its sessions do not carry to another scope. */
@@ -110,7 +110,7 @@ export function ingestPreview(settings: VesperaSettings, id: string): { targetFo
   return { targetFolder: folderTarget(target), folder: folderPreview(scanned(id).session, target, settings.formats) }
 }
 
-function startQueue(settings: VesperaSettings, homeFolder: string | null, ids: string[], allowDuplicate: boolean, first?: TransferJob): IngestPlanView {
+function startQueue(settings: VesperaSettings, library: LibraryFolderPaths | null, ids: string[], allowDuplicate: boolean, first?: TransferJob): IngestPlanView {
   if (copies.busy()) return { status: 'blocked', reason: 'A copy is already under way; wait for it or pause it.' }
   const landingRoot = first?.destinationRoot ?? settings.landingRoot
   if (!landingRoot) return { status: 'blocked', reason: 'Choose where copies land first.' }
@@ -125,26 +125,26 @@ function startQueue(settings: VesperaSettings, homeFolder: string | null, ids: s
     }
   }))
   runner = p.run
-  indexFor = { landingRoot, homeFolder }
+  indexFor = { landingRoot, library }
   resetIndexing()
   const r = copies.start(items, first)
   return r.started ? { status: 'started' } : { status: 'blocked', reason: r.reason }
 }
 
 /** Copies the chosen sessions one after another, each into its own folder. */
-export function ingestTransfer(settings: VesperaSettings, homeFolder: string | null, ids: string[], allowDuplicate: boolean): IngestPlanView {
+export function ingestTransfer(settings: VesperaSettings, library: LibraryFolderPaths | null, ids: string[], allowDuplicate: boolean): IngestPlanView {
   for (const id of ids) scanned(id)
-  return startQueue(settings, homeFolder, ids, allowDuplicate)
+  return startQueue(settings, library, ids, allowDuplicate)
 }
 
 /** Carries on a paused or failed copy from the first file not yet copied. */
-export async function ingestResume(settings: VesperaSettings, homeFolder: string | null, jobId: string): Promise<IngestPlanView> {
+export async function ingestResume(settings: VesperaSettings, library: LibraryFolderPaths | null, jobId: string): Promise<IngestPlanView> {
   if (copies.busy()) return { status: 'blocked', reason: 'A copy is already under way; wait for it or pause it.' }
   // The job is listed where it was copied to, which may not be where copies land now.
   const recordedAt = path.dirname(path.dirname(jobId))
   const job = (await parts(settings).store.get(jobId)) ?? (await parts({ ...settings, landingRoot: recordedAt }).store.get(jobId))
   if (!job) return { status: 'blocked', reason: 'That copy is not known any more.' }
-  return startQueue(settings, homeFolder, [], false, job)
+  return startQueue(settings, library, [], false, job)
 }
 
 /** Pauses the copy under way once the file being copied is in; the rest of the queue is not started. */

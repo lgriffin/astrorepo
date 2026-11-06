@@ -5,6 +5,7 @@ import type { MessierCatalogue, MessierObject } from '@astro/application'
 import { messierNumber, type PictureCandidate } from '@astro/domain'
 import { IS_INTEGRATED_LIGHT, parseUtc } from './shared/sql'
 import { imagesFolderOf, listFolderImages, type FolderImage } from './shared/images-folder'
+import { libraryFolder } from './shared/library-folders'
 import { settingReader } from './shared/app-settings'
 
 /** Finished images a tile could show: JPEG, PNG, TIFF and FITS. */
@@ -69,8 +70,8 @@ export class SqliteMessierCatalogue implements MessierCatalogue {
    */
   private finished(targetId: string): PictureCandidate[] {
     const dir = imagesFolderOf(this.db, targetId)
-    const home = this.setting('home_folder_path')
-    const sharedDir = home ? path.resolve(home, 'images') : null
+    const shared = libraryFolder(this.setting, 'images')
+    const sharedDir = shared ? path.resolve(shared) : null
     const folders = new Set<string>()
     if (dir && path.resolve(dir) !== sharedDir) folders.add(path.resolve(dir))
     let loose: FolderImage[] = []

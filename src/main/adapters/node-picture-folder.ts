@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import type { Picture, PictureFile, PictureFolder } from '@astro/application'
 import type { SettingReader } from './shared/app-settings'
+import { libraryFolder } from './shared/library-folders'
 
 /** Pictures the window can draw: PNG, as Siril_Scripts and most editors export, and JPEG. */
 const PICTURE = /\.(png|jpe?g)$/i
@@ -37,9 +38,9 @@ export class NodePictureFolder implements PictureFolder {
   ) {}
 
   async root(): Promise<string | null> {
-    const home = this.setting('home_folder_path')?.trim()
-    if (!home) return null
-    const dir = path.join(home, 'images')
+    // The library's pictures folder: chosen in Settings, else images in the home folder (LAY-004).
+    const dir = libraryFolder(this.setting, 'images')
+    if (!dir) return null
     try {
       // lstat, so an images folder that is a link to somewhere else is not followed (GAL-011).
       return fs.lstatSync(dir).isDirectory() ? dir : null

@@ -90,6 +90,8 @@ import {
   makePictureGallery,
   makeClearSkies,
   makeDescribeSkyInsight,
+  makeDescribeLibraryLayout,
+  makeChooseLibraryLayout,
   makeWeatherCache,
   type Gallery,
   type MessierMosaicService,
@@ -111,6 +113,8 @@ import { systemClock } from './adapters/system-clock'
 import { SqliteTargetFacts } from './adapters/sqlite-target-facts'
 import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
 import { SqlitePlanningSettings, SqliteSkyQualitySettings, SqliteTargetPositions } from './adapters/sqlite-planning'
+import { NodeLibraryFolders, SqliteLibraryLayoutStore } from './adapters/library-layout'
+import { isAstronomicalName } from './services/astro-names'
 import { NodeToolHub } from './adapters/node-tool-hub'
 import { SqliteStackCatalogue } from './adapters/sqlite-stack-catalogue'
 import { SqliteJobSettings, SqliteJobStore } from './adapters/sqlite-jobs'
@@ -322,7 +326,11 @@ export function composeCore(db: Database.Database) {
   const planMosaic = makePlanMosaic(sky)
   const comets = new SqliteCometStore(db, systemClock)
   const workspaces = composeWorkspaces(db, { planMosaic, settings: planningSettings, ephemeris, solves, mosaics, selection: grading, hashes })
+  const library = { store: new SqliteLibraryLayoutStore(db), folders: new NodeLibraryFolders(isAstronomicalName) }
   return {
+    /** Which folder holds each part of the library, with a suggestion (specs/044-library-layout). */
+    describeLibraryLayout: makeDescribeLibraryLayout(library),
+    chooseLibraryLayout: makeChooseLibraryLayout(library),
     listStackingSuggestions,
     listNextActions: makeListNextActions({
       listStackingSuggestions,

@@ -1,5 +1,7 @@
 import path from 'path'
-import { getHomeScanProgress, startHomeScan } from './services/home-scanner'
+import { getHomeScanProgress, startHomeScan, type LibraryFolderPaths } from './services/home-scanner'
+
+export type { LibraryFolderPaths }
 import { startFolderScan } from './services/fits-analyzer'
 
 /** What the last copy's indexing is doing, for the control page. */
@@ -19,16 +21,16 @@ async function homeScanIdle(): Promise<void> {
 }
 
 /**
- * Indexes copies once they have landed (VIN-028). Copies in the home folder's raw folder are
+ * Indexes copies once they have landed (VIN-028). Copies in the library's raw folder are
  * picked up by a home scan, which finds the new target folders and indexes their FITS files; a
  * home scan already under way may have passed them, so a fresh one follows it. Copies anywhere
  * else, even elsewhere in the home folder where a home scan does not look, are scanned as a FITS
  * folder of their own.
  */
-export async function indexCopies(landingRoot: string, homeFolder: string | null): Promise<void> {
-  if (homeFolder && samePath(landingRoot, path.join(homeFolder, 'raw'))) {
+export async function indexCopies(landingRoot: string, library: LibraryFolderPaths | null): Promise<void> {
+  if (library && samePath(landingRoot, library.folders.raw)) {
     indexing = { kind: 'home-scan', waiting: true }
-    while (!startHomeScan(homeFolder).started) await homeScanIdle()
+    while (!startHomeScan(library.home, undefined, library.folders).started) await homeScanIdle()
     indexing = { kind: 'home-scan' }
     return
   }
