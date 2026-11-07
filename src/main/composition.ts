@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3'
 import type { Worker } from 'worker_threads'
 import { MESSIER_GAPS_IN_NEXT_ACTIONS, parseDec, parseRa } from '@astro/domain'
 import {
+  makeRepairCatalogues,
   makeArchiveTarget,
   makeDescribeObjectNumbers,
   makeCompanion,
@@ -144,6 +145,9 @@ import { AppFolders } from './adapters/app-folders'
 import { NodeScopeFiles } from './adapters/node-ftp-scope'
 import { NodePictureFolder, type PictureShrinker } from './adapters/node-picture-folder'
 import { SqliteObjectCatalogue } from './adapters/sqlite-object-catalogue'
+import { FileCatalogueSeeds, SqliteCatalogueStore } from './adapters/catalogues'
+import { rebuildFtsIndex } from './db/fts'
+import { ulid } from 'ulid'
 import { WeatherServiceSource, publicWeatherSource } from './adapters/http-weather'
 import { SqliteWeatherSettings } from './adapters/sqlite-weather-settings'
 import { SqliteCompanionStore } from './adapters/sqlite-companion-store'
@@ -162,6 +166,34 @@ let appDataDir = path.join(os.tmpdir(), 'astrorepo')
 /** Puts the work area's default and the job logs under the app's data folder. The app calls this at start. */
 export function useAppData(dir: string): void {
   appDataDir = dir
+}
+
+/** Where the built-in catalogues are read from; the host that starts the app says (specs/035-pi-variant, PI-005). */
+let seedFolder = path.join(process.cwd(), 'data', 'catalogues')
+
+export function useSeedFolder(folder: string): void {
+  seedFolder = folder
+}
+
+/**
+ * Seeds the built-in catalogues on a new install and repairs an existing one once per catalogue
+ * version (specs/047-catalogue-names), then rebuilds the search index when anything changed.
+ */
+export function composeCatalogues(db: Database.Database) {
+  const repair = makeRepairCatalogues({ seeds: new FileCatalogueSeeds(seedFolder), store: new SqliteCatalogueStore(db, systemClock), newId: ulid })
+  return {
+    repair: async () => {
+      const result = await repair()
+      if (result.ran) {
+        try {
+          rebuildFtsIndex(db)
+        } catch {
+          console.warn('FTS index rebuild skipped')
+        }
+      }
+      return result
+    }
+  }
 }
 
 /** Where the app reads and writes: read-only folders, the work area and the archive. */
