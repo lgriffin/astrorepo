@@ -74,6 +74,21 @@ describe('The handlers on the channel router (specs/035-pi-variant)', () => {
     expect(calls).toEqual([])
   })
 
+  it('[EUX-001] Given a site pasted on Home, When settings:set-site saves it, Then latitude and longitude are written together', async () => {
+    const router = routerWith(fakeDesktop().desktop)
+    await router.invoke('settings:set-site', { latitude: 53.35, longitude: -6.26 })
+    const read = (key: string) => (sqlite.prepare('SELECT value FROM app_settings WHERE key = ?').get(key) as { value: string } | undefined)?.value
+    expect([read('observer_latitude'), read('observer_longitude')]).toEqual(['53.35', '-6.26'])
+  })
+
+  it('[EUX-001] Given the longitude cannot be written, When settings:set-site saves, Then it fails and the latitude is not left half-saved', async () => {
+    const router = routerWith(fakeDesktop().desktop)
+    sqlite.exec(`CREATE TRIGGER no_longitude BEFORE INSERT ON app_settings WHEN NEW.key = 'observer_longitude' BEGIN SELECT RAISE(ABORT, 'disk full'); END`)
+    await expect(router.invoke('settings:set-site', { latitude: 53.35, longitude: -6.26 })).rejects.toThrow('disk full')
+    expect(sqlite.prepare("SELECT value FROM app_settings WHERE key = 'observer_latitude'").get()).toBeUndefined()
+    await expect(router.invoke('settings:set-site', { latitude: 91, longitude: 0 })).rejects.toBeInstanceOf(ZodError)
+  })
+
   it('[PI-004] Given the folder pickers, When the user picks or cancels, Then the answer comes from the Desktop port', async () => {
     const picked = fakeDesktop({ folder: '/data/fits' })
     const router = routerWith(picked.desktop)

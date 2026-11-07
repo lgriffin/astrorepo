@@ -91,6 +91,7 @@ import {
   makeClearSkies,
   makeDescribeSkyInsight,
   makeDescribeLibraryLayout,
+  makeSaveSite,
   makeChooseLibraryLayout,
   makeWeatherCache,
   type Gallery,
@@ -330,6 +331,8 @@ export function composeCore(db: Database.Database) {
   return {
     /** Which folder holds each part of the library, with a suggestion (specs/044-library-layout). */
     describeLibraryLayout: makeDescribeLibraryLayout(library),
+    /** The site set from Home, latitude and longitude together (specs/046-everyday-ux). */
+    saveSite: makeSaveSite({ writer: planningSettings }),
     chooseLibraryLayout: makeChooseLibraryLayout(library),
     listStackingSuggestions,
     listNextActions: makeListNextActions({

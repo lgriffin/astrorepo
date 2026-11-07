@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { FakeEphemeris, gmstHours, InMemoryPlanningSettings, InMemorySkyQualitySettings, InMemoryTargetPositions } from '@astro/testkit'
-import { ephemerisContract, planningSettingsContract, skyQualitySettingsContract, targetPositionsContract } from '@astro/testkit/contracts/sky.contract'
+import { ephemerisContract, planningSettingsContract, siteWriterContract, skyQualitySettingsContract, targetPositionsContract, london } from '@astro/testkit/contracts/sky.contract'
 import { AstronomyEngineEphemeris } from '../../src/main/adapters/astronomy-engine-ephemeris'
 import { NARROWBAND_KEY, SITE_KEYS, SqlitePlanningSettings, SqliteSkyQualitySettings, SqliteTargetPositions } from '../../src/main/adapters/sqlite-planning'
 import { SKY_QUALITY_KEYS } from '@astro/domain'
@@ -29,6 +29,16 @@ planningSettingsContract('SQLite', seed => {
     set.run(SITE_KEYS.elevation, String(seed.site.elevationM))
   }
   if (seed.narrowband !== undefined && seed.narrowband !== null) set.run(NARROWBAND_KEY, String(seed.narrowband))
+  return new SqlitePlanningSettings(db)
+})
+
+siteWriterContract('in-memory', () => new InMemoryPlanningSettings(london))
+siteWriterContract('SQLite', () => {
+  const db = setupTestDb()
+  const set = db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)')
+  set.run(SITE_KEYS.latitude, String(london.latitudeDeg))
+  set.run(SITE_KEYS.longitude, String(london.longitudeDeg))
+  set.run(SITE_KEYS.elevation, String(london.elevationM))
   return new SqlitePlanningSettings(db)
 })
 

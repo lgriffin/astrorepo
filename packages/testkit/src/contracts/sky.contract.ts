@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import type { Ephemeris, PlanningSettings, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
+import type { Ephemeris, PlanningSettings, SiteWriter, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
 import type { Site } from '@astro/domain'
 
-const london: Site = { latitudeDeg: 51.5, longitudeDeg: -0.13, elevationM: 20 }
+export const london: Site = { latitudeDeg: 51.5, longitudeDeg: -0.13, elevationM: 20 }
 
 /**
  * Every Ephemeris adapter must pass this suite. `make` returns an ephemeris that knows the real
@@ -89,6 +89,17 @@ export function planningSettingsContract(adapterName: string, make: (seed: Plann
       expect(await make({}).hasNarrowbandFilter()).toBe(true)
       expect(await make({ narrowband: false }).hasNarrowbandFilter()).toBe(false)
       expect(await make({ narrowband: true }).hasNarrowbandFilter()).toBe(true)
+    })
+  })
+}
+
+/** Every SiteWriter adapter must pass this suite. `make` returns a writer whose site can be read back, holding `london`. */
+export function siteWriterContract(adapterName: string, make: () => SiteWriter & PlanningSettings): void {
+  describe(`SiteWriter contract: ${adapterName}`, () => {
+    it('[EUX-001] Given a site, When a new latitude and longitude are saved, Then both are read back and the elevation is kept', async () => {
+      const settings = make()
+      await settings.saveLocation(53.35, -6.26)
+      expect(await settings.site()).toEqual({ latitudeDeg: 53.35, longitudeDeg: -6.26, elevationM: london.elevationM })
     })
   })
 }

@@ -1,5 +1,5 @@
 import type { NightSky, Site, SkySample, Vec3 } from '@astro/domain'
-import type { Ephemeris, PlanningSettings, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
+import type { Ephemeris, PlanningSettings, SiteWriter, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
 
 export interface FakeMoon {
   altitudeDeg: number
@@ -118,7 +118,7 @@ export function earthLowPrecision(at: Date, site: Site | null): Vec3 {
   }
 }
 
-export class InMemoryPlanningSettings implements PlanningSettings {
+export class InMemoryPlanningSettings implements PlanningSettings, SiteWriter {
   constructor(
     private current: Site | null = null,
     private narrowband = true
@@ -140,6 +140,10 @@ export class InMemoryPlanningSettings implements PlanningSettings {
 
   async hasNarrowbandFilter(): Promise<boolean> {
     return this.narrowband
+  }
+
+  async saveLocation(latitudeDeg: number, longitudeDeg: number): Promise<void> {
+    this.current = { latitudeDeg, longitudeDeg, elevationM: this.current?.elevationM ?? 0 }
   }
 }
 

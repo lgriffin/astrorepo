@@ -9,6 +9,13 @@ Home is the cockpit. Until the app is set up, it opens with a **Get set up** che
 Each step links to where it is done and is ticked off once it is. **Hide** puts the checklist
 away; **Start again** in Settings brings it back.
 
+Your site is set right in the checklist: paste where your scopes stand as a map gives it
+(`53.35, -6.26`, a map link with `@53.35,-6.26`, `53.35 N, 6.26 W` or `53°20′59″N 6°15′37″W`) and
+press **Save your site**. Elevation and how dark your sky is stay in Settings → Your site, which has
+the same **Paste coordinates** field. Until the site is set, Home asks for it only there and leaves
+out the cards worked out from it (Tonight, Tonight's sky, Shoot tonight, Clear skies and Coming
+nights); with the checklist hidden, one Tonight prompt with the same field asks instead.
+
 Below that, from the top, Home shows:
 1. **Tonight**: whether tonight looks clear, when it is dark, the moon (drawn as it is lit), and
    the three best targets to shoot, each opening its page. A cloudy night or one with no dark

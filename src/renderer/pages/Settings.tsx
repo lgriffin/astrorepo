@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { invoke } from '../hooks/useIPC'
+import { readCoordinates } from '@shared/coordinates'
 import type { CatalogueView, ToolHealthView, ToolsView } from '@shared/types'
 import { RunWindowSettings } from '../components/jobs/RunWindowSettings'
 import { GradingSettings } from '../components/target/GradingSettings'
@@ -147,6 +148,22 @@ function LocationSection(): React.ReactElement {
   const [saved, setSaved] = useState(false)
   const [narrowband, setNarrowband] = useState(true)
   const [quality, setQuality] = useState<{ bortle: string; sqm: string } | null>(null)
+  const [pasted, setPasted] = useState('')
+  const [pastedProblem, setPastedProblem] = useState<string | null>(null)
+
+  // Coordinates pasted in one go fill latitude and longitude; unreadable ones change neither (EUX-002, EUX-003).
+  const paste = (text: string): void => {
+    setPasted(text)
+    setPastedProblem(null)
+    const reading = readCoordinates(text)
+    if (!reading.ok) return
+    setSaved(false)
+    setObserver(prev => ({ ...prev, observer_latitude: String(reading.latitude), observer_longitude: String(reading.longitude) }))
+  }
+  const checkPasted = (): void => {
+    const reading = readCoordinates(pasted)
+    setPastedProblem(pasted.trim() === '' || reading.ok ? null : reading.problem)
+  }
 
   useEffect(() => {
     void Promise.all([
@@ -184,6 +201,25 @@ function LocationSection(): React.ReactElement {
         Used by the Sky planner and Home for the weather, seasons, moon windows, twilight times, altitude curves and how dark your sky is.
       </p>
       <form onSubmit={e => { e.preventDefault(); void save() }}>
+        <Field
+          className="mb-3"
+          label="Paste coordinates"
+          hint="From a map: 53.35, -6.26, a map link with @53.35,-6.26, or 53°20′59″N 6°15′37″W. Fills latitude and longitude below."
+          error={pastedProblem}
+        >
+          {c => (
+            <Input
+              id={c.id}
+              aria-describedby={c.describedBy}
+              aria-invalid={c.invalid}
+              disabled={observer === null}
+              value={pasted}
+              onChange={e => paste(e.target.value)}
+              onBlur={checkPasted}
+              placeholder="Latitude, longitude"
+            />
+          )}
+        </Field>
         <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {OBSERVER_SETTINGS.map(s => (
             <Field key={s.key} label={s.label}>

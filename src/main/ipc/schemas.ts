@@ -245,6 +245,12 @@ export const schemas = {
     value: z.string()
   }),
 
+  // The site's latitude and longitude, saved together so a half-saved site never exists (EUX-001).
+  'settings:set-site': z.object({
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: z.number().finite().min(-180).max(180)
+  }),
+
   'settings:list': z.object({}).optional(),
 
   'settings:pick-folder': z.object({}).optional(),

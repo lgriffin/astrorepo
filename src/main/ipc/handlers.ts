@@ -343,6 +343,10 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
     return { success: true }
   }))
 
+  handle('settings:set-site', validated('settings:set-site', async (args) => {
+    return core().saveSite(args.latitude, args.longitude)
+  }))
+
   handle('settings:list', async () => {
     return { settings: listSettings() }
   })
