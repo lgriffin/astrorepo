@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import { initFts } from './fts'
+import { sqliteNativeBinding } from './native-binding'
 import { runMigrations } from './migrations'
 
 let sqlite: Database.Database | null = null
@@ -8,7 +9,9 @@ let sqlite: Database.Database | null = null
 /** Opens astrorepo.db in the app's data folder, which the host that starts the app names (PI-005), and returns the handle getSqlite gives. */
 export function initDatabase(dataFolder: string): Database.Database {
   const dbPath = path.join(dataFolder, 'astrorepo.db')
-  sqlite = new Database(dbPath)
+  // Under Electron in development, its own better-sqlite3 build (DEV-001); else the default one.
+  const nativeBinding = sqliteNativeBinding()
+  sqlite = new Database(dbPath, nativeBinding ? { nativeBinding } : undefined)
   sqlite.pragma('journal_mode = WAL')
   // Safe with WAL (a power cut can lose the last commits, never corrupt the file) and spares a
   // large scan a disk flush on every small batch.

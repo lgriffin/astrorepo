@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog } from 'electron'
 import path from 'path'
 import { initDatabase } from './db/connection'
+import { databaseOpenFailure } from './db/native-binding'
 import { registerHandlers } from './ipc/handlers'
 import { ChannelRouter } from './transport/router'
 import { electronDesktop } from './electron/electron-desktop'
@@ -49,7 +50,17 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  const db = initDatabase(app.getPath('userData'))
+  let db: ReturnType<typeof initDatabase>
+  try {
+    db = initDatabase(app.getPath('userData'))
+  } catch (err) {
+    // Say why and how to fix it, rather than leave a blank window (DEV-007).
+    const failure = databaseOpenFailure(err, app.isPackaged)
+    console.error(`${failure.title}\n${failure.body}`)
+    dialog.showErrorBox(failure.title, failure.body)
+    app.quit()
+    return
+  }
   useSeedFolder(app.isPackaged ? path.join(process.resourcesPath, 'data', 'catalogues') : path.join(app.getAppPath(), 'data', 'catalogues'))
   useAppData(app.getPath('userData'))
   const measurer = measureOnWorkers(() => createMeasureWorker({}))

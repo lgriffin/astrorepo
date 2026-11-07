@@ -1,6 +1,8 @@
 # Testing and quality gates
 
-Every change to astrorepo passes the same gates, locally and in CI. This page lists each kind of
+Every change to astrorepo passes the same gates, locally and in CI. `npm run verify` runs them all
+before you push (lint, both type checks and EARS side by side, then the tests), runs every one even
+after a failure, and prints the output of only the ones that failed. This page lists each kind of
 test, where it lives, and what the build refuses. The three guides beside it go deeper:
 [BDD](bdd.md), [property and fuzz tests](property-and-fuzz.md) and [mutation testing](mutation.md).
 

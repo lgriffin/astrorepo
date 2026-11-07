@@ -1,0 +1,19 @@
+# Text files are stored with LF and checked out with LF on every OS, so Windows checkouts match CI
+# and the tests that read fixtures byte for byte.
+* text=auto eol=lf
+*.{cmd,bat,ps1} text eol=crlf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+*.fit binary
+*.fits binary
+*.fts binary
+*.tif binary
+*.tiff binary
+*.xisf binary
+*.db binary

@@ -62,7 +62,7 @@ describe('the nightly fuzz run', () => {
     const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'fuzz.yml'), 'utf8')
     expect(workflow).toMatch(/schedule:\s*\n\s*- cron: '[^']+'/)
     expect(workflow).toContain('workflow_dispatch')
-    expect(workflow).toMatch(/node-version: 20/)
+    expect(workflow).toContain('node-version-file: .nvmrc')
     expect(workflow).toContain('npm ci')
     expect(workflow).toContain('npm run test:fuzz')
     expect(workflow).toMatch(/if: failure\(\)[\s\S]*actions\/upload-artifact/)
