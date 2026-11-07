@@ -17,6 +17,8 @@ export function ShortcutsSheet({ onClose }: { onClose: () => void }): React.Reac
   }, [])
 
   const onKey = (e: React.KeyboardEvent): void => {
+    // Keys stop here, so a dialog underneath (the picture viewer listens on the window) does not act on them too.
+    e.stopPropagation()
     if (e.key === 'Escape') {
       e.preventDefault()
       onClose()

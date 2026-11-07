@@ -16,6 +16,9 @@ const at = (e: JsxElementInfo): string => `${e.file}:${e.line} <${e.tag}>`
 /** Elements a keyboard reaches and works by themselves. */
 const INTERACTIVE = new Set(['button', 'a', 'input', 'select', 'textarea', 'summary', 'Link', 'NavLink', 'Button', 'LinkButton', 'Input', 'Select', 'Textarea', 'Checkbox'])
 
+/** Components of the app that take onClick and give it keys themselves (Tr, Td and Th pass it to a native cell or row, so they are checked). */
+const KEYED_COMPONENTS = new Set(['MiniMonthGrid'])
+
 /** Clicks kept for the mouse alone, each with the key that does the same. */
 const MOUSE_ONLY: Record<string, string> = {
   'components/gallery/PictureViewer.tsx': 'a click beside the picture closes it; Escape does the same'
@@ -26,7 +29,7 @@ const press = (key: string, extra: Partial<{ ctrlKey: boolean; metaKey: boolean;
 describe('Keyboard and accessibility (specs/046-everyday-ux, U4)', () => {
   it('[EUX-010] Given every element of the renderer that acts on a click, When it is not a control already, Then it takes focus and answers Enter and Space', () => {
     const silent = ELEMENTS.filter(e => {
-      if (INTERACTIVE.has(e.tag) || /^[A-Z]/.test(e.tag) || !e.attrs.has('onClick')) return false
+      if (INTERACTIVE.has(e.tag) || KEYED_COMPONENTS.has(e.tag) || !e.attrs.has('onClick')) return false
       if (/^\{\s*\(?e\)?\s*=>\s*e\.stopPropagation\(\)\s*\}$/.test(e.attrs.get('onClick') ?? '')) return false
       if (MOUSE_ONLY[e.file]) return false
       if (e.spreads.some(s => s.includes('pressable('))) return false

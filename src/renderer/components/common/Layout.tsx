@@ -21,7 +21,8 @@ export function Layout({ children }: LayoutProps): React.ReactElement {
         e.preventDefault()
         setShortcuts(false)
         setPalette(open => !open)
-      } else if (opensShortcuts(e, e.target as HTMLElement | null)) {
+      } else if (opensShortcuts(e, e.target as HTMLElement | null) && !document.querySelector('[role="dialog"]')) {
+        // Not over another dialog, such as the picture viewer: one Escape closes one thing.
         e.preventDefault()
         setShortcuts(true)
       }

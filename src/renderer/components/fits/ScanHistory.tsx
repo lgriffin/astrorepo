@@ -54,32 +54,35 @@ export function ScanHistory({ scans, selectedScanId, onSelectScan, onRefresh }: 
         {scans.map((scan) => (
           <div
             key={scan.id}
-            className={`px-4 py-3 transition-colors flex items-center justify-between ${
+            className={`flex items-center transition-colors ${
               selectedScanId === scan.id
                 ? 'bg-astro-accent/10 border-l-2 border-astro-accent'
                 : 'hover:bg-astro-bg/50'
             }`}
           >
-            {/* The scan opens from its own part of the row, so Delete beside it is a control of its own (U4). */}
-            <div className="min-w-0 flex-1 cursor-pointer rounded" {...pressable(() => onSelectScan(scan.id), { pressed: selectedScanId === scan.id })}>
-              <p className="text-sm text-astro-text truncate">{scan.folderPath}</p>
-              <div className="flex gap-3 mt-1 text-xs text-astro-muted">
-                <span>{scan.fileCount} files</span>
-                <span>{formatSize(scan.totalSizeBytes)}</span>
-                <span>{formatDate(scan.startedAt)}</span>
+            {/* The whole row but Delete opens the scan, so Delete is a control of its own beside it (U4). */}
+            <div
+              className="min-w-0 flex-1 px-4 py-3 cursor-pointer rounded flex items-center justify-between gap-3"
+              {...pressable(() => onSelectScan(scan.id), { pressed: selectedScanId === scan.id })}
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-astro-text truncate">{scan.folderPath}</p>
+                <div className="flex gap-3 mt-1 text-xs text-astro-muted">
+                  <span>{scan.fileCount} files</span>
+                  <span>{formatSize(scan.totalSizeBytes)}</span>
+                  <span>{formatDate(scan.startedAt)}</span>
+                </div>
               </div>
+              <span className="shrink-0">{statusBadge(scan.status)}</span>
             </div>
-            <div className="flex items-center gap-2 ml-3 shrink-0">
-              {statusBadge(scan.status)}
-              <button
-                onClick={(e) => handleDelete(e, scan.id)}
-                className="text-astro-muted hover:text-astro-danger transition-colors p-1"
-                title="Delete scan"
-                aria-label={`Delete the scan of ${scan.folderPath}`}
-              >
-                &times;
-              </button>
-            </div>
+            <button
+              onClick={(e) => handleDelete(e, scan.id)}
+              className="mr-3 shrink-0 text-astro-muted hover:text-astro-danger transition-colors p-1"
+              title="Delete scan"
+              aria-label={`Delete the scan of ${scan.folderPath}`}
+            >
+              &times;
+            </button>
           </div>
         ))}
       </div>
