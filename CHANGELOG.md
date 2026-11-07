@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Contributor path** (spec 045, D5): CONTRIBUTING.md; `npm run new:slice` scaffolds a spec, a
+  domain rule and a test that cites it; CLAUDE.md is down to the rules, with past slices' notes in
+  `docs/architecture/slice-notes.md`; shared VS Code settings, extensions and debug launches.
 - **Keyboard and accessibility** (spec 046, U4): rows, cards and calendar days open with Enter or
   Space; **?** or Shortcuts in the sidebar lists every key; text on selected rows and badges is
   legible in every theme (the palettes moved slightly), links in sentences are underlined, and

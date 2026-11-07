@@ -75,6 +75,28 @@ data had any.
   M 33 (M 33 carries the alias "Pinwheel Galaxy"), with other conflicting names and coordinates;
   that is its own piece of work, so the demo uses M 81.
 
+## D5: contributor path
+
+Starting work meant reading an 89-line CLAUDE.md, most of it notes on past slices, and copying
+an earlier spec, domain file and test by hand. Nothing said how to set up on Windows or what to
+run before a push, and the repo ignored any shared editor set-up.
+
+- **CONTRIBUTING.md** covers setting up on Windows (Node from `.nvmrc`, `npm run doctor`), macOS
+  and Linux, the editor, what to run before a push, how a slice is built step by step, and what a
+  pull request needs. The README links it.
+- **`npm run new:slice -- --name dark-sites --prefix DSK --title "Dark sites"`** writes
+  `specs/<next number>-dark-sites/requirements.md` with an example Unwanted requirement `DSK-001`,
+  a pure rule in `packages/domain/src/dark-sites.ts` exported from the domain index, and a test
+  citing `DSK-001`. Every gate passes on what it writes. It refuses a taken spec number, a prefix
+  another spec uses, a malformed name or prefix, or a file already there, and writes nothing.
+- **CLAUDE.md holds the rules only**: technologies, structure, commands and the rules the gates
+  enforce. Past slices' notes (where each put its code) moved to
+  `docs/architecture/slice-notes.md`, which each slice now adds a line to.
+- **VS Code**: shared settings (the workspace TypeScript, ESLint fixes on save, LF), recommended
+  extensions (ESLint, Vitest, Tailwind, EditorConfig) and debug launches for the app's main
+  process and renderer together and for the open test file. Git keeps these three files and
+  still ignores the rest of `.vscode/`.
+
 ## Out of scope
 
 - Upgrading Electron (slice D6). The side-by-side build follows whichever Electron is installed.
@@ -101,3 +123,7 @@ data had any.
 | DEV-016 | State | While the desktop app runs from a development checkout with `ASTRO_DEV_DATA` set, the system shall use that folder for its data, and a packaged app shall keep its own. |
 | DEV-017 | Event | When CI runs, the system shall build the demo library and run the smoke run over it with its own accessibility baseline, keeping its screenshots beside the empty app's. |
 | DEV-018 | Unwanted | If a target's picture is a TIFF, then its card shall show no picture rather than an image the browser cannot draw. |
+| DEV-019 | Event | When `npm run new:slice` runs with a name, an ID prefix and a title, the system shall write a spec with an EARS requirement, a pure domain rule exported from the domain index and a test citing that requirement, numbering the spec after the highest existing one unless a number is given. |
+| DEV-020 | Unwanted | If the spec number or ID prefix is already used, the name or prefix is malformed, a flag is missing or a file to write already exists, then `npm run new:slice` shall write nothing and say why. |
+| DEV-021 | Ubiquitous | The repository shall have a CONTRIBUTING.md covering set-up on Windows, the gates to run before a push and how a slice is built, and shall keep CLAUDE.md to the rules, with notes on past slices in `docs/architecture/slice-notes.md`. |
+| DEV-022 | Ubiquitous | The repository shall share VS Code settings, recommended extensions and debug launches for the main process with the renderer and for a test file, kept by git while the rest of `.vscode/` stays ignored. |
