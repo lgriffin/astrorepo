@@ -348,8 +348,8 @@ tests/               # Unit, integration, contract, architecture and fuzz tests
   guide, the C4 diagrams when a port, adapter or tool is added, and the changelog in the same pull
   request.
 - **Plain words.** Interface labels are in sentence case, checked by `tests/unit/wording.test.ts`.
-- **CI.** Lint, type checks, the EARS gate, tests with coverage and the build run on Windows and
-  Ubuntu for every pull request, with the mutation gate on pull requests that touch the core.
+- **CI.** `npm run verify` and the build run on Ubuntu, and the tests and the build on Windows, once
+  per pull request push (a newer push cancels the older run), with the mutation gate on pull requests that touch the core.
   Long fuzz and whole-core mutation runs go nightly.
 
 ## Adding catalogues

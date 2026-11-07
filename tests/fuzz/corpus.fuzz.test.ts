@@ -58,7 +58,7 @@ describe('replaying a failure', () => {
 })
 
 describe('the nightly fuzz run', () => {
-  it('[FUZ-008] Given the nightly workflow, When it is read, Then it runs on a schedule and on demand with Node 20, runs the fuzz tests and keeps the log and seeds of a failure', () => {
+  it('[FUZ-008] Given the nightly workflow, When it is read, Then it runs on a schedule and on demand with the .nvmrc Node, runs the fuzz tests and keeps the log and seeds of a failure', () => {
     const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'fuzz.yml'), 'utf8')
     expect(workflow).toMatch(/schedule:\s*\n\s*- cron: '[^']+'/)
     expect(workflow).toContain('workflow_dispatch')

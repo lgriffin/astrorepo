@@ -37,9 +37,13 @@ test, where it lives, and what the build refuses. The three guides beside it go 
 | Mutation, whole core | Any core file, or the whole core, scoring under the floor | Nightly and on demand |
 | Fuzz, long | Any parser failing its contract over 20,000 runs | Nightly and on demand |
 
-CI runs lint, type checks, EARS, tests with coverage and the build on both Windows and Ubuntu, so
-path and file-system differences (such as Windows refusing to truncate a file opened for
-appending) are caught before merge.
+CI runs once per change: on pull requests, and on pushes to main, and a newer push to a pull
+request cancels the run it replaces. On Ubuntu it runs `npm run verify` (every gate, the quick
+ones side by side) and the build; on Windows it runs the tests and the build again, so path and
+file-system differences (such as Windows refusing to truncate a file opened for appending) are
+caught before merge. Lint and the type checks read the same source everywhere, so they run once.
+A test parses every workflow, so a workflow GitHub cannot read fails `npm test` rather than
+silently never running.
 
 ## Adding a feature
 

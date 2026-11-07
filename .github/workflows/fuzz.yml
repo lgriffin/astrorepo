@@ -33,7 +33,9 @@ jobs:
       - name: Collect the failing seeds
         if: failure()
         shell: bash
-        run: grep -E 'FAIL |seed: |Counterexample' fuzz.log > fuzz-seeds.txt || true
+        # A block, because "seed: " inside a plain value is not valid YAML (DEV-010).
+        run: |
+          grep -E 'FAIL |seed: |Counterexample' fuzz.log > fuzz-seeds.txt || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

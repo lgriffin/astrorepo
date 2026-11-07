@@ -23,10 +23,21 @@ there was no one command to run them all.
 - `.gitattributes` keeps line endings LF on Windows checkouts; `.editorconfig`; the ESLint config
   is `eslint.config.mjs`, so ESLint no longer warns about the module type on every run.
 
+## D2: faster CI
+
+The audit found that CI ran every gate on both Windows and Ubuntu one after another, kept
+superseded runs going, and that the nightly fuzz workflow had never run: GitHub could not parse
+it (an unquoted `seed: ` in a `run:` value), so every push recorded a failed run of it instead.
+
+- **One run per change.** CI runs on pull requests and on pushes to main; a newer push to a pull
+  request cancels the run it replaces.
+- **Each gate once.** Ubuntu runs `npm run verify` (the quick gates side by side, then the tests
+  with coverage) and the build. Windows, where the app runs, runs the tests and the build.
+- **Workflows that parse.** The fuzz workflow is fixed, and a test parses every workflow.
+
 ## Out of scope
 
 - Upgrading Electron (slice D6). The side-by-side build follows whichever Electron is installed.
-- CI layout and speed (slice D2).
 
 ## Requirements
 
@@ -39,3 +50,6 @@ there was no one command to run them all.
 | DEV-005 | Event | When `npm run verify` runs, the system shall run lint, both type checks, the EARS gate and the tests, run every one even after a failure, and fail when any of them fails. |
 | DEV-006 | Ubiquitous | The repository shall name one supported Node LTS major version in `.nvmrc`, which `package.json` engines accepts and every CI workflow reads. |
 | DEV-007 | Unwanted | If the database cannot be opened when the app starts, then the system shall show why and, in a development checkout, the command that fixes it, and quit rather than open a blank window. |
+| DEV-008 | Event | When a pull request is pushed to, the CI workflow shall run once for it and cancel any run still going for an earlier push to the same pull request. |
+| DEV-009 | Ubiquitous | The CI workflow shall run every gate once through `npm run verify`, and the tests and the build on Windows. |
+| DEV-010 | Unwanted | If a workflow file cannot be parsed, then the tests shall fail and name the file. |
