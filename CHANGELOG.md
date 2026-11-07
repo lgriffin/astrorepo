@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Code health** (spec 045, D6): pages other than Home load when first opened, so the app reads
+  less than half as much script to start; IPC channels and shared types are split into one module
+  per area; Vitest 3; Dependabot proposes weekly grouped updates.
 - **Sample data on first run** (spec 046, U5): before a home folder is chosen, Get set up on the
   desktop app offers **Try it with sample data**, which restarts the app on the demo library in a
   folder and database of its own, with a band on every page and **Use my own data** to go back.

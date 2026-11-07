@@ -27,7 +27,7 @@ src/server/      the headless server's entry point and settings; no Electron (PI
 ```mermaid
 flowchart LR
   UI[Renderer] -->|IPC recommendations:list, cockpit:*, discovery:target| R[transport/router.ts]
-  R --> H[ipc/handlers.ts]
+  R --> H[ipc/handlers.ts and ipc/channels]
   H --> C[composition.ts]
   C --> UC[application use cases]
   UC --> D[domain rules]

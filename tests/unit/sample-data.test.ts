@@ -13,6 +13,12 @@ import { jsxElementsOf } from '../helpers/jsx-elements'
 
 const repo = path.resolve(__dirname, '../..')
 const read = (rel: string): string => fs.readFileSync(path.join(repo, rel), 'utf8')
+/** One file for a library, for the tests that are about the folder and the switch rather than the library. */
+const oneFile = (library: string): number => {
+  fs.mkdirSync(library, { recursive: true })
+  fs.writeFileSync(path.join(library, 'one.fit'), 'x')
+  return 1
+}
 const appData = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-sample-'))
 
 /** A fake of the app's channels: records each call and answers as a scan that finishes on the second look. */
@@ -47,9 +53,9 @@ describe('Sample data on first run (spec 046, U5)', () => {
     expect(path.dirname(places.data)).toBe(places.root)
     expect(path.dirname(places.library)).toBe(places.root)
     // Started again, a sample from before is rebuilt rather than refused.
-    expect(startSample(data).ok).toBe(true)
+    expect(startSample(data, oneFile).ok).toBe(true)
     fs.rmSync(data, { recursive: true, force: true })
-  })
+  }, 30_000) // The whole library: some seconds on a Windows runner.
 
   it('[EUX-014] Given the sample\'s database, When it is indexed, Then the site and home folder are set, the scan runs to the end and the logged nights go on the targets it found', async () => {
     const { invoke, calls } = fakeApp()
@@ -103,7 +109,7 @@ describe('Sample data on first run (spec 046, U5)', () => {
 
   it('[EUX-016] Given the sample is left, When the app starts on your own data, Then the sample folder is removed, and a folder the app did not make is refused and not touched', () => {
     const data = appData()
-    startSample(data)
+    startSample(data, oneFile)
     const { root } = samplePlaces(data)
     // While the sample is on, its folder is never tidied away.
     expect(tidyAfterSample(data)).toBe(false)
@@ -117,7 +123,7 @@ describe('Sample data on first run (spec 046, U5)', () => {
     fs.mkdirSync(root, { recursive: true })
     fs.writeFileSync(path.join(root, 'mine.fit'), 'x')
     expect(tidyAfterSample(data)).toBe(false)
-    const refused = startSample(data)
+    const refused = startSample(data, oneFile)
     expect(refused.ok).toBe(false)
     expect(refused.ok ? '' : refused.error).toContain('did not make')
     expect(sampleActive(data)).toBe(false)
@@ -129,7 +135,7 @@ describe('Sample data on first run (spec 046, U5)', () => {
 
     // A switch left on for a sample removed by hand does not stop the app, and is turned off.
     const gone = appData()
-    startSample(gone)
+    startSample(gone, oneFile)
     fs.rmSync(samplePlaces(gone).root, { recursive: true, force: true })
     expect(sampleActive(gone)).toBe(false)
     expect(tidyAfterSample(gone)).toBe(false)
@@ -144,7 +150,7 @@ describe('Sample data on first run (spec 046, U5)', () => {
     } catch {
       linked = false // Windows without the right to make links
     }
-    expect(startSample(gone).ok).toBe(true)
+    expect(startSample(gone, oneFile).ok).toBe(true)
     if (linked) expect(fs.lstatSync(samplePlaces(gone).modeFile).isSymbolicLink()).toBe(false)
     expect(fs.readFileSync(other, 'utf8')).toBe('keep')
     fs.rmSync(gone, { recursive: true, force: true })
@@ -171,6 +177,7 @@ describe('Sample data on first run (spec 046, U5)', () => {
   })
 
   it('[EUX-017] Given the headless server, When its channels are listed, Then it cannot build the sample or restart; only the desktop app\'s router has the sample channels', async () => {
+    for (const f of fs.readdirSync(path.join(repo, 'src/main/ipc/channels'))) expect(read(`src/main/ipc/channels/${f}`), f).not.toContain("'sample:")
     expect(read('src/main/ipc/handlers.ts')).not.toContain("'sample:")
     expect(read('src/main/index.ts')).toContain('registerSampleHandlers(router,')
     const router = new ChannelRouter()

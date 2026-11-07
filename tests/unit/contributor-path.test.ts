@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { spawnSync } from 'child_process'
 import fs from 'fs'
-import os from 'os'
 import path from 'path'
 import {
   nextSpecNumber, nextSteps, parseSliceArgs, prefixesIn, sliceFiles, sliceProblems, withExport, type SlicePlan
@@ -32,9 +31,11 @@ describe('npm run new:slice (spec 045, D5)', () => {
     expect(test.content).toContain("from '../src'")
 
     // The rule runs, and does what its test says.
-    // The long form of the folder: Windows' temp folder can be a short 8.3 name (RUNNER~1), whose ~
-    // a file URL encodes and Vite then cannot find.
-    const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-slice-')))
+    // Inside the checkout, where Vite serves files from: Windows' temp folder can be a short 8.3 name
+    // (RUNNER~1) that a file URL encodes, and Vitest 3 does not load a file outside the project.
+    const cache = path.join(repo, 'node_modules', '.cache')
+    fs.mkdirSync(cache, { recursive: true })
+    const dir = fs.mkdtempSync(path.join(cache, 'astrorepo-slice-'))
     fs.writeFileSync(path.join(dir, 'dark-sites.ts'), rule.content)
     const mod = (await import(path.join(dir, 'dark-sites.ts').split(path.sep).join('/'))) as Record<string, (x: { name: string }) => string[]>
     expect(mod.darkSitesProblems({ name: ' ' })).toEqual(['A name is needed.'])

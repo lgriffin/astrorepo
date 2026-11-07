@@ -1,0 +1,35 @@
+# Dependency updates (specs/045-developer-experience, D6): one weekly pull request per group, so
+# updates arrive as a few reviewable pull requests that CI checks, never as a flood.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Electron moves the app's runtime and the native build with it: on its own, and by hand for majors.
+      electron:
+        patterns: ['electron', 'electron-vite', '@electron-forge/*']
+      testing:
+        patterns: ['vitest', '@vitest/*', '@stryker-mutator/*', 'fast-check', 'playwright', '@playwright/*', '@axe-core/*']
+      lint-and-types:
+        patterns: ['eslint', 'eslint-*', '@eslint/*', 'typescript', 'typescript-eslint', '@types/*']
+      build:
+        patterns: ['vite', '@vitejs/*', 'tailwindcss', 'postcss', 'autoprefixer', 'tsx']
+      runtime:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    ignore:
+      # Majors of the runtime the app ships on are planned slices, not weekly updates.
+      - dependency-name: electron
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
