@@ -6,7 +6,7 @@ import type {
 } from '@shared/types'
 
 /** The same light frames as the core's IS_LIGHT (adapters/shared/sql.ts): untyped, or naming a light and no calibration (frameKind). */
-const LIGHT_FRAME_PREDICATE = `(f.image_type IS NULL OR (LOWER(f.image_type) LIKE '%light%' AND NOT (${['dark', 'flat', 'bias', 'offset'].map(w => `LOWER(f.image_type) LIKE '%${w}%'`).join(' OR ')})))`
+export const LIGHT_FRAME_PREDICATE = `(f.image_type IS NULL OR (LOWER(f.image_type) LIKE '%light%' AND NOT (${['dark', 'flat', 'bias', 'offset'].map(w => `LOWER(f.image_type) LIKE '%${w}%'`).join(' OR ')})))`
 
 function filterKey(filter: string | null): string {
   return filter ?? 'No Filter'

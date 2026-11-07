@@ -33,6 +33,22 @@ night); and every Shoot tonight row with the same Open target button.
 - **Rows open their target.** A row's title is the link to its target; a button is kept only for
   an action that goes elsewhere.
 
+## U3: honest numbers
+
+The audit found Insights calling all 804 catalogue targets "Planned" before you had any data,
+counting them by type, giving nights twice (Nights from logged nights, Sessions from the same
+log) beside a separate total exposure, and drawing an empty library's zeros in the accent colour.
+
+- **Only your targets.** Insights' totals and targets by type count a target once it is yours:
+  added by hand, moved past "not observed", given a folder, found in your files, logged on a
+  night or put in a collection you made (the same rule as Targets → Yours). Catalogue progress
+  still shows each catalogue's size.
+- **Nights, once.** A night is counted once whether you logged it, imaged it, or both: logged
+  dates and the nights of your light frames (noon to noon, so frames after midnight join the
+  evening before; calibration frames do not count) together. Insights shows it once, as Nights, beside
+  imaging hours from your files; Log a night saves a night. Lists of session folders are named so.
+- **Quiet zeros.** A tile whose value is zero (0, 0.0, 0s) is drawn muted, never in the accent.
+
 ## Out of scope
 
 - Looking a place up by name: it would need a gazetteer or an online service.
@@ -47,3 +63,6 @@ night); and every Shoot tonight row with the same Open target button.
 | EUX-004 | Ubiquitous | Home shall show tonight's dark window, Moon, cloud and sky class once each, in one Tonight card with the faint-target rating and the noon-to-noon strip. |
 | EUX-005 | Unwanted | If tonight has no forecast, then Home shall say so once, in Tonight, with the reason and where to fix it, and leave out Clear skies when it has no night forecast to add. |
 | EUX-006 | Ubiquitous | Each row of Home's lists shall open its target from its title, and shall show a button only for an action that goes somewhere other than that target. |
+| EUX-007 | Ubiquitous | Insights shall count, in its target totals and targets by type, only the targets that are yours, never catalogue entries you have not added, planned, imaged or collected. |
+| EUX-008 | Ubiquitous | The system shall count each night once, from the nights you logged and the nights of your light frames together, and Insights shall show it once, as Nights. |
+| EUX-009 | Ubiquitous | A total that is zero shall be drawn muted, never in the accent colour. |

@@ -35,6 +35,8 @@ export function seedTarget(sqlite: Database.Database, overrides: Partial<{
   magnitude: number | null
   constellation: string | null
   workflowStage: string
+  /** False for a catalogue entry nobody has touched; seeded targets are your own by default. */
+  isCustom: boolean
 }> = {}): string {
   const id = overrides.id ?? `target-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()
@@ -42,7 +44,7 @@ export function seedTarget(sqlite: Database.Database, overrides: Partial<{
     `INSERT INTO targets (id, canonical_name, object_type, ra_hours, dec_degrees, magnitude,
       angular_size_arcmin, constellation, description, simbad_id, ned_id,
       workflow_stage, is_custom, folder_path, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, ?, 1, NULL, NULL, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, ?, ?, NULL, NULL, ?, ?)`
   ).run(
     id,
     overrides.canonicalName ?? `Target ${id}`,
@@ -52,6 +54,7 @@ export function seedTarget(sqlite: Database.Database, overrides: Partial<{
     overrides.magnitude ?? null,
     overrides.constellation ?? null,
     overrides.workflowStage ?? 'not_observed',
+    overrides.isCustom === false ? 0 : 1,
     now,
     now
   )

@@ -125,7 +125,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
           <p className="text-sm font-bold text-astro-text">{formatSize(data.totalSizeBytes)}</p>
         </div>
         <div className="bg-astro-bg border border-astro-border rounded p-2">
-          <p className="text-xs text-astro-muted">Sessions</p>
+          <p className="text-xs text-astro-muted">Session folders</p>
           <p className="text-sm font-bold text-astro-text">{data.sessions.length}</p>
         </div>
       </div>
@@ -216,7 +216,7 @@ function ObservationDataSection({ data }: { data: TargetObservationData }): Reac
 
       {data.sessions.length > 0 && (
         <div>
-          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Sessions</h4>
+          <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Session folders</h4>
           <div className="space-y-1">
             {data.sessions.map((s) => (
               <div key={s} className="flex justify-between text-sm">

@@ -37,7 +37,7 @@ function buildOrderClause(sortBy?: string, sortDir?: string): string {
  * observed", given a folder, found in the library or the FITS index, logged on a night, or put in a
  * collection they made (a catalogue's own collection does not count).
  */
-const MINE = `(t.is_custom = 1 OR t.workflow_stage != 'not_observed' OR t.folder_path IS NOT NULL
+export const MINE = `(t.is_custom = 1 OR t.workflow_stage != 'not_observed' OR t.folder_path IS NOT NULL
   OR EXISTS (SELECT 1 FROM fits_files f WHERE f.target_id = t.id)
   OR EXISTS (SELECT 1 FROM target_home_folders h WHERE h.target_id = t.id)
   OR EXISTS (SELECT 1 FROM session_targets st WHERE st.target_id = t.id)

@@ -1,4 +1,5 @@
 import { getSqlite } from '../db/connection'
+import { NIGHTS_SQL } from './dashboard'
 import type {
   MonthlyActivity, BestNight, EquipmentEffectiveness,
   QualityTrendPoint, FilterUsage, TargetProgress, InsightsSummary
@@ -19,9 +20,7 @@ export function getInsightsSummary(): InsightsSummary {
     'SELECT COUNT(DISTINCT target_id) as cnt FROM fits_files WHERE target_id IS NOT NULL'
   ).get() as { cnt: number }).cnt
 
-  const sessionCount = (sqlite.prepare(
-    'SELECT COUNT(*) as cnt FROM observation_sessions'
-  ).get() as { cnt: number }).cnt
+  const nightCount = (sqlite.prepare(NIGHTS_SQL).get() as { nights: number }).nights
 
   const mostImaged = sqlite.prepare(`
     SELECT t.canonical_name
@@ -53,7 +52,7 @@ export function getInsightsSummary(): InsightsSummary {
     totalImagingHours: totals.totalExposureSec / 3600,
     totalFiles: totals.totalFiles,
     totalTargets: targetCount,
-    totalSessions: sessionCount,
+    totalNights: nightCount,
     activeSinceDate: totals.firstDate ? totals.firstDate.substring(0, 10) : null,
     mostImagedTarget: mostImaged?.canonical_name ?? null,
     mostUsedFilter: mostFilter?.filter ?? null,

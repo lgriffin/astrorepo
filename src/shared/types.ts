@@ -761,7 +761,8 @@ export interface InsightsSummary {
   totalImagingHours: number
   totalFiles: number
   totalTargets: number
-  totalSessions: number
+  /** Nights imaged: logged nights and the nights of your light frames, each once (EUX-008). */
+  totalNights: number
   activeSinceDate: string | null
   mostImagedTarget: string | null
   mostUsedFilter: string | null
