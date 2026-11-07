@@ -26,11 +26,11 @@ export const PALETTES: Record<ThemeName, Palette> = {
     border: '#22384a',
     text: '#e8eef2',
     muted: '#93a7b4',
-    accent: '#ff6a55',
+    accent: '#ff7864',
     'on-accent': '#1a0805',
     success: '#5fd18a',
     warning: '#f2b84b',
-    danger: '#ff5c8a',
+    danger: '#ff6e96',
     info: '#6cc3e8',
     scrim: '#000000',
     'on-scrim': '#ffffff',
@@ -52,10 +52,10 @@ export const PALETTES: Record<ThemeName, Palette> = {
     border: '#c9d3db',
     text: '#0b2233',
     muted: '#48606f',
-    accent: '#b8281c',
+    accent: '#a8241a',
     'on-accent': '#ffffff',
     success: '#17713f',
-    warning: '#8a5a00',
+    warning: '#805300',
     danger: '#b0124f',
     info: '#0b6390',
     scrim: '#000000',
@@ -76,7 +76,7 @@ export const PALETTES: Record<ThemeName, Palette> = {
     raised: '#1e0404',
     border: '#3a0a0a',
     text: '#ff7a6b',
-    muted: '#d9473a',
+    muted: '#ec5546',
     accent: '#ff9a8a',
     'on-accent': '#1a0000',
     success: '#e8705f',
@@ -98,6 +98,12 @@ export const PALETTES: Record<ThemeName, Palette> = {
 
 const TEXT = 4.5
 
+/** The most a selected row or choice tints its ground with the accent. */
+export const SELECTED_WASH = 0.1
+
+/** The most a badge tints a card with its own colour. */
+export const BADGE_WASH = 0.2
+
 /** Every pairing the pages draw, and the contrast WCAG AA asks of it. */
 export const CONTRAST_PAIRS: ContrastPair[] = [
   ...(['bg', 'surface', 'raised'] as const).flatMap(bg => [
@@ -107,5 +113,11 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   ]),
   ...(['success', 'warning', 'danger', 'info', ...CATEGORY_TOKENS] as const).map(fg => ({ fg, bg: 'surface', min: TEXT })),
   ...(['accent', 'danger', 'success'] as const).map(bg => ({ fg: 'on-accent', bg, min: TEXT })),
-  { fg: 'on-scrim', bg: 'scrim', min: TEXT }
+  { fg: 'on-scrim', bg: 'scrim', min: TEXT },
+  // Tinted grounds (spec 046, U4): a selected row or choice washes its ground in the accent at
+  // 10% (SELECTED_WASH), and a badge is drawn in its own colour on a 20% wash of a card (BADGE_WASH).
+  ...(['bg', 'surface', 'raised'] as const).flatMap(bg =>
+    (['text', 'muted', 'accent'] as const).map(fg => ({ fg, bg, min: TEXT, wash: { token: 'accent', alpha: SELECTED_WASH } }))
+  ),
+  ...(['accent', 'success', 'warning', 'danger', 'info'] as const).map(fg => ({ fg, bg: 'surface', min: TEXT, wash: { token: fg, alpha: BADGE_WASH } }))
 ]

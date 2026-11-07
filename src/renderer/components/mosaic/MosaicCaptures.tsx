@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext'
 import { targetLink } from '@shared/navigation'
 import type { SolveQueuedView, WorkspaceCaptureView, WorkspaceCapturesView, WorkspaceDrawingView } from '@shared/types'
 import { Loading } from '../ui'
+import { pressable } from '../ui/pressable'
 
 const input = 'px-2 py-1 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent'
 const small = 'px-2 py-1 text-xs bg-astro-accent/10 text-astro-accent border border-astro-accent/30 rounded hover:bg-astro-accent/20 transition-colors disabled:opacity-50'
@@ -160,7 +161,7 @@ export function MosaicCaptures({ workspaceId, revision, drawing, latestPanels, o
               </thead>
               <tbody>
                 {shown.map(c => (
-                  <tr key={c.id} className={`border-b border-astro-border/50 cursor-pointer ${c.id === capture ? 'bg-astro-accent/10' : ''}`} onClick={() => setCapture(c.id)}>
+                  <tr key={c.id} className={`border-b border-astro-border/50 cursor-pointer ${c.id === capture ? 'bg-astro-accent/10' : ''}`} {...pressable(() => setCapture(c.id), { row: true })}>
                     <td className="py-1 pr-3 text-astro-text">{c.label}</td>
                     <td className="py-1 pr-3 text-astro-text">{c.panelId ?? 'None'}</td>
                     <td className="py-1 pr-3 text-astro-muted">{c.panels.map(p => `${p.panelId} ${p.share}`).join(', ')}</td>

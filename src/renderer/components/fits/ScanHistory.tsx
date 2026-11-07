@@ -2,6 +2,7 @@ import React from 'react'
 import type { FitsScanSummary } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { formatSize } from '../../utils/format'
+import { pressable } from '../ui/pressable'
 
 interface ScanHistoryProps {
   scans: FitsScanSummary[]
@@ -17,9 +18,10 @@ function formatDate(iso: string): string {
 
 function statusBadge(status: string): React.ReactElement {
   const colors: Record<string, string> = {
-    completed: 'bg-astro-success/20 text-astro-success',
-    running: 'bg-astro-warning/20 text-astro-warning',
-    failed: 'bg-astro-danger/20 text-astro-danger'
+    // Drawn on the card's own ground, so a selected row's tint does not dim them (U4).
+    completed: 'bg-astro-surface border border-astro-success/50 text-astro-success',
+    running: 'bg-astro-surface border border-astro-warning/50 text-astro-warning',
+    failed: 'bg-astro-surface border border-astro-danger/50 text-astro-danger'
   }
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[status] ?? 'bg-astro-bg text-astro-muted'}`}>
@@ -52,31 +54,35 @@ export function ScanHistory({ scans, selectedScanId, onSelectScan, onRefresh }: 
         {scans.map((scan) => (
           <div
             key={scan.id}
-            onClick={() => onSelectScan(scan.id)}
-            className={`px-4 py-3 cursor-pointer transition-colors flex items-center justify-between ${
+            className={`flex items-center transition-colors ${
               selectedScanId === scan.id
                 ? 'bg-astro-accent/10 border-l-2 border-astro-accent'
                 : 'hover:bg-astro-bg/50'
             }`}
           >
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-astro-text truncate">{scan.folderPath}</p>
-              <div className="flex gap-3 mt-1 text-xs text-astro-muted">
-                <span>{scan.fileCount} files</span>
-                <span>{formatSize(scan.totalSizeBytes)}</span>
-                <span>{formatDate(scan.startedAt)}</span>
+            {/* The whole row but Delete opens the scan, so Delete is a control of its own beside it (U4). */}
+            <div
+              className="min-w-0 flex-1 px-4 py-3 cursor-pointer rounded flex items-center justify-between gap-3"
+              {...pressable(() => onSelectScan(scan.id), { pressed: selectedScanId === scan.id })}
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-astro-text truncate">{scan.folderPath}</p>
+                <div className="flex gap-3 mt-1 text-xs text-astro-muted">
+                  <span>{scan.fileCount} files</span>
+                  <span>{formatSize(scan.totalSizeBytes)}</span>
+                  <span>{formatDate(scan.startedAt)}</span>
+                </div>
               </div>
+              <span className="shrink-0">{statusBadge(scan.status)}</span>
             </div>
-            <div className="flex items-center gap-2 ml-3 shrink-0">
-              {statusBadge(scan.status)}
-              <button
-                onClick={(e) => handleDelete(e, scan.id)}
-                className="text-astro-muted hover:text-astro-danger transition-colors p-1"
-                title="Delete scan"
-              >
-                &times;
-              </button>
-            </div>
+            <button
+              onClick={(e) => handleDelete(e, scan.id)}
+              className="mr-3 shrink-0 text-astro-muted hover:text-astro-danger transition-colors p-1"
+              title="Delete scan"
+              aria-label={`Delete the scan of ${scan.folderPath}`}
+            >
+              &times;
+            </button>
           </div>
         ))}
       </div>

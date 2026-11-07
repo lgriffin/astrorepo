@@ -5,6 +5,7 @@ import { Button, Select, Table, Td, Th, Tr, Loading } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { useToast } from '../../contexts/ToastContext'
 import type { WorkspaceCoverageView, WorkspaceDrawingView, WorkspacePanelCoverageView } from '@shared/types'
+import { pressable } from '../ui/pressable'
 
 const STATE_CLASS: Record<WorkspacePanelCoverageView['state'], string> = {
   covered: 'text-astro-success',
@@ -142,7 +143,7 @@ export function MosaicCoverage({ workspaceId, revision, drawing, version }: Mosa
               <Tr
                 key={p.panelId}
                 className={`cursor-pointer ${p.panelId === panel ? 'bg-astro-accent/10' : ''}`}
-                onClick={() => setPanel(x => (x === p.panelId ? null : p.panelId))}
+                {...pressable(() => setPanel(x => (x === p.panelId ? null : p.panelId)), { row: true })}
               >
                 <Td>{p.panelId}</Td>
                 <Td className={STATE_CLASS[p.state]}>

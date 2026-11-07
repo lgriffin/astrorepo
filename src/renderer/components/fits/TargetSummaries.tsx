@@ -29,17 +29,22 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
       <div className="divide-y divide-astro-border">
         {targets.map((t) => (
           <div key={t.folderName}>
-            <div
-              onClick={() => setExpandedTarget(expandedTarget === t.folderName ? null : t.folderName)}
-              className="px-4 py-3 cursor-pointer hover:bg-astro-bg/50 transition-colors"
-            >
+            {/* The toggle and the target's link sit side by side: a link inside a toggle cannot be reached by keyboard (U4). */}
+            <div className="px-4 py-3 hover:bg-astro-bg/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-astro-muted text-xs">{expandedTarget === t.folderName ? '▾' : '▸'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedTarget(expandedTarget === t.folderName ? null : t.folderName)}
+                    aria-expanded={expandedTarget === t.folderName}
+                    aria-label={`Details of ${t.targetName ?? t.folderName}`}
+                    className="text-astro-muted text-xs rounded px-1"
+                  >
+                    <span aria-hidden="true">{expandedTarget === t.folderName ? '▾' : '▸'}</span>
+                  </button>
                   {t.targetId ? (
                     <Link
                       to={`/targets/${t.targetId}`}
-                      onClick={(e) => e.stopPropagation()}
                       className="text-sm font-medium text-astro-accent hover:underline"
                     >
                       {t.targetName ?? t.folderName}

@@ -119,7 +119,7 @@ export function CompareCard({ targetId }: { targetId: string }): React.ReactElem
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2">
           {[0, 1].map(k => (
-            <select key={k} className={select} value={picked[k]} onChange={e => setPicked(p => (k === 0 ? [e.target.value, p[1]] : [p[0], e.target.value]))}>
+            <select key={k} aria-label={k === 0 ? 'First picture' : 'Second picture'} className={select} value={picked[k]} onChange={e => setPicked(p => (k === 0 ? [e.target.value, p[1]] : [p[0], e.target.value]))}>
               {images.map(i => <option key={i.path} value={i.path}>{i.label}</option>)}
             </select>
           ))}

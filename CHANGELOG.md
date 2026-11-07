@@ -12,6 +12,10 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Keyboard and accessibility** (spec 046, U4): rows, cards and calendar days open with Enter or
+  Space; **?** or Shortcuts in the sidebar lists every key; text on selected rows and badges is
+  legible in every theme (the palettes moved slightly), links in sentences are underlined, and
+  every list box has a name. The smoke run now accepts no serious accessibility finding.
 - **Demo library** (spec 045, D4): `npm run demo` builds a small made-up library and indexes it
   into its own data folder; `npm run demo -- --serve` and `npm run dev:demo` open it, and the
   smoke run also runs over it.

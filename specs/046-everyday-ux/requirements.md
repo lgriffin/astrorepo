@@ -3,7 +3,8 @@
 Leigh asked (7 November 2026): "Can you do both a DX and a UX overhaul for the system." The
 look-and-feel overhaul (spec 041) gave the app its Star atlas look and eight places. This round
 makes each screen say a thing once, ask for each setting once and show only numbers from your own
-data. The plan splits it into slices U1 to U6; this spec holds the IDs of the slices built so far.
+data, and lets every part of it be worked from the keyboard. The plan splits it into slices U1 to
+U6; this spec holds the IDs of the slices built so far.
 
 An audit on 7 November 2026 of Home on a new data folder found "set your site" four times: in Get
 set up, in Tonight, in Tonight's sky and in Clear skies, with Coming nights and Shoot tonight empty
@@ -49,6 +50,30 @@ log) beside a separate total exposure, and drawing an empty library's zeros in t
   imaging hours from your files; Log a night saves a night. Lists of session folders are named so.
 - **Quiet zeros.** A tile whose value is zero (0, 0.0, 0s) is drawn muted, never in the accent.
 
+## U4: keyboard and accessibility
+
+The smoke run (spec 045, D3) left 5 serious accessibility findings over an empty data folder and
+15 over the demo library (D4): list boxes and a date field without a name, a link inside a toggle
+button, links in sentences told apart by colour alone, hints and tile names dimmed below 4.5:1,
+and, in the night theme, muted text on a selected row at 4.1:1. Reading the code found 13 rows,
+cards and days that opened something on a click but could not be reached with Tab.
+
+- **Everything that opens on a click opens from the keyboard.** A row, card or calendar day that
+  acts on a click takes focus, and Enter or Space on it does the same (`pressable`). A toggle and
+  the link to a target sit side by side rather than one inside the other. Sortable columns are
+  buttons that say how the list is sorted. The picture viewer's click beside the picture stays a
+  mouse convenience: Escape does the same.
+- **Keyboard shortcuts.** **?** (outside a text field) or **Shortcuts** in the sidebar lists every
+  key the app answers. Escape closes it and puts focus back.
+- **Legible on tints.** Text on a selected row (the accent at up to 10%) and a badge on a card (its
+  own colour at up to 20%) reach 4.5:1 in every theme; the palettes moved slightly to get there
+  (dark accent and danger a little lighter, light accent and warning a little darker, night muted
+  a little brighter). Text in the text and muted colours is never dimmed with an opacity. A link
+  inside a sentence is underlined.
+- **Every list box has a name.** Its own label or the label it sits in.
+- **No findings left.** Both smoke baselines are empty, so any serious or critical finding fails
+  the run.
+
 ## Out of scope
 
 - Looking a place up by name: it would need a gazetteer or an online service.
@@ -66,3 +91,7 @@ log) beside a separate total exposure, and drawing an empty library's zeros in t
 | EUX-007 | Ubiquitous | Insights shall count, in its target totals and targets by type, only the targets that are yours, never catalogue entries you have not added, planned, imaged or collected. |
 | EUX-008 | Ubiquitous | The system shall count each night once, from the nights you logged and the nights of your light frames together, and Insights shall show it once, as Nights. |
 | EUX-009 | Ubiquitous | A total that is zero shall be drawn muted, never in the accent colour. |
+| EUX-010 | Ubiquitous | Every element that acts on a click shall take keyboard focus and act on Enter and Space, and no control shall sit inside another, except a mouse convenience whose key is listed. |
+| EUX-011 | Event | When ? is pressed outside a text field, or Shortcuts is chosen in the sidebar, the system shall list every keyboard shortcut it answers, and Escape shall close the list and return focus. |
+| EUX-012 | Ubiquitous | Text on a selected row, a badge on a card, and text in the text and muted colours shall reach 4.5:1 in every theme, and a link inside a sentence shall be underlined. |
+| EUX-013 | Ubiquitous | Every list box shall have an accessible name, and the smoke run shall accept no serious or critical accessibility finding on any page in any theme, with or without the demo library. |

@@ -42,6 +42,12 @@ table {
   outline-offset: 2px;
 }
 
+/* A link inside a sentence is underlined, so it is not told apart by colour alone (spec 046, U4). */
+main p a {
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+}
+
 ::placeholder {
   color: rgb(var(--astro-muted) / 0.8);
 }

@@ -7,7 +7,8 @@ export const OUTLOOK_TONE: Record<string, string> = {
   tonight: 'text-astro-success',
   moon: 'text-astro-warning',
   later: 'text-astro-muted',
-  never: 'text-astro-muted/60'
+  // Drawn at full strength: dimmed text on a tile falls below 4.5:1 (U4); italic sets it apart.
+  never: 'text-astro-muted italic'
 }
 
 const STATE_DOT: Record<MessierTileView['state'], string> = {
@@ -36,7 +37,7 @@ export function MosaicTile({ tile, dimmed, selected, onOpen }: { tile: MessierTi
       {shown && <img src={picture.src} alt={label} className="absolute inset-0 w-full h-full object-cover" />}
       {!shown && (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-1 text-center">
-          <span className={`text-lg font-bold ${tile.state === 'gap' ? 'text-astro-muted/70' : 'text-astro-text'}`}>{tile.designation}</span>
+          <span className={`text-lg font-bold ${tile.state === 'gap' ? 'text-astro-muted' : 'text-astro-text'}`}>{tile.designation}</span>
           {picture.status === 'loading' && <span className="text-[10px] text-astro-muted">Drawing…</span>}
           {picture.status !== 'loading' && tile.state !== 'imaged' && tile.outlook && (
             <span className={`text-[10px] leading-tight ${OUTLOOK_TONE[tile.outlook.kind]}`}>{tile.outlook.short}</span>

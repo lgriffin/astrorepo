@@ -50,7 +50,7 @@ export function GradingSettings(): React.ReactElement {
                 setValues(prev => ({ ...prev, [f.key]: e.target.value }))
               }}
             />
-            <span className="block mt-0.5 opacity-70">{f.hint}</span>
+            <span className="block mt-0.5 text-astro-muted">{f.hint}</span>
           </label>
         ))}
       </div>

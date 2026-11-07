@@ -6,6 +6,7 @@ import { invoke } from '../hooks/useIPC'
 import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress, ScanFileCounts } from '@shared/types'
 import { Loading, Button } from '../components/ui'
 import { LibraryLayoutCard } from '../components/library/LibraryLayoutCard'
+import { pressable } from '../components/ui/pressable'
 
 const PHASE_LABELS: Record<string, { title: string; description: string }> = {
   raw: { title: 'Raw', description: 'FITS files from capture sessions' },
@@ -271,10 +272,10 @@ export function Library(): React.ReactElement {
                         <React.Fragment key={id}>
                           <tr
                             className={`border-b border-astro-border/50 last:border-0 ${hasSubfolders ? 'cursor-pointer hover:bg-astro-surface/50' : ''}`}
-                            onClick={() => hasSubfolders && toggleExpand(id)}
+                            {...(hasSubfolders ? pressable(() => toggleExpand(id), { row: true, expanded: isExpanded }) : {})}
                           >
                             <td className="px-2 py-1.5 text-astro-muted">
-                              {hasSubfolders && <span className="text-[10px]">{isExpanded ? '▼' : '▶'}</span>}
+                              {hasSubfolders && <span className="text-[10px]" aria-hidden="true">{isExpanded ? '▼' : '▶'}</span>}
                             </td>
                             <td className="px-3 py-1.5 text-astro-text font-medium">{t.targetName}</td>
                             <td className="px-3 py-1.5 text-right text-astro-muted">{t.rawFiles || '-'}</td>

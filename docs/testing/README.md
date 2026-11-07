@@ -55,6 +55,8 @@ the elements that fail, and may only shrink: the run lists findings fixed since,
 `--accept-findings` writes a run's findings into it on purpose. `npm run smoke -- --demo` runs
 the same pages over a copy of the demo library (`npm run demo`), where they have data to show,
 with its own baseline (`axe-baseline.demo.json`) and screenshots in `reports/smoke-demo/`; CI runs both.
+Both baselines are empty since U4 (spec 046), so a new serious finding fails the run; `report.json`
+says where each finding is (the elements' selectors and what axe says is wrong).
 
 ## Adding a feature
 

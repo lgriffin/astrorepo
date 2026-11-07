@@ -406,14 +406,14 @@ function PostProcessing({ targetId, rawPath, onQueued, queued }: { targetId: str
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 items-center text-xs">
         {view.stacks.length > 1 && (
-          <select className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value }))}>
+          <select aria-label="Stack to use" className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value }))}>
             {view.stacks.map(s => <option key={s.path} value={s.path}>{s.label}</option>)}
           </select>
         )}
-        <select className={select} value={view.profile} onChange={e => setChoice(c => ({ ...c, profile: e.target.value }))}>
+        <select aria-label="Stacking profile" className={select} value={view.profile} onChange={e => setChoice(c => ({ ...c, profile: e.target.value }))}>
           {view.profiles.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select className={select} value={view.quality} onChange={e => setChoice(c => ({ ...c, quality: e.target.value }))}>
+        <select aria-label="Quality" className={select} value={view.quality} onChange={e => setChoice(c => ({ ...c, quality: e.target.value }))}>
           {view.qualities.map(q => <option key={q} value={q}>{q}</option>)}
         </select>
       </div>
@@ -501,15 +501,15 @@ function SyqonSteps({ targetId, rawPath, onQueued, queued }: { targetId: string;
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 items-center text-xs">
         {view.stacks.length > 1 && (
-          <select className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value, overwrite: false }))}>
+          <select aria-label="Stack to process" className={select} value={view.stackPath ?? ''} onChange={e => setChoice(c => ({ ...c, stack_path: e.target.value, overwrite: false }))}>
             {view.stacks.map(s => <option key={s.path} value={s.path}>{s.label}</option>)}
           </select>
         )}
-        <select className={select} value={view.step} onChange={e => setChoice(c => ({ ...c, step: e.target.value, model: undefined, overwrite: false }))}>
+        <select aria-label="Step" className={select} value={view.step} onChange={e => setChoice(c => ({ ...c, step: e.target.value, model: undefined, overwrite: false }))}>
           {view.steps.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         {view.models.length > 0 && (
-          <select className={select} value={view.model ?? ''} onChange={e => setChoice(c => ({ ...c, model: e.target.value }))}>
+          <select aria-label="Model" className={select} value={view.model ?? ''} onChange={e => setChoice(c => ({ ...c, model: e.target.value }))}>
             {view.models.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         )}
