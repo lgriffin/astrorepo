@@ -9,7 +9,7 @@ const lines = (rel: string): number => read(rel).split('\n').length
 const filesIn = (rel: string): string[] => fs.readdirSync(path.join(repo, rel)).filter(f => f.endsWith('.ts')).map(f => `${rel}/${f}`)
 
 describe('Code health (spec 045, D6)', () => {
-  it('[DEV-023] Given the renderer, When the app starts, Then only Home is loaded with it and every other page is loaded the first time it is opened', () => {
+  it('[DEV-023] Given the renderer, When the app starts, Then only Home is loaded with it, every other page is loaded the first time it is opened, and one that fails to load is not left blank', () => {
     const app = read('src/renderer/App.tsx')
     const eager = [...app.matchAll(/^import \{ (\w+) \} from '\.\/pages\/(\w+)'/gm)].map(m => m[1])
     expect(eager).toEqual(['Dashboard'])
@@ -23,6 +23,12 @@ describe('Code health (spec 045, D6)', () => {
     expect(routed.length).toBeGreaterThan(20)
     for (const page of routed) expect(['Dashboard', ...lazy.map(l => l[1])], page).toContain(page)
     expect(app).toContain('<Suspense fallback={<Loading label="Loading the page"')
+    // A page that fails to load says so and offers a reload, rather than leaving the screen blank.
+    expect(app.indexOf('<PageLoadBoundary>')).toBeLessThan(app.indexOf('<Suspense'))
+    const boundary = read('src/renderer/components/common/PageLoadBoundary.tsx')
+    expect(boundary).toContain('getDerivedStateFromError')
+    expect(boundary).toContain('window.location.reload()')
+    expect(boundary).toContain('key={pathname}')
   })
 
   it('[DEV-024] Given the IPC handlers and the shared types, When they are read, Then each area is a module of its own and none is over 600 lines', () => {
