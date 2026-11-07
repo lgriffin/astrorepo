@@ -11,10 +11,9 @@
  */
 import fs from 'fs'
 import path from 'path'
-import { encodeRgbPng } from '../../src/main/fits/png-encoder'
 import { freePort, root, serve, servedInvoker } from '../shared/served-app'
-import { DEMO_MARKER, DEMO_SITE, DEMO_TARGETS, demoFiles, demoLoggedNights, mayClear } from './library'
-import { fitsFile, greyLevels, pictureRgb, starfield, tiffFile, DEMO_SIZE } from './encode'
+import { seedLibrary, writeSampleLibrary } from '../../src/main/sample/sample-data'
+import { DEMO_MARKER, mayClear } from './library'
 
 const arg = (name: string) => {
   const i = process.argv.indexOf(name)
@@ -26,30 +25,6 @@ const arg = (name: string) => {
 const out = path.resolve(arg('--out') ?? path.join(root, '.demo'))
 const keepServing = process.argv.includes('--serve')
 
-/** Writes every file of the library under `library`. */
-function writeLibrary(library: string): number {
-  const files = demoFiles()
-  files.forEach((f, i) => {
-    const file = path.join(library, ...f.path.split('/'))
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    const hue = DEMO_TARGETS.findIndex(t => t.name === f.target)
-    const field = starfield(hue * 1000 + (f.kind === 'light' ? i : 0))
-    if (f.kind === 'light' || f.kind === 'master') fs.writeFileSync(file, fitsFile(f.cards ?? {}, field))
-    else if (f.kind === 'tif') fs.writeFileSync(file, tiffFile(greyLevels(field)))
-    else fs.writeFileSync(file, encodeRgbPng(DEMO_SIZE, DEMO_SIZE, pictureRgb(greyLevels(field), hue)))
-  })
-  return files.length
-}
-
-async function waitForScan(invoke: <T>(channel: string, args?: unknown) => Promise<T>): Promise<{ status: string; error: string | null; totalTargetsFound: number }> {
-  for (let i = 0; i < 600; i++) {
-    const p = await invoke<{ status: string; error: string | null; totalTargetsFound: number }>('home:scan-progress')
-    if (p.status === 'done' || p.status === 'error' || p.status === 'cancelled') return p
-    await new Promise(r => setTimeout(r, 250))
-  }
-  throw new Error('The library scan did not finish within 150 seconds')
-}
-
 async function main(): Promise<void> {
   const library = path.join(out, 'library')
   const data = path.join(out, 'data')
@@ -58,7 +33,7 @@ async function main(): Promise<void> {
   fs.rmSync(out, { recursive: true, force: true })
   fs.mkdirSync(data, { recursive: true })
   fs.writeFileSync(path.join(out, DEMO_MARKER), 'Made by npm run demo; the next run clears this folder.\n')
-  const count = writeLibrary(library)
+  const count = writeSampleLibrary(library)
   console.log(`Wrote ${count} files to ${path.relative(root, library) || library}`)
 
   const port = keepServing ? Number(process.env.ASTRO_PORT ?? 8090) : await freePort()
@@ -66,20 +41,8 @@ async function main(): Promise<void> {
   try {
     const base = `http://127.0.0.1:${port}`
     const invoke = await servedInvoker(base)
-    await invoke('settings:set', { key: 'home_folder_path', value: library })
-    await invoke('settings:set-site', DEMO_SITE)
-    const started = await invoke<{ started: boolean; reason?: string }>('home:scan-start')
-    if (!started.started) throw new Error(`The library scan did not start: ${started.reason ?? 'no reason given'}`)
-    const scan = await waitForScan(invoke)
-    if (scan.status !== 'done') throw new Error(`The library scan ended ${scan.status}${scan.error ? `: ${scan.error}` : ''}`)
-    // Nights are logged once the scan has made the targets, each on its own target.
-    const mine = await invoke<{ targets: Array<{ id: string; canonicalName: string; aliases: string[] }> }>('targets:search', { query: '', scope: 'mine', limit: 100 })
-    for (const { target, folder, ...night } of demoLoggedNights()) {
-      const match = mine.targets.find(t => [t.canonicalName, ...t.aliases].some(n => n.replace(/\s+/g, '') === folder))
-      if (!match) throw new Error(`The scan did not find ${target}`)
-      await invoke('sessions:create', { ...night, target_ids: [match.id] })
-    }
-    console.log(`Indexed ${scan.totalTargetsFound} targets into ${path.relative(root, data) || data}`)
+    const { targets } = await seedLibrary(invoke, library)
+    console.log(`Indexed ${targets} targets into ${path.relative(root, data) || data}`)
     if (keepServing) {
       console.log(`\nThe demo is at ${base} (Ctrl+C to stop).`)
       await new Promise(() => undefined)

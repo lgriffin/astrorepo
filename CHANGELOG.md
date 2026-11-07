@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Sample data on first run** (spec 046, U5): before a home folder is chosen, Get set up on the
+  desktop app offers **Try it with sample data**, which restarts the app on the demo library in a
+  folder and database of its own, with a band on every page and **Use my own data** to go back.
 - **Contributor path** (spec 045, D5): CONTRIBUTING.md; `npm run new:slice` scaffolds a spec, a
   domain rule and a test that cites it; CLAUDE.md is down to the rules, with past slices' notes in
   `docs/architecture/slice-notes.md`; shared VS Code settings, extensions and debug launches.

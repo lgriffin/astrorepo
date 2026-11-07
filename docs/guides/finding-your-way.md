@@ -46,6 +46,18 @@ Siril, each linking to where it is done. Pages with nothing to show yet say what
 and link to the step that fills them. The site is set only in **Settings → Your site**; every page
 that needs it links there.
 
+### Trying it with sample data
+
+Not ready to point the app at your files? While no home folder is chosen, **Get set up** on the
+desktop app offers **Try it with sample data**. The app builds a small made-up library (six targets
+at different points of the workflow, a year of nights, a site near Dublin) in a folder of its own,
+restarts on a database of the sample's own and indexes it, so every page has something in it. Your
+own data is never opened while the sample is on.
+
+A band across the top of every page says you are looking at sample data. **Use my own data** in it
+restarts the app on your own data and removes the sample's folder. The app only ever removes a
+folder it made for the sample.
+
 ## Scanning your library
 
 **Library** scans your home folder in four parts: raw frames and stacked masters for their FITS

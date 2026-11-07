@@ -519,7 +519,12 @@ export const schemas = {
   'companion:list': z.object({}).optional(),
   'companion:remove': z.object({ id: z.string().min(1).max(200) }),
   'companion:set-screen': z.object({ id: z.string().min(1).max(200), screen: z.enum(COMPANION_SCREENS) }),
-  'companion:report-route': z.object({ route: z.string().max(2048) })
+  'companion:report-route': z.object({ route: z.string().max(2048) }),
+
+  // Sample data on first run, the desktop app only (specs/046-everyday-ux, EUX-014 to EUX-017)
+  'sample:status': z.object({}).optional(),
+  'sample:start': z.object({}).optional(),
+  'sample:leave': z.object({}).optional()
 } as const
 
 export type SchemaMap = typeof schemas

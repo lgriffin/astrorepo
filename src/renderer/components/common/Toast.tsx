@@ -34,7 +34,7 @@ export function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: () =>
  */
 export function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: number) => void }): React.ReactElement {
   return (
-    <div aria-live="polite" aria-label="Messages" className="fixed bottom-4 right-4 z-50 space-y-2">
+    <div role="status" aria-live="polite" aria-label="Messages" className="fixed bottom-4 right-4 z-50 space-y-2">
       {toasts.map(t => (
         <Toast key={t.id} toast={t} onDismiss={() => onDismiss(t.id)} />
       ))}

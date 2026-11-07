@@ -4,6 +4,7 @@ import { opensShortcuts } from '@shared/keyboard'
 import { Sidebar } from './Sidebar'
 import { CommandPalette } from './CommandPalette'
 import { ShortcutsSheet } from './ShortcutsSheet'
+import { SampleBanner } from './SampleBanner'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -41,7 +42,10 @@ export function Layout({ children }: LayoutProps): React.ReactElement {
         Skip to the page
       </a>
       <Sidebar onSearch={() => setPalette(true)} onShortcuts={() => setShortcuts(true)} />
-      <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none focus-visible:outline-none">{children}</main>
+      <div className="flex flex-1 min-w-0 flex-col">
+        <SampleBanner />
+        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none focus-visible:outline-none">{children}</main>
+      </div>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
       {shortcuts && !palette && <ShortcutsSheet onClose={() => setShortcuts(false)} />}
     </div>
