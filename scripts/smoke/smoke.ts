@@ -92,11 +92,13 @@ async function main(): Promise<void> {
         const body = page.locator('main [data-page-body]')
         const textLength = (await ((await body.count()) ? body.first() : page.locator('main')).innerText().catch(() => '')).trim().length
         const axe = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa']).analyze()
-        const violations = Object.fromEntries(
-          axe.violations.filter(v => v.impact === 'serious' || v.impact === 'critical').map(v => [v.id, v.nodes.length] as const)
+        const serious = axe.violations.filter(v => v.impact === 'serious' || v.impact === 'critical')
+        const violations = Object.fromEntries(serious.map(v => [v.id, v.nodes.length] as const))
+        const where = Object.fromEntries(
+          serious.map(v => [v.id, v.nodes.map(n => `${n.target.join(' ')}: ${(n.failureSummary ?? '').replace(/\s+/g, ' ')}`)] as const)
         )
         await page.screenshot({ path: path.join(out, theme, `${name}.png`), fullPage: true })
-        results.push({ route, theme, errors: [...errors], textLength, violations })
+        results.push({ route, theme, errors: [...errors], textLength, violations, where })
         const found = Object.entries(violations).map(([rule, n]) => `${rule} x${n}`)
         console.log(`  ${theme.padEnd(5)} ${route}${found.length ? `  (${found.join(', ')})` : ''}`)
       }

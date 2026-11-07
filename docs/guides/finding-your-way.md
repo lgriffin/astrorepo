@@ -24,6 +24,15 @@ are listed. Type two letters or more and matching targets appear too, ranked wit
 else. Use the arrow keys to move, Enter to open and Esc to close. Opening a page puts the
 keyboard on that page; closing without one puts it back where it was.
 
+## Keyboard
+
+Press **?** (anywhere but a text field), or choose **Shortcuts** near the bottom of the sidebar, to
+see every key AstroRepo answers. **Tab** moves from control to control; the first stop is **Skip
+to the page**. Rows, cards and calendar days that open something take focus too: press **Enter**
+or **Space** on one to open it, as a click would. A sortable column's heading is a button; press
+it again to sort the other way. **Esc** closes the palette, the shortcuts, an explanation or a
+picture.
+
 To give your pages more room, choose **Fold** at the bottom of the sidebar. The sidebar then shows
 only icons, each named when you hover over it. AstroRepo remembers this choice on that screen.
 

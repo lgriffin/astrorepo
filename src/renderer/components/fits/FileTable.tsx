@@ -3,6 +3,7 @@ import { Button } from '../ui'
 import { invoke } from '../../hooks/useIPC'
 import { formatSize } from '../../utils/format'
 import type { FitsFileSummary } from '@shared/types'
+import { pressable } from '../ui/pressable'
 
 interface FileTableProps {
   scanId: string
@@ -73,6 +74,15 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
     setPage(0)
   }
 
+  // A sortable column's heading is a button, so the keyboard sorts too; aria-sort says how it is sorted (U4).
+  const sortHeader = (col: SortCol, label: string): React.ReactElement => (
+    <th key={col} className="px-4 py-2" aria-sort={sortBy === col ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}>
+      <button type="button" onClick={() => handleSort(col)} className="rounded hover:text-astro-text">
+        {label}{sortIndicator(col)}
+      </button>
+    </th>
+  )
+
   function sortIndicator(col: SortCol): string {
     if (sortBy !== col) return ''
     return sortDir === 'asc' ? ' ↑' : ' ↓'
@@ -103,19 +113,19 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
             {analyzingAll ? 'Measuring…' : 'Measure quality'}
           </Button>
         )}
-        <select value={filterFolder} onChange={e => { setFilterFolder(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
+        <select aria-label="Folder" value={filterFolder} onChange={e => { setFilterFolder(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
           <option value="">All folders</option>
           {folders.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
-        <select value={filterObj} onChange={e => { setFilterObj(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
+        <select aria-label="Object" value={filterObj} onChange={e => { setFilterObj(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
           <option value="">All objects</option>
           {objects.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
-        <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
+        <select aria-label="Frame type" value={filterType} onChange={e => { setFilterType(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
           <option value="">All types</option>
           {types.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select value={filterFilter} onChange={e => { setFilterFilter(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
+        <select aria-label="Filter" value={filterFilter} onChange={e => { setFilterFilter(e.target.value); setPage(0) }} className="bg-astro-bg border border-astro-border rounded px-2 py-1 text-sm text-astro-text">
           <option value="">All filters</option>
           {filters.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
@@ -125,22 +135,22 @@ export function FileTable({ scanId, onSelectFile, selectedFileId, showQuality = 
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-astro-muted border-b border-astro-border font-condensed">
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('file_name')}>File{sortIndicator('file_name')}</th>
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('folder_name')}>Folder{sortIndicator('folder_name')}</th>
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('object_name')}>Object{sortIndicator('object_name')}</th>
+              {sortHeader('file_name', 'File')}
+              {sortHeader('folder_name', 'Folder')}
+              {sortHeader('object_name', 'Object')}
               <th className="px-4 py-2">Target</th>
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('filter')}>Filter{sortIndicator('filter')}</th>
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('exposure_sec')}>Exp{sortIndicator('exposure_sec')}</th>
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('date_obs')}>Date{sortIndicator('date_obs')}</th>
+              {sortHeader('filter', 'Filter')}
+              {sortHeader('exposure_sec', 'Exp')}
+              {sortHeader('date_obs', 'Date')}
               <th className="px-4 py-2">Type</th>
-              <th className="px-4 py-2 cursor-pointer hover:text-astro-text" onClick={() => handleSort('file_size_bytes')}>Size{sortIndicator('file_size_bytes')}</th>
+              {sortHeader('file_size_bytes', 'Size')}
             </tr>
           </thead>
           <tbody className="divide-y divide-astro-border/50">
             {files.map((f) => (
               <tr
                 key={f.id}
-                onClick={() => onSelectFile(f.id)}
+                {...pressable(() => onSelectFile(f.id), { row: true })}
                 className={`cursor-pointer transition-colors ${
                   selectedFileId === f.id ? 'bg-astro-accent/10' : 'hover:bg-astro-bg/50'
                 }`}

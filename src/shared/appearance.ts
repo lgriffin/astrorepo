@@ -51,12 +51,21 @@ export function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
+/** A colour laid at `alpha` (0 to 1) over another, as CSS draws a token with opacity, as #rrggbb. */
+export function blend(top: string, under: string, alpha: number): string {
+  const t = hexChannels(top)
+  const u = hexChannels(under)
+  return `#${t.map((c, i) => Math.round(c * alpha + u[i] * (1 - alpha)).toString(16).padStart(2, '0')).join('')}`
+}
+
 /** A foreground drawn on a background, and the contrast it needs. */
 export interface ContrastPair {
   fg: string
   bg: string
   /** 4.5 for text, 3 for large text and the edges of controls. */
   min: number
+  /** A tint laid over the background, as a selected row (accent at 10%) or a badge (its own colour at 20%) is drawn. */
+  wash?: { token: string; alpha: number }
 }
 
 export interface ContrastFailure extends ContrastPair {
@@ -71,7 +80,9 @@ export function contrastFailures(palette: Readonly<Record<string, string>>, pair
   const out: ContrastFailure[] = []
   for (const pair of pairs) {
     const fg = palette[pair.fg]
-    const bg = palette[pair.bg]
+    const ground = palette[pair.bg]
+    const tint = pair.wash ? palette[pair.wash.token] : undefined
+    const bg = pair.wash ? (tint && ground ? blend(tint, ground, pair.wash.alpha) : undefined) : ground
     const ratio = fg && bg ? Math.round(contrastRatio(fg, bg) * 100) / 100 : 0
     if (ratio < pair.min) out.push({ ...pair, ratio })
   }

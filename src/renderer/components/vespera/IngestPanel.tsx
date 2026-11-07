@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Card, EmptyState } from '../common/Card'
 import { invoke } from '../../hooks/useIPC'
 import type { IngestKindView, IngestPlanView, IngestProgressView, IngestScanView, IngestSessionView } from '@shared/types'
+import { pressable } from '../ui/pressable'
 
 const KIND_LABEL: Record<IngestKindView, string> = { fits: 'FITS', tiff: 'TIFF', jpeg: 'JPEG', json: 'JSON' }
 const LEVEL_COLOUR = { error: 'text-astro-danger', warn: 'text-astro-warning', info: 'text-astro-muted' } as const
@@ -186,11 +187,11 @@ export function IngestPanel({ kinds }: { kinds: IngestKindView[] }): React.React
             <tbody>
               {shown.map(s => (
                 <React.Fragment key={s.id}>
-                  <tr className="border-t border-astro-border cursor-pointer hover:bg-astro-bg" onClick={() => {
+                  <tr className="border-t border-astro-border cursor-pointer hover:bg-astro-bg" {...pressable(() => {
                       // A name typed for one session is not carried to the next one opened.
                       setTyped('')
                       setOpen(open === s.id ? null : s.id)
-                    }}>
+                    }, { row: true, expanded: open === s.id })}>
                     <td onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={picked.has(s.id)} disabled={!s.transferable || running} onChange={() => toggle(s.id)} />
                     </td>

@@ -93,12 +93,12 @@ function StackingSummarySection({ summary }: { summary: StackingSummary | null }
       </div>
 
       <div className="flex gap-3 mb-3">
-        <select value={targetFilter} onChange={e => setTargetFilter(e.target.value)}
+        <select aria-label="Target" value={targetFilter} onChange={e => setTargetFilter(e.target.value)}
           className="px-3 py-2 bg-astro-surface border border-astro-border rounded-lg text-astro-text text-sm">
           <option value="">All Targets</option>
           {targets.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select value={filterFilter} onChange={e => setFilterFilter(e.target.value)}
+        <select aria-label="Filter" value={filterFilter} onChange={e => setFilterFilter(e.target.value)}
           className="px-3 py-2 bg-astro-surface border border-astro-border rounded-lg text-astro-text text-sm">
           <option value="">All Filters</option>
           {summary.filtersUsed.map(f => <option key={f} value={f}>{f}</option>)}
@@ -199,11 +199,13 @@ function SubFrameBreakdownSection({ rows }: { rows: StackingSummaryRow[] }): Rea
           return (
             <div key={row.fileId} className="border border-astro-border rounded-lg overflow-hidden">
               <button
+                type="button"
                 onClick={() => handleExpand(row.fileId)}
+                aria-expanded={isExpanded}
                 className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-astro-bg/50 text-left"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-astro-accent">{isExpanded ? '▾' : '▸'}</span>
+                  <span className="text-astro-accent" aria-hidden="true">{isExpanded ? '▾' : '▸'}</span>
                   <span className="text-astro-text font-medium">{row.targetName ?? row.fileName}</span>
                   {row.filter && <span className="px-1.5 py-0.5 bg-astro-bg rounded text-xs text-astro-muted">{row.filter}</span>}
                 </div>
@@ -315,14 +317,19 @@ function IntegrationProgressSection({ targets, onGoalChanged }: {
       <div className="space-y-1">
         {targets.map(target => (
           <div key={target.targetId} className="border border-astro-border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setExpandedId(expandedId === target.targetId ? null : target.targetId)}
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-astro-bg/50 text-left"
-            >
+            {/* The toggle and the target's link sit side by side: a link inside a button cannot be reached by keyboard (U4). */}
+            <div className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-astro-bg/50">
               <div className="flex items-center gap-3">
-                <span className="text-astro-accent">{expandedId === target.targetId ? '▾' : '▸'}</span>
-                <Link to={`/targets/${target.targetId}`} className="text-astro-accent hover:underline font-medium"
-                  onClick={e => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expandedId === target.targetId ? null : target.targetId)}
+                  aria-expanded={expandedId === target.targetId}
+                  aria-label={`Filters of ${target.targetName}`}
+                  className="text-astro-accent rounded px-1"
+                >
+                  <span aria-hidden="true">{expandedId === target.targetId ? '▾' : '▸'}</span>
+                </button>
+                <Link to={`/targets/${target.targetId}`} className="text-astro-accent hover:underline font-medium">
                   {target.targetName}
                 </Link>
               </div>
@@ -331,7 +338,7 @@ function IntegrationProgressSection({ targets, onGoalChanged }: {
                 <span>{target.filters.length} filter{target.filters.length !== 1 ? 's' : ''}</span>
                 <span>{target.sessionCount} session{target.sessionCount !== 1 ? 's' : ''}</span>
               </div>
-            </button>
+            </div>
 
             {expandedId === target.targetId && (
               <div className="px-4 pb-3 border-t border-astro-border/50">

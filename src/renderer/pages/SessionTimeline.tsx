@@ -6,6 +6,7 @@ import { formatExposure } from '../utils/format'
 import type { CalendarDay, CalendarMonth, YearSummaryMonth } from '@shared/types'
 import { tokenColor } from '../theme'
 import { Loading } from '../components/ui'
+import { pressable } from '../components/ui/pressable'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -41,7 +42,7 @@ function MiniMonthGrid({ year, monthNum, dayMap, maxExposure, onClick, isSelecte
 
   return (
     <div
-      onClick={onClick}
+      {...pressable(onClick, { pressed: isSelected, label: `${MONTH_NAMES[monthNum - 1]} ${year}` })}
       className={`bg-astro-surface border rounded-lg p-2 cursor-pointer transition-colors ${
         isSelected ? 'border-astro-accent' : 'border-astro-border hover:border-astro-border/80'
       }`}
@@ -130,7 +131,10 @@ function FullMonthCalendar({ year, monthNum, dayMap, maxExposure, onSelectDay, s
             return (
               <div
                 key={ci}
-                onClick={() => onSelectDay(data ?? null)}
+                {...pressable(() => onSelectDay(data ?? null), {
+                  pressed: isSelected,
+                  label: `${cell.dateStr}${data ? `, ${data.fileCount} files` : ', nothing taken'}`
+                })}
                 className={`h-10 rounded flex flex-col items-center justify-center cursor-pointer transition-colors ${
                   isSelected ? 'ring-1 ring-astro-accent' : ''
                 }`}

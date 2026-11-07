@@ -38,7 +38,7 @@ export function Poster(): React.ReactElement {
       }
     >
       <div className="mb-6">
-        <select
+        <select aria-label="Collection"
           value={selectedCollection}
           onChange={(e) => setSelectedCollection(e.target.value)}
           className="px-3 py-2 bg-astro-surface border border-astro-border rounded-lg text-astro-text focus:outline-none focus:border-astro-accent"

@@ -34,6 +34,8 @@ export interface PageResult {
   /** How many characters of text the page's own content holds, apart from its heading; none means it drew blank. */
   textLength: number
   violations: Findings
+  /** Where each finding is: the elements' selectors and what axe says is wrong, for the report. */
+  where?: Record<string, string[]>
 }
 
 /**

@@ -10,6 +10,7 @@ import { MosaicPlanner } from '../components/sky/MosaicPlanner'
 import type { AltitudePoint, BestTargetTonight, ForwardPlanView, MoonInfo, TwilightTimes, MonthlyVisibility } from '@shared/types'
 import { tokenColor } from '../theme'
 import { Explain, Loading } from '../components/ui'
+import { pressable } from '../components/ui/pressable'
 
 function AltitudeChart({ data }: { data: AltitudePoint[] }): React.ReactElement {
   if (data.length < 2) return <p className="text-astro-muted text-sm">No altitude data available</p>
@@ -235,6 +236,7 @@ export function SkyPlanner(): React.ReactElement {
           <LinkButton onClick={() => navigate(settingsLink('location'))}>Change your site</LinkButton>
           <input
             type="date"
+            aria-label="Night of"
             value={date}
             onChange={e => setDate(e.target.value)}
             className="px-3 py-1.5 bg-astro-bg border border-astro-border rounded text-sm text-astro-text focus:outline-none focus:border-astro-accent"
@@ -341,7 +343,7 @@ export function SkyPlanner(): React.ReactElement {
                     {bestTargets.map((t, i) => (
                       <tr
                         key={t.targetId}
-                        onClick={() => loadTargetDetail(t.targetId)}
+                        {...pressable(() => loadTargetDetail(t.targetId), { row: true })}
                         className={`border-b border-astro-border/50 cursor-pointer hover:bg-astro-bg/50 transition-colors ${selectedTarget === t.targetId ? 'bg-astro-accent/10' : ''}`}
                       >
                         <td className="py-2 pr-3 text-astro-text">

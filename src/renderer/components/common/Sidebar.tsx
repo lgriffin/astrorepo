@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { ListChecks, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
+import { Keyboard, ListChecks, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { NAV_PLACES, jobsStatus, locate } from '@shared/navigation'
 import { startsAsRail } from '@shared/layout'
 import type { JobsView } from '@shared/types'
@@ -74,7 +74,7 @@ function railCached(): boolean {
  * their detail pages is open, a way into the command palette, and the job runner's state. It
  * folds to a rail of icons, remembered on this screen.
  */
-export function Sidebar({ onSearch }: { onSearch: () => void }): React.ReactElement {
+export function Sidebar({ onSearch, onShortcuts }: { onSearch: () => void; onShortcuts: () => void }): React.ReactElement {
   const here = locate(useLocation().pathname)
   const [rail, setRail] = useState(railCached)
 
@@ -135,6 +135,17 @@ export function Sidebar({ onSearch }: { onSearch: () => void }): React.ReactElem
         })}
       </nav>
       <JobsFooter rail={rail} />
+      <button
+        type="button"
+        onClick={onShortcuts}
+        aria-label={rail ? 'Keyboard shortcuts' : undefined}
+        title="Keyboard shortcuts (?)"
+        aria-keyshortcuts="?"
+        className={`${item} ${pad} text-astro-muted hover:text-astro-text`}
+      >
+        <Keyboard aria-hidden className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+        {!rail && <span>Shortcuts</span>}
+      </button>
       <button
         type="button"
         onClick={() => fold(!rail)}
