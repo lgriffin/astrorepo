@@ -37,8 +37,8 @@ Coming nights, Plan ahead, Where your targets are and Other checks are worth a l
 rather than every evening, so Home folds them behind one line at its foot that names the ones with
 something to show, such as **More: Coming nights, Where your targets are**. Choose it to show them
 in their places; **Show fewer cards** folds them again. Home remembers your choice on that screen.
-Plan ahead or Other checks with a high-priority item is never folded, and Hidden in your files
-always shows.
+Plan ahead or Other checks with a high-priority item is never folded, nor is Coming nights when it
+could not be worked out (so its **Try again** stays in sight), and Hidden in your files always shows.
 
 Apart from the weather, everything on it is worked out from the files the app has indexed (the Library and FITS files
 scans), so it changes as you capture, stack and process. Totals, catalogue progress and

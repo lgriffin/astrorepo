@@ -197,7 +197,9 @@ export function Dashboard(): React.ReactElement {
     ...(targetsLoaded ? ['targets' as const] : []),
     ...(otherChecks.length > 0 ? ['other-checks' as const] : [])
   ]
+  // A card that failed to load stays out too, so its Try again is never folded away.
   const urgent: FoldableCard[] = [
+    ...(plan === FAILED ? ['coming-nights' as const] : []),
     ...(ahead.some(r => r.priority === 'high') ? ['plan-ahead' as const] : []),
     ...(otherChecks.some(r => r.priority === 'high') ? ['other-checks' as const] : [])
   ]

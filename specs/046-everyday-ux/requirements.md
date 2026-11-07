@@ -116,7 +116,8 @@ then rather than every evening.
 - **One More line.** Those four cards fold behind a line at the foot of Home that names the ones
   with something to show (`More: Coming nights, Where your targets are`). Opening it shows them in
   their places and the line becomes **Show fewer cards**. The choice is remembered on that screen.
-- **Nothing urgent is folded.** Plan ahead or Other checks with a high-priority item stays out.
+- **Nothing urgent is folded.** Plan ahead or Other checks with a high-priority item stays out, and
+  so does Coming nights when it could not be worked out, so its **Try again** stays in sight.
 - Hidden in your files is never folded: finding what is in the files is what Home is for.
 
 ## Out of scope
@@ -147,4 +148,4 @@ then rather than every evening.
 | EUX-018 | Event | When a place is pointed at or reached with Tab in the sidebar, or highlighted in Go to, the system shall start loading its page, once. |
 | EUX-019 | State | While Home is open and the app is idle, the system shall load the first page of each sidebar place in the background, except on a companion screen. |
 | EUX-020 | Ubiquitous | Home shall fold Coming nights, Plan ahead, Where your targets are and Other checks behind one line naming those with something to show, which opens them in place and is remembered on that screen, folded unless opened. |
-| EUX-021 | Unwanted | If Plan ahead or Other checks holds a high-priority item, then Home shall not fold that card away. |
+| EUX-021 | Unwanted | If Plan ahead or Other checks holds a high-priority item, or Coming nights could not be worked out, then Home shall not fold that card away. |

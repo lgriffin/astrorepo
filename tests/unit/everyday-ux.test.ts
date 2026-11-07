@@ -292,12 +292,14 @@ describe('Home folds the cards you rarely use (spec 046, U7)', () => {
     expect(source).toContain('foldedCards(more, present, urgent)')
   })
 
-  it('[EUX-021] Given a high-priority item in Plan ahead or Other checks, When Home is folded, Then that card is not folded away and the line does not name it', () => {
+  it('[EUX-021] Given a high-priority item in Plan ahead or Other checks, or Coming nights that failed, When Home is folded, Then that card is not folded away and the line does not name it', () => {
     expect(foldedCards(false, all, ['other-checks'])).toEqual(['coming-nights', 'plan-ahead', 'targets'])
     expect(moreLine(false, all, ['plan-ahead', 'other-checks'])).toBe('More: Coming nights, Where your targets are')
     expect(moreLine(false, ['plan-ahead'], ['plan-ahead'])).toBeNull()
     expect(dashboard()).toContain("ahead.some(r => r.priority === 'high')")
     expect(dashboard()).toContain("otherChecks.some(r => r.priority === 'high')")
+    expect(dashboard()).toContain("plan === FAILED ? ['coming-nights' as const]")
+    expect(moreLine(false, ['coming-nights', 'targets'], ['coming-nights'])).toBe('More: Where your targets are')
   })
 
   it('[EUX-020] Given Home, When it is folded, Then Hidden in your files, Shoot tonight and Ready to process are never folded', () => {
