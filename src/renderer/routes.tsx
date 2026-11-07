@@ -1,5 +1,7 @@
-import React, { lazy } from 'react'
-import { routeFor } from '@shared/page-loading'
+import React, { lazy, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { NAV_PLACES } from '@shared/navigation'
+import { WARM_AFTER_MS, pagesToWarm, routeFor } from '@shared/page-loading'
 import { Dashboard } from './pages/Dashboard'
 
 /** A page loaded the first time it is opened, which can also be fetched ahead (spec 046, U6). */
@@ -80,4 +82,29 @@ export function preloadPage(to: string): void {
   if (!route || !('preload' in route.page) || fetched.has(route.path)) return
   fetched.add(route.path)
   route.page.preload().catch(() => fetched.delete(route.path))
+}
+
+/**
+ * While Home is open and the app is idle, fetches the sidebar places' pages in the background, so
+ * a first visit opens at once (EUX-019). Leaving Home before then cancels it, so the page chosen
+ * loads on its own; coming back to Home starts the wait again for any not yet fetched.
+ */
+export function WarmPages(): null {
+  const { pathname } = useLocation()
+  const onHome = pathname === '/dashboard'
+  useEffect(() => {
+    const pages = onHome ? pagesToWarm(window.astrorepoMode, NAV_PLACES) : []
+    if (pages.length === 0) return
+    let idle: number | undefined
+    const timer = window.setTimeout(() => {
+      const warm = () => pages.forEach(preloadPage)
+      if (typeof window.requestIdleCallback === 'function') idle = window.requestIdleCallback(warm)
+      else warm()
+    }, WARM_AFTER_MS)
+    return () => {
+      window.clearTimeout(timer)
+      if (idle !== undefined) window.cancelIdleCallback(idle)
+    }
+  }, [onHome])
+  return null
 }

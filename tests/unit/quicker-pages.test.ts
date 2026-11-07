@@ -31,15 +31,18 @@ describe('Quicker pages (spec 046, U6)', () => {
     expect(routes).toMatch(/fetched\.has\(route\.path\)/)
   })
 
-  it('[EUX-019] Given Home has settled, When the app is idle, Then the sidebar places are loaded in the background, but never on a companion screen', () => {
+  it('[EUX-019] Given Home is open, When the app is idle, Then the sidebar places are loaded in the background, but not once Home is left first and never on a companion screen', () => {
     const warm = pagesToWarm('desktop', NAV_PLACES)
     expect(warm).toEqual(NAV_PLACES.filter(p => p.id !== 'home').map(p => p.pages[0].to))
     expect(warm).not.toContain('/dashboard')
     expect(pagesToWarm('browser', NAV_PLACES)).toEqual(warm)
     expect(pagesToWarm('companion', NAV_PLACES)).toEqual([])
     expect(WARM_AFTER_MS).toBeGreaterThanOrEqual(1000)
-    const app = read('src/renderer/App.tsx')
-    expect(app).toContain('pagesToWarm(window.astrorepoMode, NAV_PLACES)')
-    expect(app).toContain('requestIdleCallback')
+    // Only while Home is open: leaving it first cancels the wait, so the page chosen loads alone.
+    expect(routes).toContain("const onHome = pathname === '/dashboard'")
+    expect(routes).toContain('onHome ? pagesToWarm(window.astrorepoMode, NAV_PLACES) : []')
+    expect(routes).toContain('requestIdleCallback')
+    expect(routes).toMatch(/\}, \[onHome\]\)/)
+    expect(read('src/renderer/App.tsx')).toContain('<WarmPages />')
   })
 })
