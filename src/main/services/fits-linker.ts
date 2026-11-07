@@ -1,11 +1,16 @@
+import { asDesignation } from '@astro/domain'
 import { getSqlite } from '../db/connection'
 import type { FitsFileSummary, FitsLinkingStatus } from '@shared/types'
 
 /**
  * Normalize catalog designations for matching.
- * Strips spaces around common catalog prefixes so "NGC 7000" matches "NGC7000".
+ * Strips spaces around common catalog prefixes so "NGC 7000" matches "NGC7000"; a designation in
+ * any spelling ("Caldwell 65", "Messier 31", "NGC0224") reads as the catalogues write it, since the
+ * catalogues' aliases carry only that spelling (specs/047-catalogue-names, CAT-007).
  */
 export function normalizeCatalogName(name: string): string {
+  const designation = asDesignation(name)
+  if (designation) return designation.replace(/\s+/g, '').toUpperCase()
   return name
     .trim()
     .replace(/^(NGC|IC|M|Sh2)\s+/i, (_, prefix) => prefix.toUpperCase())

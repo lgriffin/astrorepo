@@ -19,7 +19,7 @@ import { getSetting, setSetting, listSettings } from '../services/settings'
 import { startHomeScan, cancelHomeScan, getHomeScanProgress, getTargetHomeData, getTargetImages } from '../services/home-scanner'
 import { getStackingSummary, getSubFramesForStacked, getIntegrationProgress, getIntegrationGoals, setIntegrationGoal, deleteIntegrationGoal } from '../services/stacking'
 import { getSqlite, resetDatabase } from '../db/connection'
-import { clock, composeCore, composeFolders, composeGallery, composeGrading, composeMessier, composePictureGallery } from '../composition'
+import { clock, composeCatalogues, composeCore, composeFolders, composeGallery, composeGrading, composeMessier, composePictureGallery } from '../composition'
 import { toNextActionRecommendation, withQueuedJobs } from '../adapters/stacking-suggestion-presenter'
 import { toCockpitOverview, toDuplicateView, toTargetDiscoveryView } from '../adapters/discovery-presenter'
 import { toForwardPlanView } from '../adapters/planning-presenter'
@@ -46,7 +46,6 @@ import { ArchiveRefusedError, ArchiveRemovalError, GalleryRefusedError, JobRefus
 import { jobs, kickJobs } from '../jobs-host'
 import { ingestIdentify, ingestName, ingestPause, ingestPreview, ingestProgress, ingestResume, ingestScan, ingestTransfer } from '../vespera-ingest-host'
 import { toVesperaSettingsView } from '../adapters/vespera-presenter'
-import { loadCatalogueSeedData } from '../services/catalogue'
 import { getInsightsSummary, getMonthlyActivity, getBestNights, getEquipmentEffectiveness, getQualityTrends, getFilterUsageBreakdown, getTargetProgress } from '../services/insights'
 import { getTargetAltitudeCurve, getBestTargetsTonight, getMoonInfo, getTwilightTimes, getTargetVisibility } from '../services/sky-planner'
 import { getCalendarData, getYearSummary } from '../services/timeline'
@@ -1068,7 +1067,7 @@ export function registerHandlers(router: ChannelRouter, desktop: Desktop): void 
     await jobs().clear()
     const result = resetDatabase()
     try {
-      loadCatalogueSeedData()
+      await composeCatalogues(getSqlite()).repair()
       autoGenerateCatalogueCollections()
     } catch (err) {
       console.error('Re-seed after reset failed:', err)
