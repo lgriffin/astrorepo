@@ -8,7 +8,11 @@ build/
 Thumbs.db
 *.tmp
 *.swp
-.vscode/
+.vscode/*
+# Shared editor set-up (spec 045, D5): settings, recommended extensions, debug launches.
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
 .idea/
 coverage/
 *.tsbuildinfo

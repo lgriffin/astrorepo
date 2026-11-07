@@ -33,6 +33,7 @@
     "postinstall": "node scripts/native/electron-sqlite-cli.mjs",
     "smoke": "tsx scripts/smoke/smoke.ts",
     "demo": "tsx scripts/demo/demo.ts",
+    "new:slice": "tsx scripts/new-slice/new-slice.ts",
     "dev:demo": "node scripts/demo/dev-demo.mjs"
   },
   "lint-staged": {
