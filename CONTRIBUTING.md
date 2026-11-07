@@ -80,7 +80,7 @@ Work comes in slices: one behaviour a user can see, built end to end in one pull
    Each new port gets a contract suite in `packages/testkit/src/contracts`, run on both the
    in-memory fake and the real adapter.
 5. **Adapters and wiring.** Put adapters in `src/main/adapters` and wire them in
-   `src/main/composition.ts`. Add channels with Zod input checks in `src/main/ipc`. Schema changes
+   `src/main/composition.ts`. Add channels with Zod input checks in `src/main/ipc/schemas.ts` and their handlers in the area's module under `src/main/ipc/channels`. Schema changes
    go in `src/main/db/migrations.ts`.
 6. **The page.** Build the renderer with the shared controls in `src/renderer/components/ui`:
    - theme tokens for colour;

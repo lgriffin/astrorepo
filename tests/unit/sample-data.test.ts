@@ -171,6 +171,7 @@ describe('Sample data on first run (spec 046, U5)', () => {
   })
 
   it('[EUX-017] Given the headless server, When its channels are listed, Then it cannot build the sample or restart; only the desktop app\'s router has the sample channels', async () => {
+    for (const f of fs.readdirSync(path.join(repo, 'src/main/ipc/channels'))) expect(read(`src/main/ipc/channels/${f}`), f).not.toContain("'sample:")
     expect(read('src/main/ipc/handlers.ts')).not.toContain("'sample:")
     expect(read('src/main/index.ts')).toContain('registerSampleHandlers(router,')
     const router = new ChannelRouter()

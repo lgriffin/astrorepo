@@ -53,7 +53,7 @@ const WRITE: Record<string, (n: string) => string> = {
   SH2: n => `Sh2-${n}`
 }
 
-/** Stellarium's object types as the app's (src/shared/types.ts ObjectType); others are left out. */
+/** Stellarium's object types as the app's (src/shared/types/targets.ts ObjectType); others are left out. */
 const TYPES: Record<string, string> = {
   G: 'galaxy', GX: 'galaxy', AGX: 'galaxy', IG: 'galaxy', IG2: 'galaxy', IG3: 'galaxy', RG: 'galaxy', PoG: 'galaxy',
   GC: 'globular_cluster', OC: 'open_cluster', OPC: 'open_cluster', CL: 'star_cluster', SA: 'star_cluster', SC: 'star_cluster',

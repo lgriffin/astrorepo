@@ -13,7 +13,7 @@ const read = (rel: string) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 describe('Learning while you observe', () => {
   it('[LRN-003] Given the shared object types, When the knowledge base is built, Then every type has a primer kind', () => {
-    const union = /export type ObjectType =([\s\S]*?)\r?\n\r?\n/.exec(read('src/shared/types.ts'))![1]
+    const union = /export type ObjectType =([\s\S]*?)\r?\n\r?\n/.exec(read('src/shared/types/targets.ts'))![1]
     const types = [...union.matchAll(/'([a-z_]+)'/g)].map(m => m[1])
     expect([...OBJECT_KINDS].sort()).toEqual(types.sort())
     expect(toLearningLibraryView().primers.map(p => p.kind).sort()).toEqual([...types, ...CATALOGUE_KINDS].sort())
@@ -30,7 +30,7 @@ describe('Learning while you observe', () => {
     const view = toLearningLibraryView()
     expect(view.sources.length).toBeGreaterThan(0)
     for (const s of view.sources) expect(Object.keys(s).sort()).toEqual(['id', 'publisher', 'title'])
-    const handlers = read('src/main/ipc/handlers.ts')
+    const handlers = read('src/main/ipc/channels/sky.ts')
     expect(handlers).toMatch(/learning:open-source[\s\S]{0,200}sourceUrl\(args\.source_id\)[\s\S]{0,80}if \(!url\) return \{ opened: false \}/)
   })
 
@@ -150,7 +150,7 @@ describe('Learning while you observe', () => {
     const src = read('src/renderer/components/target/InNumbers.tsx')
     expect(src).toMatch(/invoke<ObjectNumbersView \| null>\('learning:object', \{ target_id: targetId \}\)/)
     expect(src).toMatch(/if \(!numbers\) return null/)
-    expect(read('src/main/ipc/handlers.ts')).toMatch(/handle\('learning:object'[\s\S]{0,160}\.objectNumbers\(args\.target_id\)/)
+    expect(read('src/main/ipc/channels/sky.ts')).toMatch(/handle\('learning:object'[\s\S]{0,160}\.objectNumbers\(args\.target_id\)/)
   })
 })
 

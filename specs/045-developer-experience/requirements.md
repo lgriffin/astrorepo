@@ -97,9 +97,29 @@ run before a push, and the repo ignored any shared editor set-up.
   process and renderer together and for the open test file. Git keeps these three files and
   still ignores the rest of `.vscode/`.
 
+## D6: code health
+
+The renderer was one 1.16 MB script read in full before Home could show. The IPC handlers were
+one 1,077-line function and the shared types one 2,377-line file, so every change touched the
+same two files. Vitest was a major behind, and nothing proposed dependency updates.
+
+- **Pages load when opened.** Home comes with the app; every other page is loaded the first time
+  it is opened, with a loading line while it comes. The script read at start fell to 491 kB.
+- **One module per area.** The channels are registered from `src/main/ipc/channels/` (targets,
+  sessions, settings, FITS, library, Vespera, gallery, insights, sky, workspaces), with
+  `validated` and the helpers they share beside them. The shared types are in
+  `src/shared/types/`, one file per area, and `src/shared/types.ts` re-exports them, so imports
+  are unchanged. None is over 600 lines.
+- **Vitest 3.** Vitest and its coverage moved to 3.2. Vitest 3 does not load a file outside the
+  project, so the scaffolder's test writes its rule under `node_modules/.cache`.
+- **Dependabot.** Weekly grouped pull requests for npm (Electron, testing, lint and types, build,
+  and minor and patch runtime updates) and for the workflows' actions. An Electron major is never
+  proposed: it moves the app's runtime and the native build, so it is a planned change.
+
 ## Out of scope
 
-- Upgrading Electron (slice D6). The side-by-side build follows whichever Electron is installed.
+- Upgrading Electron: the version is Leigh's call (the plan doc asks). The side-by-side build
+  follows whichever Electron is installed, and Dependabot leaves Electron majors alone.
 
 ## Requirements
 
@@ -127,3 +147,7 @@ run before a push, and the repo ignored any shared editor set-up.
 | DEV-020 | Unwanted | If the spec number or ID prefix is already used, the name or prefix is malformed, a flag is missing or a file to write already exists, then `npm run new:slice` shall write nothing and say why. |
 | DEV-021 | Ubiquitous | The repository shall have a CONTRIBUTING.md covering set-up on Windows, the gates to run before a push and how a slice is built, and shall keep CLAUDE.md to the rules, with notes on past slices in `docs/architecture/slice-notes.md`. |
 | DEV-022 | Ubiquitous | The repository shall share VS Code settings, recommended extensions and debug launches for the main process with the renderer and for a test file, kept by git while the rest of `.vscode/` stays ignored. |
+| DEV-023 | Ubiquitous | The renderer shall load Home with the app and every other page the first time it is opened, showing that it is loading meanwhile. |
+| DEV-024 | Ubiquitous | The IPC channels and the shared types shall each be split into one module per area, none over 600 lines, registered and re-exported from the files that held them. |
+| DEV-025 | Ubiquitous | The tests shall run on Vitest 3 with its coverage on the same major, and mutation testing shall run on it. |
+| DEV-026 | Event | When a week passes, Dependabot shall propose grouped updates for npm and the workflows' actions, and shall not propose an Electron major. |
