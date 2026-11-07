@@ -1,0 +1,34 @@
+{
+  "/dashboard": {
+    "link-in-text-block": 1
+  },
+  "/fits-analyzer": {
+    "color-contrast": 4,
+    "select-name": 4
+  },
+  "/library": {
+    "link-in-text-block": 1
+  },
+  "/messier": {
+    "color-contrast": 99
+  },
+  "/poster": {
+    "select-name": 1
+  },
+  "/settings?section=appearance": {
+    "color-contrast": 1
+  },
+  "/settings?section=grading": {
+    "color-contrast": 5
+  },
+  "/settings?section=learning": {
+    "color-contrast": 1
+  },
+  "/sky-planner": {
+    "label": 1
+  },
+  "/stacking": {
+    "nested-interactive": 6,
+    "select-name": 2
+  }
+}

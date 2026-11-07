@@ -65,9 +65,14 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run smoke
+      # The same pages over the demo library, where they have something to show (DEV-017).
+      - run: npm run demo
+      - run: npm run smoke -- --demo
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: smoke
-          path: reports/smoke/
+          path: |
+            reports/smoke/
+            reports/smoke-demo/
           if-no-files-found: ignore

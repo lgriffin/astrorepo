@@ -52,7 +52,9 @@ and `report.json` land in `reports/smoke/` (kept as the `smoke` artifact in CI),
 look can be checked without running the app. The accessibility baseline counts, per page and rule,
 the elements that fail, and may only shrink: the run lists findings fixed since,
 `npm run smoke -- --update-baseline` cuts it down (never adding a failure), and
-`--accept-findings` writes a run's findings into it on purpose.
+`--accept-findings` writes a run's findings into it on purpose. `npm run smoke -- --demo` runs
+the same pages over a copy of the demo library (`npm run demo`), where they have data to show,
+with its own baseline (`axe-baseline.demo.json`) and screenshots in `reports/smoke-demo/`; CI runs both.
 
 ## Adding a feature
 

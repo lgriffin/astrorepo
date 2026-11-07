@@ -36,6 +36,7 @@ export function TargetCard({ target, stages }: TargetCardProps): React.ReactElem
             src={`data:${thumbnail.mime};base64,${thumbnail.data}`}
             alt={target.canonicalName}
             className="w-full h-full object-cover"
+            onError={() => setThumbnail(null)}
           />
         </div>
       )}

@@ -9,6 +9,10 @@ import { diagnose, report, type DoctorFacts } from '../../scripts/doctor/checks'
 import { runGates, summary, QUICK_GATES, TEST_GATE, type Gate } from '../../scripts/verify/gates'
 import { SMOKE_THEMES, smokePages, pageProblems, fixedFindings, baselineOf, shrunkBaseline, type PageResult } from '../../scripts/smoke/rules'
 import { NAV_PLACES, SETTINGS_SECTIONS, settingsLink } from '../../src/shared/navigation'
+import { DEMO_MARKER, DEMO_TARGETS, demoFiles, demoLoggedNights, mayClear, subTime } from '../../scripts/demo/library'
+import { fitsFile, starfield, tiffFile, greyLevels, DEMO_SIZE } from '../../scripts/demo/encode'
+import { dataFolderOverride } from '../../src/main/db/data-folder'
+import { parseFitsHeaders } from '../../src/main/fits/parser'
 
 const repo = path.resolve(__dirname, '../..')
 const versions = { sqliteVersion: '11.10.0', electronVersion: '33.4.11', platform: 'win32', arch: 'x64' }
@@ -329,6 +333,109 @@ describe('smoke run (spec 045, D3)', () => {
     const steps = ci.jobs.smoke.steps
     const runs = steps.map(s => s.run).filter(Boolean)
     expect(runs.indexOf('npm run build')).toBeLessThan(runs.indexOf('npm run smoke'))
-    expect(steps.some(s => s.uses?.startsWith('actions/upload-artifact') && s.with?.path === 'reports/smoke/')).toBe(true)
+    expect(steps.some(s => s.uses?.startsWith('actions/upload-artifact') && s.with?.path?.split('\n').includes('reports/smoke/'))).toBe(true)
+  })
+})
+
+describe('demo library (spec 045, D4)', () => {
+  const files = demoFiles()
+
+  it('[DEV-015] Given the demo, When its files are listed twice, Then they are the same, laid out as raw, stacked, tif and images by target', () => {
+    expect(demoFiles()).toEqual(files)
+    for (const f of files) expect(f.path).toMatch(/^(raw\/[^/]+\/\d{4}-\d{2}-\d{2}\/Light_.+\.fit|stacked\/[^/]+\/.+\.fit|tif\/[^/]+\/.+\.tif|images\/[^/]+\/[^/]+\.png)$/)
+    expect(new Set(files.map(f => f.path)).size).toBe(files.length)
+    expect(files.length).toBeLessThan(1000)
+  })
+
+  it('[DEV-015] Given the demo targets, When their files are listed, Then the library holds a target at each point of the workflow', () => {
+    const has = (name: string, kind: string) => files.some(f => f.target === name && f.kind === kind)
+    const finished = DEMO_TARGETS.filter(t => has(t.name, 'picture'))
+    const waiting = DEMO_TARGETS.filter(t => has(t.name, 'light') && !has(t.name, 'master'))
+    const stackedOnly = DEMO_TARGETS.filter(t => has(t.name, 'master') && !has(t.name, 'tif'))
+    expect(finished.length).toBeGreaterThan(0)
+    expect(waiting.length).toBeGreaterThan(0)
+    expect(stackedOnly.length).toBeGreaterThan(0)
+    for (const t of DEMO_TARGETS) expect(has(t.name, 'light'), t.name).toBe(true)
+  })
+
+  it('[DEV-015] Given a master, When its header is read, Then it combines every sub of its target and their whole exposure', () => {
+    for (const t of DEMO_TARGETS.filter(t => t.stacked)) {
+      const master = files.find(f => f.target === t.name && f.kind === 'master')!
+      expect(master.cards?.NCOMBINE).toBe(t.nights.reduce((n, x) => n + x.subs, 0))
+      expect(master.cards?.EXPTIME).toBe(t.nights.reduce((n, x) => n + x.subs * x.exposureSec, 0))
+    }
+  })
+
+  it('[DEV-015] Given a demo frame written to disk, When the app reads its header, Then it finds the target, the time and the stacking count', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'demo-'))
+    const master = files.find(f => f.kind === 'master')!
+    const file = path.join(dir, 'master.fit')
+    fs.writeFileSync(file, fitsFile(master.cards ?? {}, starfield(1)))
+    const headers = parseFitsHeaders(file).headers
+    const value = (k: string) => headers.find(h => h.keyword === k)?.value
+    expect(value('OBJECT')).toBe(master.target)
+    expect(value('NCOMBINE')).toBe(master.cards?.NCOMBINE)
+    expect(value('NAXIS1')).toBe(DEMO_SIZE)
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('[DEV-015] Given a TIFF from the demo, When its header is read, Then it is a little-endian baseline TIFF with one strip of the picture', () => {
+    const grey = greyLevels(starfield(2))
+    const tiff = tiffFile(grey)
+    expect(tiff.subarray(0, 4)).toEqual(Buffer.from([0x49, 0x49, 42, 0]))
+    expect(tiff.length).toBe(8 + 2 + 9 * 12 + 4 + DEMO_SIZE * DEMO_SIZE)
+  })
+
+  it('[DEV-015] Given a long night, When subs are timed, Then they run on past midnight and the logged nights are the targets\' first nights', () => {
+    expect(subTime('2025-12-01', 120, 30).toISOString()).toBe('2025-12-01T22:04:00.000Z')
+    expect(subTime('2025-12-01', 200, 60).toISOString().slice(0, 10)).toBe('2025-12-02')
+    expect(demoLoggedNights().map(n => n.date)).toEqual(DEMO_TARGETS.slice(0, 3).map(t => t.nights[0].date))
+    expect(demoLoggedNights().map(n => n.target)).toEqual(DEMO_TARGETS.slice(0, 3).map(t => t.name))
+  })
+
+  it('[DEV-015] Given a folder that is the checkout, a parent of it, a root, or full of other files, When the demo would clear it, Then it refuses', () => {
+    const checkout = '/home/me/astrorepo'
+    expect(mayClear('/home/me/astrorepo', checkout, ['package.json']).ok).toBe(false)
+    expect(mayClear('/home/me', checkout, ['astrorepo']).ok).toBe(false)
+    expect(mayClear('/', checkout, ['home']).ok).toBe(false)
+    expect(mayClear('C:\\', 'C:\\code\\astrorepo', ['code']).ok).toBe(false)
+    expect(mayClear('/home/me/photos', checkout, ['M31.png']).ok).toBe(false)
+    expect(mayClear('/home/me/astrorepo/.demo', checkout, [DEMO_MARKER, 'data']).ok).toBe(true)
+    expect(mayClear('/tmp/new-demo', checkout, null).ok).toBe(true)
+    expect(mayClear('/tmp/empty', checkout, []).ok).toBe(true)
+  })
+
+  it('[DEV-016] Given ASTRO_DEV_DATA in a development run, When the desktop app starts, Then it opens that folder; a packaged app, an empty value or the server ASTRO_DATA does not move it', () => {
+    expect(dataFolderOverride({ ASTRO_DEV_DATA: '.demo/data' }, false)).toBe(path.resolve('.demo/data'))
+    expect(dataFolderOverride({ ASTRO_DEV_DATA: '.demo/data' }, true)).toBeNull()
+    expect(dataFolderOverride({ ASTRO_DEV_DATA: '  ' }, false)).toBeNull()
+    expect(dataFolderOverride({}, false)).toBeNull()
+    // The server's own variable is not followed, so a desktop run never shares a running server's database.
+    expect(dataFolderOverride({ ASTRO_DATA: '/srv/astrorepo' }, false)).toBeNull()
+  })
+
+  it('[DEV-016] Given the desktop app and package.json, When they are read, Then the app applies the override before it opens its data and dev:demo starts it on the demo', () => {
+    const main = fs.readFileSync(path.join(repo, 'src', 'main', 'index.ts'), 'utf8')
+    expect(main.indexOf("app.setPath('userData', dataOverride)")).toBeGreaterThan(-1)
+    expect(main.indexOf("app.setPath('userData', dataOverride)")).toBeLessThan(main.indexOf("initDatabase(app.getPath('userData'))"))
+    const scripts = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).scripts as Record<string, string>
+    expect(scripts.demo).toBe('tsx scripts/demo/demo.ts')
+    expect(scripts['dev:demo']).toBe('node scripts/demo/dev-demo.mjs')
+    expect(fs.readFileSync(path.join(repo, 'scripts', 'demo', 'dev-demo.mjs'), 'utf8')).toContain("ASTRO_DEV_DATA: data")
+  })
+
+  it('[DEV-017] Given the CI workflow, When its smoke job is read, Then it also builds the demo and runs the smoke run over it, keeping both sets of screenshots', () => {
+    const ci = parseYaml(fs.readFileSync(path.join(repo, '.github', 'workflows', 'ci.yml'), 'utf8')) as { jobs: Record<string, { steps: { run?: string; uses?: string; with?: { path?: string } }[] }> }
+    const steps = ci.jobs.smoke.steps
+    const runs = steps.map(s => s.run).filter(Boolean)
+    expect(runs.indexOf('npm run demo')).toBeGreaterThan(-1)
+    expect(runs.indexOf('npm run demo')).toBeLessThan(runs.indexOf('npm run smoke -- --demo'))
+    expect(steps.some(s => s.uses?.startsWith('actions/upload-artifact') && s.with?.path?.includes('reports/smoke-demo/'))).toBe(true)
+  })
+
+  it('[DEV-017] Given the demo baseline, When it is read, Then it only names pages the smoke run opens', () => {
+    const baseline = JSON.parse(fs.readFileSync(path.join(repo, 'scripts', 'smoke', 'axe-baseline.demo.json'), 'utf8')) as Record<string, Record<string, number>>
+    const routes = new Set(smokePages().map(p => p.route))
+    for (const route of Object.keys(baseline)) expect(routes.has(route), route).toBe(true)
   })
 })

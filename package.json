@@ -31,7 +31,9 @@
     "db:reset": "tsx src/main/db/seed/reset-and-seed.ts",
     "prepare": "husky",
     "postinstall": "node scripts/native/electron-sqlite-cli.mjs",
-    "smoke": "tsx scripts/smoke/smoke.ts"
+    "smoke": "tsx scripts/smoke/smoke.ts",
+    "demo": "tsx scripts/demo/demo.ts",
+    "dev:demo": "node scripts/demo/dev-demo.mjs"
   },
   "lint-staged": {
     "{src,packages,scripts,features}/**/*.{ts,tsx}": [

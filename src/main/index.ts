@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog } from 'electron'
 import path from 'path'
 import { initDatabase } from './db/connection'
 import { databaseOpenFailure } from './db/native-binding'
+import { dataFolderOverride } from './db/data-folder'
 import { registerHandlers } from './ipc/handlers'
 import { ChannelRouter } from './transport/router'
 import { electronDesktop } from './electron/electron-desktop'
@@ -21,6 +22,10 @@ import { loadCatalogueSeedData, useSeedFolder } from './services/catalogue'
 import { autoGenerateCatalogueCollections } from './services/collection'
 
 let mainWindow: BrowserWindow | null = null
+
+// A development run opens the data folder ASTRO_DEV_DATA names, such as the demo's (DEV-016).
+const dataOverride = dataFolderOverride(process.env, app.isPackaged)
+if (dataOverride) app.setPath('userData', dataOverride)
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
