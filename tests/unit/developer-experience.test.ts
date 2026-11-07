@@ -227,7 +227,20 @@ describe('CI (spec 045, D2)', () => {
   const folder = path.join(repo, '.github', 'workflows')
   type Step = { run?: string; uses?: string }
   type Workflow = { on: Record<string, unknown>; concurrency?: { group: string; 'cancel-in-progress': unknown }; jobs: Record<string, { 'runs-on': string; steps: Step[] }> }
-  const read = (name: string) => parseYaml(fs.readFileSync(path.join(folder, name), 'utf8')) as Workflow
+  /** Parses one workflow; a file GitHub could not read fails naming it (DEV-010). */
+  const parseWorkflow = (name: string, text: string): Workflow => {
+    try {
+      return parseYaml(text) as Workflow
+    } catch (error) {
+      throw new Error(`${name} is not valid YAML: ${(error as Error).message}`, { cause: error })
+    }
+  }
+  const read = (name: string) => parseWorkflow(name, fs.readFileSync(path.join(folder, name), 'utf8'))
+
+  it('[DEV-010] Given a workflow with a plain value holding "seed: ", When it is parsed, Then it fails naming the file', () => {
+    expect(() => parseWorkflow('broken.yml', "jobs:\n  a:\n    steps:\n      - run: grep 'seed: ' log\n")).toThrow(/^broken\.yml is not valid YAML/)
+  })
+
 
   it('[DEV-010] Given every workflow, When it is parsed as YAML, Then none fails to parse and each has triggers and jobs', () => {
     for (const name of fs.readdirSync(folder).filter(f => /\.ya?ml$/.test(f))) {
