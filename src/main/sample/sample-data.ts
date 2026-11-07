@@ -93,7 +93,7 @@ const marked = (root: string) => fs.existsSync(path.join(root, DEMO_MARKER))
  * Builds the sample and turns it on for the next start (EUX-014). A sample folder left from before
  * is rebuilt; a folder of that name the app did not make is refused and left as it is.
  */
-export function startSample(userData: string): { ok: true; files: number } | { ok: false; error: string } {
+export function startSample(userData: string, write: (library: string) => number = writeSampleLibrary): { ok: true; files: number } | { ok: false; error: string } {
   const { root, library, data, modeFile } = samplePlaces(userData)
   if (fs.existsSync(root) && fs.readdirSync(root).length > 0 && !marked(root)) {
     return { ok: false, error: `${root} holds files the app did not make, so the sample was not built there.` }
@@ -101,7 +101,7 @@ export function startSample(userData: string): { ok: true; files: number } | { o
   fs.rmSync(root, { recursive: true, force: true })
   fs.mkdirSync(data, { recursive: true })
   fs.writeFileSync(path.join(root, DEMO_MARKER), 'Sample data made by AstroRepo; leaving the sample removes this folder.\n')
-  const files = writeSampleLibrary(library)
+  const files = write(library)
   // A new file in place of whatever was there, so a link at that name is replaced, never followed.
   fs.rmSync(modeFile, { force: true })
   fs.writeFileSync(modeFile, JSON.stringify({ active: true }) + '\n', { flag: 'wx' })
