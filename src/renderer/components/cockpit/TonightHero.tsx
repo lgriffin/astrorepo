@@ -1,4 +1,5 @@
 import React from 'react'
+import { SiteQuickForm } from './SiteQuickForm'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import type { NightSkyView } from '@shared/types'
@@ -49,7 +50,7 @@ function Fact({ label, concept, children }: { label: string; concept?: string; c
  * What Home leads with (LF-016): whether tonight is clear, when it is dark, the moon, and the
  * best few targets to shoot, each a link to its page.
  */
-export function TonightHero({ summary, loading, site = null }: { summary: TonightSummary; loading: boolean; site?: TonightSite | null }): React.ReactElement {
+export function TonightHero({ summary, loading, site = null, onSiteSaved }: { summary: TonightSummary; loading: boolean; site?: TonightSite | null; onSiteSaved?: () => void }): React.ReactElement {
   if (loading && summary.state === 'unknown') {
     return (
       <section aria-label="Tonight" className="rounded-lg border border-astro-border bg-astro-surface p-5">
@@ -63,9 +64,11 @@ export function TonightHero({ summary, loading, site = null }: { summary: Tonigh
       <section aria-label="Tonight" className="rounded-lg border border-astro-border bg-astro-surface p-5">
         <h2 className="text-2xl font-semibold text-astro-text">{summary.headline}</h2>
         <p className="mt-1 text-sm text-astro-muted">
-          The dark window, the moon and what to shoot are worked out from where your scopes stand.{' '}
-          <Link to={settingsLink('location')} className="text-astro-accent hover:underline">Set your site in Settings</Link>
+          The dark window, the moon, the forecast and what to shoot are worked out from where your scopes stand.{' '}
+          <Link to={settingsLink('location')} className="text-astro-accent hover:underline">More in Your site</Link>
         </p>
+        {/* Home's one site prompt when Get set up is hidden (EUX-001). */}
+        {onSiteSaved && <SiteQuickForm onSaved={onSiteSaved} />}
       </section>
     )
   }

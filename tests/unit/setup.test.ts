@@ -27,7 +27,7 @@ describe('Setting up', () => {
       ['siril', false, '/settings?section=tools']
     ])
     expect(showSetup(steps, false)).toBe(true)
-    expect(read('pages/Dashboard.tsx')).toContain('<SetupCard />')
+    expect(read('pages/Dashboard.tsx')).toMatch(/<SetupCard\b/)
   })
 
   it('[UX-014] Given every step done, or the checklist hidden, When Home is drawn, Then the checklist is not shown', () => {
@@ -72,7 +72,7 @@ describe('Setting up', () => {
   it('[UX-014] Given a setting that cannot be read, When Home is drawn, Then the checklist stays away rather than list the step as left', () => {
     const card = fs.readFileSync(path.resolve(__dirname, '../../src/renderer/components/cockpit/SetupCard.tsx'), 'utf8')
     expect(card).toContain('.catch(() => UNREAD)')
-    expect(card).toContain('hide === UNREAD) return')
+    expect(card).toMatch(/hide === UNREAD\) \{\s*shown\.current\?\.\(false\)\s*return/)
   })
 
   it('[HUB-010] Given a found tool missing a catalogue, When Home is drawn, Then the checklist adds a step naming it; with none missing there is no such step', () => {

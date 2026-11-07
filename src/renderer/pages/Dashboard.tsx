@@ -16,6 +16,7 @@ import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView, 
 import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
 import { splitHomeActions, tonightSummary } from '@shared/tonight'
+import { homeCards, siteMissing } from '@shared/home'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
@@ -39,6 +40,8 @@ export function Dashboard(): React.ReactElement {
   const [plan, setPlan] = useState<ForwardPlanView | null | typeof FAILED>(null)
   const [skies, setSkies] = useState<ClearSkiesView | null | typeof FAILED>(null)
   const [insight, setInsight] = useState<SkyInsightView | null | typeof FAILED>(null)
+  // Whether Get set up is on show; null until it has read the settings (EUX-001).
+  const [setupShown, setSetupShown] = useState<boolean | null>(null)
   const { addToast } = useToast()
   // Only the newest recommendations request may update the list, so a slow old one never wins.
   const recommendationsRequest = useRef(0)
@@ -146,6 +149,21 @@ export function Dashboard(): React.ReactElement {
     </Card>
   )
 
+  // A site set from Home: everything worked out from it is read again.
+  const siteSaved = (): void => {
+    setPlan(null)
+    setSkies(null)
+    setInsight(null)
+    void loadPlan()
+    void loadSkies()
+    void loadInsight()
+    void loadRecommendations()
+  }
+  const status = (v: { status: string } | null | typeof FAILED) => (v && v !== FAILED ? v.status : null)
+  // Until the site is set, Home asks for it once and leaves out the cards that need it (EUX-001).
+  const cards = homeCards(siteMissing([status(plan), status(skies), status(insight)]), setupShown)
+  const show = (card: Parameters<typeof cards.includes>[0]) => cards.includes(card)
+
   const { shoot, ahead, process } = splitHomeActions(nextActions)
   const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
   // Tonight's darkness is worked out for the site and night the plan uses, and agrees with how dark the plan found it.
@@ -165,11 +183,13 @@ export function Dashboard(): React.ReactElement {
       }
     >
       <div className="space-y-4">
-        <SetupCard />
+        <SetupCard onShown={setSetupShown} onSiteSaved={siteSaved} />
 
-        <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} />
+        {(show('tonight') || show('site-prompt')) && (
+          <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} onSiteSaved={siteSaved} />
+        )}
 
-        {insight === null ? (
+        {!show('sky') ? null : insight === null ? (
           <Card title="Tonight’s sky"><Skeleton className="h-24 w-full" label="Working out tonight’s darkness, moon and cloud" /></Card>
         ) : insight === FAILED ? (
           <Card title="Tonight’s sky">
@@ -180,7 +200,7 @@ export function Dashboard(): React.ReactElement {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          {actionsCard(
+          {show('shoot') && actionsCard(
             'Shoot tonight',
             shoot,
             <EmptyState>Nothing of yours is waiting on tonight's sky. Targets with work left appear here when they are up.</EmptyState>
@@ -194,7 +214,7 @@ export function Dashboard(): React.ReactElement {
           )}
         </div>
 
-        {skies === null ? (
+        {!show('clear-skies') ? null : skies === null ? (
           <Card title="Clear skies"><Skeleton className="h-24 w-full" label="Looking at the forecast for the next three nights" /></Card>
         ) : skies === FAILED ? (
           <Card title="Clear skies">
@@ -205,7 +225,7 @@ export function Dashboard(): React.ReactElement {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          {plan === null ? (
+          {!show('coming-nights') ? null : plan === null ? (
             <Card title="Coming nights"><Skeleton className="h-16 w-full" label="Working out the coming nights" /></Card>
           ) : plan === FAILED ? (
             <Card title="Coming nights">
