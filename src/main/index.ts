@@ -19,12 +19,27 @@ import { shrinkPicture } from './electron/picture-shrinker'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
 import createInspectWorker from './workers/inspect-worker?nodeWorker'
 import { autoGenerateCatalogueCollections } from './services/collection'
+import { registerSampleHandlers } from './ipc/sample-handlers'
+import { SAMPLE_SEEDED_KEY, leaveSample, sampleActive, samplePlaces, seedLibrary, startSample, tidyAfterSample } from './sample/sample-data'
 
 let mainWindow: BrowserWindow | null = null
 
 // A development run opens the data folder ASTRO_DEV_DATA names, such as the demo's (DEV-016).
 const dataOverride = dataFolderOverride(process.env, app.isPackaged)
 if (dataOverride) app.setPath('userData', dataOverride)
+
+// With the sample on, the app opens the sample's own data folder and never the person's (EUX-014).
+const appData = app.getPath('userData')
+const sample = sampleActive(appData)
+if (sample) app.setPath('userData', samplePlaces(appData).data)
+
+/** Starts the app again, once the reply that asked for it has gone back to the window. */
+function restart(): void {
+  setTimeout(() => {
+    app.relaunch()
+    app.exit(0)
+  }, 200)
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -65,6 +80,14 @@ app.whenReady().then(async () => {
     app.quit()
     return
   }
+  // A sample left behind is removed once the app runs on the person's own data again (EUX-016).
+  if (!sample) {
+    try {
+      tidyAfterSample(appData)
+    } catch (err) {
+      console.error('The sample folder was not removed:', err)
+    }
+  }
   useSeedFolder(app.isPackaged ? path.join(process.resourcesPath, 'data', 'catalogues') : path.join(app.getAppPath(), 'data', 'catalogues'))
   useAppData(app.getPath('userData'))
   const measurer = measureOnWorkers(() => createMeasureWorker({}))
@@ -96,11 +119,30 @@ app.whenReady().then(async () => {
     network: osNetwork
   })
   registerCompanionHandlers(router, { host: companionHost, companion })
+  registerSampleHandlers(router, {
+    status: () => ({ active: sample }),
+    start: () => {
+      const built = startSample(appData)
+      if (built.ok) restart()
+      return built.ok ? { ok: true } : built
+    },
+    leave: () => {
+      leaveSample(appData)
+      restart()
+      return { ok: true }
+    }
+  })
   hostOverIpc(router)
   companionHost.resume().catch(err => console.error('Companion screens were not served:', err))
   app.on('will-quit', () => { void companionHost.stop() })
   startJobs(electronJobsEnvironment()).catch(err => console.error('The job runner did not start:', err))
   createWindow()
+  // The sample is indexed through the app's own channels on its first start (EUX-014).
+  if (sample && getSetting(SAMPLE_SEEDED_KEY) === null) {
+    seedLibrary(<T>(channel: string, args?: unknown) => router.invoke(channel, args) as Promise<T>, samplePlaces(appData).library)
+      .then(() => setSetting(SAMPLE_SEEDED_KEY, new Date().toISOString()))
+      .catch(err => console.error('The sample was not indexed:', err))
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

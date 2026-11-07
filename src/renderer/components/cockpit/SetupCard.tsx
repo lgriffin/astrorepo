@@ -5,6 +5,9 @@ import { Card, LinkButton } from '../common/Card'
 import { SiteQuickForm } from './SiteQuickForm'
 import { SETUP_HIDDEN_KEY, setupSteps, showSetup, type SetupStep } from '@shared/setup'
 import type { ToolsView } from '@shared/types'
+import { SAMPLE_TRY_LABEL, SAMPLE_TRY_WHY, offersSample } from '@shared/sample'
+import { Button } from '../ui'
+import { switchSample, useSampleStatus } from '../../hooks/useSample'
 
 /** A setting's value, or UNREAD when it could not be read (which is not the same as unset). */
 const UNREAD = Symbol('unread')
@@ -29,6 +32,10 @@ export function SetupCard({ onShown, onSiteSaved }: SetupCardProps = {}): React.
   const [steps, setSteps] = useState<SetupStep[] | null>(null)
   const [hidden, setHidden] = useState(true)
   const [reads, setReads] = useState(0)
+  const [homeFolder, setHomeFolder] = useState<string | null>(null)
+  const sample = useSampleStatus()
+  const [starting, setStarting] = useState(false)
+  const [sampleError, setSampleError] = useState<string | null>(null)
   // The latest callback, so a parent's new function never re-reads the settings.
   const shown = useRef(onShown)
   useEffect(() => {
@@ -55,6 +62,7 @@ export function SetupCard({ onShown, onSiteSaved }: SetupCardProps = {}): React.
       const sirilFound = tools?.tools.find(t => t.id === 'siril')?.found ?? null
       const next = setupSteps({ latitude, longitude, homeFolder, lastLibraryScan, lastLibraryScanFolder, sirilFound, missingCatalogues: tools?.missingCatalogues ?? null })
       setSteps(next)
+      setHomeFolder(homeFolder)
       setHidden(hide === '1')
       shown.current?.(showSetup(next, hide === '1'))
     })
@@ -65,6 +73,17 @@ export function SetupCard({ onShown, onSiteSaved }: SetupCardProps = {}): React.
 
   if (!steps || !showSetup(steps, hidden)) return null
   const left = steps.filter(s => !s.done).length
+  // Before a home folder is chosen, the desktop app offers a look round with sample data (EUX-017).
+  const offer = sample !== null && offersSample(window.astrorepoMode, sample.active, homeFolder)
+  const trySample = async () => {
+    setStarting(true)
+    setSampleError(null)
+    const problem = await switchSample('start')
+    if (problem) {
+      setSampleError(problem)
+      setStarting(false)
+    }
+  }
 
   const hide = () => {
     setHidden(true)
@@ -91,6 +110,13 @@ export function SetupCard({ onShown, onSiteSaved }: SetupCardProps = {}): React.
           </li>
         ))}
       </ol>
+      {offer && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-astro-border pt-3 text-sm">
+          <p className="flex-1 min-w-0 text-xs text-astro-muted">Not ready to choose a folder? {SAMPLE_TRY_WHY}</p>
+          <Button size="sm" busy={starting} onClick={() => void trySample()}>{starting ? 'Building the sample…' : SAMPLE_TRY_LABEL}</Button>
+          {sampleError && <p role="alert" className="w-full text-astro-danger">{sampleError}</p>}
+        </div>
+      )}
     </Card>
   )
 }

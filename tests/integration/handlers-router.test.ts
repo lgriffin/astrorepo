@@ -15,6 +15,7 @@ const { ChannelRouter } = await import('../../src/main/transport/router')
 const { registerHandlers } = await import('../../src/main/ipc/handlers')
 const { schemas } = await import('../../src/main/ipc/schemas')
 const { registerCompanionHandlers } = await import('../../src/main/ipc/companion-handlers')
+const { registerSampleHandlers } = await import('../../src/main/ipc/sample-handlers')
 const { makeCompanion } = await import('@astro/application')
 const { FakeCompanionSecrets, FixedClock, InMemoryCompanionStore } = await import('@astro/testkit')
 
@@ -50,10 +51,11 @@ describe('The handlers on the channel router (specs/035-pi-variant)', () => {
 
   it('[PI-001] Given the handlers and the companion handlers, When they are put on a router, Then every channel with a schema is on it, with no Electron loaded', () => {
     const router = routerWith(fakeDesktop().desktop)
-    expect(router.channels().filter(c => c.startsWith('companion:'))).toEqual([])
+    expect(router.channels().filter(c => c.startsWith('companion:') || c.startsWith('sample:'))).toEqual([])
     const companion = makeCompanion({ devices: new InMemoryCompanionStore(), secrets: new FakeCompanionSecrets(), clock: new FixedClock(), places: { home: '/dashboard', sky: '/sky-planner', jobs: '/jobs', images: '/images', messier: '/messier' } })
     const host = { status: () => ({ enabled: false, running: false, port: 8090, addresses: [], problem: null }), setEnabled: async () => host.status(), resume: async () => host.status(), stop: async () => undefined }
     registerCompanionHandlers(router, { host, companion: () => companion })
+    registerSampleHandlers(router, { status: () => ({ active: false }), start: () => ({ ok: true }), leave: () => ({ ok: true }) })
     const missing = Object.keys(schemas).filter(channel => !router.has(channel))
     expect(missing).toEqual([])
     expect(router.channels().length).toBeGreaterThan(100)

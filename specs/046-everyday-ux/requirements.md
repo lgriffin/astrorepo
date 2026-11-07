@@ -74,6 +74,24 @@ cards and days that opened something on a click but could not be reached with Ta
 - **No findings left.** Both smoke baselines are empty, so any serious or critical finding fails
   the run.
 
+## U5: sample data on first run
+
+Someone who has just installed the app sees empty pages until they have chosen a folder and
+scanned it, so they cannot tell what the app will do for them. The demo library (spec 045, D4)
+already shows every page with something in it, but only to a developer.
+
+- **Try it with sample data.** On the desktop app, while no home folder is chosen, Get set up
+  offers the sample beside its steps. The app builds the demo library in a folder of its own inside
+  its data folder, restarts on a database of the sample's own, and indexes it there: six made-up
+  targets at different points of the workflow, with a site, scans and three logged nights.
+- **Clearly the sample.** A band across the top of every page says it is sample data, nothing in
+  it is yours, and leaving removes it.
+- **One click back.** **Use my own data** restarts the app on the person's own database, which the
+  sample never opened, and then removes the sample's folder. Only a folder holding the sample's
+  marker is removed; a folder of that name the app did not make is never built over or removed.
+- **Desktop only.** A browser or companion screen of the headless server is never offered the
+  sample, and the server has no channel that builds one or restarts anything.
+
 ## Out of scope
 
 - Looking a place up by name: it would need a gazetteer or an online service.
@@ -95,3 +113,7 @@ cards and days that opened something on a click but could not be reached with Ta
 | EUX-011 | Event | When ? is pressed outside a text field, or Shortcuts is chosen in the sidebar, the system shall list every keyboard shortcut it answers, and Escape shall close the list and return focus. |
 | EUX-012 | Ubiquitous | Text on a selected row, a badge on a card, and text in the text and muted colours shall reach 4.5:1 in every theme, and a link inside a sentence shall be underlined. |
 | EUX-013 | Ubiquitous | Every list box shall have an accessible name, and the smoke run shall accept no serious or critical accessibility finding on any page in any theme, with or without the demo library. |
+| EUX-014 | Event | When Try it with sample data is chosen, the system shall build the demo library in a sample folder of its own, restart on a database of the sample's own, and index the library there once, with its site, scans and logged nights. |
+| EUX-015 | State | While the sample is on, every page shall show that it is sample data, that nothing in it is yours, and a way to use your own data. |
+| EUX-016 | Unwanted | If the sample is left, or a folder where the sample goes was not made by the app, then the system shall restart on your own database and remove only a folder holding the sample's marker, and shall not build over or remove any other folder. |
+| EUX-017 | Optional | Where the app runs on the desktop and no home folder is chosen, Get set up shall offer the sample; a browser, a companion screen or the headless server shall not offer or build it. |
