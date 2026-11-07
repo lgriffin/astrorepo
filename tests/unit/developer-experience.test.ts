@@ -71,6 +71,24 @@ describe('Electron gets its own better-sqlite3 build (spec 045)', () => {
     expect(fetchElectronSqlite({ root, platform: 'win32', arch: 'x64', env: {}, log: () => {}, run: () => { throw new Error('ran') } })).toBe('present')
   })
 
+  it('[DEV-002] Given a build Electron refuses to load, When native:electron runs with force, Then the build is replaced', () => {
+    const root = checkout()
+    const folder = bindingFolder(root, versions)
+    fs.mkdirSync(folder, { recursive: true })
+    fs.writeFileSync(path.join(folder, 'better_sqlite3.node'), 'broken')
+    const run = (_c: string, _a: string[], cwd: string) => { built(cwd, 'fresh'); return { ok: true, output: '' } }
+    expect(fetchElectronSqlite({ root, platform: 'win32', arch: 'x64', env: {}, log: () => {}, run })).toBe('present')
+    expect(fetchElectronSqlite({ root, platform: 'win32', arch: 'x64', env: {}, log: () => {}, run, force: true })).toBe('fetched')
+    expect(fs.readFileSync(path.join(folder, 'better_sqlite3.node'), 'utf8')).toBe('fresh')
+  })
+
+  it('[DEV-002] Given the install and retry commands, When package.json runs them, Then both go through the CLI, which always runs, and the retry forces', () => {
+    const scripts = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).scripts
+    expect(scripts.postinstall).toBe('node scripts/native/electron-sqlite-cli.mjs')
+    expect(scripts['native:electron']).toBe('node scripts/native/electron-sqlite-cli.mjs --force')
+    expect(fs.readFileSync(path.join(repo, 'scripts/native/electron-sqlite-cli.mjs'), 'utf8')).not.toMatch(/import\.meta\.url ===|=== import\.meta\.url/)
+  })
+
   it('[DEV-002] Given no prebuilt binary for this Electron, When installing, Then it compiles one against Electron headers', () => {
     const root = checkout()
     const runs: string[][] = []
@@ -143,6 +161,8 @@ describe('npm run doctor (spec 045)', () => {
     expect(text).toContain('Does not load: Error: NODE_MODULE_VERSION 130')
     expect(text).not.toContain('stack')
     expect(text).toContain('1 to fix.')
+    const electron = report(diagnose({ ...healthy, electronSqlite: { error: 'node:electron/js2c/node_init:2\n  at x\nError: invalid ELF header' } }))
+    expect(electron).toContain('Does not load in Electron: Error: invalid ELF header')
   })
 })
 
@@ -150,6 +170,8 @@ describe('npm run verify (spec 045)', () => {
   it('[DEV-005] Given the gates, When verify runs, Then lint, both type checks and EARS run before the tests', () => {
     expect(QUICK_GATES.map(g => g.name)).toEqual(['lint', 'typecheck', 'typecheck:tests', 'ears'])
     expect(TEST_GATE.name).toBe('test')
+    // Coverage floors fail CI's test step, so they fail verify too.
+    expect(TEST_GATE.command).toContain('--coverage')
     const scripts = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).scripts
     for (const g of [...QUICK_GATES, TEST_GATE]) expect(scripts[g.name]).toBeTruthy()
   })

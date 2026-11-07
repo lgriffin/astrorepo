@@ -26,11 +26,11 @@
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "verify": "tsx scripts/verify/verify.ts",
     "doctor": "tsx scripts/doctor/doctor.ts",
-    "native:electron": "node scripts/native/electron-sqlite.mjs",
+    "native:electron": "node scripts/native/electron-sqlite-cli.mjs --force",
     "db:seed": "tsx src/main/db/seed/run-seed.ts",
     "db:reset": "tsx src/main/db/seed/reset-and-seed.ts",
     "prepare": "husky",
-    "postinstall": "node scripts/native/electron-sqlite.mjs"
+    "postinstall": "node scripts/native/electron-sqlite-cli.mjs"
   },
   "lint-staged": {
     "{src,packages,scripts,features}/**/*.{ts,tsx}": [

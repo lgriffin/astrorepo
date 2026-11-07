@@ -10,5 +10,6 @@ export interface FetchOptions {
   run?: (command: string, args: string[], cwd: string) => { ok: boolean; output: string }
   log?: (line: string) => void
   env?: Record<string, string | undefined>
+  force?: boolean
 }
 export declare function fetchElectronSqlite(options: FetchOptions): FetchOutcome

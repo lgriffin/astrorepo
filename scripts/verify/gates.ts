@@ -24,7 +24,8 @@ export const QUICK_GATES: Gate[] = [
   { name: 'ears', command: 'npm run -s ears' }
 ]
 
-export const TEST_GATE: Gate = { name: 'test', command: 'npm test --silent' }
+/** With coverage, as CI runs it, so the coverage floors fail here too. */
+export const TEST_GATE: Gate = { name: 'test', command: 'npm test --silent -- --coverage' }
 
 export async function runGates(quick: Gate[], last: Gate[], run: RunGate): Promise<{ ok: boolean; results: GateResult[] }> {
   const first = await Promise.all(quick.map(run))

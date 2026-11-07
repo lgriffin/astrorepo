@@ -42,9 +42,11 @@ function electronSqlite(bin: string): DoctorFacts['electronSqlite'] {
   return r.status === 0 ? 'ok' : { error: r.stderr || String(r.error) }
 }
 
+/** The pre-commit hook Git will run: in core.hooksPath (relative to the checkout, or absolute) when set. */
 function hooksInstalled(): boolean {
   const r = spawnSync('git', ['config', 'core.hooksPath'], { cwd: root, encoding: 'utf8' })
-  return r.status === 0 && r.stdout.trim().startsWith('.husky')
+  const configured = r.status === 0 ? r.stdout.trim() : ''
+  return configured !== '' && fs.existsSync(path.resolve(root, configured, 'pre-commit'))
 }
 
 const bin = electronBinary()

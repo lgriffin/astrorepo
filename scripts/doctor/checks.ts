@@ -66,8 +66,10 @@ export function diagnose(f: DoctorFacts): DoctorCheck[] {
   return checks
 }
 
+/** The line that says what went wrong: the first naming an error, else the first with text. */
 function firstLine(text: string): string {
-  return text.split(/\r?\n/).find(l => l.trim())?.trim() ?? text
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  return lines.find(l => /error/i.test(l)) ?? lines[0] ?? text
 }
 
 /** The report doctor prints, one line per check and a fix under each problem. */
