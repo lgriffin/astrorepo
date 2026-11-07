@@ -41,7 +41,8 @@ scripts/         doctor, verify, ears gate, smoke, demo, new-slice, mutation sco
 ## Rules
 
 - **Hexagonal.** New logic goes in `packages/domain` (pure) and `packages/application` (use cases over
-  ports); adapters in `src/main/adapters` take a `Database` in the constructor. See
+  ports); adapters in `src/main/adapters` take what they use in the constructor (a `Database`
+  for a database-backed one, a folder, client or port otherwise), never a global. See
   docs/architecture/hexagonal.md. The domain imports only itself; legacy services in
   `src/main/services` may not import adapters (HEX-007), and the legacy ratchet allows no new
   `getSqlite()` calls.
@@ -59,5 +60,5 @@ scripts/         doctor, verify, ears gate, smoke, demo, new-slice, mutation sco
   rows and cards, `tests/unit/keyboard.test.ts`); pages take their title from `src/shared/navigation.ts`.
 - **Smoke.** Both axe baselines (`scripts/smoke/axe-baseline*.json`) are empty: a new serious
   finding fails CI. Fix it rather than accepting it.
-- **Lint** runs with `--max-warnings 0`, also in the pre-commit hook.
+- **Lint** runs with `--max-warnings 0` (`npm run lint`, so `npm run verify`, and the pre-commit hook).
 - **Charter:** `.specify/memory/constitution.md`. Design: `docs/design.md`, `PRODUCT.md`.

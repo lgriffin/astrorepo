@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:fuzz": "tsx scripts/fuzz.ts",
-    "lint": "eslint src/ tests/ packages/ scripts/ features/",
+    "lint": "eslint src/ tests/ packages/ scripts/ features/ --max-warnings 0",
     "ears": "tsx scripts/ears/cli.ts",
     "test:mutation": "stryker run",
     "test:mutation:changed": "node scripts/mutation/changed.mjs",

@@ -13,7 +13,9 @@ const prefixes = specFolders.flatMap(f => {
   return fs.existsSync(file) ? prefixesIn(fs.readFileSync(file, 'utf8')) : []
 })
 const plan = parseSliceArgs(process.argv.slice(2), specFolders)
-const planned = plan.spec && plan.prefix && plan.title ? sliceFiles(plan as SlicePlan).map(f => f.path) : []
+// The files are worked out only for a plan that is otherwise sound, so a malformed name is refused, not thrown on.
+const sound = sliceProblems(plan, { specFolders, prefixes, files: [] }).length === 0
+const planned = sound ? sliceFiles(plan as SlicePlan).map(f => f.path) : []
 const problems = sliceProblems(plan, { specFolders, prefixes, files: planned.filter(p => fs.existsSync(path.join(root, p))) })
 if (problems.length) {
   console.error(problems.join('\n'))

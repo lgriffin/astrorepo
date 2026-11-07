@@ -63,6 +63,9 @@ describe('npm run new:slice (spec 045, D5)', () => {
     expect(sliceProblems({ ...PLAN, spec: '47-Dark Sites' }, NONE)[0]).toMatch(/three digits/)
     expect(sliceProblems({ ...PLAN, prefix: 'dsk1' }, NONE)[0]).toMatch(/two to four capitals/)
     expect(sliceProblems({}, NONE)).toHaveLength(3)
+    for (const spec of ['901-dark-', '901-dark--sites', '901--x']) expect(sliceProblems({ ...PLAN, spec }, NONE)[0], spec).toMatch(/three digits/)
+    for (const title of ["O'Reilly", 'A | B', 'Back`tick', 'Two\nlines', ' Leading']) expect(sliceProblems({ ...PLAN, title }, NONE), title).toHaveLength(1)
+    expect(sliceProblems({ ...PLAN, title: 'Dark sites (M 31, part 2).' }, NONE)).toEqual([])
     expect(sliceProblems(PLAN, { ...NONE, files: ['packages/domain/src/dark-sites.ts'] })).toEqual([
       'packages/domain/src/dark-sites.ts already exists; nothing was written.'
     ])
@@ -74,6 +77,10 @@ describe('npm run new:slice (spec 045, D5)', () => {
     expect(run.status).toBe(1)
     expect(run.stderr).toContain('The prefix EUX is already used by another spec.')
     expect(fs.readdirSync(path.join(repo, 'specs')).length).toBe(before)
+    const malformed = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/new-slice/new-slice.ts', '--name', 'dark-', '--prefix', 'ZZQ', '--title', 'Dark'], { cwd: repo, encoding: 'utf8' })
+    expect(malformed.status).toBe(1)
+    expect(malformed.stderr).toContain('three digits')
+    expect(malformed.stderr).not.toContain('TypeError')
   })
 })
 

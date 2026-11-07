@@ -29,6 +29,8 @@ export interface SliceFile {
 
 const SPEC = /^(\d{3})-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)$/
 const PREFIX = /^[A-Z]{2,4}$/
+/** A title goes into Markdown, a TypeScript string and a sentence, so it keeps to plain characters. */
+const TITLE = /^[A-Za-z0-9][A-Za-z0-9 ,.()-]*$/
 
 /** The flags given to the command, read into a plan; a name without a number takes the next free one. */
 export function parseSliceArgs(argv: readonly string[], specFolders: readonly string[]): Partial<SlicePlan> {
@@ -67,6 +69,7 @@ export function sliceProblems(plan: Partial<SlicePlan>, existing: Existing): str
   else if (!PREFIX.test(plan.prefix)) problems.push(`The prefix ${plan.prefix} should be two to four capitals, as DSK.`)
   else if (existing.prefixes.includes(plan.prefix)) problems.push(`The prefix ${plan.prefix} is already used by another spec.`)
   if (!plan.title) problems.push('Give the slice a title: --title "Dark sites".')
+  else if (!TITLE.test(plan.title)) problems.push(`The title ${plan.title} should use letters, digits, spaces and - , . ( ) only, as "Dark sites".`)
   if (problems.length === 0) {
     for (const f of sliceFiles(plan as SlicePlan)) if (existing.files.includes(f.path)) problems.push(`${f.path} already exists; nothing was written.`)
   }
