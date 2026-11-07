@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { parse as parseYaml } from 'yaml'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -219,5 +220,51 @@ describe('one Node version (spec 045)', () => {
     const root = path.join('/', 'repo')
     const fromScript = path.join(bindingFolder(root, versions), 'better_sqlite3.node')
     expect(electronSqliteBinding({ ...versions, root, exists: f => f === fromScript })).toBe(fromScript)
+  })
+})
+
+describe('CI (spec 045, D2)', () => {
+  const folder = path.join(repo, '.github', 'workflows')
+  type Step = { run?: string; uses?: string }
+  type Workflow = { on: Record<string, unknown>; concurrency?: { group: string; 'cancel-in-progress': unknown }; jobs: Record<string, { 'runs-on': string; steps: Step[] }> }
+  /** Parses one workflow; a file GitHub could not read fails naming it (DEV-010). */
+  const parseWorkflow = (name: string, text: string): Workflow => {
+    try {
+      return parseYaml(text) as Workflow
+    } catch (error) {
+      throw new Error(`${name} is not valid YAML: ${(error as Error).message}`, { cause: error })
+    }
+  }
+  const read = (name: string) => parseWorkflow(name, fs.readFileSync(path.join(folder, name), 'utf8'))
+
+  it('[DEV-010] Given a workflow with a plain value holding "seed: ", When it is parsed, Then it fails naming the file', () => {
+    expect(() => parseWorkflow('broken.yml', "jobs:\n  a:\n    steps:\n      - run: grep 'seed: ' log\n")).toThrow(/^broken\.yml is not valid YAML/)
+  })
+
+
+  it('[DEV-010] Given every workflow, When it is parsed as YAML, Then none fails to parse and each has triggers and jobs', () => {
+    for (const name of fs.readdirSync(folder).filter(f => /\.ya?ml$/.test(f))) {
+      const workflow = read(name)
+      expect(workflow.on, name).toBeTruthy()
+      expect(Object.keys(workflow.jobs ?? {}).length, name).toBeGreaterThan(0)
+    }
+  })
+
+  it('[DEV-008] Given the CI workflow, When a pull request is pushed to, Then it runs once for the pull request and a newer push cancels the run it replaces', () => {
+    const ci = read('ci.yml')
+    expect(ci.on.push).toEqual({ branches: ['main'] })
+    expect('pull_request' in ci.on).toBe(true)
+    expect(ci.concurrency?.group).toContain('github.event.pull_request.number')
+    expect(String(ci.concurrency?.['cancel-in-progress'])).toContain("github.event_name == 'pull_request'")
+  })
+
+  it('[DEV-009] Given the CI workflow, When its jobs are read, Then every gate runs once through npm run verify and Windows runs the tests and the build', () => {
+    const jobs = read('ci.yml').jobs
+    const runs = (job: string) => jobs[job].steps.map(s => s.run).filter((r): r is string => Boolean(r))
+    expect(jobs.verify['runs-on']).toBe('ubuntu-latest')
+    expect(runs('verify')).toEqual(['npm ci', 'npm run verify', 'npm run build'])
+    expect(jobs.windows['runs-on']).toBe('windows-latest')
+    expect(runs('windows')).toEqual(['npm ci', 'npm test', 'npm run build'])
+    expect(TEST_GATE.command).toContain('--coverage')
   })
 })

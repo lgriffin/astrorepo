@@ -1,17 +1,24 @@
 name: CI
 
+# One run per change (specs/045-developer-experience, DEV-008): pull requests run on pull_request
+# and main runs on push, and a newer push to the same pull request cancels the run it replaces.
 on:
   push:
-    branches: ['*']
+    branches: [main]
   pull_request:
-    branches: ['*']
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  # Every gate once, side by side, as `npm run verify` runs them on a desktop (DEV-005, DEV-009).
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,14 +26,26 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npx tsc --noEmit
-      - run: npm run typecheck:tests
-      - run: npm run ears
-      - run: npm test -- --coverage
+      - run: npm run verify
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-${{ matrix.os }}
+          name: coverage
           path: coverage/
+          if-no-files-found: ignore
+      - run: npm run build
+
+  # Windows is where AstroRepo runs: the tests and the build again there. Lint and the type checks
+  # read the same source on every platform, so they run once, above.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
       - run: npm run build
