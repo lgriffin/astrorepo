@@ -210,6 +210,12 @@ describe('Catalogue names', () => {
     expect(plan.remove).toEqual(['old'])
   })
 
+  it('[CAT-005] Given an old catalogue target the user gave a name, When the repair is planned, Then it stays', () => {
+    const named = installed({ id: 'named', canonicalName: 'NGC 18', aliases: [{ alias: 'NGC 18', source: 'NGC' }, { alias: 'my pair', source: 'user' }], entries: [{ catalogue: 'NGC', designation: 'NGC 18' }] })
+    const plan = planCatalogueRepair([named], seedTargets(SEEDS), { frames: [], folders: [] }, newId)
+    expect(plan.remove).toEqual([])
+  })
+
   it('[CAT-005] Given a frame linked to a target the user made, When the repair is planned, Then it stays, whatever its name', () => {
     const mine = installed({ id: 'mine', canonicalName: 'My M101 project', isCustom: true, isYours: true })
     const plan = planCatalogueRepair([mine], seedTargets(SEEDS), { frames: [{ id: 'f', targetId: 'mine', name: 'M101', folderName: null }], folders: [] }, newId)

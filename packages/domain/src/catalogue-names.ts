@@ -296,7 +296,8 @@ export function planCatalogueRepair(
     })
 
   const kept = new Set(targetOf)
-  const remove = builtIn.filter(t => !kept.has(t.id) && !t.isYours).map(t => t.id)
+  // A target the user named or uses stays, even when no catalogue holds it any more.
+  const remove = builtIn.filter(t => !kept.has(t.id) && !t.isYours && t.aliases.every(a => isSeededSource(a.source, abbreviations))).map(t => t.id)
 
   const split = builtIn.flatMap(t => {
     const named = new Set(

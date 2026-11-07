@@ -1,3 +1,5 @@
+import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type Database from 'better-sqlite3'
@@ -6,6 +8,7 @@ import { makeRepairCatalogues } from '@astro/application'
 import { CROSS_REFERENCE, type SeedCatalogue, type SeedObject } from '@astro/domain'
 import { FixedClock, InMemoryCatalogueSeeds } from '@astro/testkit'
 import { FileCatalogueSeeds, SqliteCatalogueStore } from '../../src/main/adapters/catalogues'
+import { initDatabase, resetDatabase } from '../../src/main/db/connection'
 import { rebuildFtsIndex } from '../../src/main/db/fts'
 import { setupTestDb, teardownTestDb } from '../helpers/setup'
 
@@ -162,5 +165,35 @@ describe('Catalogue repair (integration)', () => {
     expect((await repairWith(SHIPPED)()).ran).toBe(false)
     expect(sqlite.prepare('SELECT id, canonical_name FROM targets ORDER BY id').all()).toEqual(before)
     expect(count('SELECT COUNT(*) AS n FROM target_aliases')).toBe(aliases)
+  })
+
+  it('[CAT-005] Given an old catalogue target the user linked to another, When it is repaired, Then it stays with its link', async () => {
+    oldInstall()
+    const now = '2026-10-01T00:00:00.000Z'
+    sqlite.prepare(`INSERT INTO targets (id, canonical_name, object_type, workflow_stage, is_custom, created_at, updated_at) VALUES ('t-gone', 'NGC 99999', 'galaxy', 'not_observed', 0, ?, ?)`).run(now, now)
+    sqlite.prepare(`INSERT INTO catalogue_entries (id, catalogue_id, target_id, designation) VALUES ('e-gone', 'cat-ngc', 't-gone', 'NGC 99999')`).run()
+    sqlite.prepare(`INSERT INTO target_relationships (id, source_target_id, related_target_id, relationship_type, created_at) VALUES ('r', 't-m33', 't-gone', 'related', ?)`).run(now)
+    await repairWith(SHIPPED)()
+    expect(count("SELECT COUNT(*) AS n FROM targets WHERE id = 't-gone'")).toBe(1)
+    expect(count("SELECT COUNT(*) AS n FROM target_relationships WHERE id = 'r'")).toBe(1)
+  })
+})
+
+describe('Resetting the database (integration)', () => {
+  it('[CAT-006] Given a seeded install, When the database is reset and the app starts, Then the catalogues are seeded again', async () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-reset-'))
+    const db = initDatabase(folder)
+    try {
+      const repair = makeRepairCatalogues({ seeds: new FileCatalogueSeeds(SHIPPED), store: new SqliteCatalogueStore(db, new FixedClock()), newId: ulid })
+      await repair()
+      const targets = (db.prepare('SELECT COUNT(*) AS n FROM targets').get() as { n: number }).n
+      resetDatabase()
+      expect((db.prepare('SELECT COUNT(*) AS n FROM targets').get() as { n: number }).n).toBe(0)
+      expect((await repair()).ran).toBe(true)
+      expect((db.prepare('SELECT COUNT(*) AS n FROM targets').get() as { n: number }).n).toBe(targets)
+    } finally {
+      db.close()
+      fs.rmSync(folder, { recursive: true, force: true })
+    }
   })
 })

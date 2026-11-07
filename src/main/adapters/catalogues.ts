@@ -46,7 +46,9 @@ export class SqliteCatalogueStore implements CatalogueStore {
 
   async installed(): Promise<InstalledTarget[]> {
     const targets = this.db.prepare(
-      `SELECT t.id, t.canonical_name, t.is_custom, ${YOURS} AS yours FROM targets t ORDER BY t.created_at, t.id`
+      // A target the user linked to another is theirs to keep too, beyond what the target list counts.
+      `SELECT t.id, t.canonical_name, t.is_custom, (${YOURS} OR EXISTS (SELECT 1 FROM target_relationships r
+         WHERE r.source_target_id = t.id OR r.related_target_id = t.id)) AS yours FROM targets t ORDER BY t.created_at, t.id`
     ).all() as Array<{ id: string; canonical_name: string; is_custom: number; yours: number }>
     const aliases = this.db.prepare('SELECT target_id, alias, source FROM target_aliases ORDER BY rowid').all() as Array<{ target_id: string; alias: string; source: string | null }>
     const entries = this.db.prepare(
