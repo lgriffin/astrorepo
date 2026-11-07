@@ -58,7 +58,9 @@ export async function seedLibrary(invoke: SeedInvoke, library: string, wait: { t
   for (const { target, folder, ...night } of demoLoggedNights()) {
     const match = mine.targets.find(t => [t.canonicalName, ...t.aliases].some(n => n.replace(/\s+/g, '') === folder))
     if (!match) throw new Error(`The scan did not find ${target}`)
-    await invoke('sessions:create', { ...night, target_ids: [match.id] })
+    // A seed cut short is run again from the start, so a night already logged is not logged twice.
+    const logged = await invoke<{ total: number }>('sessions:list', { target_id: match.id, from_date: night.date, to_date: night.date })
+    if (logged.total === 0) await invoke('sessions:create', { ...night, target_ids: [match.id] })
   }
   return { targets: scan.totalTargetsFound }
 }
@@ -72,10 +74,14 @@ export function samplePlaces(userData: string): { root: string; library: string;
   return { root, library: path.join(root, 'library'), data: path.join(root, 'data'), modeFile: path.join(userData, 'sample-mode.json') }
 }
 
-/** Whether the app opens the sample rather than the person's own data (EUX-014). */
+/**
+ * Whether the app opens the sample rather than the person's own data (EUX-014): the switch is on
+ * and the sample's data folder is still there, so a sample removed by hand never stops the app.
+ */
 export function sampleActive(userData: string): boolean {
+  const { modeFile, data } = samplePlaces(userData)
   try {
-    return (JSON.parse(fs.readFileSync(samplePlaces(userData).modeFile, 'utf8')) as { active?: unknown }).active === true
+    return (JSON.parse(fs.readFileSync(modeFile, 'utf8')) as { active?: unknown }).active === true && fs.statSync(data).isDirectory()
   } catch {
     return false
   }
@@ -96,7 +102,9 @@ export function startSample(userData: string): { ok: true; files: number } | { o
   fs.mkdirSync(data, { recursive: true })
   fs.writeFileSync(path.join(root, DEMO_MARKER), 'Sample data made by AstroRepo; leaving the sample removes this folder.\n')
   const files = writeSampleLibrary(library)
-  fs.writeFileSync(modeFile, JSON.stringify({ active: true }) + '\n')
+  // A new file in place of whatever was there, so a link at that name is replaced, never followed.
+  fs.rmSync(modeFile, { force: true })
+  fs.writeFileSync(modeFile, JSON.stringify({ active: true }) + '\n', { flag: 'wx' })
   return { ok: true, files }
 }
 
@@ -111,7 +119,10 @@ export function leaveSample(userData: string): void {
  */
 export function tidyAfterSample(userData: string): boolean {
   const { root } = samplePlaces(userData)
-  if (sampleActive(userData) || !fs.existsSync(root) || !marked(root)) return false
+  if (sampleActive(userData)) return false
+  // A switch left on for a sample that is gone is turned off.
+  leaveSample(userData)
+  if (!fs.existsSync(root) || !marked(root)) return false
   fs.rmSync(root, { recursive: true, force: true })
   return true
 }

@@ -16,7 +16,7 @@ const read = (rel: string): string => fs.readFileSync(path.join(repo, rel), 'utf
 const appData = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-sample-'))
 
 /** A fake of the app's channels: records each call and answers as a scan that finishes on the second look. */
-function fakeApp(scanEnd: { status: string; error: string | null } = { status: 'done', error: null }) {
+function fakeApp(scanEnd: { status: string; error: string | null } = { status: 'done', error: null }, logged: string[] = []) {
   const calls: Array<[string, unknown]> = []
   let looks = 0
   const invoke: SeedInvoke = async <T>(channel: string, args?: unknown): Promise<T> => {
@@ -24,6 +24,7 @@ function fakeApp(scanEnd: { status: string; error: string | null } = { status: '
     const answer = (() => {
       if (channel === 'home:scan-start') return { started: true }
       if (channel === 'home:scan-progress') return ++looks < 2 ? { status: 'scanning', error: null, totalTargetsFound: 0 } : { ...scanEnd, totalTargetsFound: 6 }
+      if (channel === 'sessions:list') return { total: logged.filter(d => d === (args as { from_date: string }).from_date).length }
       if (channel === 'targets:search') return { targets: ['M31', 'M42', 'M45'].map((f, i) => ({ id: `t${i}`, canonicalName: f.replace('M', 'M '), aliases: [] })) }
       return null
     })()
@@ -69,6 +70,15 @@ describe('Sample data on first run (spec 046, U5)', () => {
     expect(SAMPLE_SEEDED_KEY).toBe('sample_seeded')
     // npm run demo builds and indexes the same library the same way.
     expect(read('scripts/demo/demo.ts')).toContain('seedLibrary(invoke, library)')
+  })
+
+  it('[EUX-014] Given a seed cut short after some nights were logged, When it runs again, Then the nights already logged are not logged twice', async () => {
+    const first = demoLoggedNights()[0].date
+    const { invoke, calls } = fakeApp(undefined, [first])
+    await seedLibrary(invoke, '/sample/library', { everyMs: 1 })
+    const created = calls.filter(([c]) => c === 'sessions:create').map(([, a]) => (a as { date: string }).date)
+    expect(created).toEqual(demoLoggedNights().slice(1).map(n => n.date))
+    expect(calls.find(([c]) => c === 'sessions:list')?.[1]).toEqual({ target_id: 't0', from_date: first, to_date: first })
   })
 
   it('[EUX-014] Given a scan that errors or never ends, When the sample is indexed, Then it fails with the reason', async () => {
@@ -117,9 +127,34 @@ describe('Sample data on first run (spec 046, U5)', () => {
     expect(sampleActive(data)).toBe(false)
     fs.rmSync(data, { recursive: true, force: true })
 
+    // A switch left on for a sample removed by hand does not stop the app, and is turned off.
+    const gone = appData()
+    startSample(gone)
+    fs.rmSync(samplePlaces(gone).root, { recursive: true, force: true })
+    expect(sampleActive(gone)).toBe(false)
+    expect(tidyAfterSample(gone)).toBe(false)
+    expect(fs.existsSync(samplePlaces(gone).modeFile)).toBe(false)
+
+    // A link at the switch's name is replaced, and the file it pointed at is not written.
+    const other = path.join(gone, 'other.txt')
+    fs.writeFileSync(other, 'keep')
+    let linked = true
+    try {
+      fs.symlinkSync(other, samplePlaces(gone).modeFile)
+    } catch {
+      linked = false // Windows without the right to make links
+    }
+    expect(startSample(gone).ok).toBe(true)
+    if (linked) expect(fs.lstatSync(samplePlaces(gone).modeFile).isSymbolicLink()).toBe(false)
+    expect(fs.readFileSync(other, 'utf8')).toBe('keep')
+    fs.rmSync(gone, { recursive: true, force: true })
+
     const main = read('src/main/index.ts')
     expect(main).toContain('if (!sample) {')
     expect(main).toContain('tidyAfterSample(appData)')
+    // The sample in use is never rebuilt under its own open database.
+    expect(main.indexOf("if (sample) return { ok: false")).toBeGreaterThan(-1)
+    expect(main.indexOf("if (sample) return { ok: false")).toBeLessThan(main.indexOf('startSample(appData)'))
   })
 
   it('[EUX-017] Given the desktop app and no home folder, When Get set up is shown, Then the sample is offered; not in a browser, a companion screen or once a folder is chosen', () => {

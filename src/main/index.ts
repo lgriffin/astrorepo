@@ -122,6 +122,8 @@ app.whenReady().then(async () => {
   registerSampleHandlers(router, {
     status: () => ({ active: sample }),
     start: () => {
+      // The sample in use is never rebuilt under its own open database.
+      if (sample) return { ok: false, error: 'The sample is already open.' }
       const built = startSample(appData)
       if (built.ok) restart()
       return built.ok ? { ok: true } : built
