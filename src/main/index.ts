@@ -23,7 +23,7 @@ import { autoGenerateCatalogueCollections } from './services/collection'
 
 let mainWindow: BrowserWindow | null = null
 
-// A development run opens the data folder ASTRO_DATA names, such as the demo's (DEV-016).
+// A development run opens the data folder ASTRO_DEV_DATA names, such as the demo's (DEV-016).
 const dataOverride = dataFolderOverride(process.env, app.isPackaged)
 if (dataOverride) app.setPath('userData', dataOverride)
 

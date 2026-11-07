@@ -14,5 +14,5 @@ if (!fs.existsSync(data)) {
   process.exit(1)
 }
 const cli = path.join(root, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js')
-const child = spawn(process.execPath, [cli, 'dev'], { cwd: root, stdio: 'inherit', env: { ...process.env, ASTRO_DATA: data } })
+const child = spawn(process.execPath, [cli, 'dev'], { cwd: root, stdio: 'inherit', env: { ...process.env, ASTRO_DEV_DATA: data } })
 child.on('exit', code => process.exit(code ?? 0))

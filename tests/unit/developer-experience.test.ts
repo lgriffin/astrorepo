@@ -9,7 +9,7 @@ import { diagnose, report, type DoctorFacts } from '../../scripts/doctor/checks'
 import { runGates, summary, QUICK_GATES, TEST_GATE, type Gate } from '../../scripts/verify/gates'
 import { SMOKE_THEMES, smokePages, pageProblems, fixedFindings, baselineOf, shrunkBaseline, type PageResult } from '../../scripts/smoke/rules'
 import { NAV_PLACES, SETTINGS_SECTIONS, settingsLink } from '../../src/shared/navigation'
-import { DEMO_TARGETS, demoFiles, demoLoggedNights, subTime } from '../../scripts/demo/library'
+import { DEMO_MARKER, DEMO_TARGETS, demoFiles, demoLoggedNights, mayClear, subTime } from '../../scripts/demo/library'
 import { fitsFile, starfield, tiffFile, greyLevels, DEMO_SIZE } from '../../scripts/demo/encode'
 import { dataFolderOverride } from '../../src/main/db/data-folder'
 import { parseFitsHeaders } from '../../src/main/fits/parser'
@@ -390,13 +390,28 @@ describe('demo library (spec 045, D4)', () => {
     expect(subTime('2025-12-01', 120, 30).toISOString()).toBe('2025-12-01T22:04:00.000Z')
     expect(subTime('2025-12-01', 200, 60).toISOString().slice(0, 10)).toBe('2025-12-02')
     expect(demoLoggedNights().map(n => n.date)).toEqual(DEMO_TARGETS.slice(0, 3).map(t => t.nights[0].date))
+    expect(demoLoggedNights().map(n => n.target)).toEqual(DEMO_TARGETS.slice(0, 3).map(t => t.name))
   })
 
-  it('[DEV-016] Given ASTRO_DATA in a development run, When the desktop app starts, Then it opens that folder; a packaged app or an empty value keeps its own', () => {
-    expect(dataFolderOverride({ ASTRO_DATA: '.demo/data' }, false)).toBe(path.resolve('.demo/data'))
-    expect(dataFolderOverride({ ASTRO_DATA: '.demo/data' }, true)).toBeNull()
-    expect(dataFolderOverride({ ASTRO_DATA: '  ' }, false)).toBeNull()
+  it('[DEV-015] Given a folder that is the checkout, a parent of it, a root, or full of other files, When the demo would clear it, Then it refuses', () => {
+    const checkout = '/home/me/astrorepo'
+    expect(mayClear('/home/me/astrorepo', checkout, ['package.json']).ok).toBe(false)
+    expect(mayClear('/home/me', checkout, ['astrorepo']).ok).toBe(false)
+    expect(mayClear('/', checkout, ['home']).ok).toBe(false)
+    expect(mayClear('C:\\', 'C:\\code\\astrorepo', ['code']).ok).toBe(false)
+    expect(mayClear('/home/me/photos', checkout, ['M31.png']).ok).toBe(false)
+    expect(mayClear('/home/me/astrorepo/.demo', checkout, [DEMO_MARKER, 'data']).ok).toBe(true)
+    expect(mayClear('/tmp/new-demo', checkout, null).ok).toBe(true)
+    expect(mayClear('/tmp/empty', checkout, []).ok).toBe(true)
+  })
+
+  it('[DEV-016] Given ASTRO_DEV_DATA in a development run, When the desktop app starts, Then it opens that folder; a packaged app, an empty value or the server ASTRO_DATA does not move it', () => {
+    expect(dataFolderOverride({ ASTRO_DEV_DATA: '.demo/data' }, false)).toBe(path.resolve('.demo/data'))
+    expect(dataFolderOverride({ ASTRO_DEV_DATA: '.demo/data' }, true)).toBeNull()
+    expect(dataFolderOverride({ ASTRO_DEV_DATA: '  ' }, false)).toBeNull()
     expect(dataFolderOverride({}, false)).toBeNull()
+    // The server's own variable is not followed, so a desktop run never shares a running server's database.
+    expect(dataFolderOverride({ ASTRO_DATA: '/srv/astrorepo' }, false)).toBeNull()
   })
 
   it('[DEV-016] Given the desktop app and package.json, When they are read, Then the app applies the override before it opens its data and dev:demo starts it on the demo', () => {
@@ -406,7 +421,7 @@ describe('demo library (spec 045, D4)', () => {
     const scripts = JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).scripts as Record<string, string>
     expect(scripts.demo).toBe('tsx scripts/demo/demo.ts')
     expect(scripts['dev:demo']).toBe('node scripts/demo/dev-demo.mjs')
-    expect(fs.readFileSync(path.join(repo, 'scripts', 'demo', 'dev-demo.mjs'), 'utf8')).toContain("ASTRO_DATA: data")
+    expect(fs.readFileSync(path.join(repo, 'scripts', 'demo', 'dev-demo.mjs'), 'utf8')).toContain("ASTRO_DEV_DATA: data")
   })
 
   it('[DEV-017] Given the CI workflow, When its smoke job is read, Then it also builds the demo and runs the smoke run over it, keeping both sets of screenshots', () => {

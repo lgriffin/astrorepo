@@ -99,9 +99,28 @@ export function demoFiles(targets: readonly DemoTarget[] = DEMO_TARGETS): DemoFi
   return files
 }
 
-/** The nights logged by hand in the demo: the first night of each of three targets, with notes. */
-export function demoLoggedNights(targets: readonly DemoTarget[] = DEMO_TARGETS): Array<{ date: string; notes: string; total_frames: number; total_exposure_sec: number }> {
+/** The file the demo builder leaves in its folder, so it only ever clears a folder it made. */
+export const DEMO_MARKER = '.astrorepo-demo'
+
+/**
+ * Whether the builder may clear `out` before writing (DEV-015): only a folder that is not there
+ * yet, is empty, or holds the builder's marker. Never the checkout, one of its parents or a root.
+ */
+export function mayClear(out: string, checkout: string, entries: string[] | null): { ok: true } | { ok: false; reason: string } {
+  const norm = (p: string) => p.replace(/[\\/]+$/, '') || p
+  const o = norm(out)
+  const c = norm(checkout)
+  const sep = o.includes('\\') ? '\\' : '/'
+  if (o === c || c.startsWith(o + sep) || /^([a-z]:)?[\\/]?$/i.test(o)) return { ok: false, reason: `${out} holds the checkout; give the demo a folder of its own` }
+  if (entries === null || entries.length === 0 || entries.includes(DEMO_MARKER)) return { ok: true }
+  return { ok: false, reason: `${out} already holds files the demo did not make; give the demo a folder of its own` }
+}
+
+/** The nights logged by hand in the demo: the first night of each of three targets, with notes and the target (DEV-015). */
+export function demoLoggedNights(targets: readonly DemoTarget[] = DEMO_TARGETS): Array<{ target: string; folder: string; date: string; notes: string; total_frames: number; total_exposure_sec: number }> {
   return targets.slice(0, 3).map(t => ({
+    target: t.name,
+    folder: t.folder,
     date: t.nights[0].date,
     notes: `Demo night on ${t.name}.`,
     total_frames: t.nights[0].subs,

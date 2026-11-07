@@ -19,7 +19,9 @@ import { SMOKE_THEMES, baselineOf, fixedFindings, pageProblems, shrunkBaseline, 
 // `--demo` runs over a copy of the demo library's data folder (npm run demo), with its own
 // screenshots and accessibility baseline, since pages with data show more than empty ones (DEV-017).
 const demo = process.argv.includes('--demo')
+// The data folder is copied, since the app writes there; the library is only read, so it is read in place.
 const demoData = path.join(root, '.demo', 'data')
+const demoLibrary = path.join(root, '.demo', 'library')
 const out = path.join(root, 'reports', demo ? 'smoke-demo' : 'smoke')
 const baselineFile = path.join(__dirname, demo ? 'axe-baseline.demo.json' : 'axe-baseline.json')
 const update = process.argv.includes('--update-baseline')
@@ -54,7 +56,7 @@ async function main(): Promise<void> {
   }
   const baseline: AxeBaseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, 'utf8')) : {}
   const port = await freePort()
-  if (demo && !fs.existsSync(demoData)) {
+  if (demo && !(fs.existsSync(demoData) && fs.existsSync(demoLibrary))) {
     console.error('Build the demo library first: npm run demo')
     process.exit(1)
   }

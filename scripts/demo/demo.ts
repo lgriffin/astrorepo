@@ -13,12 +13,15 @@ import fs from 'fs'
 import path from 'path'
 import { encodeRgbPng } from '../../src/main/fits/png-encoder'
 import { freePort, root, serve, servedInvoker } from '../shared/served-app'
-import { DEMO_SITE, DEMO_TARGETS, demoFiles, demoLoggedNights } from './library'
+import { DEMO_MARKER, DEMO_SITE, DEMO_TARGETS, demoFiles, demoLoggedNights, mayClear } from './library'
 import { fitsFile, greyLevels, pictureRgb, starfield, tiffFile, DEMO_SIZE } from './encode'
 
 const arg = (name: string) => {
   const i = process.argv.indexOf(name)
-  return i >= 0 ? process.argv[i + 1] : undefined
+  if (i < 0) return undefined
+  const value = process.argv[i + 1]
+  if (!value || value.startsWith('--')) throw new Error(`${name} needs a folder`)
+  return value
 }
 const out = path.resolve(arg('--out') ?? path.join(root, '.demo'))
 const keepServing = process.argv.includes('--serve')
@@ -50,8 +53,11 @@ async function waitForScan(invoke: <T>(channel: string, args?: unknown) => Promi
 async function main(): Promise<void> {
   const library = path.join(out, 'library')
   const data = path.join(out, 'data')
+  const clear = mayClear(out, root, fs.existsSync(out) ? fs.readdirSync(out) : null)
+  if (!clear.ok) throw new Error(`Not building the demo: ${clear.reason}.`)
   fs.rmSync(out, { recursive: true, force: true })
   fs.mkdirSync(data, { recursive: true })
+  fs.writeFileSync(path.join(out, DEMO_MARKER), 'Made by npm run demo; the next run clears this folder.\n')
   const count = writeLibrary(library)
   console.log(`Wrote ${count} files to ${path.relative(root, library) || library}`)
 
@@ -62,11 +68,17 @@ async function main(): Promise<void> {
     const invoke = await servedInvoker(base)
     await invoke('settings:set', { key: 'home_folder_path', value: library })
     await invoke('settings:set-site', DEMO_SITE)
-    for (const night of demoLoggedNights()) await invoke('sessions:create', night)
     const started = await invoke<{ started: boolean; reason?: string }>('home:scan-start')
     if (!started.started) throw new Error(`The library scan did not start: ${started.reason ?? 'no reason given'}`)
     const scan = await waitForScan(invoke)
     if (scan.status !== 'done') throw new Error(`The library scan ended ${scan.status}${scan.error ? `: ${scan.error}` : ''}`)
+    // Nights are logged once the scan has made the targets, each on its own target.
+    const mine = await invoke<{ targets: Array<{ id: string; canonicalName: string; aliases: string[] }> }>('targets:search', { query: '', scope: 'mine', limit: 100 })
+    for (const { target, folder, ...night } of demoLoggedNights()) {
+      const match = mine.targets.find(t => [t.canonicalName, ...t.aliases].some(n => n.replace(/\s+/g, '') === folder))
+      if (!match) throw new Error(`The scan did not find ${target}`)
+      await invoke('sessions:create', { ...night, target_ids: [match.id] })
+    }
     console.log(`Indexed ${scan.totalTargetsFound} targets into ${path.relative(root, data) || data}`)
     if (keepServing) {
       console.log(`\nThe demo is at ${base} (Ctrl+C to stop).`)
