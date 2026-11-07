@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import type { NightSkyView } from '@shared/types'
 import { settingsLink, targetLink } from '@shared/navigation'
-import { moonPath, type TonightSummary } from '@shared/tonight'
+import { moonPath, NO_SITE_HEADLINE, type TonightSummary } from '@shared/tonight'
 import { tokenColor } from '../../theme'
 import { Explain, Skeleton } from '../ui'
 import { WhyTonight, type TonightSite } from './WhyTonight'
@@ -50,25 +50,26 @@ function Fact({ label, concept, children }: { label: string; concept?: string; c
  * What Home leads with (LF-016): whether tonight is clear, when it is dark, the moon, and the
  * best few targets to shoot, each a link to its page.
  */
-export function TonightHero({ summary, loading, site = null, onSiteSaved }: { summary: TonightSummary; loading: boolean; site?: TonightSite | null; onSiteSaved?: () => void }): React.ReactElement {
-  if (loading && summary.state === 'unknown') {
+export function TonightHero({ summary, loading, site = null, askSite = false, onSiteSaved }: { summary: TonightSummary; loading: boolean; site?: TonightSite | null; askSite?: boolean; onSiteSaved?: () => void }): React.ReactElement {
+  // Home's one site prompt asks whatever the forecast and plan have answered so far (EUX-001).
+  if (askSite || summary.state === 'no-site') {
     return (
       <section aria-label="Tonight" className="rounded-lg border border-astro-border bg-astro-surface p-5">
-        <Skeleton className="h-7 w-56" />
-        <Skeleton className="mt-3 h-4 w-80" />
-      </section>
-    )
-  }
-  if (summary.state === 'no-site') {
-    return (
-      <section aria-label="Tonight" className="rounded-lg border border-astro-border bg-astro-surface p-5">
-        <h2 className="text-2xl font-semibold text-astro-text">{summary.headline}</h2>
+        <h2 className="text-2xl font-semibold text-astro-text">{NO_SITE_HEADLINE}</h2>
         <p className="mt-1 text-sm text-astro-muted">
           The dark window, the moon, the forecast and what to shoot are worked out from where your scopes stand.{' '}
           <Link to={settingsLink('location')} className="text-astro-accent hover:underline">More in Your site</Link>
         </p>
         {/* Home's one site prompt when Get set up is hidden (EUX-001). */}
         {onSiteSaved && <SiteQuickForm onSaved={onSiteSaved} />}
+      </section>
+    )
+  }
+  if (loading && summary.state === 'unknown') {
+    return (
+      <section aria-label="Tonight" className="rounded-lg border border-astro-border bg-astro-surface p-5">
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="mt-3 h-4 w-80" />
       </section>
     )
   }

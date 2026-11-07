@@ -25,6 +25,14 @@ const PRIORITY_DOT: Record<Recommendation['priority'], string> = { high: 'bg-ast
 /** How often Home re-reads its suggestions, so a queued stack's line follows the job. */
 const REFRESH_MS = 15_000
 
+/** Reads one answer worked out for the site, and commits it only if no newer site was saved since (EUX-001). */
+function forSite<T>(latest: React.MutableRefObject<number>, channel: string, set: (v: T | typeof FAILED) => void): Promise<void> {
+  const request = latest.current
+  return invoke<T>(channel)
+    .then(v => { if (request === latest.current) set(v) })
+    .catch(() => { if (request === latest.current) set(FAILED) })
+}
+
 /**
  * Home (specs/017-unified-ux, UX-006; led by Tonight since specs/041-look-and-feel V3): tonight's
  * sky, dark window, moon and best targets; what to shoot tonight and what is ready to process; the
@@ -58,20 +66,12 @@ export function Dashboard(): React.ReactElement {
     invoke<CockpitOverview>('cockpit:overview')
       .then(setCockpit)
       .catch(() => setCockpit(FAILED))
-  const loadPlan = (): Promise<void> =>
-    invoke<ForwardPlanView>('planning:forward')
-      .then(setPlan)
-      .catch(() => setPlan(FAILED))
-
-  const loadSkies = (): Promise<void> =>
-    invoke<ClearSkiesView>('weather:outlook')
-      .then(setSkies)
-      .catch(() => setSkies(FAILED))
-
-  const loadInsight = (): Promise<void> =>
-    invoke<SkyInsightView>('sky:insight')
-      .then(setInsight)
-      .catch(() => setInsight(FAILED))
+  // Answers worked out for the site commit only for the newest site, so one asked for before a
+  // site was saved never hides the cards after it (EUX-001).
+  const siteRequest = useRef(0)
+  const loadPlan = (): Promise<void> => forSite<ForwardPlanView>(siteRequest, 'planning:forward', setPlan)
+  const loadSkies = (): Promise<void> => forSite<ClearSkiesView>(siteRequest, 'weather:outlook', setSkies)
+  const loadInsight = (): Promise<void> => forSite<SkyInsightView>(siteRequest, 'sky:insight', setInsight)
 
   useEffect(() => {
     // The forecast asks services on the network, so it loads on its own like the plan.
@@ -151,6 +151,7 @@ export function Dashboard(): React.ReactElement {
 
   // A site set from Home: everything worked out from it is read again.
   const siteSaved = (): void => {
+    siteRequest.current++
     setPlan(null)
     setSkies(null)
     setInsight(null)
@@ -186,7 +187,7 @@ export function Dashboard(): React.ReactElement {
         <SetupCard onShown={setSetupShown} onSiteSaved={siteSaved} />
 
         {(show('tonight') || show('site-prompt')) && (
-          <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} onSiteSaved={siteSaved} />
+          <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} askSite={show('site-prompt')} onSiteSaved={siteSaved} />
         )}
 
         {!show('sky') ? null : insight === null ? (

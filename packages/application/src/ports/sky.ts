@@ -28,6 +28,11 @@ export interface PlanningSettings {
   hasNarrowbandFilter(): Promise<boolean>
 }
 
+/** Where the site is saved: latitude and longitude together or not at all (specs/046-everyday-ux, EUX-001). */
+export interface SiteWriter {
+  saveLocation(latitudeDeg: number, longitudeDeg: number): Promise<void>
+}
+
 export interface TargetPosition {
   targetId: string
   raHours: number

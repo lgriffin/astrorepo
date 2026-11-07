@@ -28,6 +28,6 @@ into two fields.
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| EUX-001 | State | While no site is set, Home shall ask for it in one place, Get set up or else one Tonight prompt, with a field to set it there, and leave out Tonight, Tonight's sky, Shoot tonight, Clear skies and Coming nights. |
+| EUX-001 | State | While no site is set, Home shall ask for it in one place, Get set up or else one Tonight prompt, with a field to set it there that saves latitude and longitude together, and leave out Tonight, Tonight's sky, Shoot tonight, Clear skies and Coming nights. |
 | EUX-002 | Event | When coordinates are pasted as a pair, a map link, with hemisphere letters, or in degrees, minutes and seconds, the system shall fill latitude and longitude from them, south and west negative. |
-| EUX-003 | Unwanted | If pasted coordinates cannot be read or lie outside -90 to 90 and -180 to 180, then the system shall say what it expects and change neither latitude nor longitude. |
+| EUX-003 | Unwanted | If pasted coordinates cannot be read whole (a stray sign or mark, or a sign that disagrees with its hemisphere letter) or lie outside -90 to 90 and -180 to 180, then the system shall say what it expects and change neither latitude nor longitude. |

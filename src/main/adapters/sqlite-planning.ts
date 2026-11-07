@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3'
-import type { PlanningSettings, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
+import type { PlanningSettings, SiteWriter, SkyQualitySettings, TargetPosition, TargetPositions } from '@astro/application'
 import { SKY_QUALITY_KEYS, isValidSite, type Site } from '@astro/domain'
 import { settingReader } from './shared/app-settings'
 
@@ -7,8 +7,8 @@ import { settingReader } from './shared/app-settings'
 export const SITE_KEYS = { latitude: 'observer_latitude', longitude: 'observer_longitude', elevation: 'observer_elevation' } as const
 export const NARROWBAND_KEY = 'has_narrowband_filter'
 
-/** PlanningSettings over the app_settings table. */
-export class SqlitePlanningSettings implements PlanningSettings {
+/** PlanningSettings over the app_settings table; it saves the site too, both coordinates in one transaction. */
+export class SqlitePlanningSettings implements PlanningSettings, SiteWriter {
   constructor(private readonly db: Database.Database) {}
 
   private read(key: string): string | null {
@@ -22,6 +22,14 @@ export class SqlitePlanningSettings implements PlanningSettings {
     if (lat === null || lon === null) return null
     const site = { latitudeDeg: Number(lat), longitudeDeg: Number(lon), elevationM: Number(this.read(SITE_KEYS.elevation) ?? 0) || 0 }
     return isValidSite(site) ? site : null
+  }
+
+  async saveLocation(latitudeDeg: number, longitudeDeg: number): Promise<void> {
+    const write = this.db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)')
+    this.db.transaction(() => {
+      write.run(SITE_KEYS.latitude, String(latitudeDeg))
+      write.run(SITE_KEYS.longitude, String(longitudeDeg))
+    })()
   }
 
   /** Defaults to yes: the Seestar S50's built-in light-pollution filter is dual-band. */

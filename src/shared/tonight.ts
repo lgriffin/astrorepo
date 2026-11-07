@@ -27,6 +27,9 @@ const HEADLINE: Record<NightSkyView['verdict'], string> = {
   'no-darkness': 'No dark window tonight'
 }
 
+/** What Tonight says until the site is set. */
+export const NO_SITE_HEADLINE = 'Set your site to see tonight'
+
 /**
  * Tonight from the two answers Home already reads: the forecast's first night says whether it is
  * clear, the forward plan says when it is dark, how bright the moon is and what to shoot. Either may
@@ -34,7 +37,7 @@ const HEADLINE: Record<NightSkyView['verdict'], string> = {
  */
 export function tonightSummary(skies: ClearSkiesView | null, plan: ForwardPlanView | null, picks = 3): TonightSummary {
   if (skies?.status === 'no-site' || plan?.status === 'no-site') {
-    return { state: 'no-site', headline: 'Set your site to see tonight', verdict: null, dark: null, spell: null, moonPercent: null, moon: null, notes: [], picks: [] }
+    return { state: 'no-site', headline: NO_SITE_HEADLINE, verdict: null, dark: null, spell: null, moonPercent: null, moon: null, notes: [], picks: [] }
   }
   const tonight = plan?.status === 'ok' ? plan.tonight : null
   const planned = plan?.status === 'ok'

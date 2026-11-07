@@ -21,8 +21,8 @@ export function SiteQuickForm({ onSaved }: { onSaved: () => void }): React.React
     }
     setSaving(true)
     try {
-      await invoke('settings:set', { key: 'observer_latitude', value: String(reading.latitude) })
-      await invoke('settings:set', { key: 'observer_longitude', value: String(reading.longitude) })
+      // Both together, so a failed save never leaves half a site behind.
+      await invoke('settings:set-site', { latitude: reading.latitude, longitude: reading.longitude })
       onSaved()
     } catch {
       setProblem('Could not save your site. Try again, or set it in Settings → Your site.')

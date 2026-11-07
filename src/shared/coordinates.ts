@@ -9,27 +9,37 @@ export type CoordinateReading =
 
 const UNREADABLE = 'Paste a latitude and a longitude, such as 53.35, -6.26 or 53°20′59″N 6°15′37″W.'
 
-/** One coordinate in decimal degrees, signed by its own sign or its hemisphere letter. */
+const NUMBER = String.raw`(\d+(?:\.\d+)?)`
+/**
+ * One whole coordinate, anchored at both ends so nothing stray slips through (EUX-003): an optional
+ * hemisphere letter before or after, an optional sign, degrees, then minutes and seconds each set off
+ * by its mark or a space.
+ */
+const COORDINATE = new RegExp(
+  String.raw`^([NSEW])?\s*([+-])?` + NUMBER + String.raw`(?:\s*[°º])?` +
+  String.raw`(?:(?:(?<=[°º])\s*|\s+)` + NUMBER + String.raw`(?:\s*['′])?` +
+  String.raw`(?:(?:(?<=['′])\s*|\s+)` + NUMBER + String.raw`(?:\s*(?:["″]|''|′′))?)?)?` +
+  String.raw`\s*([NSEW])?$`
+)
+
+/** One coordinate in decimal degrees, signed by its own sign or its hemisphere letter, not rounded. */
 function readOne(part: string): { value: number; axis: 'lat' | 'lon' | null } | string {
-  const text = part.trim().toUpperCase()
-  const hemisphere = text.match(/[NSEW]/g)
-  if (hemisphere && hemisphere.length > 1) return UNREADABLE
-  // Anything but numbers, signs, degree, minute and second marks and one hemisphere letter is not a coordinate.
-  if (/[^0-9.+\-\s°º'′"″NSEW]/.test(text)) return UNREADABLE
-  const numbers = text.match(/[+-]?\d+(?:\.\d+)?/g)
-  if (!numbers || numbers.length > 3) return UNREADABLE
-  const [d, m = '0', s = '0'] = numbers
-  const minutes = Number(m)
-  const seconds = Number(s)
-  // Only the degrees may carry a sign or a fraction when minutes follow.
-  if (numbers.length > 1 && (/[+-]/.test(m + s) || /\./.test(d))) return UNREADABLE
+  const match = part.trim().toUpperCase().match(COORDINATE)
+  if (!match) return UNREADABLE
+  const [, before, sign, d, m, s, after] = match
+  if (before && after) return UNREADABLE
+  const letter = before ?? after
+  // Only the last number may carry a fraction: 53.5°20′ is not a coordinate.
+  if ((m !== undefined && d.includes('.')) || (s !== undefined && m.includes('.'))) return UNREADABLE
+  // A sign that disagrees with the letter (-53 N, +6 W), or says it twice (-53 S), is refused.
+  if (letter && (sign === '-' || (sign === '+' && (letter === 'S' || letter === 'W')))) return UNREADABLE
+  const minutes = Number(m ?? 0)
+  const seconds = Number(s ?? 0)
   if (minutes >= 60 || seconds >= 60) return 'Minutes and seconds run from 0 to 59.'
-  const magnitude = Math.abs(Number(d)) + minutes / 60 + seconds / 3600
-  const letter = hemisphere?.[0]
-  const negative = d.startsWith('-') || letter === 'S' || letter === 'W'
-  if (d.startsWith('-') && (letter === 'S' || letter === 'W')) return UNREADABLE
+  const magnitude = Number(d) + minutes / 60 + seconds / 3600
+  const negative = sign === '-' || letter === 'S' || letter === 'W'
   return {
-    value: Number((negative ? -magnitude : magnitude).toFixed(6)),
+    value: negative ? -magnitude : magnitude,
     axis: letter === 'N' || letter === 'S' ? 'lat' : letter === 'E' || letter === 'W' ? 'lon' : null
   }
 }
@@ -61,5 +71,6 @@ export function readCoordinates(pasted: string): CoordinateReading {
   const [lat, lon] = first.axis === 'lon' || second.axis === 'lat' ? [second, first] : [first, second]
   if (Math.abs(lat.value) > 90) return { ok: false, problem: 'Latitude runs from -90 (south) to 90 (north).' }
   if (Math.abs(lon.value) > 180) return { ok: false, problem: 'Longitude runs from -180 (west) to 180 (east).' }
-  return { ok: true, latitude: lat.value, longitude: lon.value }
+  // Rounded only once the range is checked, so 90°0′0.001″ is refused rather than read as 90.
+  return { ok: true, latitude: Number(lat.value.toFixed(6)), longitude: Number(lon.value.toFixed(6)) }
 }

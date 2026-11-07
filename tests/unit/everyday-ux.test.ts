@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
 import { readCoordinates } from '../../src/shared/coordinates'
+import { makeSaveSite } from '@astro/application'
 import { SITE_CARDS, homeCards, siteMissing } from '../../src/shared/home'
 
 describe('Home asks for the site once (spec 046)', () => {
@@ -66,6 +67,25 @@ describe('Pasting coordinates (spec 046)', () => {
     expect(at('Dublin')).toContain('Paste a latitude and a longitude')
   })
 
+  it('[EUX-003] Given a coordinate with stray signs or marks, When pasted, Then it is refused rather than read in part', () => {
+    for (const text of ['53+, 6', '53, 6-', '5-3, 6', '53..1, 6', '53.5°20′N, 6 W', '53°20.5′10″N, 6 W', 'N53 N, 6', '53 x, 6', '1 2 3 4, 5']) {
+      expect(readCoordinates(text).ok, text).toBe(false)
+    }
+  })
+
+  it('[EUX-003] Given a sign that disagrees with its hemisphere letter, When pasted, Then it is refused for latitude and longitude alike', () => {
+    for (const text of ['-53 N, 6 E', '53 N, -6 E', '+53 S, 6 E', '53 N, +6 W', '-53 S, 6 E', '53 N, -6 W']) {
+      expect(readCoordinates(text).ok, text).toBe(false)
+    }
+    expect(at('+53 N, +6 E')).toEqual([53, 6])
+  })
+
+  it('[EUX-003] Given a value a fraction of a second past the range, When pasted, Then it is refused rather than rounded into range', () => {
+    expect(at('90°0′0.001″N, 0')).toContain('Latitude runs from -90')
+    expect(at('0, 180°0′0.001″E')).toContain('Longitude runs from -180')
+    expect(at('90°0′0″N, 180°0′0″W')).toEqual([90, -180])
+  })
+
   it('[EUX-003] Given coordinates out of range, When pasted, Then they are refused naming the range', () => {
     expect(at('91, 10')).toContain('Latitude runs from -90')
     expect(at('45, 181')).toContain('Longitude runs from -180')
@@ -87,5 +107,16 @@ describe('Pasting coordinates (spec 046)', () => {
       const r = readCoordinates(text)
       return !r.ok || (Math.abs(r.latitude) <= 90 && Math.abs(r.longitude) <= 180)
     }))
+  })
+})
+
+describe('Saving the site (spec 046)', () => {
+  it('[EUX-003] Given a site out of range, When it is saved, Then it is refused and nothing is written', async () => {
+    const saved: number[][] = []
+    const saveSite = makeSaveSite({ writer: { saveLocation: async (lat, lon) => { saved.push([lat, lon]) } } })
+    await expect(saveSite(91, 0)).rejects.toThrow('Latitude runs from -90')
+    await expect(saveSite(0, Number.NaN)).rejects.toThrow()
+    await expect(saveSite(53.35, -6.26)).resolves.toEqual({ saved: true })
+    expect(saved).toEqual([[53.35, -6.26]])
   })
 })
