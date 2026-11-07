@@ -7,6 +7,8 @@ import { bindingFolder, fetchElectronSqlite } from '../../scripts/native/electro
 import { electronSqliteBinding, databaseOpenFailure } from '../../src/main/db/native-binding'
 import { diagnose, report, type DoctorFacts } from '../../scripts/doctor/checks'
 import { runGates, summary, QUICK_GATES, TEST_GATE, type Gate } from '../../scripts/verify/gates'
+import { SMOKE_THEMES, smokePages, pageProblems, fixedFindings, baselineOf, shrunkBaseline, type PageResult } from '../../scripts/smoke/rules'
+import { NAV_PLACES, SETTINGS_SECTIONS, settingsLink } from '../../src/shared/navigation'
 
 const repo = path.resolve(__dirname, '../..')
 const versions = { sqliteVersion: '11.10.0', electronVersion: '33.4.11', platform: 'win32', arch: 'x64' }
@@ -266,5 +268,67 @@ describe('CI (spec 045, D2)', () => {
     expect(jobs.windows['runs-on']).toBe('windows-latest')
     expect(runs('windows')).toEqual(['npm ci', 'npm test', 'npm run build'])
     expect(TEST_GATE.command).toContain('--coverage')
+  })
+})
+
+describe('smoke run (spec 045, D3)', () => {
+  const page = (over: Partial<PageResult> = {}): PageResult => ({ route: '/', theme: 'dark', errors: [], textLength: 120, violations: {}, ...over })
+
+  it('[DEV-011] Given the map of places, When the smoke pages are listed, Then every page and every Settings section is opened once, in every theme', () => {
+    const routes = smokePages().map(p => p.route)
+    for (const place of NAV_PLACES) for (const p of place.pages) expect(routes).toContain(p.to)
+    for (const section of SETTINGS_SECTIONS) expect(routes).toContain(settingsLink(section.id))
+    expect(new Set(routes).size).toBe(routes.length)
+    expect([...SMOKE_THEMES]).toEqual(['dark', 'light', 'night'])
+  })
+
+  it('[DEV-011] Given the smoke pages, When their screenshot names are made, Then each is a distinct file-safe name', () => {
+    const names = smokePages().map(p => p.name)
+    for (const name of names) expect(name).toMatch(/^[a-z0-9-]+$/i)
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('[DEV-012] Given a page that logged an error or drew blank, When it is judged, Then the run fails naming the page and theme', () => {
+    expect(pageProblems(page({ route: '/jobs', theme: 'night', errors: ['boom'] }), {})).toEqual(['/jobs (night): boom'])
+    expect(pageProblems(page({ route: '/jobs', textLength: 0 }), {})).toEqual(['/jobs (dark) drew a blank page'])
+    expect(pageProblems(page(), {})).toEqual([])
+  })
+
+  it('[DEV-013] Given an accessibility finding not in the baseline, When it is judged, Then the run fails naming the page and rule, and a known one passes', () => {
+    const result = page({ route: '/poster', violations: { 'select-name': 1, 'color-contrast': 2 } })
+    expect(pageProblems(result, { '/poster': { 'select-name': 1 } })).toEqual(['/poster (dark): new accessibility finding color-contrast'])
+    expect(pageProblems(result, { '/poster': { 'color-contrast': 2, 'select-name': 1 } })).toEqual([])
+  })
+
+  it('[DEV-013] Given a known rule failing on more elements than the baseline holds, When it is judged, Then the run fails rather than hiding the new defect', () => {
+    const result = page({ route: '/messier', violations: { 'color-contrast': 67 } })
+    expect(pageProblems(result, { '/messier': { 'color-contrast': 66 } })).toEqual(['/messier (dark): color-contrast on 67 elements, 66 known'])
+  })
+
+  it('[DEV-013] Given a baseline finding that no longer occurs, When the run ends, Then it is listed as fixed and the cut-down baseline drops it', () => {
+    const results = [page({ route: '/a', violations: { x: 2 } }), page({ route: '/a', theme: 'light', violations: { y: 1, x: 3 } })]
+    const baseline = { '/a': { x: 4, z: 1 }, '/b': { x: 1 } }
+    expect(fixedFindings(results, baseline)).toEqual(['/a x (3 of 4)', '/a z (0 of 1)', '/b x (0 of 1)'])
+    expect(shrunkBaseline(results, baseline)).toEqual({ '/a': { x: 3 } })
+    expect(baselineOf(results)).toEqual({ '/a': { x: 3, y: 1 } })
+  })
+
+  it('[DEV-013] Given a new finding, When the baseline is updated, Then the failure is not written into it, since the baseline only shrinks', () => {
+    const results = [page({ route: '/a', violations: { x: 5, fresh: 1 } }), page({ route: '/new', violations: { y: 1 } })]
+    expect(shrunkBaseline(results, { '/a': { x: 2 } })).toEqual({ '/a': { x: 2 } })
+  })
+
+  it('[DEV-013] Given the committed baseline, When it is read, Then it only names pages the smoke run opens', () => {
+    const baseline = JSON.parse(fs.readFileSync(path.join(repo, 'scripts', 'smoke', 'axe-baseline.json'), 'utf8')) as Record<string, Record<string, number>>
+    const routes = new Set(smokePages().map(p => p.route))
+    for (const route of Object.keys(baseline)) expect(routes.has(route), route).toBe(true)
+  })
+
+  it('[DEV-014] Given the CI workflow, When its smoke job is read, Then it builds, runs the smoke run and keeps the screenshots', () => {
+    const ci = parseYaml(fs.readFileSync(path.join(repo, '.github', 'workflows', 'ci.yml'), 'utf8')) as { jobs: Record<string, { steps: { run?: string; uses?: string; with?: { path?: string } }[] }> }
+    const steps = ci.jobs.smoke.steps
+    const runs = steps.map(s => s.run).filter(Boolean)
+    expect(runs.indexOf('npm run build')).toBeLessThan(runs.indexOf('npm run smoke'))
+    expect(steps.some(s => s.uses?.startsWith('actions/upload-artifact') && s.with?.path === 'reports/smoke/')).toBe(true)
   })
 })

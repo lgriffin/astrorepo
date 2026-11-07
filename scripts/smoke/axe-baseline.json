@@ -1,0 +1,17 @@
+{
+  "/messier": {
+    "color-contrast": 66
+  },
+  "/poster": {
+    "select-name": 1
+  },
+  "/settings?section=appearance": {
+    "color-contrast": 1
+  },
+  "/settings?section=grading": {
+    "color-contrast": 5
+  },
+  "/settings?section=learning": {
+    "color-contrast": 1
+  }
+}

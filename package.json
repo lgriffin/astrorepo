@@ -30,7 +30,8 @@
     "db:seed": "tsx src/main/db/seed/run-seed.ts",
     "db:reset": "tsx src/main/db/seed/reset-and-seed.ts",
     "prepare": "husky",
-    "postinstall": "node scripts/native/electron-sqlite-cli.mjs"
+    "postinstall": "node scripts/native/electron-sqlite-cli.mjs",
+    "smoke": "tsx scripts/smoke/smoke.ts"
   },
   "lint-staged": {
     "{src,packages,scripts,features}/**/*.{ts,tsx}": [
@@ -50,6 +51,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@cucumber/cucumber-expressions": "^20.1.0",
     "@cucumber/gherkin": "^42.0.1",
     "@cucumber/messages": "^34.2.1",
@@ -74,6 +76,7 @@
     "globals": "^17.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.1.0",
+    "playwright": "^1.63.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.0",

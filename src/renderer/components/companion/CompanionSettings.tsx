@@ -43,6 +43,11 @@ export function CompanionSettings(): React.ReactElement {
   const [message, setMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    // Only the desktop app serves companion screens; elsewhere the channels do not exist (PI-017).
+    if (window.astrorepoMode !== undefined && window.astrorepoMode !== 'desktop') {
+      setUnavailable(true)
+      return
+    }
     try {
       const [s, d] = await Promise.all([invoke<HostStatus>('companion:status'), invoke<CompanionView[]>('companion:list')])
       setStatus(s)

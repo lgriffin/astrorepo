@@ -194,6 +194,7 @@ folder, scan your library and point Settings → Tools at Siril.
 | `npm run lint` | Lint `src`, `tests`, `packages` and `scripts` |
 | `npm run typecheck` / `npm run typecheck:tests` | Type-check the app and the tests |
 | `npm run ears` | Fail when an EARS requirement has no test naming it |
+| `npm run smoke` | After `npm run build`: every page in every theme in Chromium, failing on errors, blank pages and new accessibility findings; screenshots in `reports/smoke/` |
 | `npm run test:fuzz` | The fuzz tests with many runs per property (`FUZZ_RUNS`, `FUZZ_SEED` to replay) |
 | `npm run test:mutation:changed` | Mutation-test the core files changed against `origin/main` (fails below 80%) |
 | `npm run test:mutation` | Mutation-test the whole core (over an hour on four cores) |
@@ -350,6 +351,7 @@ tests/               # Unit, integration, contract, architecture and fuzz tests
 - **Plain words.** Interface labels are in sentence case, checked by `tests/unit/wording.test.ts`.
 - **CI.** `npm run verify` and the build run on Ubuntu, and the tests and the build on Windows, once
   per pull request push (a newer push cancels the older run), with the mutation gate on pull requests that touch the core.
+  A smoke job opens every page in every theme in Chromium and keeps the screenshots.
   Long fuzz and whole-core mutation runs go nightly.
 
 ## Adding catalogues

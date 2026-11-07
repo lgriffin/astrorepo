@@ -35,6 +35,27 @@ it (an unquoted `seed: ` in a `run:` value), so every push recorded a failed run
   with coverage) and the build. Windows, where the app runs, runs the tests and the build.
 - **Workflows that parse.** The fuzz workflow is fixed, and a test parses every workflow.
 
+## D3: smoke, accessibility and screenshots
+
+Unit tests never draw a page, so a page that throws, logs an error or draws blank, and an
+accessibility regression, went unseen until someone opened the app.
+
+- **`npm run smoke`** builds nothing itself: after `npm run build` it starts the headless server
+  on a free port with an empty data folder, opens every page of the map of places and every
+  Settings section in Chromium, in each theme (dark, light, night), and saves a screenshot of
+  each to `reports/smoke/<theme>/`, with `reports/smoke/report.json`.
+- **It fails** on an uncaught error or console error, a blank main area, or a serious or critical
+  axe finding (WCAG 2 A and AA) that `scripts/smoke/axe-baseline.json` does not already hold.
+  The baseline holds, per page and rule, how many elements fail at most in any theme, so a new
+  failing element on a page with a known finding still fails. It may only shrink: findings fixed
+  since are listed, `npm run smoke -- --update-baseline` cuts it down to what still fails and never
+  adds to it, and `--accept-findings` writes a run's findings into it on purpose. Slice U4 works it down.
+- **Each page is a fresh load**, its theme and route checked, and judged once its loading
+  placeholders are gone; the blank-page check reads the page's own content, not its heading.
+- **CI** runs it in its own job and keeps the screenshots as an artifact.
+- The first run found Settings → Companion screens asking the served app for desktop-only
+  channels (two 404s); it now says so without asking.
+
 ## Out of scope
 
 - Upgrading Electron (slice D6). The side-by-side build follows whichever Electron is installed.
@@ -53,3 +74,7 @@ it (an unquoted `seed: ` in a `run:` value), so every push recorded a failed run
 | DEV-008 | Event | When a pull request is pushed to, the CI workflow shall run once for it and cancel any run still going for an earlier push to the same pull request. |
 | DEV-009 | Ubiquitous | The CI workflow shall run every gate once through `npm run verify`, and the tests and the build on Windows. |
 | DEV-010 | Unwanted | If a workflow file cannot be parsed, then the tests shall fail and name the file. |
+| DEV-011 | Event | When `npm run smoke` runs after a build, the system shall serve the app with an empty data folder and open every page of the map of places and every Settings section in each theme, saving a screenshot of each. |
+| DEV-012 | Unwanted | If a page throws, logs a console error or draws an empty main area during the smoke run, then the run shall fail naming the page and the theme. |
+| DEV-013 | Unwanted | If a page fails a serious or critical accessibility rule on more elements than the accessibility baseline holds for it, then the smoke run shall fail naming the page and the rule, list baseline findings that no longer occur, and never add the failure to the baseline when updating it. |
+| DEV-014 | Event | When CI runs, the system shall run the smoke run in its own job and keep its screenshots and report as an artifact. |

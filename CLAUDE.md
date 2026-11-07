@@ -31,7 +31,7 @@ scripts/         ears gate, mutation scope, fuzz runner
 
 npm run verify (every gate: lint, typecheck, typecheck:tests, ears, test); npm run doctor (set-up check);
 npm test; npm run lint; npm run typecheck; npm run ears (EARS traceability gate); npm run test:fuzz;
-npm run test:mutation:changed (mutation gate on changed core files, floor 80%)
+npm run test:mutation:changed (mutation gate on changed core files, floor 80%); npm run smoke (after npm run build: every page in every theme, axe baseline)
 
 Architecture: hexagonal core in `packages/` (see docs/architecture/hexagonal.md). New logic goes in
 `packages/domain` / `packages/application`; requirement IDs from `specs/*/requirements.md` go in test names.
@@ -48,6 +48,7 @@ TypeScript 5.x (Node.js 22 LTS): Follow standard conventions
 
 ## Recent Changes
 
+- 045-developer-experience D3 (2026-11-07): npm run smoke (scripts/smoke/smoke.ts, rules in scripts/smoke/rules.ts) serves the built app on a free port with an empty data folder, opens smokePages() (NAV_PLACES pages + Settings sections) in each theme with Playwright, screenshots to reports/smoke/<theme>/, fails on errors, blank main, or serious/critical axe findings not in scripts/smoke/axe-baseline.json (per page and rule, most failing elements in any theme; --update-baseline only shrinks it, --accept-findings writes a run's findings; U4 works it down); a fresh load per page; blank check reads PageContainer's [data-page-body]; CI job smoke. Pages settle by main visible + no Loading pulse (the app polls, never network idle). DEV-011 to DEV-014
 - 046-everyday-ux U2 (2026-11-07): Tonight's sky drawn inside TonightHero (props insight/forecast/onRetryInsight; parts NightStripBar/BortleScale/Meter/FAINT_TONE in components/cockpit/TonightSky.tsx, SkyInsightCard gone, HomeCard 'sky' gone); rules in src/shared/tonight-card.ts: missingForecast (said once in Cloud), showClearSkies (hidden when off or no night forecast), rowLinks (title opens target, button only when elsewhere). EUX-004 to EUX-006
 - 045-developer-experience D2 (2026-11-07): ci.yml runs on pull_request and push to main only, concurrency cancels superseded PR runs; job verify (ubuntu: npm run verify + build) and windows (npm test + build); fuzz.yml had invalid YAML (never ran), fixed; tests/unit/developer-experience.test.ts parses every workflow with `yaml` (devDependency). DEV-008 to DEV-010
 - 046-everyday-ux U1 (2026-11-07): until the site is set Home asks once (Get set up, else TonightHero's no-site prompt) and leaves out tonight/sky/shoot/clear-skies/coming-nights (rules homeCards/siteMissing in src/shared/home.ts); site set by pasting coordinates (readCoordinates in src/shared/coordinates.ts: pair, map link @lat,lon, N/S/E/W, DMS) in components/cockpit/SiteQuickForm.tsx (saved by settings:set-site: makeSaveSite over the SiteWriter port, SqlitePlanningSettings.saveLocation in one transaction) and Settings → Your site; Dashboard's plan/forecast/insight commit only for the latest siteRequest. EUX- IDs
