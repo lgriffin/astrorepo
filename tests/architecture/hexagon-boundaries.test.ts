@@ -42,7 +42,8 @@ describe('Hexagon boundaries', () => {
 
   it('[HEX-001] Given the domain and application packages, When their code is read, Then none of it uses the clock, randomness or a host global', () => {
     expect(ambientUses([pkg('domain'), pkg('application')].flatMap(d => sourceFiles(d)))).toEqual([])
-  })
+    // It type-checks the whole core: half a second alone, over 5 s beside every other test on a CI runner.
+  }, 30_000)
 
   it('[HEX-002] Given the renderer and preload, When their imports are read, Then they reach the main process only through the bridge and shared types', () => {
     const renderer = violations([dir('src', 'renderer')], (ref, to) => {

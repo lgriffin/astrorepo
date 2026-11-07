@@ -16,6 +16,12 @@ are, sits on a smaller line below that.
 | Insights | Insights | See totals, catalogue progress, and seeing, filter and activity trends. |
 | Settings | Settings | Your site and equipment, folders, tools, run window and appearance, one section at a time (see [Settings](#settings)). |
 
+Home comes up with the app, and each other page is fetched the first time you need it. The places
+in the sidebar are fetched in the background once Home has settled, and a place you point at or
+highlight in Go to starts loading before you click, so a first visit opens at once. A page opened
+any other way shows a loading line for a moment; if it cannot be loaded (after an update, or on a
+companion screen that lost the PC) it says so, with **Reload**.
+
 ## Go to (Ctrl+K)
 
 Press **Ctrl+K** (Cmd+K on a Mac), or choose **Go to** at the top of the sidebar, then type part of

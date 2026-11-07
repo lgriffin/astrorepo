@@ -6,6 +6,7 @@ import type { TargetSummary } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { ACTION_ICON, NAV_ICONS } from './nav-icons'
 import { useLearning } from '../../contexts/LearningContext'
+import { preloadPage } from '../../routes'
 
 const ENTRIES = paletteEntries()
 /** Targets asked of the index per query, and the most shown. */
@@ -70,6 +71,11 @@ export function CommandPalette({ onClose }: { onClose: () => void }): React.Reac
     return matchEntries([...ENTRIES, ...concepts, ...matchEntries(targets, query, TARGETS_SHOWN)], query, 14)
   }, [query, found, concepts])
   const active = Math.min(index, Math.max(0, shown.length - 1))
+  // The highlighted entry's page starts loading before Enter is pressed (EUX-018).
+  const activeTo = shown[active]?.to
+  useEffect(() => {
+    if (activeTo) preloadPage(activeTo)
+  }, [activeTo])
 
   const open = (entry: PaletteEntry): void => {
     went.current = true

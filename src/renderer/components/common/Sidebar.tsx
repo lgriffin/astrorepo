@@ -7,6 +7,7 @@ import type { JobsView } from '@shared/types'
 import { invoke } from '../../hooks/useIPC'
 import { PLACE_ICONS } from './nav-icons'
 import { Logo, LogoMark } from '../atlas/Logo'
+import { preloadPage } from '../../routes'
 
 /** The job runner's state, kept in view on every page so a queued run is never out of sight. */
 function JobsFooter({ rail }: { rail: boolean }): React.ReactElement | null {
@@ -119,6 +120,9 @@ export function Sidebar({ onSearch, onShortcuts }: { onSearch: () => void; onSho
             <NavLink
               key={place.id}
               to={place.pages[0].to}
+              // Its page starts loading as soon as it is pointed at or reached with Tab (EUX-018).
+              onMouseEnter={() => preloadPage(place.pages[0].to)}
+              onFocus={() => preloadPage(place.pages[0].to)}
               title={rail ? place.label : undefined}
               aria-label={rail ? place.label : undefined}
               aria-current={active ? 'page' : undefined}
