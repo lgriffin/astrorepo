@@ -71,10 +71,10 @@ describe('Tonight on Home (specs/041-look-and-feel V3)', () => {
     expect(tonightSummary(null, null).state).toBe('unknown')
   })
 
-  it('[LF-016] Given no forecast for tonight yet, When tonight is summed up, Then the headline is just Tonight and a note says the sky is not judged', () => {
+  it('[LF-016, EUX-005] Given no forecast for tonight yet, When tonight is summed up, Then the headline is just Tonight and the notes leave the missing forecast to the card\'s Cloud', () => {
     const s = tonightSummary(skies(night({ verdict: 'no-forecast', headline: 'No forecast yet' })), plan())
     expect(s.headline).toBe('Tonight')
-    expect(s.notes).toContain('There is no forecast for tonight yet, so the sky is not judged.')
+    expect(s.notes.join(' ')).not.toMatch(/forecast/i)
     expect(s.picks).toHaveLength(3)
   })
 

@@ -20,15 +20,15 @@ function change(minutes: number | null): string | null {
 type CloudView = Extract<SkyInsightView, { status: 'ok' }>['cloud']
 
 function cloud(c: CloudInsight, darkHours: number | null): CloudView {
-  if (c.state === 'off') return { state: 'off', headline: 'Forecast off', cloudPct: null, detail: 'Choose a forecast in Settings → Weather.', dew: false }
-  if (c.state === 'unavailable') return { state: 'unavailable', headline: 'Forecast unavailable', cloudPct: null, detail: 'The forecast could not be read just now.', dew: false }
+  if (c.state === 'off') return { state: 'off', headline: 'Forecast off', verdict: null, cloudPct: null, detail: 'Choose a forecast in Settings → Weather.', dew: false }
+  if (c.state === 'unavailable') return { state: 'unavailable', headline: 'Forecast unavailable', verdict: null, cloudPct: null, detail: 'The forecast could not be read just now.', dew: false }
   const detail =
     c.clearHours !== null && darkHours
       ? `${hoursText(c.clearHours)} clear of ${hoursText(darkHours)} dark`
       : c.verdict === 'no-forecast'
         ? 'The forecast does not reach tonight’s dark yet.'
         : 'From your weather service’s cloud figure.'
-  return { state: 'forecast', headline: c.verdict === 'clear' ? 'Clear' : HEADLINES[c.verdict], cloudPct: c.cloudPct, detail, dew: c.dew }
+  return { state: 'forecast', headline: c.verdict === 'clear' ? 'Clear' : HEADLINES[c.verdict], verdict: c.verdict, cloudPct: c.cloudPct, detail, dew: c.dew }
 }
 
 function moonUp(upHours: number, darkHours: number): string {

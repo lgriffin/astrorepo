@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PageContainer } from '../components/common/PageContainer'
 import { Card, EmptyState, LinkButton } from '../components/common/Card'
 import { invoke } from '../hooks/useIPC'
@@ -9,7 +9,6 @@ import { ComingNightsCard } from '../components/cockpit/ComingNightsCard'
 import { ClearSkiesCard } from '../components/cockpit/ClearSkiesCard'
 import { SetupCard } from '../components/cockpit/SetupCard'
 import { TonightHero } from '../components/cockpit/TonightHero'
-import { SkyInsightCard } from '../components/cockpit/SkyInsightCard'
 import { Button, Skeleton } from '../components/ui'
 import { useToast } from '../contexts/ToastContext'
 import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView, SkyInsightView } from '@shared/types'
@@ -17,6 +16,7 @@ import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
 import { splitHomeActions, tonightSummary } from '@shared/tonight'
 import { homeCards, siteMissing } from '@shared/home'
+import { missingForecast, rowLinks, showClearSkies, skyForNight } from '@shared/tonight-card'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
@@ -105,7 +105,8 @@ export function Dashboard(): React.ReactElement {
   const { nextActions, otherChecks } = splitRecommendations(Array.isArray(recommendations) ? recommendations : [])
 
   const recommendationRow = (rec: Recommendation) => {
-    const to = rec.actionTo ?? (rec.targetId ? `/targets/${rec.targetId}` : null)
+    // The title opens the target; a button only for somewhere else to go (EUX-006).
+    const { titleTo, button } = rowLinks(rec)
     return (
       <li key={rec.id} className="flex items-start gap-3 py-3">
         <span
@@ -115,14 +116,16 @@ export function Dashboard(): React.ReactElement {
           className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[rec.priority]}`}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-astro-text font-medium">{rec.title}</p>
+          <p className="text-sm text-astro-text font-medium">
+            {titleTo ? <Link to={titleTo} className="hover:text-astro-accent hover:underline">{rec.title}</Link> : rec.title}
+          </p>
           {rec.description && <p className="text-xs text-astro-muted mt-0.5">{rec.description}</p>}
           {rec.queued && <p className="text-xs text-astro-accent mt-0.5">{rec.queued}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {rec.actionLabel && to && (
-            <Button size="sm" onClick={() => navigate(to)}>
-              {rec.actionLabel}
+          {button && (
+            <Button size="sm" onClick={() => navigate(button.to)}>
+              {button.label}
             </Button>
           )}
           {rec.dismissible && !rec.queued && (
@@ -177,6 +180,10 @@ export function Dashboard(): React.ReactElement {
       }
     : null
 
+  // Tonight's sky only for the plan's night, so the card never mixes two nights.
+  const sky = insight === FAILED ? FAILED : skyForNight(insight, planNight)
+  const tonightSky = sky === FAILED ? ('failed' as const) : sky === 'other-night' ? sky : sky?.status === 'ok' ? sky : null
+
   return (
     <PageContainer
       actions={
@@ -187,17 +194,16 @@ export function Dashboard(): React.ReactElement {
         <SetupCard onShown={setSetupShown} onSiteSaved={siteSaved} />
 
         {(show('tonight') || show('site-prompt')) && (
-          <TonightHero summary={summary} loading={skies === null || plan === null} site={tonightSite} askSite={show('site-prompt')} onSiteSaved={siteSaved} />
-        )}
-
-        {!show('sky') ? null : insight === null ? (
-          <Card title="Tonight’s sky"><Skeleton className="h-24 w-full" label="Working out tonight’s darkness, moon and cloud" /></Card>
-        ) : insight === FAILED ? (
-          <Card title="Tonight’s sky">
-            <EmptyState action={<LinkButton onClick={() => { setInsight(null); void loadInsight() }}>Try again</LinkButton>}>Could not work out tonight’s sky.</EmptyState>
-          </Card>
-        ) : (
-          <SkyInsightCard insight={insight} />
+          <TonightHero
+            summary={summary}
+            loading={skies === null || plan === null}
+            site={tonightSite}
+            askSite={show('site-prompt')}
+            onSiteSaved={siteSaved}
+            insight={tonightSky}
+            forecast={missingForecast(skies === FAILED ? null : skies, insight === FAILED ? null : insight, planNight)}
+            onRetryInsight={() => { setInsight(null); void loadInsight() }}
+          />
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -215,7 +221,8 @@ export function Dashboard(): React.ReactElement {
           )}
         </div>
 
-        {!show('clear-skies') ? null : skies === null ? (
+        {/* Clear skies only when it adds to Tonight: not with the forecast off or no night forecast (EUX-005). */}
+        {!show('clear-skies') || !showClearSkies(skies) ? null : skies === null ? (
           <Card title="Clear skies"><Skeleton className="h-24 w-full" label="Looking at the forecast for the next three nights" /></Card>
         ) : skies === FAILED ? (
           <Card title="Clear skies">

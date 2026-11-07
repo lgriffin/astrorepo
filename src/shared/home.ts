@@ -1,13 +1,13 @@
 /**
  * Which cards Home shows (specs/046-everyday-ux, EUX-001). Until the site is set, the cards worked
- * out from it (Tonight, Tonight's sky, Shoot tonight, Clear skies, Coming nights) would each say
+ * out from it (Tonight with its sky, Shoot tonight, Clear skies, Coming nights) would each say
  * "set your site"; Home leaves them out and asks once, in Get set up, or in a prompt of its own
  * when the checklist is hidden.
  */
-export type HomeCard = 'site-prompt' | 'tonight' | 'sky' | 'shoot' | 'clear-skies' | 'coming-nights'
+export type HomeCard = 'site-prompt' | 'tonight' | 'shoot' | 'clear-skies' | 'coming-nights'
 
 /** The parts of Home that need a site. */
-export const SITE_CARDS: HomeCard[] = ['tonight', 'sky', 'shoot', 'clear-skies', 'coming-nights']
+export const SITE_CARDS: HomeCard[] = ['tonight', 'shoot', 'clear-skies', 'coming-nights']
 
 /**
  * Whether the site is missing, from the answers Home reads: any one that says no site is enough,

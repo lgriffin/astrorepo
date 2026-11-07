@@ -1168,6 +1168,8 @@ export type SkyInsightView =
         state: 'forecast' | 'off' | 'unavailable'
         /** "Clear", "Clear spells", "Cloudy", "No forecast yet", "Forecast off", "Forecast unavailable". */
         headline: string
+        /** The forecast's verdict for the night, or null with the forecast off or unavailable. */
+        verdict: NightSkyView['verdict'] | null
         cloudPct: number | null
         /** "6 h clear of 9 h 40 min dark", or why there is no figure. */
         detail: string

@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
+import { missingForecast, rowLinks, showClearSkies, skyForNight } from '../../src/shared/tonight-card'
+import type { ClearSkiesView, NightSkyView, SkyInsightView } from '../../src/shared/types'
 import fc from 'fast-check'
 import { readCoordinates } from '../../src/shared/coordinates'
 import { makeSaveSite } from '@astro/application'
@@ -17,10 +21,10 @@ describe('Home asks for the site once (spec 046)', () => {
     expect(homeCards(true, null)).toEqual([])
   })
 
-  it('[EUX-001] Given a site, or answers still loading, When Home is drawn, Then Tonight, Tonight’s sky, Shoot tonight, Clear skies and Coming nights all show', () => {
+  it('[EUX-001] Given a site, or answers still loading, When Home is drawn, Then Tonight (with its sky), Shoot tonight, Clear skies and Coming nights all show', () => {
     expect(homeCards(false, true)).toEqual(SITE_CARDS)
     expect(homeCards(null, null)).toEqual(SITE_CARDS)
-    expect(SITE_CARDS).toEqual(['tonight', 'sky', 'shoot', 'clear-skies', 'coming-nights'])
+    expect(SITE_CARDS).toEqual(['tonight', 'shoot', 'clear-skies', 'coming-nights'])
   })
 
   it('[EUX-001] Given the answers Home reads, When any says no site, Then the site is missing; when one is worked out for a site, it is not', () => {
@@ -118,5 +122,107 @@ describe('Saving the site (spec 046)', () => {
     await expect(saveSite(0, Number.NaN)).rejects.toThrow()
     await expect(saveSite(53.35, -6.26)).resolves.toEqual({ saved: true })
     expect(saved).toEqual([[53.35, -6.26]])
+  })
+})
+
+const repo = path.resolve(__dirname, '../..')
+
+describe('One Tonight card (spec 046, U2)', () => {
+  type Sky = Extract<SkyInsightView, { status: 'ok' }>
+  const insight = (cloud: Partial<Sky['cloud']> = {}): SkyInsightView => ({
+    status: 'ok',
+    night: '2026-11-07',
+    faint: 'good',
+    faintLabel: 'Good',
+    summary: 'A good night for faint targets.',
+    dark: null,
+    moon: null,
+    cloud: { state: 'forecast', headline: 'Clear', verdict: 'clear', cloudPct: 10, detail: '8 h clear of 9 h dark', dew: false, ...cloud },
+    sky: null
+  })
+  const night = (verdict: NightSkyView['verdict']): NightSkyView => ({
+    night: '2026-11-07', label: 'Tonight', verdict, headline: '', darkStart: null, darkEnd: null, spellStart: null, spellEnd: null, figures: [], notes: [], warnings: []
+  })
+  const outlook = (verdicts: NightSkyView['verdict'][], sources: { name: string; problem: string | null }[] = [{ name: 'Open-Meteo', problem: null }]): ClearSkiesView =>
+    ({ status: 'ok', nights: verdicts.map(night), sources, credit: null })
+
+  it('[EUX-004] Given Home, When it is drawn, Then tonight’s sky is part of the Tonight card and has no card of its own', () => {
+    const home = fs.readFileSync(path.join(repo, 'src/renderer/pages/Dashboard.tsx'), 'utf8')
+    const hero = fs.readFileSync(path.join(repo, 'src/renderer/components/cockpit/TonightHero.tsx'), 'utf8')
+    expect(home).not.toMatch(/title="Tonight’s sky"|SkyInsightCard/)
+    expect(home).toContain('insight={tonightSky}')
+    expect(home).toContain('skyForNight(insight, planNight)')
+    for (const part of ['<NightStripBar', '<BortleScale', '<CloudFact', 'label="Your sky"', 'FAINT_TONE[sky.faint]']) expect(hero, part).toContain(part)
+    // Dark and Moon are each drawn once, the sky's figures under the plan's.
+    expect(hero.match(/label="Moon"/g)).toHaveLength(1)
+    expect(hero.match(/label=\{DARK_LABEL/g)).toHaveLength(1)
+  })
+
+  it('[EUX-005] Given the forecast off or unreadable, When Tonight is drawn, Then the Cloud says so once with the reason and where to fix it', () => {
+    expect(missingForecast({ status: 'off', message: 'off' }, null)).toEqual({ headline: 'Forecast off', reason: expect.stringContaining('Settings → Weather'), settings: true })
+    expect(missingForecast(null, insight({ state: 'off', verdict: null, cloudPct: null }))?.headline).toBe('Forecast off')
+    const failing = outlook(['no-forecast'], [{ name: 'Open-Meteo', problem: 'timed out' }])
+    expect(missingForecast(failing, null)).toEqual({ headline: 'Forecast unavailable', reason: 'Open-Meteo could not be used: timed out', settings: true })
+    expect(missingForecast(null, insight({ state: 'unavailable', verdict: null, cloudPct: null }))?.reason).toBe('The forecast could not be read just now.')
+  })
+
+  it('[EUX-005] Given no forecast reaching tonight yet, When Tonight is drawn, Then the Cloud says why; with a forecast, nothing is missing', () => {
+    expect(missingForecast(outlook(['no-forecast']), insight({ cloudPct: null, headline: 'No forecast yet', verdict: 'no-forecast', detail: 'The forecast stops at 23:00.' }))).toEqual({ headline: 'No forecast yet', reason: 'The forecast stops at 23:00.', settings: false })
+    expect(missingForecast(outlook(['no-forecast']), null)?.headline).toBe('No forecast yet')
+    expect(missingForecast(outlook(['clear']), insight())).toBeNull()
+    expect(missingForecast(null, null)).toBeNull()
+  })
+
+  it('[EUX-005] Given a night with no dark window, When Tonight is drawn, Then the Cloud is not called a missing forecast', () => {
+    const darkless = insight({ cloudPct: null, headline: 'No dark window', verdict: 'no-darkness', detail: 'From your weather service’s cloud figure.' })
+    expect(missingForecast(outlook(['no-darkness']), darkless)).toBeNull()
+    expect(missingForecast(outlook(['no-darkness']), null)).toBeNull()
+  })
+
+  it('[EUX-005] Given one source failing and another with nothing for tonight, When Clear skies is left out, Then Tonight names the failed source once', () => {
+    const partly = outlook(['no-forecast', 'no-forecast'], [{ name: 'MET Norway', problem: 'timed out' }, { name: 'Open-Meteo', problem: null }])
+    expect(showClearSkies(partly)).toBe(false)
+    expect(missingForecast(partly, null)).toEqual({
+      headline: 'No forecast yet',
+      reason: 'The forecast does not reach tonight’s dark hours yet. MET Norway could not be used: timed out',
+      settings: true
+    })
+    // With Clear skies on show, the card names the failure and Tonight does not repeat it.
+    const shown = outlook(['no-forecast', 'clear'], [{ name: 'MET Norway', problem: 'timed out' }, { name: 'Open-Meteo', problem: null }])
+    expect(missingForecast(shown, null)?.reason).toBe('The forecast does not reach tonight’s dark hours yet.')
+  })
+
+  it('[EUX-004] Given the plan and the sky worked out for adjacent nights, When Tonight is drawn, Then the other night’s sky is left out and the forecast read is the plan’s night', () => {
+    const sky = insight()
+    expect(skyForNight(sky, '2026-11-07')).toBe(sky)
+    expect(skyForNight(sky, '2026-11-08')).toBe('other-night')
+    expect(skyForNight(sky, null)).toBe(sky)
+    expect(skyForNight(null, '2026-11-08')).toBeNull()
+    // The forecast for the plan's night is read, not the first night listed.
+    const two: ClearSkiesView = { status: 'ok', nights: [night('clear'), { ...night('no-forecast'), night: '2026-11-08' }], sources: [{ name: 'Open-Meteo', problem: null }], credit: null }
+    expect(missingForecast(two, null, '2026-11-08')?.headline).toBe('No forecast yet')
+    expect(missingForecast(two, null, '2026-11-07')).toBeNull()
+    // The other night's cloud is not used either.
+    expect(missingForecast(two, insight({ cloudPct: null, verdict: 'no-forecast' }), '2026-11-08')?.reason).toBe('The forecast does not reach tonight’s dark hours yet.')
+  })
+
+  it('[EUX-005] Given the forecast off or no night forecast, When Home is drawn, Then Clear skies is left out rather than say it again', () => {
+    expect(showClearSkies({ status: 'off', message: 'off' })).toBe(false)
+    expect(showClearSkies(outlook(['no-forecast', 'no-forecast', 'no-forecast']))).toBe(false)
+    expect(showClearSkies(outlook(['no-forecast', 'clear', 'cloudy']))).toBe(true)
+    expect(showClearSkies(null)).toBe(true)
+    expect(showClearSkies('failed')).toBe(true)
+  })
+
+  it('[EUX-006] Given rows of Home’s lists, When each is drawn, Then its title opens its target and a button stays only for somewhere else to go', () => {
+    expect(rowLinks({ targetId: 't-m31', actionLabel: 'Open target' })).toEqual({ titleTo: '/targets/t-m31', button: null })
+    expect(rowLinks({ targetId: 't-m31', actionLabel: 'Open the stacking plan', actionTo: '/targets/t-m31?tab=process' })).toEqual({
+      titleTo: '/targets/t-m31',
+      button: { label: 'Open the stacking plan', to: '/targets/t-m31?tab=process' }
+    })
+    expect(rowLinks({ targetId: 't-m31', actionLabel: 'Advance stage' }).button).toEqual({ label: 'Advance stage', to: '/targets/t-m31' })
+    expect(rowLinks({ targetId: null, actionLabel: null })).toEqual({ titleTo: null, button: null })
+    const home = fs.readFileSync(path.join(repo, 'src/renderer/pages/Dashboard.tsx'), 'utf8')
+    expect(home).toContain('const { titleTo, button } = rowLinks(rec)')
   })
 })
