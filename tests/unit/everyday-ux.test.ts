@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
-import { missingForecast, rowLinks, showClearSkies } from '../../src/shared/tonight-card'
+import { missingForecast, rowLinks, showClearSkies, skyForNight } from '../../src/shared/tonight-card'
 import type { ClearSkiesView, NightSkyView, SkyInsightView } from '../../src/shared/types'
 import fc from 'fast-check'
 import { readCoordinates } from '../../src/shared/coordinates'
@@ -137,7 +137,7 @@ describe('One Tonight card (spec 046, U2)', () => {
     summary: 'A good night for faint targets.',
     dark: null,
     moon: null,
-    cloud: { state: 'forecast', headline: 'Clear', cloudPct: 10, detail: '8 h clear of 9 h dark', dew: false, ...cloud },
+    cloud: { state: 'forecast', headline: 'Clear', verdict: 'clear', cloudPct: 10, detail: '8 h clear of 9 h dark', dew: false, ...cloud },
     sky: null
   })
   const night = (verdict: NightSkyView['verdict']): NightSkyView => ({
@@ -150,7 +150,8 @@ describe('One Tonight card (spec 046, U2)', () => {
     const home = fs.readFileSync(path.join(repo, 'src/renderer/pages/Dashboard.tsx'), 'utf8')
     const hero = fs.readFileSync(path.join(repo, 'src/renderer/components/cockpit/TonightHero.tsx'), 'utf8')
     expect(home).not.toMatch(/title="Tonight’s sky"|SkyInsightCard/)
-    expect(home).toContain('insight={insight === FAILED')
+    expect(home).toContain('insight={tonightSky}')
+    expect(home).toContain('skyForNight(insight, planNight)')
     for (const part of ['<NightStripBar', '<BortleScale', '<CloudFact', 'label="Your sky"', 'FAINT_TONE[sky.faint]']) expect(hero, part).toContain(part)
     // Dark and Moon are each drawn once, the sky's figures under the plan's.
     expect(hero.match(/label="Moon"/g)).toHaveLength(1)
@@ -159,17 +160,50 @@ describe('One Tonight card (spec 046, U2)', () => {
 
   it('[EUX-005] Given the forecast off or unreadable, When Tonight is drawn, Then the Cloud says so once with the reason and where to fix it', () => {
     expect(missingForecast({ status: 'off', message: 'off' }, null)).toEqual({ headline: 'Forecast off', reason: expect.stringContaining('Settings → Weather'), settings: true })
-    expect(missingForecast(null, insight({ state: 'off', cloudPct: null }))?.headline).toBe('Forecast off')
+    expect(missingForecast(null, insight({ state: 'off', verdict: null, cloudPct: null }))?.headline).toBe('Forecast off')
     const failing = outlook(['no-forecast'], [{ name: 'Open-Meteo', problem: 'timed out' }])
     expect(missingForecast(failing, null)).toEqual({ headline: 'Forecast unavailable', reason: 'Open-Meteo could not be used: timed out', settings: true })
-    expect(missingForecast(null, insight({ state: 'unavailable', cloudPct: null }))?.reason).toBe('The forecast could not be read just now.')
+    expect(missingForecast(null, insight({ state: 'unavailable', verdict: null, cloudPct: null }))?.reason).toBe('The forecast could not be read just now.')
   })
 
   it('[EUX-005] Given no forecast reaching tonight yet, When Tonight is drawn, Then the Cloud says why; with a forecast, nothing is missing', () => {
-    expect(missingForecast(outlook(['no-forecast']), insight({ cloudPct: null, headline: 'No forecast yet', detail: 'The forecast stops at 23:00.' }))).toEqual({ headline: 'No forecast yet', reason: 'The forecast stops at 23:00.', settings: false })
+    expect(missingForecast(outlook(['no-forecast']), insight({ cloudPct: null, headline: 'No forecast yet', verdict: 'no-forecast', detail: 'The forecast stops at 23:00.' }))).toEqual({ headline: 'No forecast yet', reason: 'The forecast stops at 23:00.', settings: false })
     expect(missingForecast(outlook(['no-forecast']), null)?.headline).toBe('No forecast yet')
     expect(missingForecast(outlook(['clear']), insight())).toBeNull()
     expect(missingForecast(null, null)).toBeNull()
+  })
+
+  it('[EUX-005] Given a night with no dark window, When Tonight is drawn, Then the Cloud is not called a missing forecast', () => {
+    const darkless = insight({ cloudPct: null, headline: 'No dark window', verdict: 'no-darkness', detail: 'From your weather service’s cloud figure.' })
+    expect(missingForecast(outlook(['no-darkness']), darkless)).toBeNull()
+    expect(missingForecast(outlook(['no-darkness']), null)).toBeNull()
+  })
+
+  it('[EUX-005] Given one source failing and another with nothing for tonight, When Clear skies is left out, Then Tonight names the failed source once', () => {
+    const partly = outlook(['no-forecast', 'no-forecast'], [{ name: 'MET Norway', problem: 'timed out' }, { name: 'Open-Meteo', problem: null }])
+    expect(showClearSkies(partly)).toBe(false)
+    expect(missingForecast(partly, null)).toEqual({
+      headline: 'No forecast yet',
+      reason: 'The forecast does not reach tonight’s dark hours yet. MET Norway could not be used: timed out',
+      settings: true
+    })
+    // With Clear skies on show, the card names the failure and Tonight does not repeat it.
+    const shown = outlook(['no-forecast', 'clear'], [{ name: 'MET Norway', problem: 'timed out' }, { name: 'Open-Meteo', problem: null }])
+    expect(missingForecast(shown, null)?.reason).toBe('The forecast does not reach tonight’s dark hours yet.')
+  })
+
+  it('[EUX-004] Given the plan and the sky worked out for adjacent nights, When Tonight is drawn, Then the other night’s sky is left out and the forecast read is the plan’s night', () => {
+    const sky = insight()
+    expect(skyForNight(sky, '2026-11-07')).toBe(sky)
+    expect(skyForNight(sky, '2026-11-08')).toBe('other-night')
+    expect(skyForNight(sky, null)).toBe(sky)
+    expect(skyForNight(null, '2026-11-08')).toBeNull()
+    // The forecast for the plan's night is read, not the first night listed.
+    const two: ClearSkiesView = { status: 'ok', nights: [night('clear'), { ...night('no-forecast'), night: '2026-11-08' }], sources: [{ name: 'Open-Meteo', problem: null }], credit: null }
+    expect(missingForecast(two, null, '2026-11-08')?.headline).toBe('No forecast yet')
+    expect(missingForecast(two, null, '2026-11-07')).toBeNull()
+    // The other night's cloud is not used either.
+    expect(missingForecast(two, insight({ cloudPct: null, verdict: 'no-forecast' }), '2026-11-08')?.reason).toBe('The forecast does not reach tonight’s dark hours yet.')
   })
 
   it('[EUX-005] Given the forecast off or no night forecast, When Home is drawn, Then Clear skies is left out rather than say it again', () => {

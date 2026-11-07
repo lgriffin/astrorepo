@@ -49,8 +49,11 @@ function Fact({ label, concept, children, more }: { label: string; concept?: str
   )
 }
 
-/** Tonight's sky as Home has it: worked out, still loading (null) or failed. */
-export type TonightInsight = Insight | null | 'failed'
+/**
+ * Tonight's sky as Home has it: worked out, still loading (null), failed, or worked out for another
+ * night than the plan's, which is left out rather than mixed in.
+ */
+export type TonightInsight = Insight | null | 'failed' | 'other-night'
 
 /** The cloud, said once: the forecast's figure, or why there is none (EUX-005). */
 function CloudFact({ insight, forecast }: { insight: Insight | null; forecast: MissingForecast | null }): React.ReactElement | null {
@@ -70,7 +73,9 @@ function CloudFact({ insight, forecast }: { insight: Insight | null; forecast: M
     )
   }
   const cloud = insight?.cloud
-  if (!cloud || cloud.cloudPct === null) return null
+  if (!cloud) return null
+  // No figure but a forecast that says why, such as no dark window to judge.
+  if (cloud.cloudPct === null) return <Fact label="Cloud" more={<p>{cloud.detail}</p>}>{cloud.headline}</Fact>
   return (
     <Fact
       label="Cloud"
@@ -136,7 +141,7 @@ export function TonightHero({
     )
   }
   const tone = summary.verdict ? HEADLINE_TONE[summary.verdict] : 'text-astro-text'
-  const sky = insight && insight !== 'failed' ? insight : null
+  const sky = insight && insight !== 'failed' && insight !== 'other-night' ? insight : null
   const dark = summary.dark ?? (sky?.dark ? { start: sky.dark.start, end: sky.dark.end, darkness: sky.dark.darkness } : null)
   const moonPercent = summary.moonPercent ?? sky?.moon?.percent ?? null
   return (

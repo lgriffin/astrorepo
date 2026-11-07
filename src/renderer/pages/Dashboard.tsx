@@ -16,7 +16,7 @@ import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
 import { splitHomeActions, tonightSummary } from '@shared/tonight'
 import { homeCards, siteMissing } from '@shared/home'
-import { missingForecast, rowLinks, showClearSkies } from '@shared/tonight-card'
+import { missingForecast, rowLinks, showClearSkies, skyForNight } from '@shared/tonight-card'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
@@ -180,6 +180,10 @@ export function Dashboard(): React.ReactElement {
       }
     : null
 
+  // Tonight's sky only for the plan's night, so the card never mixes two nights.
+  const sky = insight === FAILED ? FAILED : skyForNight(insight, planNight)
+  const tonightSky = sky === FAILED ? ('failed' as const) : sky === 'other-night' ? sky : sky?.status === 'ok' ? sky : null
+
   return (
     <PageContainer
       actions={
@@ -196,8 +200,8 @@ export function Dashboard(): React.ReactElement {
             site={tonightSite}
             askSite={show('site-prompt')}
             onSiteSaved={siteSaved}
-            insight={insight === FAILED ? 'failed' : insight?.status === 'ok' ? insight : null}
-            forecast={missingForecast(skies === FAILED ? null : skies, insight === FAILED ? null : insight)}
+            insight={tonightSky}
+            forecast={missingForecast(skies === FAILED ? null : skies, insight === FAILED ? null : insight, planNight)}
             onRetryInsight={() => { setInsight(null); void loadInsight() }}
           />
         )}
