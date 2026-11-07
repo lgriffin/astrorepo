@@ -21,9 +21,10 @@ the tests are explained in [docs/testing/README.md](docs/testing/README.md).
    npm run doctor
    ```
 
-   `npm install` fetches prebuilt better-sqlite3 binaries for Node (the tests) and for Electron (the
-   app), so no C++ tools are needed on most machines. `npm run doctor` checks Node, both builds,
-   Electron and the git hooks, and prints the command that fixes each problem it finds.
+   better-sqlite3 ships a prebuilt Node-API binary that both the tests (Node) and the app
+   (Electron) load, so no C++ tools are needed on most machines. `npm run doctor` checks Node, that
+   binary under Node and under Electron, Electron and the git hooks, and prints the command that
+   fixes each problem it finds.
 4. Start the app with `npm run dev`, or over a made-up library with `npm run demo` then
    `npm run dev:demo`.
 

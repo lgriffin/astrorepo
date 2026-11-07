@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron'
 import path from 'path'
 import { initDatabase } from './db/connection'
-import { databaseOpenFailure } from './db/native-binding'
+import { databaseOpenFailure } from './db/open-failure'
 import { dataFolderOverride } from './db/data-folder'
 import { registerHandlers } from './ipc/handlers'
 import { ChannelRouter } from './transport/router'

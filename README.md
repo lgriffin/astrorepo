@@ -160,8 +160,8 @@ documentation and still needs checking against real installs before 1.0.0.
 
 - Windows 10 or 11 (the app is Windows first; it builds on macOS and Linux for development)
 - Node.js 22 LTS and npm (`.nvmrc` names the version; `nvm use` picks it up)
-- Nothing else on most machines: better-sqlite3 comes prebuilt for Node and for Electron. Only if
-  no prebuilt binary matches do you need C++ build tools (Visual Studio Build Tools on Windows,
+- Nothing else on most machines: better-sqlite3 ships prebuilt for Windows, macOS and Linux. Only
+  if no prebuilt binary matches do you need C++ build tools (Visual Studio Build Tools on Windows,
   Xcode Command Line Tools on macOS, `build-essential` on Linux)
 
 ### Install and run
@@ -170,15 +170,14 @@ documentation and still needs checking against real installs before 1.0.0.
 git clone https://github.com/lgriffin/astrorepo.git
 cd astrorepo
 npm install
-npm run doctor   # checks Node, both better-sqlite3 builds, Electron and the git hooks
+npm run doctor   # checks Node, better-sqlite3 under Node and Electron, Electron and the git hooks
 npm run dev
 ```
 
-The app (Electron) and the tests (Node) need different builds of better-sqlite3. `npm install`
-keeps the Node build where npm puts it and fetches one for Electron into
-`node_modules/.cache/astrorepo-native`, which the app uses in development, so you never rebuild
-between `npm test` and `npm run dev`. If that fetch failed (offline, say), `npm run doctor` says so
-and `npm run native:electron` tries again.
+These run the same in PowerShell, Command Prompt or a Unix shell. better-sqlite3 is a Node-API
+module, so the one build npm installs loads in the app (Electron) and in the tests (Node): there is
+nothing to rebuild between `npm test` and `npm run dev`. If it ever will not load, `npm run doctor`
+says so and `npm rebuild better-sqlite3` repairs it.
 
 On first run, follow Get set up on Home: set your site in Settings → Your site, choose your home
 folder, scan your library and point Settings → Tools at Siril.
@@ -289,7 +288,7 @@ AstroRepo is an Electron app with a hexagonal core growing inside its main proce
 
 | Component | Technology |
 |---|---|
-| Desktop shell | Electron 33 |
+| Desktop shell | Electron 45 |
 | UI | React 18, React Router, Tailwind CSS |
 | Language | TypeScript 5.x |
 | Database | better-sqlite3 (WAL), hand-written SQL, one migration source in `src/main/db/migrations.ts` |

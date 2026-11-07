@@ -9,8 +9,8 @@ export interface DoctorFacts {
   /** undefined when the Node build of better-sqlite3 loads, else the error. */
   nodeSqliteError?: string
   electronInstalled: boolean
-  /** 'ok', 'missing' (no Electron build yet) or the error Electron gave loading it. */
-  electronSqlite: 'ok' | 'missing' | { error: string }
+  /** 'ok', or the error Electron gave loading the same better-sqlite3 build the tests use. */
+  electronSqlite: 'ok' | { error: string }
   hooksInstalled: boolean
 }
 
@@ -53,11 +53,11 @@ export function diagnose(f: DoctorFacts): DoctorCheck[] {
   if (f.electronInstalled) {
     const e = f.electronSqlite
     checks.push(e === 'ok'
-      ? { name: 'better-sqlite3 for Electron', ok: true, detail: 'Loads in Electron, so `npm run dev` can open the database' }
+      ? { name: 'better-sqlite3 for Electron', ok: true, detail: 'The same build loads in Electron, so `npm run dev` can open the database' }
       : {
           name: 'better-sqlite3 for Electron', ok: false,
-          detail: e === 'missing' ? 'Not built yet, so `npm run dev` cannot open the database' : `Does not load in Electron: ${firstLine(e.error)}`,
-          fix: '`npm run native:electron`'
+          detail: `Does not load in Electron: ${firstLine(e.error)}`,
+          fix: '`npm rebuild better-sqlite3`'
         })
   }
   checks.push(f.hooksInstalled

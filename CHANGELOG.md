@@ -148,6 +148,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   a cancelled scan stopped.
 
 ### Changed
+- **Electron 45** (spec 045, D7): the app runs on Electron 45 (from 33) and better-sqlite3 13,
+  whose one Node-API build loads in the app and the tests alike, so `npm install` no longer fetches
+  a second build for Electron and `npm run native:electron` is gone.
 - **Hexagon hardening** (spec 027): the architecture check reads the source with the TypeScript
   compiler and covers every layer: the core may not use the clock, randomness or host globals;
   the renderer reaches the main process only through the bridge; adapters never import legacy

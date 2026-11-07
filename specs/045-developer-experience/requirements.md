@@ -3,6 +3,7 @@
 Leigh asked (7 November 2026): "Can you do both a DX and a UX overhaul for the system." The plan
 splits the developer side into slices D1 to D6 (the plan doc is linked from `docs/roadmap.md`).
 This spec holds the IDs of the slices built so far; later slices add theirs when they start.
+D7, the Electron upgrade, followed once Leigh answered the plan doc's question on the version.
 
 An audit on 7 November 2026 found that a fresh clone could not start the app: `npm install`
 builds better-sqlite3 for Node, which the tests need, while Electron embeds a different Node and
@@ -12,10 +13,10 @@ there was no one command to run them all.
 
 ## D1: clone to running
 
-- **Two builds side by side.** The install fetches a better-sqlite3 build for the installed
-  Electron into `node_modules/.cache/astrorepo-native/` (or compiles one when no prebuilt binary
-  matches), and the app opens its database with it under Electron. The Node build the tests use is
-  never touched, so `npm test` and `npm run dev` both work with no rebuild in between.
+- **Two builds side by side** (until D7). The install fetched a better-sqlite3 build for the
+  installed Electron into `node_modules/.cache/astrorepo-native/`, and the app opened its database
+  with it under Electron, so `npm test` and `npm run dev` both worked with no rebuild in between.
+  D7 replaced this with one build that both load.
 - **`npm run doctor`** checks the set-up and prints the command that fixes each problem.
 - **`npm run verify`** runs lint, both type checks and the EARS gate side by side, then the tests,
   and lists what failed.
@@ -118,19 +119,30 @@ same two files. Vitest was a major behind, and nothing proposed dependency updat
   and minor and patch runtime updates) and for the workflows' actions. An Electron major is never
   proposed: it moves the app's runtime and the native build, so it is a planned change.
 
-## Out of scope
+## D7: Electron 45
 
-- Upgrading Electron: the version is Leigh's call (the plan doc asks). The side-by-side build
-  follows whichever Electron is installed, and Dependabot leaves Electron majors alone.
+Leigh had no preference on the version (7 November 2026), so the app moves to the newest stable
+major, Electron 45 (from 33). better-sqlite3 13 is a Node-API module with its prebuilt binaries
+inside the package, and a Node-API binary loads in any Node or Electron, so the side-by-side build
+of D1 is no longer needed:
+
+- **One build.** The app and the tests open their databases with the binary npm installs. The
+  install step, `npm run native:electron` and the Electron build folder are gone.
+- **`npm run doctor`** loads that binary in the installed Electron, and says to run
+  `npm rebuild better-sqlite3` if it will not load.
+- A test loads better-sqlite3 in the installed Electron, which CI installs on Ubuntu and Windows.
+- Dependabot still leaves Electron majors to a planned change like this one.
+
+Retired: DEV-002 (fetch or compile an Electron build on install) and DEV-003 (an install that
+still succeeds when that fails), since there is no second build. DEV-001 now says one build serves
+both, and DEV-004 checks that build under Electron.
 
 ## Requirements
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
-| DEV-001 | State | While the app runs inside Electron from a development checkout, the system shall open the database with the better-sqlite3 build made for that Electron version, when one is installed beside the Node build. |
-| DEV-002 | Event | When dependencies are installed, the system shall fetch, or else compile, the better-sqlite3 build for the installed Electron version into its own folder, leaving the Node build that the tests use untouched. |
-| DEV-003 | Unwanted | If the Electron build of better-sqlite3 can be neither fetched nor compiled, then the install shall still succeed and say which command fetches it later. |
-| DEV-004 | Event | When `npm run doctor` runs, the system shall check the Node version, the Node and Electron builds of better-sqlite3, the Electron binary and the git hooks, and print each problem with the command that fixes it. |
+| DEV-001 | Ubiquitous | The app under Electron and the tests under Node shall open their databases with the one better-sqlite3 build that npm installs, with no build or install step for Electron alone. |
+| DEV-004 | Event | When `npm run doctor` runs, the system shall check the Node version, that better-sqlite3 loads under Node and under Electron, the Electron binary and the git hooks, and print each problem with the command that fixes it. |
 | DEV-005 | Event | When `npm run verify` runs, the system shall run lint, both type checks, the EARS gate and the tests, run every one even after a failure, and fail when any of them fails. |
 | DEV-006 | Ubiquitous | The repository shall name one supported Node LTS major version in `.nvmrc`, which `package.json` engines accepts and every CI workflow reads. |
 | DEV-007 | Unwanted | If the database cannot be opened when the app starts, then the system shall show why and, in a development checkout, the command that fixes it, and quit rather than open a blank window. |
@@ -153,3 +165,4 @@ same two files. Vitest was a major behind, and nothing proposed dependency updat
 | DEV-024 | Ubiquitous | The IPC channels and the shared types shall each be split into one module per area, none over 600 lines, registered and re-exported from the files that held them. |
 | DEV-025 | Ubiquitous | The tests shall run on Vitest 3 with its coverage on the same major, and mutation testing shall run on it. |
 | DEV-026 | Event | When a week passes, Dependabot shall propose grouped updates for npm and the workflows' actions, and shall not propose an Electron major. |
+| DEV-027 | Ubiquitous | The desktop app shall run on Electron 45, and Dependabot shall leave Electron majors to a planned change. |

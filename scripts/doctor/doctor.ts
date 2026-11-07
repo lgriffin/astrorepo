@@ -4,17 +4,9 @@
 import { spawnSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { bindingFolder, BINDING_FILE } from '../native/electron-sqlite.mjs'
 import { diagnose, report, type DoctorFacts } from './checks'
 
 const root = path.resolve(__dirname, '..', '..')
-const pkg = (name: string): { version: string } | undefined => {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(root, 'node_modules', name, 'package.json'), 'utf8'))
-  } catch {
-    return undefined
-  }
-}
 
 function nodeSqliteError(): string | undefined {
   const r = spawnSync(process.execPath, ['-e', "require('better-sqlite3')(':memory:').close()"], { cwd: root, encoding: 'utf8' })
@@ -31,14 +23,9 @@ function electronBinary(): string | undefined {
   }
 }
 
+/** Loads better-sqlite3 in Electron's own Node: the one Node-API build serves both (DEV-001). */
 function electronSqlite(bin: string): DoctorFacts['electronSqlite'] {
-  const electron = pkg('electron')?.version
-  const sqlite = pkg('better-sqlite3')?.version
-  if (!electron || !sqlite) return 'missing'
-  const file = path.join(bindingFolder(root, { sqliteVersion: sqlite, electronVersion: electron, platform: process.platform, arch: process.arch }), BINDING_FILE)
-  if (!fs.existsSync(file)) return 'missing'
-  const script = `const D=require('better-sqlite3');new D(':memory:',{nativeBinding:${JSON.stringify(file)}}).close()`
-  const r = spawnSync(bin, ['-e', script], { cwd: root, encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } })
+  const r = spawnSync(bin, ['-e', "require('better-sqlite3')(':memory:').close()"], { cwd: root, encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } })
   return r.status === 0 ? 'ok' : { error: r.stderr || String(r.error) }
 }
 
@@ -55,7 +42,7 @@ const facts: DoctorFacts = {
   wantedNode: fs.readFileSync(path.join(root, '.nvmrc'), 'utf8').trim(),
   nodeSqliteError: nodeSqliteError(),
   electronInstalled: bin !== undefined,
-  electronSqlite: bin ? electronSqlite(bin) : 'missing',
+  electronSqlite: bin ? electronSqlite(bin) : 'ok',
   hooksInstalled: hooksInstalled()
 }
 const checks = diagnose(facts)
