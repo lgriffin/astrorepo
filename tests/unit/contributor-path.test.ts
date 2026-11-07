@@ -3,7 +3,6 @@ import { spawnSync } from 'child_process'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { pathToFileURL } from 'url'
 import {
   nextSpecNumber, nextSteps, parseSliceArgs, prefixesIn, sliceFiles, sliceProblems, withExport, type SlicePlan
 } from '../../scripts/new-slice/rules'
@@ -33,9 +32,11 @@ describe('npm run new:slice (spec 045, D5)', () => {
     expect(test.content).toContain("from '../src'")
 
     // The rule runs, and does what its test says.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-slice-'))
+    // The long form of the folder: Windows' temp folder can be a short 8.3 name (RUNNER~1), whose ~
+    // a file URL encodes and Vite then cannot find.
+    const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-slice-')))
     fs.writeFileSync(path.join(dir, 'dark-sites.ts'), rule.content)
-    const mod = (await import(pathToFileURL(path.join(dir, 'dark-sites.ts')).href)) as Record<string, (x: { name: string }) => string[]>
+    const mod = (await import(path.join(dir, 'dark-sites.ts').split(path.sep).join('/'))) as Record<string, (x: { name: string }) => string[]>
     expect(mod.darkSitesProblems({ name: ' ' })).toEqual(['A name is needed.'])
     expect(mod.darkSitesProblems({ name: 'M 31' })).toEqual([])
     fs.rmSync(dir, { recursive: true, force: true })
