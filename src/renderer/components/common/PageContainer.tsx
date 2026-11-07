@@ -70,7 +70,8 @@ export function PageContainer({ title, subtitle, actions, children }: PageContai
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
-      {children}
+      {/* The page's own content, apart from its heading: the smoke run's blank-page check reads it (DEV-012). */}
+      <div data-page-body className="contents">{children}</div>
     </div>
   )
 }

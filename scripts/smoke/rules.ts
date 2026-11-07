@@ -22,40 +22,82 @@ export function smokePages(): SmokePage[] {
   return [...new Set(routes)].map(route => ({ route, name: fileName(route) }))
 }
 
+/** Accessibility rule ids that failed at serious or critical impact, with how many elements failed each. */
+export type Findings = Record<string, number>
+
 /** What one page showed in one theme. */
 export interface PageResult {
   route: string
   theme: SmokeTheme
   /** Uncaught errors and console errors while it loaded. */
   errors: string[]
-  /** How many characters of text its main area holds; none means it drew blank. */
+  /** How many characters of text the page's own content holds, apart from its heading; none means it drew blank. */
   textLength: number
-  /** Accessibility rule ids that failed at serious or critical impact, each once. */
-  violations: string[]
+  violations: Findings
 }
 
-/** The accessibility findings already known, by route then rule id, which U4 works down. */
-export type AxeBaseline = Record<string, string[]>
+/**
+ * The accessibility findings already known, by route then rule id, each with the most elements
+ * that failed it in any theme. U4 works it down; a page may fail a rule on no more elements than this.
+ */
+export type AxeBaseline = Record<string, Findings>
 
-/** Why a page fails the smoke run, or none: errors or a blank page (DEV-012), or a finding not in the baseline (DEV-013). */
+/** Why a page fails the smoke run, or none: errors or a blank page (DEV-012), or findings beyond the baseline (DEV-013). */
 export function pageProblems(result: PageResult, baseline: AxeBaseline): string[] {
-  const known = new Set(baseline[result.route] ?? [])
+  const known = baseline[result.route] ?? {}
+  const where = `${result.route} (${result.theme})`
   return [
-    ...result.errors.map(e => `${result.route} (${result.theme}): ${e}`),
-    ...(result.textLength === 0 ? [`${result.route} (${result.theme}) drew a blank page`] : []),
-    ...result.violations.filter(v => !known.has(v)).map(v => `${result.route} (${result.theme}): new accessibility finding ${v}`)
+    ...result.errors.map(e => `${where}: ${e}`),
+    ...(result.textLength === 0 ? [`${where} drew a blank page`] : []),
+    ...Object.entries(result.violations)
+      .filter(([rule, nodes]) => nodes > (known[rule] ?? 0))
+      .map(([rule, nodes]) => (known[rule] ? `${where}: ${rule} on ${nodes} elements, ${known[rule]} known` : `${where}: new accessibility finding ${rule}`))
   ]
 }
 
-/** The baseline's entries that no longer fail anywhere, so it can be cut down (DEV-013). */
-export function fixedFindings(results: PageResult[], baseline: AxeBaseline): string[] {
-  const seen = new Set(results.flatMap(r => r.violations.map(v => `${r.route} ${v}`)))
-  return Object.entries(baseline).flatMap(([route, rules]) => rules.filter(rule => !seen.has(`${route} ${rule}`)).map(rule => `${route} ${rule}`))
+/** The most elements failing each rule on each route, over every theme. */
+function observed(results: PageResult[]): AxeBaseline {
+  const out: AxeBaseline = {}
+  for (const r of results) for (const [rule, nodes] of Object.entries(r.violations)) out[r.route] = { ...out[r.route], [rule]: Math.max(out[r.route]?.[rule] ?? 0, nodes) }
+  return out
 }
 
-/** The baseline the current findings would write: each route's failing rules, sorted, every theme together. */
+const sorted = (baseline: AxeBaseline): AxeBaseline =>
+  Object.fromEntries(
+    Object.entries(baseline)
+      .filter(([, rules]) => Object.keys(rules).length > 0)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([route, rules]) => [route, Object.fromEntries(Object.entries(rules).sort(([a], [b]) => a.localeCompare(b)))])
+  )
+
+/** The baseline's entries that now fail on fewer elements, or none, so it can be cut down (DEV-013). */
+export function fixedFindings(results: PageResult[], baseline: AxeBaseline): string[] {
+  const seen = observed(results)
+  return Object.entries(baseline).flatMap(([route, rules]) =>
+    Object.entries(rules)
+      .filter(([rule, nodes]) => (seen[route]?.[rule] ?? 0) < nodes)
+      .map(([rule, nodes]) => `${route} ${rule} (${seen[route]?.[rule] ?? 0} of ${nodes})`)
+  )
+}
+
+/** The baseline cut down to this run's findings: it only ever loses entries or elements, never gains them (DEV-013). */
+export function shrunkBaseline(results: PageResult[], baseline: AxeBaseline): AxeBaseline {
+  const seen = observed(results)
+  return sorted(
+    Object.fromEntries(
+      Object.entries(baseline).map(([route, rules]) => [
+        route,
+        Object.fromEntries(
+          Object.entries(rules)
+            .map(([rule, nodes]) => [rule, Math.min(nodes, seen[route]?.[rule] ?? 0)] as const)
+            .filter(([, nodes]) => nodes > 0)
+        )
+      ])
+    )
+  )
+}
+
+/** Every finding of this run as a baseline, for accepting findings on purpose (`--accept-findings`). */
 export function baselineOf(results: PageResult[]): AxeBaseline {
-  const out: AxeBaseline = {}
-  for (const r of results) for (const v of r.violations) out[r.route] = [...new Set([...(out[r.route] ?? []), v])].sort()
-  return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)))
+  return sorted(observed(results))
 }

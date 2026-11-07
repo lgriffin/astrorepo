@@ -49,8 +49,10 @@ silently never running.
 The smoke job serves the built app with an empty data folder and opens every page of the map of
 places and every Settings section in Chromium, in the dark, light and night themes. Screenshots
 and `report.json` land in `reports/smoke/` (kept as the `smoke` artifact in CI), so a pull request's
-look can be checked without running the app. The accessibility baseline may only shrink: the run
-lists findings fixed since, and `npm run smoke -- --update-baseline` rewrites it.
+look can be checked without running the app. The accessibility baseline counts, per page and rule,
+the elements that fail, and may only shrink: the run lists findings fixed since,
+`npm run smoke -- --update-baseline` cuts it down (never adding a failure), and
+`--accept-findings` writes a run's findings into it on purpose.
 
 ## Adding a feature
 

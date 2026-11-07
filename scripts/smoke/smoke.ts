@@ -2,7 +2,8 @@
  * `npm run smoke`: opens every page of the built app in each theme on a fresh data folder, through
  * the headless server, and fails on an error, a blank page or a new accessibility finding
  * (specs/045-developer-experience, D3). Screenshots and a report go to reports/smoke/.
- * `npm run smoke -- --update-baseline` rewrites the accessibility baseline from this run.
+ * `npm run smoke -- --update-baseline` cuts the accessibility baseline down to what still fails (it
+ * never grows it); `--accept-findings` writes every finding of the run into it, on purpose.
  * Needs `npm run build` first, and Chromium for Playwright (`npx playwright install chromium`).
  */
 import { spawn, type ChildProcess } from 'child_process'
@@ -10,14 +11,15 @@ import fs from 'fs'
 import net from 'net'
 import os from 'os'
 import path from 'path'
-import { chromium, type Page } from 'playwright'
+import { chromium, type Browser, type Page } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
-import { SMOKE_THEMES, baselineOf, fixedFindings, pageProblems, smokePages, type AxeBaseline, type PageResult, type SmokeTheme } from './rules'
+import { SMOKE_THEMES, baselineOf, fixedFindings, pageProblems, shrunkBaseline, smokePages, type AxeBaseline, type PageResult, type SmokeTheme } from './rules'
 
 const root = path.resolve(__dirname, '..', '..')
 const out = path.join(root, 'reports', 'smoke')
 const baselineFile = path.join(__dirname, 'axe-baseline.json')
 const update = process.argv.includes('--update-baseline')
+const accept = process.argv.includes('--accept-findings')
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -37,7 +39,10 @@ function serve(port: number, data: string): Promise<ChildProcess> {
       env: { ...process.env, ASTRO_DATA: data, ASTRO_PORT: String(port), ASTRO_BIND: '127.0.0.1' }
     })
     let log = ''
-    const timer = setTimeout(() => reject(new Error(`The server did not start:\n${log}`)), 60_000)
+    const timer = setTimeout(() => {
+      child.kill()
+      reject(new Error(`The server did not start:\n${log}`))
+    }, 60_000)
     const listen = (d: Buffer) => {
       log += d
       if (log.includes('astrorepo is serving')) {
@@ -60,14 +65,15 @@ async function invoke(page: Page, channel: string, args: unknown): Promise<void>
 }
 
 /**
- * Waits until a page has drawn: main is on screen and its loading placeholders have given way
- * (capped, since some parts wait on slow sources such as the weather). The app polls, so
- * the network is never idle and cannot be the signal.
+ * Waits until a page has drawn: main is on screen and its
+ * loading placeholders (a <Loading> holding pulsing lines, or a pulsing <Skeleton>) have given
+ * way, capped, since some parts wait on slow sources such as the weather. The app polls, so the
+ * network is never idle and cannot be the signal.
  */
-async function settle(page: import('playwright').Page): Promise<void> {
+async function settle(page: Page): Promise<void> {
   await page.locator('main').waitFor({ state: 'visible', timeout: 15_000 })
   await page
-    .waitForFunction(() => !document.querySelector('main [role="status"] .animate-pulse'), undefined, { timeout: 8_000 })
+    .waitForFunction(() => !document.querySelector('main [role="status"].animate-pulse, main [role="status"] .animate-pulse'), undefined, { timeout: 8_000 })
     .catch(() => undefined)
   await page.waitForTimeout(250)
 }
@@ -80,52 +86,62 @@ async function main(): Promise<void> {
   const baseline: AxeBaseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, 'utf8')) : {}
   const port = await freePort()
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-smoke-'))
-  const server = await serve(port, data)
-  const browser = await chromium.launch()
   const base = `http://127.0.0.1:${port}`
   const results: PageResult[] = []
+  let server: ChildProcess | undefined
+  let browser: Browser | undefined
   try {
+    server = await serve(port, data)
+    browser = await chromium.launch()
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
     const page = await context.newPage()
     const errors: string[] = []
     page.on('pageerror', e => errors.push(e.message))
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
     await page.goto(`${base}/`)
+    let visit = 0
     for (const theme of SMOKE_THEMES as readonly SmokeTheme[]) {
       await invoke(page, 'settings:set', { key: 'ui_theme', value: theme })
-      // The theme is read when the app starts, and a hash change does not restart it.
-      await page.reload()
-      await settle(page)
-      const drawn = await page.evaluate(() => document.documentElement.dataset.theme ?? '')
-      if (drawn && drawn !== theme) throw new Error(`Asked for the ${theme} theme but the app drew ${drawn}`)
       fs.mkdirSync(path.join(out, theme), { recursive: true })
       for (const { route, name } of smokePages()) {
+        // A fresh load per page (the query changes each time), so nothing of the page before is
+        // measured, and the theme and any error from starting up belong to this page.
         errors.length = 0
-        await page.goto(`${base}/#${route}`)
+        await page.goto(`${base}/?visit=${++visit}#${route}`)
         await settle(page)
-        const textLength = (await page.locator('main').innerText().catch(() => '')).trim().length
+        const drawn = await page.evaluate(() => document.documentElement.dataset.theme ?? '')
+        if (drawn !== theme) errors.push(`asked for the ${theme} theme but the app drew ${drawn || 'none'}`)
+        const shown = await page.evaluate(() => location.hash.slice(1))
+        if (shown !== route) errors.push(`asked for ${route} but the app shows ${shown}`)
+        const body = page.locator('main [data-page-body]')
+        const textLength = (await ((await body.count()) ? body.first() : page.locator('main')).innerText().catch(() => '')).trim().length
         const axe = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa']).analyze()
-        const violations = [...new Set(axe.violations.filter(v => v.impact === 'serious' || v.impact === 'critical').map(v => v.id))].sort()
+        const violations = Object.fromEntries(
+          axe.violations.filter(v => v.impact === 'serious' || v.impact === 'critical').map(v => [v.id, v.nodes.length] as const)
+        )
         await page.screenshot({ path: path.join(out, theme, `${name}.png`), fullPage: true })
         results.push({ route, theme, errors: [...errors], textLength, violations })
-        console.log(`  ${theme.padEnd(5)} ${route}${violations.length ? `  (${violations.join(', ')})` : ''}`)
+        const found = Object.entries(violations).map(([rule, n]) => `${rule} x${n}`)
+        console.log(`  ${theme.padEnd(5)} ${route}${found.length ? `  (${found.join(', ')})` : ''}`)
       }
     }
   } finally {
-    await browser.close()
-    server.kill()
+    await browser?.close()
+    server?.kill()
     fs.rmSync(data, { recursive: true, force: true })
   }
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(results, null, 2))
-  if (update) {
-    fs.writeFileSync(baselineFile, JSON.stringify(baselineOf(results), null, 2) + '\n')
-    console.log(`\nWrote the accessibility baseline to ${path.relative(root, baselineFile)}.`)
-    return
+  const writeBaseline = (next: AxeBaseline, what: string) => {
+    fs.writeFileSync(baselineFile, JSON.stringify(next, null, 2) + '\n')
+    console.log(`\n${what} ${path.relative(root, baselineFile)}.`)
   }
-  const problems = results.flatMap(r => pageProblems(r, baseline))
-  const fixed = fixedFindings(results, baseline)
+  if (accept) writeBaseline(baselineOf(results), 'Wrote every finding of this run to')
+  else if (update) writeBaseline(shrunkBaseline(results, baseline), 'Cut down')
+  const held = accept ? baselineOf(results) : baseline
+  const problems = results.flatMap(r => pageProblems(r, held))
+  const fixed = fixedFindings(results, held)
   console.log(`\n${results.length} page views, screenshots in ${path.relative(root, out)}`)
-  if (fixed.length) console.log(`Fixed since the baseline (run with --update-baseline to drop them): ${fixed.join('; ')}`)
+  if (fixed.length && !update) console.log(`Fixed since the baseline (run with --update-baseline to drop them): ${fixed.join('; ')}`)
   if (problems.length) {
     console.error(`\n${problems.length} problem(s):\n${problems.map(p => `  ${p}`).join('\n')}`)
     process.exitCode = 1
