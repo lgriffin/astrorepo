@@ -194,6 +194,7 @@ folder, scan your library and point Settings → Tools at Siril.
 | `npm run lint` | Lint `src`, `tests`, `packages` and `scripts` |
 | `npm run typecheck` / `npm run typecheck:tests` | Type-check the app and the tests |
 | `npm run ears` | Fail when an EARS requirement has no test naming it |
+| `npm run new:slice -- --name <name> --prefix <ABC> --title "<Title>"` | Start a slice: a spec with an EARS requirement, a domain rule and a test citing it ([CONTRIBUTING.md](CONTRIBUTING.md)) |
 | `npm run demo` | Builds a small made-up library in `.demo/` and indexes it; `-- --serve` serves it at http://127.0.0.1:8090, `npm run dev:demo` opens it in the desktop app |
 | `npm run smoke` | After `npm run build`: every page in every theme in Chromium, failing on errors, blank pages and new accessibility findings; screenshots in `reports/smoke/`; `-- --demo` does the same over the demo library |
 | `npm run test:fuzz` | The fuzz tests with many runs per property (`FUZZ_RUNS`, `FUZZ_SEED` to replay) |
@@ -205,6 +206,8 @@ folder, scan your library and point Settings → Tools at Siril.
 
 ## Documentation
 
+- [Contributing](CONTRIBUTING.md): setting up (on Windows too), the gates before a push, and how
+  a slice is built, starting with `npm run new:slice`.
 - [Charter](.specify/memory/constitution.md): the principles every change is checked against.
 - [Roadmap](docs/roadmap.md): which slices have landed, what comes next, and the open questions.
 - [Changelog](CHANGELOG.md): what each release holds.

@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug main process",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite",
+      "windows": { "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite.cmd" },
+      "runtimeArgs": ["--sourcemap"],
+      "env": { "REMOTE_DEBUGGING_PORT": "9222" }
+    },
+    {
+      "name": "Debug renderer process",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/src/renderer",
+      "timeout": 60000,
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "Debug the current test file",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug the app (main and renderer)",
+      "configurations": ["Debug main process", "Debug renderer process"]
+    }
+  ]
+}
