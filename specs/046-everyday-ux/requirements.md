@@ -44,7 +44,8 @@ log) beside a separate total exposure, and drawing an empty library's zeros in t
   night or put in a collection you made (the same rule as Targets → Yours). Catalogue progress
   still shows each catalogue's size.
 - **Nights, once.** A night is counted once whether you logged it, imaged it, or both: logged
-  dates and the dates of your light frames together. Insights shows it once, as Nights, beside
+  dates and the nights of your light frames (noon to noon, so frames after midnight join the
+  evening before; calibration frames do not count) together. Insights shows it once, as Nights, beside
   imaging hours from your files; Log a night saves a night. Lists of session folders are named so.
 - **Quiet zeros.** A tile whose value is zero (0, 0.0, 0s) is drawn muted, never in the accent.
 

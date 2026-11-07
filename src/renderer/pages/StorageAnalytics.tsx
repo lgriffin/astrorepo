@@ -73,7 +73,7 @@ export function StorageAnalytics(): React.ReactElement {
     >
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Storage" value={formatBytes(stats.totalSizeBytes)} accent />
+        <StatCard label="Total Storage" value={formatBytes(stats.totalSizeBytes)} amount={stats.totalSizeBytes} accent />
         <StatCard label="Total Files" value={stats.totalFiles.toLocaleString()} />
         <StatCard
           label="Daily growth"

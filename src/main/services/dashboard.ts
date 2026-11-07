@@ -1,17 +1,20 @@
 import { getSqlite } from '../db/connection'
 import { getTotalFitsFileCount } from './fits-analyzer'
 import { MINE } from './target'
+import { LIGHT_FRAME_PREDICATE } from './stacking'
 
 /**
  * Every night you imaged, once (spec 046, EUX-008): the dates you logged a night on and the
- * nights your light frames were taken, counted together.
+ * nights your light frames were taken, counted together. A frame's night runs noon to noon UTC and
+ * is named by the evening it starts, as a logged night is, so frames after midnight join the
+ * evening before; calibration frames are not nights imaged (the light rule frameKind and IS_LIGHT use).
  */
 export const NIGHTS_SQL = `SELECT COUNT(*) as nights FROM (
   SELECT date AS night FROM observation_sessions WHERE date IS NOT NULL
   UNION
-  SELECT substr(date_obs, 1, 10) FROM fits_files
-  WHERE date_obs IS NOT NULL AND (image_type IS NULL OR lower(image_type) LIKE '%light%')
-)`
+  SELECT date(datetime(f.date_obs, '-12 hours')) FROM fits_files f
+  WHERE f.date_obs IS NOT NULL AND ${LIGHT_FRAME_PREDICATE}
+) WHERE night IS NOT NULL`
 import type { DashboardStats, CatalogueProgress } from '@shared/types'
 
 export function getDashboardStats(): DashboardStats {

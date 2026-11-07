@@ -238,8 +238,14 @@ describe('Honest numbers (spec 046, U3)', () => {
     for (const value of ['10', '0.5', '30s', 'M 31', '2025-01-01']) expect(isZeroStat(value), value).toBe(false)
   })
 
+  it('[EUX-009] Given a small total rounded to 0.0 or 0m for display, When its amount is known, Then it keeps its tone; a real zero is still muted', () => {
+    expect(statTone('0.0', true, 120 / 3600)).toBe('accent')
+    expect(statTone('0m', false, 20)).toBe('plain')
+    expect(statTone('0.0', true, 0)).toBe('muted')
+  })
+
   it('[EUX-009] Given the stat tile, When it draws its value, Then the tone comes from statTone', () => {
-    expect(read('components/common/StatCard.tsx')).toContain('TONE[statTone(value, accent)]')
+    expect(read('components/common/StatCard.tsx')).toContain('TONE[statTone(value, accent, amount)]')
   })
 
   it('[EUX-008] Given Insights, When its totals are drawn, Then nights appear once, as Nights, and no tile says Sessions', () => {

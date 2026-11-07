@@ -148,5 +148,21 @@ describe('DashboardService', () => {
       expect(getDashboardStats().observationNights).toBe(2)
       expect(getInsightsSummary().totalNights).toBe(2)
     })
+
+    it('[EUX-008] Given a night logged on its evening with frames either side of midnight, When nights are counted, Then it is one night', () => {
+      const scan = seedFitsScan(sqlite)
+      createSession({ date: '2025-01-01', totalExposureSec: 3600, targetIds: [] })
+      seedFitsFile(sqlite, scan, { imageType: 'Light', dateObs: '2025-01-01T21:00:00' })
+      seedFitsFile(sqlite, scan, { imageType: 'Light', dateObs: '2025-01-02T02:30:00.250Z' })
+      expect(getDashboardStats().observationNights).toBe(1)
+    })
+
+    it('[EUX-008] Given calibration frames whose type also says light, When nights are counted, Then they add no night', () => {
+      const scan = seedFitsScan(sqlite)
+      seedFitsFile(sqlite, scan, { imageType: 'Flat Light', dateObs: '2025-02-01T21:00:00' })
+      seedFitsFile(sqlite, scan, { imageType: 'Dark Light', dateObs: '2025-02-03T21:00:00' })
+      seedFitsFile(sqlite, scan, { imageType: null, dateObs: '2025-02-05T21:00:00' })
+      expect(getInsightsSummary().totalNights).toBe(1)
+    })
   })
 })

@@ -9,8 +9,11 @@ export function isZeroStat(value: string | number): boolean {
   return /^\s*0+(?:[.,]0+)?\s*[a-z]*\s*$/i.test(value)
 }
 
-/** The tone a tile's value is drawn in (EUX-009). */
-export function statTone(value: string | number, accent = false): 'muted' | 'accent' | 'plain' {
-  if (isZeroStat(value)) return 'muted'
+/**
+ * The tone a tile's value is drawn in (EUX-009). When the shown value is rounded (0.0 hours for a
+ * two-minute night), the amount it was rounded from decides, so a small total is not taken for none.
+ */
+export function statTone(value: string | number, accent = false, amount?: number): 'muted' | 'accent' | 'plain' {
+  if (amount !== undefined ? amount === 0 : isZeroStat(value)) return 'muted'
   return accent ? 'accent' : 'plain'
 }

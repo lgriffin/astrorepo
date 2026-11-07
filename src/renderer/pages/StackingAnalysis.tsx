@@ -87,7 +87,7 @@ function StackingSummarySection({ summary }: { summary: StackingSummary | null }
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
         <StatCard label="Stacked masters" value={summary.totalStacked} compact />
         <StatCard label="Combined subs" value={summary.totalNcombine} compact />
-        <StatCard label="Total integration" value={formatHours(summary.totalIntegrationSec)} compact />
+        <StatCard label="Total integration" value={formatHours(summary.totalIntegrationSec)} amount={summary.totalIntegrationSec} compact />
         <StatCard label="Software" value={summary.softwareUsed.join(', ') || 'Unknown'} compact />
         <StatCard label="Filters" value={summary.filtersUsed.join(', ') || 'None'} compact />
       </div>
