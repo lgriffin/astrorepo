@@ -13,45 +13,49 @@ Your site is set right in the checklist: paste where your scopes stand as a map 
 (`53.35, -6.26`, a map link with `@53.35,-6.26`, `53.35 N, 6.26 W` or `53°20′59″N 6°15′37″W`) and
 press **Save your site**. Elevation and how dark your sky is stay in Settings → Your site, which has
 the same **Paste coordinates** field. Until the site is set, Home asks for it only there and leaves
-out the cards worked out from it (Tonight, Tonight's sky, Shoot tonight, Clear skies and Coming
+out the cards worked out from it (Tonight, Shoot tonight, Clear skies and Coming
 nights); with the checklist hidden, one Tonight prompt with the same field asks instead.
 
 Below that, from the top, Home shows:
-1. **Tonight**: whether tonight looks clear, when it is dark, the moon (drawn as it is lit), and
-   the three best targets to shoot, each opening its page. A cloudy night or one with no dark
-   window lists no targets. If the forecast and the plan disagree about which night is tonight
-   (just before dawn), the sky is only judged for the plan's night.
-2. **Tonight's sky**: tonight at a glance (see [Tonight's sky](#tonights-sky)).
-3. **Shoot tonight** and **Ready to process**, side by side: what is worth doing next (see
-   [Next actions](#next-actions)).
-4. **Clear skies**: whether tonight and the next two nights look clear (see
-   [Planning ahead](planning.md#clear-skies)).
-5. **Coming nights** and **Hidden in your files**, side by side, with **Plan ahead** beside them
+1. **Tonight**, one card: whether tonight looks clear and how good it is for faint targets, when
+   it is dark, the moon (drawn as it is lit), the cloud, how dark your sky is, a noon-to-noon strip,
+   and the three best targets to shoot, each opening its page (see [Tonight](#tonight)). A cloudy
+   night or one with no dark window lists no targets. If the forecast and the plan disagree about
+   which night is tonight (just before dawn), the sky is only judged for the plan's night.
+2. **Shoot tonight** and **Ready to process**, side by side: what is worth doing next (see
+   [Next actions](#next-actions)). A row's title opens its target; a button is there only when it
+   goes somewhere else, such as the stacking plan or Jobs.
+3. **Clear skies**: whether tonight and the next two nights look clear (see
+   [Planning ahead](planning.md#clear-skies)). With the forecast off, or no night forecast yet, it is
+   left out: Tonight's Cloud already says why.
+4. **Coming nights** and **Hidden in your files**, side by side, with **Plan ahead** beside them
    when a mosaic tile has no lights yet: it is up on a coming night, not necessarily tonight.
-6. **Where your targets are**: how many targets are at each stage.
-7. **Other checks**.
+5. **Where your targets are**: how many targets are at each stage.
+6. **Other checks**.
 
 Apart from the weather, everything on it is worked out from the files the app has indexed (the Library and FITS files
 scans), so it changes as you capture, stack and process. Totals, catalogue progress and
 breakdowns by object type and equipment are on **Insights**, under **Your observatory**.
 
-## Tonight's sky
+## Tonight
 
-Inspired by Ryan Clinton's [Meanwhile, in space](https://ryanclinton.uk/astrophotography/meanwhile),
-this card sums tonight up in one sentence for faint galaxies and nebulae, rated **Good**,
-**Possible**, **Poor** or **No proper dark**, with four tiles under it:
+Tonight is one card. Inspired by Ryan Clinton's [Meanwhile, in space](https://ryanclinton.uk/astrophotography/meanwhile),
+under the headline it sums tonight up in one sentence for faint galaxies and nebulae, rated
+**Good**, **Possible**, **Poor** or **No proper dark**, and then says each of these once:
 
-- **Darkness**: how long it is properly dark (astronomical, or nautical on summer nights), from
-  when to when, and how much longer or shorter than last night.
-- **Moon**: how much of it is lit, drawn as it is, its phase (waxing or waning against last
-  night), how long it is up during the dark and when, and the dark hours left without it.
-- **Cloud**: the mean cloud cover over the dark window, tonight's verdict and clear hours from
-  the [Clear skies](planning.md#clear-skies) forecast, and dew. With the forecast off or not
-  readable, the tile says so and the rest still shows.
+- **Dark** (or **Nautical dark only**): from when to when, how long, and how much longer or
+  shorter than last night.
+- **Clearest**: the longest clear spell, on a night of clear spells.
+- **Moon**: its phase and how much of it is lit, drawn as it is, how long it is up during the
+  dark, and the dark hours left without it.
+- **Cloud**: the mean cloud cover over the dark window with tonight's verdict and clear hours from
+  the [Clear skies](planning.md#clear-skies) forecast, and dew. With no forecast it says why, once:
+  the forecast is off, could not be read (naming the service and its problem), or does not reach
+  tonight yet, with a link to Settings → Weather where that fixes it.
 - **Your sky**: your Bortle class, from 1 (an excellent dark-sky site) to 9 (an inner-city sky),
   on a nine-step scale.
 
-A strip under the tiles runs from noon to noon and shows the dark window and the part of it with
+A strip under them runs from noon to noon and shows the dark window and the part of it with
 the Moon up.
 
 A night is **good** when it is astronomically dark, forecast clear, has three or more hours of dark

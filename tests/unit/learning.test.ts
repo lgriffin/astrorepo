@@ -278,8 +278,8 @@ describe('Why tonight looks like this', () => {
 
   it('[LRN-017] Given Home and the Sky planner, When learning is on, Then tonight’s dark, moon, bright-moon note, best targets, twilight and seasons each offer their idea', () => {
     const hero = read('src/renderer/components/cockpit/TonightHero.tsx')
-    expect(hero).toMatch(/concept="twilight">/)
-    expect(hero).toMatch(/<Fact label="Moon" concept="moon-phase">/)
+    expect(hero).toMatch(/concept="twilight"\s/)
+    expect(hero).toMatch(/label="Moon"\s+concept="moon-phase"/)
     expect(hero).toMatch(/\/\^The moon is\/\.test\(n\) && <> <Explain concept="moonlight" \/><\/>/)
     expect(hero).toMatch(/Best to shoot <Explain concept="airmass"/)
     expect(hero).toMatch(/\{site && <WhyTonight site=\{site\} \/>\}/)

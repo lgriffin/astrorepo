@@ -55,8 +55,10 @@ describe('Home', () => {
     expect(home).toContain('Could not work out the coming nights.')
     expect(home).toContain('Could not look through your files.')
     expect(home).toContain('Could not read the forecast.')
-    expect(home).toContain('Could not work out tonight’s sky.')
-    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(5)
+    // Tonight's sky is part of the Tonight card (EUX-004), which says so with its own retry.
+    expect(home).toContain('onRetryInsight={() => { setInsight(null); void loadInsight() }}')
+    expect(read('components/cockpit/TonightHero.tsx')).toContain('Could not work out tonight’s sky.')
+    expect(home.match(/\(null\); void load\w+\(\) }}>Try again/g)).toHaveLength(4)
     const insights = read('pages/Insights.tsx')
     // The totals sit before the loading and failure branch, so a trends failure never hides them.
     expect(insights.indexOf('<ObservatoryTotals />')).toBeLessThan(insights.indexOf('Could not read the seeing, filter and activity trends.'))

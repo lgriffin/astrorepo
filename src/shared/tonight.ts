@@ -69,8 +69,8 @@ export function tonightSummary(skies: ClearSkiesView | null, plan: ForwardPlanVi
       planned && !tonight ? 'The sun does not get 12° below the horizon tonight, so there is no dark window.' : null,
       tonight?.darknessNote,
       tonight?.moonNote,
-      tonight && tonight.choices.length === 0 && !tonight.moonNote ? 'None of your targets with work left is up for an hour tonight.' : null,
-      verdict === 'no-forecast' ? 'There is no forecast for tonight yet, so the sky is not judged.' : null
+      tonight && tonight.choices.length === 0 && !tonight.moonNote ? 'None of your targets with work left is up for an hour tonight.' : null
+      // A missing forecast is said once, in the card's Cloud (EUX-005), not again here.
     ].filter((n): n is string => !!n),
     picks: verdict === 'cloudy' || verdict === 'no-darkness' ? [] : (tonight?.choices ?? []).slice(0, picks)
   }
