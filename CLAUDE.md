@@ -4,7 +4,7 @@ Auto-generated from all feature plans, then kept by hand. Last updated: 2026-10-
 
 ## Active Technologies
 
-- TypeScript 5.x (Node.js 20 LTS), Electron (electron-vite, Electron Forge), React 18 with react-router and Tailwind, Vite
+- TypeScript 5.x (Node.js 22 LTS, `.nvmrc`), Electron (electron-vite, Electron Forge), React 18 with react-router and Tailwind, Vite
 - better-sqlite3 with plain SQL migrations in `src/main/db/migrations.ts`; Zod validates every IPC input
 - astronomy-engine for sun, moon and sidereal time (behind the Ephemeris port)
 - Testing: Vitest with coverage-v8, an own Gherkin runner (`packages/testkit/src/bdd`), fast-check property and fuzz tests, Stryker mutation testing
@@ -29,6 +29,7 @@ scripts/         ears gate, mutation scope, fuzz runner
 
 ## Commands
 
+npm run verify (every gate: lint, typecheck, typecheck:tests, ears, test); npm run doctor (set-up check);
 npm test; npm run lint; npm run typecheck; npm run ears (EARS traceability gate); npm run test:fuzz;
 npm run test:mutation:changed (mutation gate on changed core files, floor 80%)
 
@@ -37,7 +38,7 @@ Architecture: hexagonal core in `packages/` (see docs/architecture/hexagonal.md)
 
 ## Code Style
 
-TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
+TypeScript 5.x (Node.js 22 LTS): Follow standard conventions
 
 ## Charter and docs
 
@@ -47,6 +48,7 @@ TypeScript 5.x (Node.js 20 LTS): Follow standard conventions
 
 ## Recent Changes
 
+- 045-developer-experience D1 (Leigh's DX and UX overhaul, 2026-11-07, plan https://claude.ai/artifact/BnfrWASWt2vSR1qRpeQBCV, lanes D1-D6 DEV- and U1-U6 EUX- in spec 046): Electron's own better-sqlite3 build in node_modules/.cache/astrorepo-native (postinstall scripts/native/electron-sqlite.mjs, picked by src/main/db/native-binding.ts; tests keep the Node build); npm run doctor (scripts/doctor), npm run verify (scripts/verify); Node 22 in .nvmrc, engines, workflows read node-version-file; .gitattributes LF; ESM configs are .mjs. DEV- IDs
 - 044-library-layout (Leigh 2026-11-06): the library's four parts (raw/stacked/tif/images) read from folders chosen in Settings → Folders (keys library_<part>_folder) or the conventional names in any case; rules in packages/domain/src/library-layout.ts (sampleKind, roleByName, scoreFolder, suggestLayout, resolveLayout, layoutProblems, suggestedChanges), use cases makeDescribe/Choose/ReadLibraryLayout over LibraryFolders (names only, NodeLibraryFolders) and LibraryLayoutStore; sync resolver libraryLayoutNow in src/main/adapters/shared/library-folders.ts used by AppFolders.library(), gallery, Messier, Vespera landing; startHomeScan(home, pacer, folders); channels library:layout/choose-layout; components/library/LibraryLayoutCard.tsx on Settings → Folders and Library. LAY- IDs. Same day spec 018 NFR-022: ScanPacer paces by event-loop busy time, inFlight four at a time
 - 043-sky-insight (Leigh 2026-11-05, after ryanclinton.uk Meanwhile): Tonight's sky card on Home under TonightHero (components/cockpit/SkyInsightCard.tsx, channel sky:insight). Rules in packages/domain/src/sky-insight.ts (BORTLE_CLASSES from Wikipedia, bortleFromSqm, readSkyQuality: SQM reading wins over class; moonInDark trend vs last night; faintTargets good/possible/poor/none; insightSummary), use case makeDescribeSkyInsight over PlanningSettings, SkyQualitySettings (settings site_bortle/site_sqm, set in Settings → Your site) and the composition's cached clearSkies; presenter src/main/adapters/sky-insight-presenter.ts; src/shared/sky-insight.ts mirrors the names (test keeps them equal) and lays out the noon-to-noon strip. Bortle is user-entered (no bundled atlas). Concept light-pollution. NSI- IDs (SKY- is spec 024's)
 - 041-look-and-feel V1+V1b (Leigh's "impeccable" UX overhaul, 2026-10-25): every renderer colour is a theme token (CSS variables from src/shared/themes.ts; rules in src/shared/appearance.ts; tokenColor() in src/renderer/theme.ts for SVG/inline), dark/light/night via setting ui_theme (Settings → Appearance, ThemeProvider); tests/unit/look-and-feel.test.ts fails on hex, rgb() or Tailwind palette classes in src/renderer and on AA contrast; shared controls in src/renderer/components/ui; Lucide icons per place in components/common/nav-icons.tsx; Impeccable plugin pinned in .claude/settings.json (docs/design.md, PRODUCT.md). V1b Star atlas world (Leigh chose it): Prussian-ink/chart-white palettes, Archivo (font-condensed), atlas symbols per object kind (src/shared/atlas.ts, components/atlas/AtlasSymbol.tsx), Logo, no uppercase labels (tested); contract in .impeccable/surfaces/src-renderer-app-tsx.md. V2 shell: NAV_PLACES (8 places, each with pages; locate() returns { place, item, detail }), PlacePages row in PageContainer, Go to palette (src/shared/command-palette.ts, components/common/CommandPalette.tsx, Ctrl+K in Layout), sidebar folds to a rail (localStorage astrorepo.rail); page 'images' is titled Pictures under Gallery. V3 Home as Tonight: tonightSummary/moonPath in src/shared/tonight.ts, components/cockpit/TonightHero.tsx first after SetupCard, Next actions split into Shoot tonight and Ready to process. V4 Targets: Yours tab first (scope mine/all on targets:search, MINE clause in src/main/services/target.ts), choosing mode with real checkboxes, rules in src/shared/target-list.ts. V5 Settings as pages: SETTINGS_SECTIONS carry group and hint (SETTINGS_GROUPS), Settings.tsx shows one section via SECTION_VIEWS, Equipment moved to components/settings/EquipmentSettings.tsx and /equipment redirects to settingsLink(equipment). V6 flows: <Loading label> (components/ui/Loading.tsx) for every loading state, themed toasts with icon + sr word, errors persist (TOAST_MS), EmptyState links to where a list is filled (LF-028 to LF-030, tests/unit/flows.test.ts). V7 polish: mark as app icon (src/shared/logo.ts, resources/icon.*, scripts/app-icon.ts) and themed favicon, sidebar starts as a rail below 1024 px (src/shared/layout.ts), windowTitle per page, skip link, main actions use <Button variant="primary"> (LF-031 to LF-034, tests/unit/polish.test.ts)

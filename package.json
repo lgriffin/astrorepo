@@ -3,6 +3,9 @@
   "version": "0.2.0",
   "description": "Universal Astrophotography Observatory Management System",
   "main": "out/main/index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -21,9 +24,13 @@
     "test:mutation:floor": "node scripts/mutation/floor.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
+    "verify": "tsx scripts/verify/verify.ts",
+    "doctor": "tsx scripts/doctor/doctor.ts",
+    "native:electron": "node scripts/native/electron-sqlite-cli.mjs --force",
     "db:seed": "tsx src/main/db/seed/run-seed.ts",
     "db:reset": "tsx src/main/db/seed/reset-and-seed.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "node scripts/native/electron-sqlite-cli.mjs"
   },
   "lint-staged": {
     "{src,packages,scripts,features}/**/*.{ts,tsx}": [
