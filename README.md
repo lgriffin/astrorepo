@@ -194,7 +194,8 @@ folder, scan your library and point Settings → Tools at Siril.
 | `npm run lint` | Lint `src`, `tests`, `packages` and `scripts` |
 | `npm run typecheck` / `npm run typecheck:tests` | Type-check the app and the tests |
 | `npm run ears` | Fail when an EARS requirement has no test naming it |
-| `npm run smoke` | After `npm run build`: every page in every theme in Chromium, failing on errors, blank pages and new accessibility findings; screenshots in `reports/smoke/` |
+| `npm run demo` | Builds a small made-up library in `.demo/` and indexes it; `-- --serve` serves it at http://127.0.0.1:8090, `npm run dev:demo` opens it in the desktop app |
+| `npm run smoke` | After `npm run build`: every page in every theme in Chromium, failing on errors, blank pages and new accessibility findings; screenshots in `reports/smoke/`; `-- --demo` does the same over the demo library |
 | `npm run test:fuzz` | The fuzz tests with many runs per property (`FUZZ_RUNS`, `FUZZ_SEED` to replay) |
 | `npm run test:mutation:changed` | Mutation-test the core files changed against `origin/main` (fails below 80%) |
 | `npm run test:mutation` | Mutation-test the whole core (over an hour on four cores) |

@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Demo library** (spec 045, D4): `npm run demo` builds a small made-up library and indexes it
+  into its own data folder; `npm run demo -- --serve` and `npm run dev:demo` open it, and the
+  smoke run also runs over it.
 - **Honest numbers** (spec 046, U3): Insights counts only your own targets, so the catalogues'
   objects are no longer "Planned" before you plan them; each night counts once, from logged
   nights and light frames together, shown once as Nights; zero totals are drawn muted.

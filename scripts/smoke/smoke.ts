@@ -2,59 +2,28 @@
  * `npm run smoke`: opens every page of the built app in each theme on a fresh data folder, through
  * the headless server, and fails on an error, a blank page or a new accessibility finding
  * (specs/045-developer-experience, D3). Screenshots and a report go to reports/smoke/.
+ * `npm run smoke -- --demo` does the same over a copy of the demo library (npm run demo).
  * `npm run smoke -- --update-baseline` cuts the accessibility baseline down to what still fails (it
  * never grows it); `--accept-findings` writes every finding of the run into it, on purpose.
  * Needs `npm run build` first, and Chromium for Playwright (`npx playwright install chromium`).
  */
-import { spawn, type ChildProcess } from 'child_process'
+import type { ChildProcess } from 'child_process'
 import fs from 'fs'
-import net from 'net'
 import os from 'os'
 import path from 'path'
 import { chromium, type Browser, type Page } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
+import { freePort, root, serve } from '../shared/served-app'
 import { SMOKE_THEMES, baselineOf, fixedFindings, pageProblems, shrunkBaseline, smokePages, type AxeBaseline, type PageResult, type SmokeTheme } from './rules'
 
-const root = path.resolve(__dirname, '..', '..')
-const out = path.join(root, 'reports', 'smoke')
-const baselineFile = path.join(__dirname, 'axe-baseline.json')
+// `--demo` runs over a copy of the demo library's data folder (npm run demo), with its own
+// screenshots and accessibility baseline, since pages with data show more than empty ones (DEV-017).
+const demo = process.argv.includes('--demo')
+const demoData = path.join(root, '.demo', 'data')
+const out = path.join(root, 'reports', demo ? 'smoke-demo' : 'smoke')
+const baselineFile = path.join(__dirname, demo ? 'axe-baseline.demo.json' : 'axe-baseline.json')
 const update = process.argv.includes('--update-baseline')
 const accept = process.argv.includes('--accept-findings')
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer().listen(0, '127.0.0.1', () => {
-      const port = (s.address() as net.AddressInfo).port
-      s.close(() => resolve(port))
-    })
-    s.on('error', reject)
-  })
-}
-
-/** Starts the headless server on a fresh data folder and resolves once it is listening. */
-function serve(port: number, data: string): Promise<ChildProcess> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs'), 'src/server/main.ts'], {
-      cwd: root,
-      env: { ...process.env, ASTRO_DATA: data, ASTRO_PORT: String(port), ASTRO_BIND: '127.0.0.1' }
-    })
-    let log = ''
-    const timer = setTimeout(() => {
-      child.kill()
-      reject(new Error(`The server did not start:\n${log}`))
-    }, 60_000)
-    const listen = (d: Buffer) => {
-      log += d
-      if (log.includes('astrorepo is serving')) {
-        clearTimeout(timer)
-        resolve(child)
-      }
-    }
-    child.stdout?.on('data', listen)
-    child.stderr?.on('data', d => { log += d })
-    child.on('exit', code => reject(new Error(`The server stopped (${code}):\n${log}`)))
-  })
-}
 
 async function invoke(page: Page, channel: string, args: unknown): Promise<void> {
   await page.evaluate(async ([c, a]) => {
@@ -85,7 +54,12 @@ async function main(): Promise<void> {
   }
   const baseline: AxeBaseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, 'utf8')) : {}
   const port = await freePort()
+  if (demo && !fs.existsSync(demoData)) {
+    console.error('Build the demo library first: npm run demo')
+    process.exit(1)
+  }
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'astrorepo-smoke-'))
+  if (demo) fs.cpSync(demoData, data, { recursive: true })
   const base = `http://127.0.0.1:${port}`
   const results: PageResult[] = []
   let server: ChildProcess | undefined

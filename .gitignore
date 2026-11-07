@@ -15,6 +15,7 @@ coverage/
 
 # Mutation testing (Stryker)
 reports/
+.demo/
 .stryker-tmp/
 
 # Impeccable machine-local choices

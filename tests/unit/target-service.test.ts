@@ -8,7 +8,7 @@ vi.mock('../../src/main/db/connection', () => ({
   getSqlite: () => sqlite
 }))
 
-const { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, addAlias, mergeTargets } = await import('../../src/main/services/target')
+const { searchTargets, getTargetById, createTarget, updateTarget, getAliasesForTarget, addAlias, mergeTargets, getTargetThumbnail } = await import('../../src/main/services/target')
 const { batchDeleteTargets } = await import('../../src/main/services/batch')
 const { SqliteExperimentStore } = await import('../../src/main/adapters/sqlite-experiments')
 const { SqliteJobStore } = await import('../../src/main/adapters/sqlite-jobs')
@@ -313,6 +313,16 @@ describe('TargetService', () => {
       expect(await jobs.get(queued.id)).toMatchObject({ state: 'cancelled', note: 'Its target was deleted.' })
       expect((await jobs.get(done.id))?.state).toBe('succeeded')
       expect(await new SqliteExperimentStore(sqlite).list(t.id)).toEqual([])
+    })
+  })
+
+  describe('target pictures (spec 045, D4)', () => {
+    it('[DEV-018] Given a target whose picture is a TIFF, which a browser cannot draw, When its card asks for it, Then no picture is given, so no broken image is drawn', () => {
+      const t = createTarget({ canonicalName: 'TIFF Only', objectType: 'emission_nebula' })
+      for (const name of ['final.tif', 'final.TIFF']) {
+        sqlite.prepare('UPDATE targets SET thumbnail_path = ? WHERE id = ?').run(`/library/tif/${name}`, t.id)
+        expect(getTargetThumbnail(t.id)).toEqual({ data: null })
+      }
     })
   })
 })

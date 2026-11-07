@@ -426,10 +426,12 @@ export function getTargetThumbnail(targetId: string): { data: string | null; mim
   const sqlite = getSqlite()
   const row = sqlite.prepare('SELECT thumbnail_path FROM targets WHERE id = ?').get(targetId) as { thumbnail_path: string | null } | undefined
   if (!row?.thumbnail_path) return { data: null }
+  const ext = pathMod.extname(row.thumbnail_path).toLowerCase()
+  // No browser, Electron's included, draws a TIFF, so a TIFF is no picture for a card (DEV-018).
+  if (ext === '.tif' || ext === '.tiff') return { data: null }
   try {
     const buf = fs.readFileSync(row.thumbnail_path)
-    const ext = pathMod.extname(row.thumbnail_path).toLowerCase()
-    const mime = ext === '.png' ? 'image/png' : ext === '.tif' || ext === '.tiff' ? 'image/tiff' : 'image/jpeg'
+    const mime = ext === '.png' ? 'image/png' : 'image/jpeg'
     return { data: buf.toString('base64'), mime }
   } catch {
     return { data: null }
