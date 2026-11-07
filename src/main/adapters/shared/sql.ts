@@ -34,3 +34,15 @@ export const IS_INTEGRATED_LIGHT = `(${typedAs(['light', 'stack', 'integrat'])}
        OR (f.total_exposure IS NOT NULL AND f.exposure_sec IS NOT NULL AND f.total_exposure > f.exposure_sec)
        OR LOWER(COALESCE(f.image_type, '')) LIKE '%stack%'
        OR LOWER(COALESCE(f.image_type, '')) LIKE '%integrat%'))`
+
+/**
+ * A target is the user's own once anything of theirs points at it (the same rule as MINE in
+ * src/main/services/target.ts, which tests/unit/catalogue-store.test.ts keeps equal): added by hand,
+ * moved past "not observed", given a folder, found in the library or the FITS index, logged on a
+ * night, or put in a collection they made. Reads the target as `t`.
+ */
+export const YOURS = `(t.is_custom = 1 OR t.workflow_stage != 'not_observed' OR t.folder_path IS NOT NULL
+  OR EXISTS (SELECT 1 FROM fits_files f WHERE f.target_id = t.id)
+  OR EXISTS (SELECT 1 FROM target_home_folders h WHERE h.target_id = t.id)
+  OR EXISTS (SELECT 1 FROM session_targets st WHERE st.target_id = t.id)
+  OR EXISTS (SELECT 1 FROM collection_memberships cm JOIN collections c ON c.id = cm.collection_id WHERE cm.target_id = t.id AND c.is_auto = 0))`

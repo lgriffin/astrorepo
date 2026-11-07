@@ -88,6 +88,20 @@ you added by hand, or a collection you made. The catalogue's own collections, su
 not count. **Whole catalogue** lists everything the app knows. Search, type, stage and sort work the
 same on both. If nothing of yours matches a search, a button searches the whole catalogue for it.
 
+### Where the catalogues come from
+
+The Whole catalogue is built from five catalogues: all 110 Messier and 109 Caldwell objects, 30
+Sharpless regions, and 500 NGC and 200 IC objects (every one with a common name, then the
+brightest). Positions, sizes, magnitudes, types and cross numbers (M31 is NGC 224) come from
+Stellarium's deep-sky catalogue; `npx tsx scripts/catalogues/build-seed.ts` rebuilds them. Each name belongs to one object, so a frame whose FITS OBJECT is "Pinwheel Galaxy" or
+"NGC5457" goes to M101 and never to M33; Messier 31, Caldwell 14 and NGC0224 are read as M31,
+C14 and NGC 224.
+
+When a new version of the app ships changed catalogues, your install is repaired once at start. A
+target that held two objects (before November 2026, M33 also held M101) keeps the one it is named
+for, and the other gets its own target; frames and library folders go with their names, and
+anything else on the target (its stage, notes, nights, goals) stays. Aliases you added are kept.
+
 To change several targets at once, press **Choose targets**. A checkbox appears beside each card,
 **Choose this page** ticks every card shown, and a bar at the bottom moves the chosen targets to a
 stage, adds them to a collection or deletes them (after asking). **Done** leaves choosing.

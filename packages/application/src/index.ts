@@ -62,3 +62,5 @@ export type { ExperimentRecord, ExperimentStore, FolderFile, NewExperiment, Outp
 export * from './use-cases/experiments'
 export type { TargetFacts, TargetFactsSource } from './ports/learning'
 export * from './use-cases/learning'
+export type { CatalogueSeeds, CatalogueStore } from './ports/catalogues'
+export * from './use-cases/catalogues'

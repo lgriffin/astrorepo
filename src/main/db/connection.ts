@@ -67,6 +67,8 @@ export function resetDatabase(): { cleared: boolean } {
     DELETE FROM catalogues;
     -- The library is gone, so the last scan no longer describes it (the Get set up checklist reads these).
     DELETE FROM app_settings WHERE key IN ('last_library_scan', 'last_library_scan_folder');
+    -- The catalogues are gone, so the next start seeds them again (specs/047-catalogue-names CAT-006).
+    DELETE FROM app_settings WHERE key = 'catalogue_seed_version';
   `)
   sqlite.exec('VACUUM')
   return { cleared: true }

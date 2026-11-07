@@ -9,7 +9,7 @@ import { electronDesktop } from './electron/electron-desktop'
 import { electronJobsEnvironment } from './electron/jobs-environment'
 import { hostOverIpc } from './electron/ipc-host'
 import { startJobs } from './jobs-host'
-import { composeCompanion, drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData } from './composition'
+import { composeCatalogues, composeCompanion, drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData, useSeedFolder } from './composition'
 import { ServedDesktop } from './http/served-desktop'
 import { makeCompanionHost, osNetwork } from './http/companion-host'
 import { registerCompanionHandlers } from './ipc/companion-handlers'
@@ -18,7 +18,6 @@ import { nativeThumbnail } from './electron/native-thumbnails'
 import { shrinkPicture } from './electron/picture-shrinker'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
 import createInspectWorker from './workers/inspect-worker?nodeWorker'
-import { loadCatalogueSeedData, useSeedFolder } from './services/catalogue'
 import { autoGenerateCatalogueCollections } from './services/collection'
 
 let mainWindow: BrowserWindow | null = null
@@ -54,7 +53,7 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   let db: ReturnType<typeof initDatabase>
   try {
     db = initDatabase(app.getPath('userData'))
@@ -77,7 +76,7 @@ app.whenReady().then(() => {
     void pixels.dispose()
   })
   try {
-    loadCatalogueSeedData()
+    await composeCatalogues(db).repair()
     autoGenerateCatalogueCollections()
   } catch (err) {
     console.error('Seed data loading failed (non-fatal):', err)

@@ -8,8 +8,7 @@ import { ChannelRouter } from '../main/transport/router'
 import { createHttpHost, hostsFor } from '../main/http/http-host'
 import { ServedDesktop } from '../main/http/served-desktop'
 import { startJobs, type JobsHostEnvironment } from '../main/jobs-host'
-import { useAppData } from '../main/composition'
-import { loadCatalogueSeedData, useSeedFolder } from '../main/services/catalogue'
+import { composeCatalogues, useAppData, useSeedFolder } from '../main/composition'
 import { autoGenerateCatalogueCollections } from '../main/services/collection'
 import { serverSettings } from './settings'
 
@@ -20,15 +19,14 @@ import { serverSettings } from './settings'
 const settings = serverSettings(process.env, process.platform, os.homedir(), process.cwd())
 
 fs.mkdirSync(settings.dataFolder, { recursive: true })
-initDatabase(settings.dataFolder)
+const db = initDatabase(settings.dataFolder)
 useAppData(settings.dataFolder)
 useSeedFolder(settings.seedFolder)
-try {
-  loadCatalogueSeedData()
-  autoGenerateCatalogueCollections()
-} catch (err) {
-  console.error('Seed data loading failed (non-fatal):', err)
-}
+// Seeds a new install, or repairs one made from older catalogues (specs/047-catalogue-names).
+composeCatalogues(db)
+  .repair()
+  .then(() => autoGenerateCatalogueCollections())
+  .catch(err => console.error('Seed data loading failed (non-fatal):', err))
 
 const router = new ChannelRouter()
 registerHandlers(router, new ServedDesktop(path.join(settings.dataFolder, 'exports')))
