@@ -15,13 +15,22 @@ import type { Recommendation, CockpitOverview, ForwardPlanView, ClearSkiesView, 
 import { splitRecommendations } from '@shared/recommendations'
 import { messierLink } from '@shared/navigation'
 import { splitHomeActions, tonightSummary } from '@shared/tonight'
-import { homeCards, siteMissing } from '@shared/home'
+import { HOME_MORE_KEY, foldedCards, homeCards, moreLine, moreOpen, siteMissing, type FoldableCard } from '@shared/home'
 import { missingForecast, rowLinks, showClearSkies, skyForNight } from '@shared/tonight-card'
 
 /** A part of Home whose request failed, as opposed to one still loading (null). */
 const FAILED = 'failed' as const
 const PRIORITY_WORDS: Record<Recommendation['priority'], string> = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' }
 const PRIORITY_DOT: Record<Recommendation['priority'], string> = { high: 'bg-astro-danger', medium: 'bg-astro-warning', low: 'bg-astro-success' }
+/** Whether this screen chose to show every card on Home (EUX-020); blocked storage keeps them folded. */
+function moreCached(): boolean {
+  try {
+    return moreOpen(window.localStorage.getItem(HOME_MORE_KEY))
+  } catch {
+    return false
+  }
+}
+
 /** How often Home re-reads its suggestions, so a queued stack's line follows the job. */
 const REFRESH_MS = 15_000
 
@@ -37,7 +46,8 @@ function forSite<T>(latest: React.MutableRefObject<number>, channel: string, set
  * Home (specs/017-unified-ux, UX-006; led by Tonight since specs/041-look-and-feel V3): tonight's
  * sky, dark window, moon and best targets; what to shoot tonight and what is ready to process; the
  * next three nights' skies (specs/036-clear-skies); the coming nights and what is hiding in the
- * files; then how far the targets have got. Totals live on Insights.
+ * files; then how far the targets have got. Totals live on Insights. The cards rarely used fold
+ * behind a More line at the foot (specs/046-everyday-ux, U7).
  */
 export function Dashboard(): React.ReactElement {
   const navigate = useNavigate()
@@ -51,6 +61,16 @@ export function Dashboard(): React.ReactElement {
   // Whether Get set up is on show; null until it has read the settings (EUX-001).
   const [setupShown, setSetupShown] = useState<boolean | null>(null)
   const { addToast } = useToast()
+  const [more, setMore] = useState(moreCached)
+  const toggleMore = (): void => {
+    const next = !more
+    setMore(next)
+    try {
+      window.localStorage.setItem(HOME_MORE_KEY, next ? '1' : '0')
+    } catch {
+      // Blocked storage only forgets the choice on the next start.
+    }
+  }
   // Only the newest recommendations request may update the list, so a slow old one never wins.
   const recommendationsRequest = useRef(0)
 
@@ -169,6 +189,21 @@ export function Dashboard(): React.ReactElement {
   const show = (card: Parameters<typeof cards.includes>[0]) => cards.includes(card)
 
   const { shoot, ahead, process } = splitHomeActions(nextActions)
+  // The cards rarely used fold behind the More line, unless one holds something urgent (EUX-020, EUX-021).
+  const targetsLoaded = cockpit !== null && cockpit !== FAILED
+  const present: FoldableCard[] = [
+    ...(show('coming-nights') ? ['coming-nights' as const] : []),
+    ...(ahead.length > 0 ? ['plan-ahead' as const] : []),
+    ...(targetsLoaded ? ['targets' as const] : []),
+    ...(otherChecks.length > 0 ? ['other-checks' as const] : [])
+  ]
+  const urgent: FoldableCard[] = [
+    ...(ahead.some(r => r.priority === 'high') ? ['plan-ahead' as const] : []),
+    ...(otherChecks.some(r => r.priority === 'high') ? ['other-checks' as const] : [])
+  ]
+  const folded = foldedCards(more, present, urgent)
+  const open = (card: FoldableCard) => !folded.includes(card)
+  const moreText = moreLine(more, present, urgent)
   const summary = tonightSummary(skies === FAILED ? null : skies, plan === FAILED ? null : plan)
   // Tonight's darkness is worked out for the site and night the plan uses, and agrees with how dark the plan found it.
   const planNight = plan && plan !== FAILED && plan.status === 'ok' ? plan.tonight?.night ?? plan.night ?? null : null
@@ -233,7 +268,7 @@ export function Dashboard(): React.ReactElement {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          {!show('coming-nights') ? null : plan === null ? (
+          {!show('coming-nights') || !open('coming-nights') ? null : plan === null ? (
             <Card title="Coming nights"><Skeleton className="h-16 w-full" label="Working out the coming nights" /></Card>
           ) : plan === FAILED ? (
             <Card title="Coming nights">
@@ -242,7 +277,7 @@ export function Dashboard(): React.ReactElement {
           ) : (
             <ComingNightsCard plan={plan} />
           )}
-          {ahead.length > 0 && (
+          {ahead.length > 0 && open('plan-ahead') && (
             <Card title="Plan ahead">
               <ul className="divide-y divide-astro-border -my-3">{ahead.slice(0, 6).map(recommendationRow)}</ul>
             </Card>
@@ -258,7 +293,7 @@ export function Dashboard(): React.ReactElement {
           )}
         </div>
 
-        {cockpit !== null && cockpit !== FAILED && (
+        {targetsLoaded && open('targets') && (
           <Card
             title="Where your targets are"
             action={
@@ -272,10 +307,22 @@ export function Dashboard(): React.ReactElement {
           </Card>
         )}
 
-        {otherChecks.length > 0 && (
+        {otherChecks.length > 0 && open('other-checks') && (
           <Card title="Other checks">
             <ul className="divide-y divide-astro-border -my-3">{otherChecks.slice(0, 6).map(recommendationRow)}</ul>
           </Card>
+        )}
+
+        {moreText && (
+          <button
+            type="button"
+            onClick={toggleMore}
+            aria-expanded={more}
+            className="flex w-full items-center gap-2 rounded border border-dashed border-astro-border px-4 py-2 text-left text-sm text-astro-muted hover:text-astro-accent hover:border-astro-accent"
+          >
+            <span aria-hidden="true">{more ? '−' : '+'}</span>
+            {moreText}
+          </button>
         )}
 
         <p className="text-xs text-astro-muted">

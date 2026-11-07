@@ -4,7 +4,7 @@ Leigh asked (7 November 2026): "Can you do both a DX and a UX overhaul for the s
 look-and-feel overhaul (spec 041) gave the app its Star atlas look and eight places. This round
 makes each screen say a thing once, ask for each setting once and show only numbers from your own
 data, and lets every part of it be worked from the keyboard. The plan splits it into slices U1 to
-U6; this spec holds the IDs of the slices built so far.
+U6, and U7 followed Leigh's answer on folding Home; this spec holds the IDs of the slices built so far.
 
 An audit on 7 November 2026 of Home on a new data folder found "set your site" four times: in Get
 set up, in Tonight, in Tonight's sky and in Clear skies, with Coming nights and Shoot tonight empty
@@ -106,6 +106,19 @@ script. That moved the wait to the first visit of each place, which showed the l
 - **The same loading line otherwise.** A page opened from a link elsewhere still shows the loading
   line while it comes, and a page that cannot be loaded says so with **Reload** (DEV-023).
 
+## U7: fold what you rarely use
+
+Leigh answered the plan doc's question (7 November 2026): Home should fold the cards he rarely
+uses. Below Tonight, Shoot tonight, Ready to process, Clear skies and Hidden in your files, Home
+had Coming nights, Plan ahead, Where your targets are and Other checks, each worth a look now and
+then rather than every evening.
+
+- **One More line.** Those four cards fold behind a line at the foot of Home that names the ones
+  with something to show (`More: Coming nights, Where your targets are`). Opening it shows them in
+  their places and the line becomes **Show fewer cards**. The choice is remembered on that screen.
+- **Nothing urgent is folded.** Plan ahead or Other checks with a high-priority item stays out.
+- Hidden in your files is never folded: finding what is in the files is what Home is for.
+
 ## Out of scope
 
 - Looking a place up by name: it would need a gazetteer or an online service.
@@ -133,3 +146,5 @@ script. That moved the wait to the first visit of each place, which showed the l
 | EUX-017 | Optional | Where the app runs on the desktop and no home folder is chosen, Get set up shall offer the sample; a browser, a companion screen or the headless server shall not offer or build it. |
 | EUX-018 | Event | When a place is pointed at or reached with Tab in the sidebar, or highlighted in Go to, the system shall start loading its page, once. |
 | EUX-019 | State | While Home is open and the app is idle, the system shall load the first page of each sidebar place in the background, except on a companion screen. |
+| EUX-020 | Ubiquitous | Home shall fold Coming nights, Plan ahead, Where your targets are and Other checks behind one line naming those with something to show, which opens them in place and is remembered on that screen, folded unless opened. |
+| EUX-021 | Unwanted | If Plan ahead or Other checks holds a high-priority item, then Home shall not fold that card away. |

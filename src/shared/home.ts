@@ -27,3 +27,48 @@ export function homeCards(missing: boolean | null, setupShown: boolean | null): 
   if (missing !== true) return SITE_CARDS
   return setupShown === false ? ['site-prompt'] : []
 }
+
+/**
+ * The cards Home folds behind its More line (EUX-020): the ones Leigh rarely uses, below what to
+ * do tonight and what is ready to process. Hidden in your files stays out, since finding what the
+ * files hold is what Home is for.
+ */
+export type FoldableCard = 'coming-nights' | 'plan-ahead' | 'targets' | 'other-checks'
+
+/** In the order Home draws them, with the name each card goes by. */
+export const FOLDABLE_CARDS: Array<{ card: FoldableCard; title: string }> = [
+  { card: 'coming-nights', title: 'Coming nights' },
+  { card: 'plan-ahead', title: 'Plan ahead' },
+  { card: 'targets', title: 'Where your targets are' },
+  { card: 'other-checks', title: 'Other checks' }
+]
+
+/** Where Home remembers, on this screen, that its More line is open. */
+export const HOME_MORE_KEY = 'astrorepo.home.more'
+
+/** Reads the remembered choice: folded unless this screen chose to show every card. */
+export function moreOpen(saved: string | null): boolean {
+  return saved === '1'
+}
+
+/**
+ * Which of the cards Home has to show go behind the More line (EUX-020, EUX-021). `present` is
+ * the foldable cards with something to show; `urgent` those holding a high-priority item, which
+ * stay out so nothing urgent is folded away. Open, nothing is folded.
+ */
+export function foldedCards(open: boolean, present: FoldableCard[], urgent: FoldableCard[]): FoldableCard[] {
+  if (open) return []
+  return FOLDABLE_CARDS.map(c => c.card).filter(c => present.includes(c) && !urgent.includes(c))
+}
+
+/**
+ * What the More line says, or null when there is nothing to fold or unfold. Folded, it names the
+ * cards behind it; open, it offers to fold them again.
+ */
+export function moreLine(open: boolean, present: FoldableCard[], urgent: FoldableCard[]): string | null {
+  const foldable = foldedCards(false, present, urgent)
+  if (foldable.length === 0) return null
+  if (open) return 'Show fewer cards'
+  const names = foldable.map(c => FOLDABLE_CARDS.find(f => f.card === c)?.title ?? c)
+  return `More: ${names.join(', ')}`
+}
