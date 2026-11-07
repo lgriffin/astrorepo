@@ -6,7 +6,7 @@ import type { ClearSkiesView, NightSkyView, SkyInsightView } from '../../src/sha
 import fc from 'fast-check'
 import { readCoordinates } from '../../src/shared/coordinates'
 import { makeSaveSite } from '@astro/application'
-import { SITE_CARDS, homeCards, siteMissing } from '../../src/shared/home'
+import { FOLDABLE_CARDS, HOME_MORE_KEY, SITE_CARDS, foldedCards, homeCards, moreLine, moreOpen, siteMissing } from '../../src/shared/home'
 import { isZeroStat, statTone } from '../../src/shared/stat'
 
 describe('Home asks for the site once (spec 046)', () => {
@@ -259,5 +259,53 @@ describe('Honest numbers (spec 046, U3)', () => {
     const totals = read('components/insights/ObservatoryTotals.tsx')
     expect(totals).toContain('label="Your targets"')
     expect(totals).toContain('title="Your targets by type"')
+  })
+})
+
+describe('Home folds the cards you rarely use (spec 046, U7)', () => {
+  const all = FOLDABLE_CARDS.map(c => c.card)
+  const dashboard = () => fs.readFileSync(path.resolve(__dirname, '../../src/renderer/pages/Dashboard.tsx'), 'utf8')
+
+  it('[EUX-020] Given Home with every card to show, When it is drawn, Then Coming nights, Plan ahead, Where your targets are and Other checks fold behind one More line naming them', () => {
+    expect(all).toEqual(['coming-nights', 'plan-ahead', 'targets', 'other-checks'])
+    expect(foldedCards(false, all, [])).toEqual(all)
+    expect(moreLine(false, all, [])).toBe('More: Coming nights, Plan ahead, Where your targets are, Other checks')
+    // Only the cards with something to show are named.
+    expect(moreLine(false, ['targets', 'coming-nights'], [])).toBe('More: Coming nights, Where your targets are')
+  })
+
+  it('[EUX-020] Given the More line, When it is opened, Then every card shows and the line offers to fold them again; with nothing to fold there is no line', () => {
+    expect(foldedCards(true, all, [])).toEqual([])
+    expect(moreLine(true, all, [])).toBe('Show fewer cards')
+    expect(moreLine(false, [], [])).toBeNull()
+    expect(moreLine(true, [], [])).toBeNull()
+  })
+
+  it('[EUX-020] Given a choice made on this screen, When Home opens again, Then it is remembered, and folded is the default', () => {
+    expect(HOME_MORE_KEY).toBe('astrorepo.home.more')
+    expect(moreOpen('1')).toBe(true)
+    expect(moreOpen('0')).toBe(false)
+    expect(moreOpen(null)).toBe(false)
+    const source = dashboard()
+    expect(source).toContain('window.localStorage.setItem(HOME_MORE_KEY')
+    expect(source).toContain('aria-expanded={more}')
+    expect(source).toContain('foldedCards(more, present, urgent)')
+  })
+
+  it('[EUX-021] Given a high-priority item in Plan ahead or Other checks, or Coming nights that failed, When Home is folded, Then that card is not folded away and the line does not name it', () => {
+    expect(foldedCards(false, all, ['other-checks'])).toEqual(['coming-nights', 'plan-ahead', 'targets'])
+    expect(moreLine(false, all, ['plan-ahead', 'other-checks'])).toBe('More: Coming nights, Where your targets are')
+    expect(moreLine(false, ['plan-ahead'], ['plan-ahead'])).toBeNull()
+    expect(dashboard()).toContain("ahead.some(r => r.priority === 'high')")
+    expect(dashboard()).toContain("otherChecks.some(r => r.priority === 'high')")
+    expect(dashboard()).toContain("plan === FAILED ? ['coming-nights' as const]")
+    expect(moreLine(false, ['coming-nights', 'targets'], ['coming-nights'])).toBe('More: Where your targets are')
+  })
+
+  it('[EUX-020] Given Home, When it is folded, Then Hidden in your files, Shoot tonight and Ready to process are never folded', () => {
+    expect(all).not.toContain('hidden')
+    const source = dashboard()
+    for (const card of all) expect(source, card).toContain(`open('${card}')`)
+    expect(source).not.toContain("open('hidden')")
   })
 })

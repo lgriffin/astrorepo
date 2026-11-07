@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Home folds what you rarely use** (spec 046, U7): Coming nights, Plan ahead, Where your
+  targets are and Other checks sit behind one More line at the foot of Home, remembered on each
+  screen; a card holding a high-priority item stays out.
 - **Quicker pages** (spec 046, U6): a place starts loading when you point at it in the sidebar or
   highlight it in Go to, and the sidebar places load in the background once Home has settled, so
   a first visit opens at once.
