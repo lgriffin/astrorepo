@@ -92,6 +92,20 @@ already shows every page with something in it, but only to a developer.
 - **Desktop only.** A browser or companion screen of the headless server is never offered the
   sample, and the server has no channel that builds one or restarts anything.
 
+## U6: quicker pages
+
+Since D6 every page but Home loads the first time it is opened, so the app starts on half the
+script. That moved the wait to the first visit of each place, which showed the loading line.
+
+- **Fetched before the click.** Pointing at a place in the sidebar, reaching it with Tab, or
+  highlighting it in Go to starts loading its page, once.
+- **Fetched while you look at Home.** Two seconds after the app starts, when the browser is idle,
+  the first page of each sidebar place is fetched in the background, so a first visit opens at
+  once (75 ms to Targets in a served run, against a loading line before). A companion screen,
+  which reaches the PC over the network, fetches nothing ahead.
+- **The same loading line otherwise.** A page opened from a link elsewhere still shows the loading
+  line while it comes, and a page that cannot be loaded says so with **Reload** (DEV-023).
+
 ## Out of scope
 
 - Looking a place up by name: it would need a gazetteer or an online service.
@@ -117,3 +131,5 @@ already shows every page with something in it, but only to a developer.
 | EUX-015 | State | While the sample is on, every page shall show that it is sample data, that nothing in it is yours, and a way to use your own data. |
 | EUX-016 | Unwanted | If the sample is left, or a folder where the sample goes was not made by the app, then the system shall restart on your own database and remove only a folder holding the sample's marker, and shall not build over or remove any other folder. |
 | EUX-017 | Optional | Where the app runs on the desktop and no home folder is chosen, Get set up shall offer the sample; a browser, a companion screen or the headless server shall not offer or build it. |
+| EUX-018 | Event | When a place is pointed at or reached with Tab in the sidebar, or highlighted in Go to, the system shall start loading its page, once. |
+| EUX-019 | State | While Home is idle after the app starts, the system shall load the first page of each sidebar place in the background, except on a companion screen. |

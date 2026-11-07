@@ -11,17 +11,20 @@ const filesIn = (rel: string): string[] => fs.readdirSync(path.join(repo, rel)).
 describe('Code health (spec 045, D6)', () => {
   it('[DEV-023] Given the renderer, When the app starts, Then only Home is loaded with it, every other page is loaded the first time it is opened, and one that fails to load is not left blank', () => {
     const app = read('src/renderer/App.tsx')
-    const eager = [...app.matchAll(/^import \{ (\w+) \} from '\.\/pages\/(\w+)'/gm)].map(m => m[1])
+    const routes = read('src/renderer/routes.tsx')
+    expect([...app.matchAll(/from '\.\/pages\//g)]).toHaveLength(0)
+    const eager = [...routes.matchAll(/^import \{ (\w+) \} from '\.\/pages\/(\w+)'/gm)].map(m => m[1])
     expect(eager).toEqual(['Dashboard'])
-    const lazy = [...app.matchAll(/^const (\w+) = page\(\(\) => import\('\.\/pages\/(\w+)'\), '(\w+)'\)/gm)]
+    const lazy = [...routes.matchAll(/^const (\w+) = page\(\(\) => import\('\.\/pages\/(\w+)'\), '(\w+)'\)/gm)]
     for (const [, name, file, exported] of lazy) {
       expect(exported, file).toBe(name)
       expect(read(`src/renderer/pages/${file}.tsx`), file).toContain(`export function ${name}(`)
     }
     // Every page a route opens is one of them.
-    const routed = [...app.matchAll(/element=\{<(\w+) \/>\}/g)].map(m => m[1])
+    const routed = [...routes.matchAll(/\{ path: '[^']+', page: (\w+) \}/g)].map(m => m[1])
     expect(routed.length).toBeGreaterThan(20)
     for (const page of routed) expect(['Dashboard', ...lazy.map(l => l[1])], page).toContain(page)
+    expect(app).toContain('{ROUTES.map(')
     expect(app).toContain('<Suspense fallback={<Loading label="Loading the page"')
     // A page that fails to load says so and offers a reload, rather than leaving the screen blank.
     expect(app.indexOf('<PageLoadBoundary>')).toBeLessThan(app.indexOf('<Suspense'))

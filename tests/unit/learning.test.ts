@@ -400,7 +400,7 @@ describe('The Learn page and the trail', () => {
     expect(page).toMatch(/See it: \{place\.label\}/)
     // In full whatever the level: the short level shortens only the Why?s elsewhere.
     expect(page).toMatch(/conceptAtLevel\(c, 'deep'\)/)
-    expect(read('src/renderer/App.tsx')).toMatch(/<Route path="\/learn" element=\{<Learn \/>\} \/>/)
+    expect(read('src/renderer/routes.tsx')).toMatch(/\{ path: '\/learn', page: Learn \}/)
   })
 
   it('[LRN-025] Given ideas opened one after another, When the trail is kept, Then the latest comes first, each once, no more than the limit, with no counts', () => {

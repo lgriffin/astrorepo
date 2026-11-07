@@ -64,8 +64,8 @@ describe('navigation', () => {
     expect(new Set(NAV_ITEMS.map(i => i.to)).size).toBe(NAV_ITEMS.length)
     expect(new Set(NAV_ITEMS.map(i => i.label)).size).toBe(NAV_ITEMS.length)
     // Every place has a route, so no sidebar link lands on a blank page.
-    const app = read('App.tsx')
-    for (const item of NAV_ITEMS) expect(app).toContain(`path="${item.to}"`)
+    const app = read('routes.tsx')
+    for (const item of NAV_ITEMS) expect(app).toContain(`path: '${item.to}'`)
   })
 
   it('[UX-001] Given logging a night, When the sidebar is drawn, Then it is not a place but an action on Home and Nights', () => {

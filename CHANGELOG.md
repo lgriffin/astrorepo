@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Quicker pages** (spec 046, U6): a place starts loading when you point at it in the sidebar or
+  highlight it in Go to, and the sidebar places load in the background once Home has settled, so
+  a first visit opens at once.
 - **Code health** (spec 045, D6): pages other than Home load when first opened, so the app reads
   less than half as much script to start; IPC channels and shared types are split into one module
   per area; Vitest 3; Dependabot proposes weekly grouped updates.
