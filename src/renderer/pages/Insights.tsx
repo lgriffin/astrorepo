@@ -189,7 +189,7 @@ export function Insights(): React.ReactElement {
           <StatCard label="Total imaging hours" value={summary.totalImagingHours.toFixed(1)} accent />
           <StatCard label="Light frames" value={summary.totalFiles.toLocaleString()} />
           <StatCard label="Targets imaged" value={summary.totalTargets} />
-          <StatCard label="Sessions" value={summary.totalSessions} />
+          <StatCard label="Nights" value={summary.totalNights} />
         </div>
 
         {summary.mostImagedTarget && (

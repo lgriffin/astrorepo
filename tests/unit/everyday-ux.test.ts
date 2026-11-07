@@ -7,6 +7,7 @@ import fc from 'fast-check'
 import { readCoordinates } from '../../src/shared/coordinates'
 import { makeSaveSite } from '@astro/application'
 import { SITE_CARDS, homeCards, siteMissing } from '../../src/shared/home'
+import { isZeroStat, statTone } from '../../src/shared/stat'
 
 describe('Home asks for the site once (spec 046)', () => {
   it('[EUX-001] Given no site, When Home is drawn with Get set up on show, Then none of the cards that need a site is shown', () => {
@@ -224,5 +225,33 @@ describe('One Tonight card (spec 046, U2)', () => {
     expect(rowLinks({ targetId: null, actionLabel: null })).toEqual({ titleTo: null, button: null })
     const home = fs.readFileSync(path.join(repo, 'src/renderer/pages/Dashboard.tsx'), 'utf8')
     expect(home).toContain('const { titleTo, button } = rowLinks(rec)')
+  })
+})
+
+describe('Honest numbers (spec 046, U3)', () => {
+  const read = (file: string) => fs.readFileSync(path.join(__dirname, '../../src/renderer', file), 'utf8')
+
+  it('[EUX-009] Given a zero total in any form, When its tone is chosen, Then it is muted, even on an accent tile', () => {
+    for (const zero of [0, '0', '0.0', '0s', '0 h', '0,0']) expect(statTone(zero, true), String(zero)).toBe('muted')
+    expect(statTone(3, true)).toBe('accent')
+    expect(statTone('2.5', false)).toBe('plain')
+    for (const value of ['10', '0.5', '30s', 'M 31', '2025-01-01']) expect(isZeroStat(value), value).toBe(false)
+  })
+
+  it('[EUX-009] Given the stat tile, When it draws its value, Then the tone comes from statTone', () => {
+    expect(read('components/common/StatCard.tsx')).toContain('TONE[statTone(value, accent)]')
+  })
+
+  it('[EUX-008] Given Insights, When its totals are drawn, Then nights appear once, as Nights, and no tile says Sessions', () => {
+    const page = read('pages/Insights.tsx') + read('components/insights/ObservatoryTotals.tsx')
+    expect(page.match(/label="Nights"/g)?.length).toBe(1)
+    expect(page).not.toMatch(/label="Sessions"/)
+    expect(page).toContain('summary.totalNights')
+  })
+
+  it('[EUX-007] Given Insights, When its target totals are drawn, Then they are named as yours', () => {
+    const totals = read('components/insights/ObservatoryTotals.tsx')
+    expect(totals).toContain('label="Your targets"')
+    expect(totals).toContain('title="Your targets by type"')
   })
 })

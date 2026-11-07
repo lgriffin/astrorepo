@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
-import { setupTestDb, teardownTestDb, seedTarget, seedEquipment } from '../helpers/setup'
+import { setupTestDb, teardownTestDb, seedTarget, seedEquipment, seedFitsScan, seedFitsFile } from '../helpers/setup'
 
 let sqlite: Database.Database
 
@@ -10,6 +10,7 @@ vi.mock('../../src/main/db/connection', () => ({
 
 const { getDashboardStats, getCatalogueProgressStats } = await import('../../src/main/services/dashboard')
 const { createSession } = await import('../../src/main/services/session')
+const { getInsightsSummary } = await import('../../src/main/services/insights')
 
 describe('DashboardService', () => {
   beforeEach(() => {
@@ -113,6 +114,39 @@ describe('DashboardService', () => {
       expect(progress[0].catalogueName).toBe('Messier')
       expect(progress[0].total).toBe(2)
       expect(progress[0].completed).toBe(1)
+    })
+  })
+
+  describe('Honest numbers (spec 046, U3)', () => {
+    it('[EUX-007] Given catalogue entries nobody has touched, When totals are fetched, Then they are not counted as targets, planned or by type', () => {
+      seedTarget(sqlite, { canonicalName: 'M 1', objectType: 'supernova_remnant', isCustom: false })
+      seedTarget(sqlite, { canonicalName: 'M 2', objectType: 'globular_cluster', isCustom: false })
+      seedTarget(sqlite, { canonicalName: 'Mine', objectType: 'galaxy' })
+      seedTarget(sqlite, { canonicalName: 'M 42', objectType: 'emission_nebula', isCustom: false, workflowStage: 'processing' })
+
+      const stats = getDashboardStats()
+
+      expect(stats.totalTargets).toBe(2)
+      expect(stats.plannedTargets).toBe(1)
+      expect(stats.inProgressTargets).toBe(1)
+      expect(stats.objectsByType).toEqual({ galaxy: 1, emission_nebula: 1 })
+    })
+
+    it('[EUX-007] Given a catalogue entry with your light frames, When totals are fetched, Then it counts as yours', () => {
+      const id = seedTarget(sqlite, { canonicalName: 'M 31', isCustom: false })
+      seedFitsFile(sqlite, seedFitsScan(sqlite), { targetId: id, imageType: 'Light', dateObs: '2025-01-01T21:00:00' })
+      expect(getDashboardStats().totalTargets).toBe(1)
+    })
+
+    it('[EUX-008] Given a night both logged and imaged, another only imaged and a dark frame, When nights are counted, Then each night counts once and darks do not', () => {
+      const scan = seedFitsScan(sqlite)
+      createSession({ date: '2025-01-01', totalExposureSec: 3600, targetIds: [] })
+      seedFitsFile(sqlite, scan, { imageType: 'Light', dateObs: '2025-01-01T21:00:00' })
+      seedFitsFile(sqlite, scan, { imageType: 'LIGHT', dateObs: '2025-01-03T22:00:00' })
+      seedFitsFile(sqlite, scan, { imageType: 'Dark', dateObs: '2025-01-05T22:00:00' })
+
+      expect(getDashboardStats().observationNights).toBe(2)
+      expect(getInsightsSummary().totalNights).toBe(2)
     })
   })
 })

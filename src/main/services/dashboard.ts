@@ -1,5 +1,17 @@
 import { getSqlite } from '../db/connection'
 import { getTotalFitsFileCount } from './fits-analyzer'
+import { MINE } from './target'
+
+/**
+ * Every night you imaged, once (spec 046, EUX-008): the dates you logged a night on and the
+ * nights your light frames were taken, counted together.
+ */
+export const NIGHTS_SQL = `SELECT COUNT(*) as nights FROM (
+  SELECT date AS night FROM observation_sessions WHERE date IS NOT NULL
+  UNION
+  SELECT substr(date_obs, 1, 10) FROM fits_files
+  WHERE date_obs IS NOT NULL AND (image_type IS NULL OR lower(image_type) LIKE '%light%')
+)`
 import type { DashboardStats, CatalogueProgress } from '@shared/types'
 
 export function getDashboardStats(): DashboardStats {
@@ -11,11 +23,11 @@ export function getDashboardStats(): DashboardStats {
        COUNT(CASE WHEN workflow_stage IN ('published','printed','archived') THEN 1 END) as completed,
        COUNT(CASE WHEN workflow_stage NOT IN ('not_observed','published','printed','archived') THEN 1 END) as in_progress,
        COUNT(CASE WHEN workflow_stage = 'not_observed' THEN 1 END) as planned
-     FROM targets`
+     FROM targets t WHERE ${MINE}`
   ).get() as Record<string, number>
 
   const typeRows = sqlite.prepare(
-    'SELECT object_type, COUNT(*) as cnt FROM targets GROUP BY object_type'
+    `SELECT object_type, COUNT(*) as cnt FROM targets t WHERE ${MINE} GROUP BY object_type`
   ).all() as Array<{ object_type: string; cnt: number }>
 
   const objectsByType: Record<string, number> = {}
@@ -35,10 +47,9 @@ export function getDashboardStats(): DashboardStats {
   for (const r of catRows) objectsByCatalogue[r.abbreviation] = { completed: r.completed, total: r.total }
 
   const sessionStats = sqlite.prepare(
-    `SELECT COUNT(DISTINCT date) as nights,
-            COALESCE(SUM(total_exposure_sec), 0) as total_exposure
-     FROM observation_sessions`
-  ).get() as { nights: number; total_exposure: number }
+    'SELECT COALESCE(SUM(total_exposure_sec), 0) as total_exposure FROM observation_sessions'
+  ).get() as { total_exposure: number }
+  const nights = (sqlite.prepare(NIGHTS_SQL).get() as { nights: number }).nights
 
   const equipRows = sqlite.prepare(
     `SELECT e.name, COUNT(se.session_id) as session_count
@@ -100,7 +111,7 @@ export function getDashboardStats(): DashboardStats {
     plannedTargets: totals.planned,
     objectsByType,
     objectsByCatalogue,
-    observationNights: sessionStats.nights,
+    observationNights: nights,
     totalFitsFiles: getTotalFitsFileCount(),
     totalExposureSec: sessionStats.total_exposure,
     storageBytes: storageRow.total,

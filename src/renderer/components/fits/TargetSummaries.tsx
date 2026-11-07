@@ -80,7 +80,7 @@ export function TargetSummaries({ scanId }: TargetSummariesProps): React.ReactEl
 
                 {t.sessions.length > 0 && (
                   <div className="mb-3">
-                    <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Sessions / Nights</h4>
+                    <h4 className="text-xs text-astro-muted mb-1.5 font-condensed">Session folders</h4>
                     <div className="space-y-1">
                       {t.sessions.map((s) => (
                         <div key={s} className="flex justify-between text-sm">

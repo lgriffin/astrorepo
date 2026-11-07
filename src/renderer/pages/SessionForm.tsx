@@ -66,7 +66,7 @@ export function SessionForm(): React.ReactElement {
       addToast('Session recorded', 'success')
       navigate('/timeline')
     } catch {
-      addToast('Failed to save session', 'error')
+      addToast('The night could not be saved', 'error')
     } finally {
       setSaving(false)
     }
@@ -129,7 +129,7 @@ export function SessionForm(): React.ReactElement {
 
         <FormSection title="Notes">
           <FormField label="Guiding notes" value={form.guidingNotes} onChange={(v) => update('guidingNotes', v)} multiline />
-          <FormField label="Session notes" value={form.notes} onChange={(v) => update('notes', v)} multiline />
+          <FormField label="Notes on the night" value={form.notes} onChange={(v) => update('notes', v)} multiline />
         </FormSection>
 
         <div className="flex gap-3 pt-2">
@@ -138,7 +138,7 @@ export function SessionForm(): React.ReactElement {
             type="submit"
             busy={saving}
           >
-            {saving ? 'Saving…' : 'Save session'}
+            {saving ? 'Saving…' : 'Save night'}
           </Button>
           <button
             type="button"

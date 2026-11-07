@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Honest numbers** (spec 046, U3): Insights counts only your own targets, so the catalogues'
+  objects are no longer "Planned" before you plan them; each night counts once, from logged
+  nights and light frames together, shown once as Nights; zero totals are drawn muted.
 - **Smoke run** (spec 045, D3): `npm run smoke` opens every page and Settings section of the
   built app in each theme in Chromium, saves screenshots to `reports/smoke/`, and fails on errors,
   blank pages and new serious accessibility findings; CI runs it in its own job.

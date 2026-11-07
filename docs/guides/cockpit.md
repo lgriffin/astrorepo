@@ -37,6 +37,12 @@ Apart from the weather, everything on it is worked out from the files the app ha
 scans), so it changes as you capture, stack and process. Totals, catalogue progress and
 breakdowns by object type and equipment are on **Insights**, under **Your observatory**.
 
+Insights counts only your own targets: ones you added, planned past "not observed", gave a
+folder, imaged, logged on a night or put in a collection you made. The catalogues' hundreds of
+other objects are not "Planned" until you plan them; catalogue progress still shows each
+catalogue's size. **Nights** counts each night once, whether you logged it, imaged it or both, and
+a total that is still zero is drawn muted rather than in the accent colour.
+
 ## Tonight
 
 Tonight is one card. Inspired by Ryan Clinton's [Meanwhile, in space](https://ryanclinton.uk/astrophotography/meanwhile),

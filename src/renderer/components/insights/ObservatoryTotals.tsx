@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { invoke } from '../../hooks/useIPC'
-import { formatExposure } from '../../utils/format'
 import { StatCard } from '../common/StatCard'
 import { Card, EmptyState } from '../common/Card'
 import type { CatalogueProgress, DashboardStats } from '@shared/types'
 
 /**
  * Totals and breakdowns across the whole observatory. They used to sit on the first screen, ahead
- * of what to do next; they are for looking back, so they live on Insights (UX-006).
+ * of what to do next; they are for looking back, so they live on Insights (UX-006). They count only
+ * your own targets, never the catalogue's (EUX-007); nights and hours are in the row below.
  */
 export function ObservatoryTotals(): React.ReactElement {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -33,13 +33,11 @@ export function ObservatoryTotals(): React.ReactElement {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard label="Targets" value={stats.totalTargets} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Your targets" value={stats.totalTargets} />
         <StatCard label="Completed" value={stats.completedTargets} accent />
         <StatCard label="In progress" value={stats.inProgressTargets} />
         <StatCard label="Planned" value={stats.plannedTargets} />
-        <StatCard label="Nights" value={stats.observationNights} />
-        <StatCard label="Total exposure" value={formatExposure(stats.totalExposureSec)} />
         <StatCard label="With raw data" value={stats.targetsWithRawData} compact />
         <StatCard label="With a stack" value={stats.targetsWithStackedData} compact />
         <StatCard label="With a TIFF" value={stats.targetsWithTifData} compact />
@@ -72,7 +70,10 @@ export function ObservatoryTotals(): React.ReactElement {
           )}
         </Card>
 
-        <Card title="Objects by type">
+        <Card title="Your targets by type">
+          {Object.keys(stats.objectsByType).length === 0 ? (
+            <EmptyState>Targets you add, plan or image are counted here by kind.</EmptyState>
+          ) : (
           <div className="space-y-2">
             {Object.entries(stats.objectsByType)
               .sort(([, a], [, b]) => b - a)
@@ -84,6 +85,7 @@ export function ObservatoryTotals(): React.ReactElement {
                 </div>
               ))}
           </div>
+          )}
         </Card>
 
         <Card title="Most used equipment">
