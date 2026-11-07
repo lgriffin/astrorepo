@@ -12,6 +12,9 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Smoke run** (spec 045, D3): `npm run smoke` opens every page and Settings section of the
+  built app in each theme in Chromium, saves screenshots to `reports/smoke/`, and fails on errors,
+  blank pages and new serious accessibility findings; CI runs it in its own job.
 - **Vespera ingest** (spec 034): the Vespera page has one copy flow. **Scan the scope** lists
   every session from its listings alone, counts FITS, TIFF, JPEG and JSON per run, flags what
   looks wrong (missing frames, more JPEGs than FITS, no TIFF, unknown files), and names each
@@ -101,6 +104,8 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
   it shows for a Seestar or Vespera target.
 
 ### Fixed
+- Settings → Companion screens no longer asks the served app for channels only the desktop
+  app has (two 404s per visit), and just says companions need the desktop app (spec 045, D3).
 - A "Flat Light" or "Dark Light" frame no longer counts toward a target's integration (#53).
 - Bugs the fuzz and property tests found (#56): a FITS header could hang the scanner or make the
   image reader allocate 400 MB; all-NaN images gave nonsense statistics; the two FITS header

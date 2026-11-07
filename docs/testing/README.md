@@ -36,6 +36,7 @@ test, where it lives, and what the build refuses. The three guides beside it go 
 | Mutation, changed files | A pull request with any changed core file scoring under the floor (`DEFAULT_BREAK` in `scripts/mutation/scope.mjs`), or the run as a whole under it | CI, on pull requests touching the core or the gate |
 | Mutation, whole core | Any core file, or the whole core, scoring under the floor | Nightly and on demand |
 | Fuzz, long | Any parser failing its contract over 20,000 runs | Nightly and on demand |
+| Smoke (`npm run smoke`, after `npm run build`) | A page, in any theme, that throws, logs a console error, draws blank, or has a serious or critical axe finding (WCAG 2 A and AA) not in `scripts/smoke/axe-baseline.json` | CI, its own job, keeping screenshots |
 
 CI runs once per change: on pull requests, and on pushes to main, and a newer push to a pull
 request cancels the run it replaces. On Ubuntu it runs `npm run verify` (every gate, the quick
@@ -44,6 +45,12 @@ file-system differences (such as Windows refusing to truncate a file opened for 
 caught before merge. Lint and the type checks read the same source everywhere, so they run once.
 A test parses every workflow, so a workflow GitHub cannot read fails `npm test` rather than
 silently never running.
+
+The smoke job serves the built app with an empty data folder and opens every page of the map of
+places and every Settings section in Chromium, in the dark, light and night themes. Screenshots
+and `report.json` land in `reports/smoke/` (kept as the `smoke` artifact in CI), so a pull request's
+look can be checked without running the app. The accessibility baseline may only shrink: the run
+lists findings fixed since, and `npm run smoke -- --update-baseline` rewrites it.
 
 ## Adding a feature
 

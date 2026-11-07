@@ -49,3 +49,25 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  # Every page in every theme in a real browser: errors, blank pages, accessibility findings
+  # beyond the baseline (DEV-011 to DEV-014). The screenshots are kept for review.
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke
+          path: reports/smoke/
+          if-no-files-found: ignore
