@@ -158,7 +158,14 @@ export class WorkerFrameReader implements FrameReader {
 
   private dispatch(): void {
     while (this.queue.length > 0) {
-      const worker = this.idle.pop() ?? (this.started < this.lanes ? this.start() : undefined)
+      let worker: Worker | undefined
+      try {
+        worker = this.idle.pop() ?? (this.started < this.lanes ? this.start() : undefined)
+      } catch (error) {
+        // A thread that cannot even be made fails the list waiting for it, rather than leaving it queued.
+        this.queue.shift()!.reject(new Error(`A reader thread could not start: ${error instanceof Error ? error.message : String(error)}`))
+        continue
+      }
       if (!worker) return
       const pending = this.queue.shift()!
       this.busy.set(worker, pending)

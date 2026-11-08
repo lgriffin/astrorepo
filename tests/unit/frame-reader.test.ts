@@ -66,6 +66,15 @@ describe('reading on reader threads', () => {
     await reader.close()
   })
 
+  it('[NFR-024] Given a reader thread that cannot be made, When a list is read, Then that list fails at once and nothing stays queued', async () => {
+    let tries = 0
+    const reader = new WorkerFrameReader(() => { tries++; throw new Error('no threads here') }, 2)
+    await expect(reader.read(files.slice(0, 2))).rejects.toThrow(/could not start: no threads here/)
+    await expect(reader.stamp(files.slice(0, 2))).rejects.toThrow(/could not start/)
+    expect(tries).toBe(2)
+    await reader.close()
+  })
+
   it('[NFR-024] Given a closed reader, When asked to read, Then it refuses, and lists still waiting fail', async () => {
     const threads = readerThreads({ delayMs: 20 })
     const reader = new WorkerFrameReader(threads.create, 1)
