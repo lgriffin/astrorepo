@@ -100,6 +100,31 @@ describe('reading on reader threads', () => {
   })
 })
 
+describe('reading in place', () => {
+  it('[NFR-022] Given more lists than four, When read in place at once, Then at most four files are asked of the disk at once', async () => {
+    const promises = fs.promises as unknown as { open: (...a: unknown[]) => Promise<fs.promises.FileHandle> }
+    const open = promises.open
+    let busy = 0
+    let most = 0
+    promises.open = async (...a) => {
+      busy++
+      most = Math.max(most, busy)
+      await new Promise(resolve => setTimeout(resolve, 3))
+      const handle = await open.apply(fs.promises, a)
+      const close = handle.close.bind(handle)
+      handle.close = async () => { busy--; return close() }
+      return handle
+    }
+    try {
+      const read = await Promise.all(files.slice(0, 8).map(f => inPlaceFrameReader.read([f, f])))
+      expect(read.flat().every(r => r.isValid)).toBe(true)
+      expect(most).toBe(4)
+    } finally {
+      promises.open = open
+    }
+  })
+})
+
 describe('what crosses from a reader thread', () => {
   it('[NFR-023] Given a parsed header, When sent and rebuilt, Then every keyword maps to its card without the raw text', () => {
     const parsed = parseFitsFile(files[3])

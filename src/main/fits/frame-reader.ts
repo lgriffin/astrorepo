@@ -39,7 +39,9 @@ export function stampFileBlocking(filePath: string): FileStamp | null {
 
 /**
  * A frame's header read on this thread. A FITS header blocks the thread until the disk answers,
- * which is what a reader thread is for; a camera RAW file is read as it always is.
+ * which is what a reader thread is for. A camera RAW file is read as it always is, through Node's
+ * shared pool, so RAW frames still reach the disk four at a time; FITS frames are nearly all of a
+ * Seestar or Vespera library.
  */
 export function readFrameBlocking(filePath: string): Promise<FitsParseResult> {
   return frameFileKind(filePath) === 'fits' ? Promise.resolve(parseFitsFile(filePath)) : parseCameraRawFile(filePath)
@@ -89,17 +91,36 @@ export async function answerScanRead({ id, op, paths }: ScanReadRequest): Promis
  */
 export const inPlaceFrameReader: FrameReader = {
   lanes: IN_PLACE_LANES,
-  async stamp(paths) {
+  stamp: paths => inPlaceTurn(async () => {
     const stamps: (FileStamp | null)[] = []
     for (const p of paths) stamps.push(await fs.promises.stat(p).then(stat => stampOf(p, stat), () => null))
     return stamps
-  },
-  async read(paths) {
+  }),
+  read: paths => inPlaceTurn(async () => {
     const results: FitsParseResult[] = []
     for (const p of paths) results.push(await (frameFileKind(p) === 'fits' ? parseFitsFileAsync(p) : parseCameraRawFile(p)))
     return results
-  },
+  }),
   async close() {}
+}
+
+/**
+ * At most four lists read in place at once, however many a scan asks for (NFR-022): a scan that
+ * falls back from eight reader threads keeps eight lanes, and the rest wait their turn here.
+ */
+const inPlaceWaiting: (() => void)[] = []
+let inPlaceBusy = 0
+async function inPlaceTurn<T>(work: () => Promise<T>): Promise<T> {
+  if (inPlaceBusy >= IN_PLACE_LANES) await new Promise<void>(resolve => inPlaceWaiting.push(resolve))
+  else inPlaceBusy++
+  try {
+    return await work()
+  } finally {
+    // The turn passes straight to the next waiting list, or is given back.
+    const next = inPlaceWaiting.shift()
+    if (next) next()
+    else inPlaceBusy--
+  }
 }
 
 interface Pending {

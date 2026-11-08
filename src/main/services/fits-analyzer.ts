@@ -174,7 +174,9 @@ async function scanFolder(folderPath: string, options: FolderScanOptions, reader
     try {
       return await read(tried)
     } catch (err) {
-      if (tried === inPlaceFrameReader || pacer.cancelled) throw err
+      // A thread lost while the user cancels is the cancel, not a failed scan.
+      if (pacer.cancelled) throw new ScanCancelled()
+      if (tried === inPlaceFrameReader) throw err
       using = inPlaceFrameReader
       return read(inPlaceFrameReader)
     }

@@ -108,6 +108,21 @@ describe('a scan read on reader threads', () => {
     expect(quarantined()).toBe(0)
   })
 
+  it('[ING-014] Given a reader thread lost as the user cancels, When the scan stops, Then it is reported cancelled, not failed', async () => {
+    addLights(200, 'night1')
+    const abort = new AbortController()
+    const threads = readerThreads({ failFrom: 0, delayMs: 2 })
+    await expect(startFolderScan(root, {
+      pacer: fast(abort.signal),
+      reader: new WorkerFrameReader(() => {
+        // Every thread dies on its first list, and the cancel comes while they hold them.
+        abort.abort()
+        return threads.create()
+      }, 4)
+    })).rejects.toBeInstanceOf(ScanCancelled)
+    expect(sqlite.prepare('SELECT status FROM fits_scans').all()).toEqual([{ status: 'cancelled' }])
+  })
+
   it('[ING-014] Given a scan on reader threads cancelled part way, When scanned again, Then lists read before the cancel are kept and only the rest is read', async () => {
     addLights(200, 'night1')
     const abort = new AbortController()

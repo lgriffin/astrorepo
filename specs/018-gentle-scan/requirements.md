@@ -51,7 +51,7 @@ slow and gentle on purpose, rather than fast and greedy.
 |----|---------|-------------|
 | NFR-013 | Ubiquitous | The system shall scan in slices of work separated by rests, so that it never holds the app's main process for a whole scan and uses at most the configured share of the time, and shall run at most one scan of any folder at once. |
 | NFR-022 | Ubiquitous | The system shall measure a scan's slices in the time the main process spends running code, not in time spent waiting for the disk, and, when reading on the main process, shall have at most four file stats or header reads under way at once, each header asked for four blocks at a time. |
-| NFR-023 | Ubiquitous | The desktop app shall read a scan's file stamps and headers on eight reader threads, each reading one list of files at a time, and shall write each list to the index as soon as it is read, without waiting for the lists read beside it. |
+| NFR-023 | Ubiquitous | The desktop app shall read a scan's file stamps and FITS headers on eight reader threads, each reading one list of files at a time, and shall write each list to the index as soon as it is read, without waiting for the lists read beside it. |
 | NFR-024 | Unwanted | If a reader thread fails or cannot start, then the system shall read that list, and the rest of the scan, on the main process, and shall not set any file aside as unreadable because of it. |
 
 ## Update, 6 November 2026: waiting is not work
@@ -97,7 +97,7 @@ Now:
 - **Less copying.** A reader thread sends the cards without their raw text, which the scan does
   not store, and the main process rebuilds the keyword map.
 - **If a reader thread fails** (NFR-024), its list and the rest of the scan are read on the main
-  process as before. No file is called unreadable because a thread died.
+  process as before, still four files at a time. No file is called unreadable because a thread died.
 - **Progress while checking, and time left** (ING-016). The Library page says how many files
   have been checked for changes, then how long reading the rest should take.
 
@@ -107,6 +107,9 @@ latency, 5,000 files take 2 seconds instead of 7; the main process's busy time f
 and its longest pause stayed around 40 ms. Eight is a deliberate middle: sixteen threads were
 faster again on the simulated disk (7 seconds) but doubled the longest pause, and asks twice as
 much of a NAS at once.
+
+Camera RAW frames are read on the threads too, but their EXIF reader uses Node's shared pool, so
+they still reach the disk four at a time. A blocking EXIF reader can follow if a RAW library needs it.
 
 The worker thread this spec deferred is half done: the threads only read. Writing stays on the
 main process, which owns the database connection, paced as before.
