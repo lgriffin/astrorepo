@@ -161,14 +161,23 @@ class HeaderReader {
   }
 }
 
+/** Header blocks asked for in each read of a scan. */
+const HEADER_BLOCKS_PER_READ = 4
+
 export function parseFitsHeaders(filePath: string): ParsedHeaders {
   const fd = fs.openSync(filePath, 'r')
   try {
     const reader = new HeaderReader()
-    const blockBuf = Buffer.alloc(BLOCK_SIZE)
-    for (;;) {
-      const bytesRead = fs.readSync(fd, blockBuf, 0, BLOCK_SIZE, null)
-      if (bytesRead < BLOCK_SIZE || reader.take(blockBuf)) break
+    const buf = Buffer.alloc(BLOCK_SIZE * HEADER_BLOCKS_PER_READ)
+    let filled = 0
+    // The same few blocks per read as a scan's reads (NFR-022), and a short read is not the end.
+    for (let position = 0; ;) {
+      const bytesRead = fs.readSync(fd, buf, filled, buf.length - filled, position)
+      if (bytesRead === 0) break
+      position += bytesRead
+      filled += bytesRead
+      if (takeWholeBlocks(reader, buf, filled)) break
+      filled = keepPartBlock(buf, filled)
     }
     return reader.result()
   } finally {
@@ -176,10 +185,21 @@ export function parseFitsHeaders(filePath: string): ParsedHeaders {
   }
 }
 
-/** The same as parseFitsHeaders, without blocking the thread while the disk or network answers. */
-/** Header blocks asked for in each read of a scan. */
-const HEADER_BLOCKS_PER_READ = 4
+/** Gives the reader every whole block in the buffer; true once it wants no more. */
+function takeWholeBlocks(reader: HeaderReader, buf: Buffer, filled: number): boolean {
+  const whole = Math.floor(filled / BLOCK_SIZE)
+  for (let b = 0; b < whole; b++) if (reader.take(buf.subarray(b * BLOCK_SIZE, (b + 1) * BLOCK_SIZE))) return true
+  return false
+}
 
+/** Moves a part block left after the whole ones to the start of the buffer; returns its length. */
+function keepPartBlock(buf: Buffer, filled: number): number {
+  const whole = Math.floor(filled / BLOCK_SIZE) * BLOCK_SIZE
+  buf.copy(buf, 0, whole, filled)
+  return filled - whole
+}
+
+/** The same as parseFitsHeaders, without blocking the thread while the disk or network answers. */
 export async function parseFitsHeadersAsync(filePath: string): Promise<ParsedHeaders> {
   const handle = await fs.promises.open(filePath, 'r')
   try {
@@ -195,12 +215,8 @@ export async function parseFitsHeadersAsync(filePath: string): Promise<ParsedHea
       if (bytesRead === 0) break
       position += bytesRead
       filled += bytesRead
-      const whole = Math.floor(filled / BLOCK_SIZE)
-      let done = false
-      for (let b = 0; b < whole && !done; b++) done = reader.take(buf.subarray(b * BLOCK_SIZE, (b + 1) * BLOCK_SIZE))
-      if (done) break
-      buf.copy(buf, 0, whole * BLOCK_SIZE, filled)
-      filled -= whole * BLOCK_SIZE
+      if (takeWholeBlocks(reader, buf, filled)) break
+      filled = keepPartBlock(buf, filled)
     }
     return reader.result()
   } finally {

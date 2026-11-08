@@ -9,7 +9,7 @@ import { electronDesktop } from './electron/electron-desktop'
 import { electronJobsEnvironment } from './electron/jobs-environment'
 import { hostOverIpc } from './electron/ipc-host'
 import { startJobs } from './jobs-host'
-import { composeCatalogues, composeCompanion, drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, shrinkPicturesWith, useAppData, useSeedFolder } from './composition'
+import { composeCatalogues, composeCompanion, drawNativeThumbnails, inspectOnWorkers, measureOnWorkers, readScansOnWorkers, shrinkPicturesWith, useAppData, useSeedFolder } from './composition'
 import { ServedDesktop } from './http/served-desktop'
 import { makeCompanionHost, osNetwork } from './http/companion-host'
 import { registerCompanionHandlers } from './ipc/companion-handlers'
@@ -18,6 +18,7 @@ import { nativeThumbnail } from './electron/native-thumbnails'
 import { shrinkPicture } from './electron/picture-shrinker'
 import createMeasureWorker from './workers/measure-worker?nodeWorker'
 import createInspectWorker from './workers/inspect-worker?nodeWorker'
+import createScanReadWorker from './workers/scan-read-worker?nodeWorker'
 import { autoGenerateCatalogueCollections } from './services/collection'
 import { registerSampleHandlers } from './ipc/sample-handlers'
 import { SAMPLE_SEEDED_KEY, leaveSample, sampleActive, samplePlaces, seedLibrary, startSample, tidyAfterSample } from './sample/sample-data'
@@ -92,6 +93,7 @@ app.whenReady().then(async () => {
   useAppData(app.getPath('userData'))
   const measurer = measureOnWorkers(() => createMeasureWorker({}))
   const pixels = inspectOnWorkers(() => createInspectWorker({}))
+  readScansOnWorkers(() => createScanReadWorker({}))
   shrinkPicturesWith(shrinkPicture)
   drawNativeThumbnails(nativeThumbnail)
   app.on('will-quit', () => {

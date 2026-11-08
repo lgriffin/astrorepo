@@ -7,6 +7,7 @@ import type { HomeScanProgress, HomeScanResult, HomeScanPhaseProgress, ScanFileC
 import { Loading, Button } from '../components/ui'
 import { LibraryLayoutCard } from '../components/library/LibraryLayoutCard'
 import { pressable } from '../components/ui/pressable'
+import { timeLeftText } from '@shared/scan-time'
 
 const PHASE_LABELS: Record<string, { title: string; description: string }> = {
   raw: { title: 'Raw', description: 'FITS files from capture sessions' },
@@ -310,10 +311,16 @@ export function Library(): React.ReactElement {
 
 function fileCountsText(files: ScanFileCounts | null): string {
   if (!files) return 'Reading FITS metadata...'
-  if (files.filesToRead === 0 && files.filesRead === 0 && files.filesUnchanged === 0) return `Finding FITS files: ${files.filesFound.toLocaleString()} so far`
+  if (files.filesToRead === 0 && files.filesRead === 0 && files.filesUnchanged === 0) {
+    return files.filesChecked > 0
+      ? `Checking for new or changed files: ${files.filesChecked.toLocaleString()} of ${files.filesFound.toLocaleString()}`
+      : `Finding FITS files: ${files.filesFound.toLocaleString()} so far`
+  }
   const parts = [`Read ${files.filesRead.toLocaleString()} of ${files.filesToRead.toLocaleString()} new or changed files`]
   if (files.filesUnchanged > 0) parts.push(`${files.filesUnchanged.toLocaleString()} unchanged`)
   if (files.quarantined > 0) parts.push(`${files.quarantined.toLocaleString()} unreadable`)
+  const left = timeLeftText(files.secondsLeft)
+  if (left) parts.push(left)
   return parts.join(', ')
 }
 

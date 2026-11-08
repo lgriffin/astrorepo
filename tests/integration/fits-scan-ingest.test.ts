@@ -5,6 +5,7 @@ import os from 'os'
 import path from 'path'
 import { setupTestDb, teardownTestDb } from '../helpers/setup'
 import { fitsBytes } from '../helpers/fits'
+import type { ScanFileCounts } from '../../src/shared/types'
 
 let sqlite: Database.Database
 
@@ -129,17 +130,17 @@ describe('FITS scan ingest', () => {
   })
 
   it('[ING-007] Given a folder, When scanned and scanned again, Then progress counts what was found, read, kept and set aside', async () => {
-    const first: { filesFound: number; filesToRead: number; filesRead: number; filesUnchanged: number; quarantined: number }[] = []
+    const first: ScanFileCounts[] = []
     await startFolderScan(root, { pacer: fast(), onProgress: p => first.push(p) })
-    expect(first.at(-1)).toEqual({ filesFound: 3, filesToRead: 3, filesRead: 3, filesUnchanged: 0, quarantined: 1 })
+    expect(first.at(-1)).toEqual({ filesFound: 3, filesChecked: 3, filesToRead: 3, filesRead: 3, filesUnchanged: 0, quarantined: 1, secondsLeft: null })
 
     const again: typeof first = []
     await startFolderScan(root, { pacer: fast(), onProgress: p => again.push(p) })
-    expect(again.at(-1)).toEqual({ filesFound: 3, filesToRead: 0, filesRead: 0, filesUnchanged: 2, quarantined: 1 })
+    expect(again.at(-1)).toEqual({ filesFound: 3, filesChecked: 3, filesToRead: 0, filesRead: 0, filesUnchanged: 2, quarantined: 1, secondsLeft: null })
   })
 
   it('[ING-014] Given a scan cancelled part way, When scanned again, Then what was read is kept and only the rest is read', async () => {
-    addLights(60)
+    addLights(200)
     const abort = new AbortController()
     await expect(startFolderScan(root, {
       pacer: fast(abort.signal),
@@ -148,13 +149,14 @@ describe('FITS scan ingest', () => {
 
     expect(sqlite.prepare('SELECT status FROM fits_scans').all()).toEqual([{ status: 'cancelled' }])
     const kept = rows()
+    // The lists already under way when the cancel came are finished and kept.
     expect(kept.length).toBeGreaterThanOrEqual(19)
-    expect(kept.length).toBeLessThan(60)
+    expect(kept.length).toBeLessThan(200)
 
     const again: { filesRead: number; filesUnchanged: number }[] = []
     await startFolderScan(root, { pacer: fast(), onProgress: p => again.push(p) })
     expect(again.at(-1)?.filesUnchanged).toBe(kept.length)
-    expect(rows()).toHaveLength(62)
+    expect(rows()).toHaveLength(202)
     expect(rows().filter(r => kept.some(k => k.id === r.id))).toHaveLength(kept.length)
     expect(sqlite.prepare('SELECT status FROM fits_scans').all()).toEqual([{ status: 'completed' }])
   })

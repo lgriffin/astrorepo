@@ -117,6 +117,8 @@ import { AstronomyEngineEphemeris } from './adapters/astronomy-engine-ephemeris'
 import { SqlitePlanningSettings, SqliteSkyQualitySettings, SqliteTargetPositions } from './adapters/sqlite-planning'
 import { NodeLibraryFolders, SqliteLibraryLayoutStore } from './adapters/library-layout'
 import { isAstronomicalName } from './services/astro-names'
+import { useFrameReaders } from './services/fits-analyzer'
+import { WorkerFrameReader } from './fits/frame-reader'
 import { NodeToolHub } from './adapters/node-tool-hub'
 import { SqliteStackCatalogue } from './adapters/sqlite-stack-catalogue'
 import { SqliteJobSettings, SqliteJobStore } from './adapters/sqlite-jobs'
@@ -221,6 +223,11 @@ const appPaths = new WindowsAppPathsRegistry()
 export function measureOnWorkers(createWorker: () => Worker): NodeFrameMeasurer {
   frameMeasurer = new NodeFrameMeasurer(createWorker)
   return frameMeasurer
+}
+
+/** Library scans read stamps and headers on reader threads from now on (NFR-023), started afresh for each scan. The app calls this at start; tests read in place. */
+export function readScansOnWorkers(createWorker: () => Worker): void {
+  useFrameReaders(() => new WorkerFrameReader(createWorker))
 }
 
 /** One pixel reader for the app, so the inspector's requests share its worker thread. */

@@ -315,12 +315,16 @@ export interface HomeScanPhaseProgress {
 /** What a folder scan has done so far (ING-007). */
 export interface ScanFileCounts {
   filesFound: number
+  /** Files whose size and modified time have been looked at, to tell new and changed from unchanged. */
+  filesChecked: number
   /** New or changed files that need their headers read. */
   filesToRead: number
   filesRead: number
   /** Unchanged since the last scan: kept as they are, not read again. */
   filesUnchanged: number
   quarantined: number
+  /** About how long reading the rest will take at the pace so far, once it can be told (ING-016). */
+  secondsLeft: number | null
 }
 
 export interface HomeScanProgress {
