@@ -22,3 +22,16 @@ export function restAfter(busyMs: number, pacing: ScanPacing): number {
   const duty = Math.min(1, Math.max(0.01, pacing.dutyCycle))
   return Math.ceil(busyMs * (1 - duty) / duty)
 }
+
+/** Files read, and seconds spent reading them, before a scan says how long it has left (ING-016). */
+export const TIME_LEFT_AFTER = { files: 50, seconds: 5 }
+
+/**
+ * Seconds a scan still needs to read its remaining files at the pace it has kept so far, or null
+ * while too little has been read to tell, and once everything is read (ING-016).
+ */
+export function readingSecondsLeft(filesRead: number, filesToRead: number, elapsedMs: number): number | null {
+  if (filesRead >= filesToRead) return null
+  if (filesRead < TIME_LEFT_AFTER.files || elapsedMs < TIME_LEFT_AFTER.seconds * 1000) return null
+  return Math.ceil((filesToRead - filesRead) * (elapsedMs / 1000) / filesRead)
+}

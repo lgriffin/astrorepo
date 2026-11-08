@@ -405,6 +405,12 @@ is quick. Scanning a subfolder of one already scanned, or the same folder typed 
 slash, reuses those rows too. Unreadable files that have not changed stay in the "could not be
 read" list without being read again.
 
+A scan first checks every file's size and modified time ("Checking for new or changed files"),
+then reads the headers of the new and changed ones. The desktop app reads on eight background
+threads, eight files at a time, so the window stays responsive; once it has read a few dozen files
+it says about how long the rest will take. Cancel keeps everything read so far, and the next scan
+carries on from there.
+
 ## Grading the lights
 
 Before a stack, **1 · Grade the lights** on a target's Stack and process measures every light from

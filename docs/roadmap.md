@@ -105,6 +105,10 @@ app has run on real data on the Windows PC and the licence is settled.
 - **The gentle scan paces by busy time** (spec 018, NFR-022, November 2026). Pacing by the clock
   rested for every wait on the disk, which made a 21,000-file library on Windows crawl; slices now
   count only the main process's running time, with four files in flight and one read per header.
+- **Scans read on eight reader threads** (spec 018, NFR-023, November 2026). Node's own pool lets
+  only four file calls reach the disk at once and batches of 20 waited for their slowest file;
+  reader threads stamp and read headers eight lists at a time and each list is written as it
+  arrives. The Library page shows files checked for changes and time left (ING-016).
 - **Seasons use the one site in Settings** (spec 012). Several sites wait for slice D, weather
   (FWD-003) waits for an optional forecast adapter, and nautical darkness stands in on summer
   nights when astronomical darkness never comes.

@@ -43,13 +43,16 @@ slow and gentle on purpose, rather than fast and greedy.
 | ING-007 | Event | When a library or folder scan is running, the system shall report the files found, the new or changed files to read and how many have been read, the unchanged files kept, and the files set aside as unreadable. |
 | ING-014 | Event | When the user cancels a running scan, the system shall stop at its next checkpoint, keep every file it has already indexed, and report the scan as cancelled. |
 | ING-015 | Unwanted | If a file's header has no END card within its first 200 blocks, then the system shall treat the file as unreadable without reading the rest of it. |
+| ING-016 | Event | When a scan is checking its files for changes, the system shall report how many files have been checked; when it is reading headers and has read at least 50 files over at least 5 seconds, the system shall report about how long the rest will take at the pace kept so far. |
 
 ## Non-functional
 
 | ID | Pattern | Requirement |
 |----|---------|-------------|
 | NFR-013 | Ubiquitous | The system shall scan in slices of work separated by rests, so that it never holds the app's main process for a whole scan and uses at most the configured share of the time, and shall run at most one scan of any folder at once. |
-| NFR-022 | Ubiquitous | The system shall measure a scan's slices in the time the main process spends running code, not in time spent waiting for the disk, and shall have at most four file stats or header reads under way at once, each header asked for four blocks at a time. |
+| NFR-022 | Ubiquitous | The system shall measure a scan's slices in the time the main process spends running code, not in time spent waiting for the disk, and, when reading on the main process, shall have at most four file stats or header reads under way at once, each header asked for four blocks at a time. |
+| NFR-023 | Ubiquitous | The desktop app shall read a scan's file stamps and headers on eight reader threads, each reading one list of files at a time, and shall write each list to the index as soon as it is read, without waiting for the lists read beside it. |
+| NFR-024 | Unwanted | If a reader thread fails or cannot start, then the system shall read that list, and the rest of the scan, on the main process, and shall not set any file aside as unreadable because of it. |
 
 ## Update, 6 November 2026: waiting is not work
 
@@ -71,3 +74,39 @@ With 8 ms of simulated latency per call, 1,000 files took 112 seconds. Now:
   Vespera header costs one round trip; directories are listed 256 entries per call.
 
 The same 1,000 files with 8 ms per call now take 11 seconds.
+
+## Update, 8 November 2026: reading on reader threads
+
+After the busy-time pacing, Leigh's scan read its images, but "20 at a time": 20,846 files still
+took several minutes. Three things held it to that pace:
+
+- **Node runs file calls on a pool of four threads** for the whole process, so however many
+  files the scan asked for, at most four were with the disk at once.
+- **Batches of 20 waited for their slowest file.** Four files were in flight inside each batch of
+  20, and the next batch only started once all 20 were read and written, so the disk sat idle
+  while the last file of each batch was read.
+- **Every header was parsed on the main process**, which counts as busy time and earns a rest.
+
+Now:
+
+- **Eight reader threads** (NFR-023), started for each scan and stopped when it ends, each read a
+  list at a time with plain blocking calls, so eight files are with the disk at once whatever
+  Node's own pool is doing. They stamp files 64 to a list and read headers 16 to a list.
+- **No batches.** Each list is written to the index the moment it comes back, so one slow file
+  holds up only its own list. A cancel lets the lists under way finish and keeps them.
+- **Less copying.** A reader thread sends the cards without their raw text, which the scan does
+  not store, and the main process rebuilds the keyword map.
+- **If a reader thread fails** (NFR-024), its list and the rest of the scan are read on the main
+  process as before. No file is called unreadable because a thread died.
+- **Progress while checking, and time left** (ING-016). The Library page says how many files
+  have been checked for changes, then how long reading the rest should take.
+
+With 5 ms of simulated latency on every stat, open and read, 5,000 files took 28 seconds before;
+they now take 12 seconds on eight threads (25 seconds read in place without the batches). With no
+latency, 5,000 files take 2 seconds instead of 7; the main process's busy time fell by a third,
+and its longest pause stayed around 40 ms. Eight is a deliberate middle: sixteen threads were
+faster again on the simulated disk (7 seconds) but doubled the longest pause, and asks twice as
+much of a NAS at once.
+
+The worker thread this spec deferred is half done: the threads only read. Writing stays on the
+main process, which owns the database connection, paced as before.

@@ -12,6 +12,10 @@ Each entry links its spec, where the EARS requirements live, and its pull reques
 ## [Unreleased]
 
 ### Added
+- **Faster library scans** (spec 018, NFR-023, NFR-024, ING-016): headers are read on eight
+  background threads with no batches of 20 waiting for their slowest file, and each list of files
+  is written as it arrives; the Library page shows files checked for changes and about how long
+  reading has left. A reader thread that fails hands its files back to the main process.
 - **Home folds what you rarely use** (spec 046, U7): Coming nights, Plan ahead, Where your
   targets are and Other checks sit behind one More line at the foot of Home, remembered on each
   screen; a card holding a high-priority item stays out.

@@ -1,13 +1,13 @@
 import { getSqlite } from '../db/connection'
-import { parseFitsFile, parseFitsFileAsync, type FitsParseResult } from '../fits/parser'
+import { parseFitsFile, type FitsParseResult } from '../fits/parser'
+import { inPlaceFrameReader, type FrameReader } from '../fits/frame-reader'
 import { detectStacking } from '../fits/stacking'
 import { linkFitsFilesToTargetsPaced, normalizeCatalogName } from './fits-linker'
 import { isAstronomicalName } from './astro-names'
 import { advanceStage } from './workflow'
 import { ulid, monotonicFactory } from 'ulid'
-import { ScanPacer, ScanCancelled, inFlight, FILES_IN_FLIGHT } from './scan-pacer'
-import { frameFileKind, planRescan, type FileStamp } from '@astro/domain'
-import { parseCameraRawFile } from '../raw/camera-raw'
+import { ScanPacer, ScanCancelled, inFlight } from './scan-pacer'
+import { frameFileKind, planRescan, readingSecondsLeft, type FileStamp } from '@astro/domain'
 import fs from 'fs'
 import path from 'path'
 import type {
@@ -84,9 +84,12 @@ function getHeaderNumber(headerMap: Map<string, { value: string | number | boole
   return null
 }
 
-/** A FITS file's header, or a camera RAW file's EXIF as header rows (RIG-001). */
-function readFrame(filePath: string): Promise<FitsParseResult> {
-  return frameFileKind(filePath) === 'fits' ? parseFitsFileAsync(filePath) : parseCameraRawFile(filePath)
+/** Where scans read stamps and headers: in place until the app starts its reader threads (NFR-023). */
+let makeFrameReader: () => FrameReader = () => inPlaceFrameReader
+
+/** Scans read through readers from `make` from now on, one per scan. The app passes reader threads at start. */
+export function useFrameReaders(make: () => FrameReader): void {
+  makeFrameReader = make
 }
 
 /** One spelling per folder, so "D:\\Astro\\" and "D:\\Astro" are the same scan root. */
@@ -105,10 +108,17 @@ export interface FolderScanOptions {
   onProgress?: (progress: FolderScanProgress) => void
   /** Overrides the pacing, for tests. */
   pacer?: ScanPacer
+  /** Overrides where stamps and headers are read, for tests. */
+  reader?: FrameReader
 }
 
-/** Files read, and rows written, per database transaction: small enough to never hold the app up. */
-const READ_BATCH = 20
+/**
+ * Files in each list handed to a reader, and so rows written per database transaction: small
+ * enough to never hold the app up. Lists are written as each comes back, never waiting for others.
+ */
+const READ_CHUNK = 16
+/** Files stamped per list: a stat is a single call, so lists of them can be longer. */
+const STAMP_CHUNK = 64
 /** Directory entries fetched per call while walking, so a big folder is listed in few round trips. */
 const DIR_BUFFER = 256
 const WRITE_CHUNK = 250
@@ -129,21 +139,23 @@ export async function startFolderScan(requestedPath: string, options: FolderScan
     if (overlaps(active, folderPath)) throw new Error(`A scan of ${active} is already running`)
   }
   activeRoots.add(folderPath)
+  const reader = options.reader ?? makeFrameReader()
   try {
-    return await scanFolder(folderPath, options)
+    return await scanFolder(folderPath, options, reader)
   } finally {
     activeRoots.delete(folderPath)
+    await reader.close().catch(() => undefined)
   }
 }
 
-async function scanFolder(folderPath: string, options: FolderScanOptions): Promise<FitsScan> {
+async function scanFolder(folderPath: string, options: FolderScanOptions, reader: FrameReader): Promise<FitsScan> {
   const sqlite = getSqlite()
   const pacer = options.pacer ?? new ScanPacer(options.signal)
   const now = new Date().toISOString()
   const scanId = ulid()
   // ulid() draws fresh randomness for every id, which cost most of a large scan's time.
   const nextId = monotonicFactory()
-  const progress: FolderScanProgress = { filesFound: 0, filesToRead: 0, filesRead: 0, filesUnchanged: 0, quarantined: 0 }
+  const progress: FolderScanProgress = { filesFound: 0, filesChecked: 0, filesToRead: 0, filesRead: 0, filesUnchanged: 0, quarantined: 0, secondsLeft: null }
   const report = () => options.onProgress?.({ ...progress })
 
   sqlite.prepare(
@@ -153,6 +165,22 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
 
   let fileCount = 0
   let totalSize = 0
+  // A reader that fails (a reader thread that died) is not the files' fault: the list is read
+  // again in place, and so is the rest of the scan, so a file is only ever called unreadable for
+  // its own reason and a reader that cannot start is not started again for every list.
+  let using = reader
+  const orInPlace = async <T>(read: (r: FrameReader) => Promise<T>): Promise<T> => {
+    const tried = using
+    try {
+      return await read(tried)
+    } catch (err) {
+      if (tried === inPlaceFrameReader || pacer.cancelled) throw err
+      using = inPlaceFrameReader
+      return read(inPlaceFrameReader)
+    }
+  }
+  const chunksOf = <T>(items: T[], size: number): T[][] =>
+    Array.from({ length: Math.ceil(items.length / size) }, (_, c) => items.slice(c * size, (c + 1) * size))
   try {
     const fitsFiles = await walkFitsFiles(folderPath, pacer, count => {
       progress.filesFound = count
@@ -162,17 +190,20 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
 
     // Rescan fast path (ING-008): files whose size and modified time are unchanged keep their row,
     // headers, quality metrics and target link; only new or changed files are read again.
-    // A few at once (NFR-022): each stat is mostly waiting, on Windows even on a local disk.
+    // Lists of files at once (NFR-022, NFR-023): each stat is mostly waiting, on Windows even on
+    // a local disk. A file that vanished between the walk and the stat is treated as removed.
     const stamps = new Map<string, FileStamp>()
-    await inFlight(fitsFiles.length, FILES_IN_FLIGHT, async k => {
-      const { filePath } = fitsFiles[k]
-      try {
-        const stat = await fs.promises.stat(filePath)
-        stamps.set(filePath, { path: filePath, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() })
-        totalSize += stat.size
-      } catch {
-        // Vanished between the walk and the stat; treated as removed.
+    const stampLists = chunksOf(fitsFiles.map(f => f.filePath), STAMP_CHUNK)
+    await inFlight(stampLists.length, reader.lanes, async c => {
+      const paths = stampLists[c]
+      const got = await orInPlace(r => r.stamp(paths))
+      for (const stamp of got) {
+        if (!stamp) continue
+        stamps.set(stamp.path, stamp)
+        totalSize += stamp.sizeBytes
       }
+      progress.filesChecked += paths.length
+      report()
     }, pacer)
     // Every indexed file under this folder counts, whichever scan found it: a scan of a parent
     // folder, or an earlier spelling of this one, must not leave files behind or hide them.
@@ -335,28 +366,24 @@ async function scanFolder(folderPath: string, options: FolderScanOptions): Promi
       }
     }
 
-    // Headers are read outside any transaction, a few files at once so each file's wait for the
-    // disk overlaps the others' (NFR-022) but the disk or the NAS is never flooded; each small
-    // batch is then written in one go and kept, so a cancelled scan resumes from where it stopped.
-    for (let i = 0; i < toRead.length; i += READ_BATCH) {
-      const files = toRead.slice(i, i + READ_BATCH)
-      const results: (FitsParseResult | undefined)[] = new Array(files.length)
-      const write = () => {
-        const batch = files.flatMap((file, k) => results[k] ? [{ file, stamp: stamps.get(file.filePath)!, result: results[k]! }] : [])
-        sqlite.transaction(() => { for (const b of batch) store(b.file, b.stamp, b.result) })()
-        progress.filesRead += batch.length
-        report()
-      }
-      try {
-        await inFlight(files.length, FILES_IN_FLIGHT, async k => { results[k] = await readFrame(files[k].filePath) }, pacer)
-      } catch (err) {
-        // Files read before a cancel are kept, so the next scan does not read them again.
-        if (err instanceof ScanCancelled) write()
-        throw err
-      }
-      write()
-      await pacer.checkpoint()
-    }
+    // Headers are read outside any transaction, a few lists at once so each file's wait for the
+    // disk overlaps the others' (NFR-022, NFR-023) but the disk or the NAS is never flooded. Each
+    // list is written in one go as soon as it is read, without waiting for the lists beside it,
+    // and kept, so a cancelled scan resumes from where it stopped: inFlight lets the lists under
+    // way finish, and be written, before it reports the cancel.
+    const readLists = chunksOf(toRead, READ_CHUNK)
+    const readingSince = Date.now()
+    await inFlight(readLists.length, reader.lanes, async c => {
+      const files = readLists[c]
+      const results = await orInPlace(r => r.read(files.map(f => f.filePath)))
+      // Lists that come back together are written a turn apart, so the app answers in between.
+      await new Promise(resolve => setImmediate(resolve))
+      sqlite.transaction(() => { files.forEach((file, k) => store(file, stamps.get(file.filePath)!, results[k])) })()
+      progress.filesRead += files.length
+      progress.secondsLeft = readingSecondsLeft(progress.filesRead, progress.filesToRead, Date.now() - readingSince)
+      report()
+    }, pacer)
+    progress.secondsLeft = null
 
     const completedAt = new Date().toISOString()
     sqlite.prepare(
