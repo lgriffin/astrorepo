@@ -32,17 +32,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The changed-files mode diffs against the merge base with the PR's base branch.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       # Unchanged mutants keep their result from the last run on this branch, or on main.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: reports/stryker-incremental.json
           key: mutation-incremental-${{ github.ref }}-${{ github.sha }}
@@ -63,7 +63,7 @@ jobs:
       - name: Write the score to the job summary
         if: always()
         run: node scripts/mutation/summary.mjs reports/mutation/mutation.json >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mutation-report
