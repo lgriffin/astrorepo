@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -36,7 +36,7 @@ jobs:
         # A block, because "seed: " inside a plain value is not valid YAML (DEV-010).
         run: |
           grep -E 'FAIL |seed: |Counterexample' fuzz.log > fuzz-seeds.txt || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: fuzz-failures
